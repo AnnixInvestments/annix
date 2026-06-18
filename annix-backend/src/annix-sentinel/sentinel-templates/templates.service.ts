@@ -1,7 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { Company } from "../../platform/entities/company.entity";
+import { CompanyRepository } from "../../platform/company.repository";
 import { AnnixSentinelComplianceRequirementRepository } from "../compliance/compliance-requirement.repository";
 import { AnnixSentinelComplianceStatusRepository } from "../compliance/compliance-status.repository";
 import { AnnixSentinelComplianceRequirement } from "../compliance/entities/compliance-requirement.entity";
@@ -190,8 +188,7 @@ const TEMPLATE_REGISTRY: TemplateMetadata[] = [
 @Injectable()
 export class AnnixSentinelTemplatesService {
   constructor(
-    @InjectRepository(Company)
-    private readonly companyRepository: Repository<Company>,
+    private readonly companyRepository: CompanyRepository,
     private readonly statusRepository: AnnixSentinelComplianceStatusRepository,
     private readonly requirementRepository: AnnixSentinelComplianceRequirementRepository,
   ) {}
@@ -230,9 +227,7 @@ export class AnnixSentinelTemplatesService {
   }
 
   async generateHealthReport(companyId: number): Promise<GeneratedTemplate> {
-    const company = await this.companyRepository.findOne({
-      where: { id: companyId },
-    });
+    const company = await this.companyRepository.findById(companyId);
 
     if (company === null) {
       throw new NotFoundException("Company not found");

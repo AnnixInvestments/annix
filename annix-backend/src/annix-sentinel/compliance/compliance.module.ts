@@ -3,7 +3,6 @@ import { MongooseModule } from "@nestjs/mongoose";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { isMongoDriver } from "../../lib/persistence/database-driver";
 import { repositoryProvider } from "../../lib/persistence/repository-provider";
-import { Company } from "../../platform/entities/company.entity";
 import { AnnixSentinelCompaniesModule } from "../companies/companies.module";
 import { AnnixSentinelDocumentsModule } from "../sentinel-documents/documents.module";
 import { AnnixSentinelChecklistProgressRepository } from "./checklist-progress.repository";
@@ -44,14 +43,12 @@ import { AnnixSentinelRuleEngineService } from "./services/rule-engine.service";
               schema: AnnixSentinelChecklistProgressSchema,
             },
           ]),
-          TypeOrmModule.forFeature([Company]),
         ]
       : [
           TypeOrmModule.forFeature([
             AnnixSentinelComplianceRequirement,
             AnnixSentinelComplianceStatus,
             AnnixSentinelChecklistProgress,
-            Company,
           ]),
         ]),
     AnnixSentinelCompaniesModule,

@@ -1,12 +1,11 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
 import {
   ChannelKey,
   NotificationDispatcherService,
 } from "../../notifications/notification-dispatcher.service";
 import { User } from "../../user/entities/user.entity";
+import { UserRepository } from "../../user/user.repository";
 import { AnnixSentinelProfileRepository } from "../companies/annix-sentinel-profile.repository";
 import { AnnixSentinelProfile } from "../companies/entities/annix-sentinel-profile.entity";
 import { AnnixSentinelComplianceRequirementRepository } from "../compliance/compliance-requirement.repository";
@@ -40,8 +39,7 @@ export class AnnixSentinelNotificationsService {
     private readonly notificationRepository: AnnixSentinelNotificationRepository,
     private readonly preferencesRepository: AnnixSentinelNotificationPreferencesRepository,
     private readonly profileRepository: AnnixSentinelProfileRepository,
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
+    private readonly userRepository: UserRepository,
     private readonly documentRepository: AnnixSentinelDocumentRepository,
     private readonly dispatcher: NotificationDispatcherService,
   ) {}
@@ -54,8 +52,7 @@ export class AnnixSentinelNotificationsService {
     const profiles = await this.profileRepository.findByCompanyIds(companyIds);
     const userIds = [...new Set(profiles.map((profile) => profile.userId))];
 
-    const users =
-      userIds.length > 0 ? await this.userRepository.find({ where: { id: In(userIds) } }) : [];
+    const users = userIds.length > 0 ? await this.userRepository.findByIds(userIds) : [];
 
     const userById = users.reduce(
       (acc, user) => ({ ...acc, [user.id]: user }),

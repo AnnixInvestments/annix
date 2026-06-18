@@ -1,9 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
-import { LessThan, Repository } from "typeorm";
-import { Company } from "../../platform/entities/company.entity";
-import { User } from "../../user/entities/user.entity";
+import { UserRepository } from "../../user/user.repository";
 import { AnnixSentinelCompanyDetailsRepository } from "../companies/annix-sentinel-company-details.repository";
 import { now } from "../lib/datetime";
 
@@ -16,10 +13,7 @@ export class AnnixSentinelDataRetentionService {
   private readonly logger = new Logger(AnnixSentinelDataRetentionService.name);
 
   constructor(
-    @InjectRepository(User)
-    private readonly usersRepository: Repository<User>,
-    @InjectRepository(Company)
-    private readonly companiesRepository: Repository<Company>,
+    private readonly usersRepository: UserRepository,
     private readonly detailsRepository: AnnixSentinelCompanyDetailsRepository,
   ) {}
 
@@ -44,12 +38,8 @@ export class AnnixSentinelDataRetentionService {
       const expiredCompanyRecords =
         await this.detailsRepository.countCancelledCreatedBefore(companyCutoff);
 
-      const expiredDeletedAccounts = await this.usersRepository.count({
-        where: {
-          createdAt: LessThan(deletedAccountCutoff),
-          emailVerified: false,
-        },
-      });
+      const expiredDeletedAccounts =
+        await this.usersRepository.countUnverifiedCreatedBefore(deletedAccountCutoff);
 
       this.logger.log(
         `Retention audit: ${expiredTaxRecords} tax records past ${TAX_DATA_RETENTION_YEARS}y, ` +
@@ -58,13 +48,11 @@ export class AnnixSentinelDataRetentionService {
       );
 
       if (expiredDeletedAccounts > 0) {
-        const result = await this.usersRepository.delete({
-          createdAt: LessThan(deletedAccountCutoff),
-          emailVerified: false,
-        });
+        const deletedCount =
+          await this.usersRepository.deleteUnverifiedCreatedBefore(deletedAccountCutoff);
 
         this.logger.log(
-          `Deleted ${result.affected} unverified accounts older than ${DELETED_ACCOUNT_RETENTION_YEARS} year(s)`,
+          `Deleted ${deletedCount} unverified accounts older than ${DELETED_ACCOUNT_RETENTION_YEARS} year(s)`,
         );
       }
     } catch (error) {

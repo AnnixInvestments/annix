@@ -22,7 +22,7 @@ import { AnnixSentinelDocumentSchema } from "./schemas/document.schema";
           ]),
         ]
       : [TypeOrmModule.forFeature([AnnixSentinelDocument])]),
-    AnnixSentinelAiModule,
+    forwardRef(() => AnnixSentinelAiModule),
     forwardRef(() => AnnixSentinelComplianceModule),
   ],
   controllers: [AnnixSentinelDocumentsController],

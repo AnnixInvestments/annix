@@ -3,7 +3,6 @@ import { MongooseModule } from "@nestjs/mongoose";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { isMongoDriver } from "../../lib/persistence/database-driver";
 import { repositoryProvider } from "../../lib/persistence/repository-provider";
-import { Company } from "../../platform/entities/company.entity";
 import { AnnixSentinelCompanyDetailsRepository } from "./annix-sentinel-company-details.repository";
 import { MongoAnnixSentinelCompanyDetailsRepository } from "./annix-sentinel-company-details.repository.mongo";
 import { PostgresAnnixSentinelCompanyDetailsRepository } from "./annix-sentinel-company-details.repository.postgres";
@@ -28,9 +27,8 @@ import { AnnixSentinelProfileSchema } from "./schemas/annix-sentinel-profile.sch
               schema: AnnixSentinelCompanyDetailsSchema,
             },
           ]),
-          TypeOrmModule.forFeature([Company]),
         ]
-      : [TypeOrmModule.forFeature([Company, AnnixSentinelProfile, AnnixSentinelCompanyDetails])]),
+      : [TypeOrmModule.forFeature([AnnixSentinelProfile, AnnixSentinelCompanyDetails])]),
   ],
   controllers: [AnnixSentinelCompaniesController],
   providers: [
@@ -47,7 +45,7 @@ import { AnnixSentinelProfileSchema } from "./schemas/annix-sentinel-profile.sch
     ),
   ],
   exports: [
-    TypeOrmModule,
+    ...(isMongoDriver() ? [] : [TypeOrmModule]),
     AnnixSentinelCompaniesService,
     AnnixSentinelProfileRepository,
     AnnixSentinelCompanyDetailsRepository,

@@ -4,6 +4,10 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { isMongoDriver } from "../../lib/persistence/database-driver";
 import { repositoryProvider } from "../../lib/persistence/repository-provider";
 import { User } from "../../user/entities/user.entity";
+import { UserSchema } from "../../user/schemas/user.schema";
+import { UserRepository } from "../../user/user.repository";
+import { MongoUserRepository } from "../../user/user.repository.mongo";
+import { PostgresUserRepository } from "../../user/user.repository.postgres";
 import { AnnixSentinelCompaniesModule } from "../companies/companies.module";
 import { AnnixSentinelComplianceModule } from "../compliance/compliance.module";
 import { AnnixSentinelDocumentsModule } from "../sentinel-documents/documents.module";
@@ -30,8 +34,8 @@ import { AnnixSentinelNotificationPreferencesSchema } from "./schemas/notificati
               name: "AnnixSentinelNotificationPreferences",
               schema: AnnixSentinelNotificationPreferencesSchema,
             },
+            { name: "User", schema: UserSchema },
           ]),
-          TypeOrmModule.forFeature([User]),
         ]
       : [
           TypeOrmModule.forFeature([
@@ -57,6 +61,7 @@ import { AnnixSentinelNotificationPreferencesSchema } from "./schemas/notificati
       PostgresAnnixSentinelNotificationPreferencesRepository,
       MongoAnnixSentinelNotificationPreferencesRepository,
     ),
+    repositoryProvider(UserRepository, PostgresUserRepository, MongoUserRepository),
   ],
 })
 export class AnnixSentinelNotificationsModule {}

@@ -1,8 +1,6 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
-import { Company } from "../../platform/entities/company.entity";
+import { CompanyRepository } from "../../platform/company.repository";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { AnnixSentinelCompanyDetailsRepository } from "../companies/annix-sentinel-company-details.repository";
 import { AnnixSentinelComplianceRequirementRepository } from "../compliance/compliance-requirement.repository";
@@ -67,8 +65,7 @@ export class AnnixSentinelAiService {
   private readonly logger = new Logger(AnnixSentinelAiService.name);
 
   constructor(
-    @InjectRepository(Company)
-    private readonly companyRepository: Repository<Company>,
+    private readonly companyRepository: CompanyRepository,
     private readonly detailsRepository: AnnixSentinelCompanyDetailsRepository,
     private readonly statusRepository: AnnixSentinelComplianceStatusRepository,
     private readonly requirementRepository: AnnixSentinelComplianceRequirementRepository,
@@ -78,9 +75,7 @@ export class AnnixSentinelAiService {
   ) {}
 
   async chat(companyId: number, question: string): Promise<ChatResponse> {
-    const company = await this.companyRepository.findOne({
-      where: { id: companyId },
-    });
+    const company = await this.companyRepository.findById(companyId);
 
     if (company === null) {
       throw new NotFoundException("Company not found");

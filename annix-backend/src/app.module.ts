@@ -14,7 +14,6 @@ import { BoqModule } from "./boq/boq.module";
 import { BrandingModule } from "./branding/branding.module";
 import typeormConfig from "./config/typeorm";
 import { CustomerModule } from "./customer/customer.module";
-import { DataValidationModule } from "./data-validation/data-validation.module";
 import { DrawingsModule } from "./drawings/drawings.module";
 import { EmailModule } from "./email/email.module";
 import { FeatureFlagsModule } from "./feature-flags/feature-flags.module";
@@ -120,11 +119,6 @@ import { WorkflowModule } from "./workflow/workflow.module";
     PublicModule,
     FeatureFlagsModule,
     LicensingModule,
-    // DataValidationModule is a raw-SQL rule engine: it loads rule_sql strings
-    // from the validation_rules table and executes them against the database.
-    // The rules ARE SQL, so it cannot run on Mongo without rewriting the entire
-    // rule corpus as aggregation pipelines — a separate effort. Postgres-only.
-    ...(isMongoDriver() ? [] : [DataValidationModule]),
     UnifiedApiModule,
     RemoteAccessModule,
     FeedbackModule,
@@ -147,13 +141,10 @@ import { WorkflowModule } from "./workflow/workflow.module";
     MarketingModule,
     SsoModule,
 
-    // AnnixSentinelModule (formerly Comply-SA) is still TypeORM-only — origin
-    // renamed the module after the Mongo migration branched, so its services
-    // inject Repository<Entity> directly. Excluded on Mongo until it's ported
-    // to the repository pattern (tracked follow-up). Postgres unaffected.
-    ...(isMongoDriver() || process.env.DISABLE_ANNIX_SENTINEL === "true"
-      ? []
-      : [AnnixSentinelModule]),
+    // AnnixSentinelModule (formerly Comply-SA) — ported to the Mongo repository
+    // pattern (#371); loads on every driver. DISABLE_ANNIX_SENTINEL is the only
+    // opt-out. Legacy Postgres data import is a separate task.
+    ...(process.env.DISABLE_ANNIX_SENTINEL === "true" ? [] : [AnnixSentinelModule]),
   ],
   controllers: [AppController, BendDimensionController],
   providers: [BendDimensionService],

@@ -7,15 +7,17 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
-import { Company, CompanyType } from "../../platform/entities/company.entity";
-import { App } from "../../rbac/entities/app.entity";
-import { AppRole } from "../../rbac/entities/app-role.entity";
-import { UserAppAccess } from "../../rbac/entities/user-app-access.entity";
+import { CompanyRepository } from "../../platform/company.repository";
+import { CompanyType } from "../../platform/entities/company.entity";
+import {
+  AppRepository,
+  AppRoleRepository,
+  UserAppAccessRepository,
+} from "../../rbac/rbac.repository";
 import { PasswordService } from "../../shared/auth/password.service";
 import { User } from "../../user/entities/user.entity";
+import { UserRepository } from "../../user/user.repository";
 import { AnnixSentinelCompanyDetailsRepository } from "../companies/annix-sentinel-company-details.repository";
 import { AnnixSentinelProfileRepository } from "../companies/annix-sentinel-profile.repository";
 import { fromJSDate, now } from "../lib/datetime";
@@ -30,18 +32,13 @@ export class AnnixSentinelAuthService {
   private readonly logger = new Logger(AnnixSentinelAuthService.name);
 
   constructor(
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
+    private readonly userRepo: UserRepository,
     private readonly profileRepo: AnnixSentinelProfileRepository,
-    @InjectRepository(Company)
-    private readonly companyRepo: Repository<Company>,
+    private readonly companyRepo: CompanyRepository,
     private readonly companyDetailsRepo: AnnixSentinelCompanyDetailsRepository,
-    @InjectRepository(App)
-    private readonly appRepo: Repository<App>,
-    @InjectRepository(AppRole)
-    private readonly appRoleRepo: Repository<AppRole>,
-    @InjectRepository(UserAppAccess)
-    private readonly userAppAccessRepo: Repository<UserAppAccess>,
+    private readonly appRepo: AppRepository,
+    private readonly appRoleRepo: AppRoleRepository,
+    private readonly userAppAccessRepo: UserAppAccessRepository,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly passwordService: PasswordService,
@@ -57,9 +54,7 @@ export class AnnixSentinelAuthService {
       );
     }
 
-    const existingUser = await this.userRepo.findOne({
-      where: { email: dto.email },
-    });
+    const existingUser = await this.userRepo.findOneByEmail(dto.email);
 
     if (existingUser !== null) {
       throw new ConflictException("An account with this email already exists");
@@ -74,7 +69,7 @@ export class AnnixSentinelAuthService {
     };
     const companyName = entityNameMap[entityType] || dto.name;
 
-    const unifiedCompany = this.companyRepo.create({
+    const savedUnifiedCompany = await this.companyRepo.create({
       name: companyName,
       companyType: CompanyType.CUSTOMER,
       registrationNumber: dto.registrationNumber ?? null,
@@ -82,7 +77,6 @@ export class AnnixSentinelAuthService {
       province: dto.province ?? null,
       phone: dto.phone ?? null,
     });
-    const savedUnifiedCompany = await this.companyRepo.save(unifiedCompany);
 
     await this.companyDetailsRepo.create({
       companyId: savedUnifiedCompany.id,
@@ -104,7 +98,7 @@ export class AnnixSentinelAuthService {
     const passwordHash = await this.passwordService.hashSimple(dto.password);
     const verificationToken = randomBytes(32).toString("hex");
 
-    const user = this.userRepo.create({
+    const savedUser = await this.userRepo.create({
       email: dto.email,
       username: dto.email,
       passwordHash,
@@ -113,7 +107,6 @@ export class AnnixSentinelAuthService {
       emailVerified: false,
       emailVerificationToken: verificationToken,
     } as Partial<User>);
-    const savedUser = await this.userRepo.save(user);
 
     await this.profileRepo.create({
       userId: savedUser.id,
@@ -144,9 +137,7 @@ export class AnnixSentinelAuthService {
   }
 
   async verifyEmail(token: string): Promise<{ verified: boolean }> {
-    const user = await this.userRepo.findOne({
-      where: { emailVerificationToken: token },
-    });
+    const user = await this.userRepo.findByEmailVerificationToken(token);
 
     if (user === null) {
       throw new BadRequestException("Invalid or expired verification token");
@@ -163,7 +154,7 @@ export class AnnixSentinelAuthService {
   }
 
   async resendVerification(email: string): Promise<{ sent: boolean }> {
-    const user = await this.userRepo.findOne({ where: { email } });
+    const user = await this.userRepo.findOneByEmail(email);
 
     if (user === null) {
       return { sent: true };
@@ -188,7 +179,7 @@ export class AnnixSentinelAuthService {
     emailVerified: boolean;
     termsOutdated: boolean;
   }> {
-    const user = await this.userRepo.findOne({ where: { email: dto.email } });
+    const user = await this.userRepo.findOneByEmail(dto.email);
 
     if (user === null) {
       throw new UnauthorizedException("Invalid credentials");
@@ -224,7 +215,7 @@ export class AnnixSentinelAuthService {
   }
 
   async forgotPassword(email: string): Promise<{ sent: boolean }> {
-    const user = await this.userRepo.findOne({ where: { email } });
+    const user = await this.userRepo.findOneByEmail(email);
 
     if (user === null) {
       return { sent: true };
@@ -245,9 +236,7 @@ export class AnnixSentinelAuthService {
   }
 
   async resetPassword(token: string, newPassword: string): Promise<{ reset: boolean }> {
-    const user = await this.userRepo.findOne({
-      where: { resetPasswordToken: token },
-    });
+    const user = await this.userRepo.findByResetPasswordToken(token);
 
     if (user === null) {
       throw new BadRequestException("Invalid or expired reset token");
@@ -275,7 +264,7 @@ export class AnnixSentinelAuthService {
     access_token: string;
     user: { id: number; name: string; email: string; role: string; companyId: number | null };
   }> {
-    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const user = await this.userRepo.findById(userId);
 
     if (user === null) {
       throw new UnauthorizedException("User no longer exists");
@@ -315,38 +304,33 @@ export class AnnixSentinelAuthService {
     profile.termsVersion = CURRENT_TERMS_VERSION;
     await this.profileRepo.save(profile);
 
-    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const user = await this.userRepo.findById(userId);
     this.logger.log(`User ${user?.email} accepted terms version ${CURRENT_TERMS_VERSION}`);
 
     return { accepted: true };
   }
 
   async validateUser(userId: number): Promise<User | null> {
-    return this.userRepo.findOne({ where: { id: userId } });
+    return this.userRepo.findById(userId);
   }
 
   private async bridgeToRbac(userId: number): Promise<void> {
     try {
-      const app = await this.appRepo.findOne({ where: { code: "annix-sentinel" } });
+      const app = await this.appRepo.findByCode("annix-sentinel");
       if (!app) return;
 
-      const rbacRole = await this.appRoleRepo.findOne({
-        where: { appId: app.id, code: "administrator" },
-      });
+      const rbacRole = await this.appRoleRepo.findByAppIdAndCode(Number(app.id), "administrator");
       if (!rbacRole) return;
 
-      const existing = await this.userAppAccessRepo.findOne({
-        where: { userId, appId: app.id },
-      });
+      const existing = await this.userAppAccessRepo.findOneByUserAndApp(userId, Number(app.id));
       if (existing) return;
 
-      const access = this.userAppAccessRepo.create({
+      await this.userAppAccessRepo.create({
         userId,
-        appId: app.id,
-        roleId: rbacRole.id,
+        appId: Number(app.id),
+        roleId: Number(rbacRole.id),
         grantedAt: now().toJSDate(),
       });
-      await this.userAppAccessRepo.save(access);
     } catch (err) {
       this.logger.warn(`Failed to bridge Annix Sentinel user ${userId} to RBAC: ${err}`);
     }

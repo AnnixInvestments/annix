@@ -1,8 +1,6 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
-import { Company } from "../../platform/entities/company.entity";
+import { CompanyRepository } from "../../platform/company.repository";
 import { AnnixSentinelCompanyDetailsRepository } from "../companies/annix-sentinel-company-details.repository";
 import { daysBetween, fromISO, fromJSDate, now } from "../lib/datetime";
 import { AnnixSentinelDocumentRepository } from "../sentinel-documents/document.repository";
@@ -30,8 +28,7 @@ export class AnnixSentinelComplianceService {
     private readonly statusRepository: AnnixSentinelComplianceStatusRepository,
     private readonly requirementRepository: AnnixSentinelComplianceRequirementRepository,
     private readonly checklistRepository: AnnixSentinelChecklistProgressRepository,
-    @InjectRepository(Company)
-    private readonly companyRepository: Repository<Company>,
+    private readonly companyRepository: CompanyRepository,
     private readonly detailsRepository: AnnixSentinelCompanyDetailsRepository,
     private readonly documentRepository: AnnixSentinelDocumentRepository,
     private readonly ruleEngineService: AnnixSentinelRuleEngineService,
@@ -40,9 +37,7 @@ export class AnnixSentinelComplianceService {
   ) {}
 
   async assessCompany(companyId: number): Promise<AnnixSentinelComplianceStatus[]> {
-    const company = await this.companyRepository.findOne({
-      where: { id: companyId },
-    });
+    const company = await this.companyRepository.findById(companyId);
 
     if (company === null) {
       throw new NotFoundException("Company not found");
@@ -84,7 +79,7 @@ export class AnnixSentinelComplianceService {
 
   async companyDashboard(companyId: number) {
     const [company, statusesRaw] = await Promise.all([
-      this.companyRepository.findOne({ where: { id: companyId } }),
+      this.companyRepository.findById(companyId),
       this.statusRepository.findManyWhere({ companyId }),
     ]);
 
@@ -403,7 +398,7 @@ export class AnnixSentinelComplianceService {
 
   async updateVatSubmissionCycle(companyId: number, cycle: "odd" | "even"): Promise<void> {
     const [company, details] = await Promise.all([
-      this.companyRepository.findOne({ where: { id: companyId } }),
+      this.companyRepository.findById(companyId),
       this.detailsRepository.findOneByCompanyId(companyId),
     ]);
 
