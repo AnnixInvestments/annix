@@ -16,7 +16,7 @@ for (const line of text.split(/\r?\n/)) {
   const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
   if (m) env[m[1]] = m[2].replace(/^['"]|['"]$/g, "");
 }
-const MB = (b) => (b / 1024 / 1024).toFixed(1).padStart(7) + "MB";
+const MB = (b) => `${(b / 1024 / 1024).toFixed(1).padStart(7)}MB`;
 const WATCH = [
   "cv_assistant_external_jobs",
   "cv_assistant_candidate_job_matches",

@@ -1,16 +1,12 @@
 import { FLANGE_OD } from "@annix/product-data/pipe";
-import { STEEL_DENSITY_KG_M3 } from "@annix/product-data/steel";
 import React, { memo } from "react";
 import {
   boltSetCountPerBend as getBoltSetCountPerBend,
   boltSetCountPerFitting as getBoltSetCountPerFitting,
   boltSetCountPerPipe as getBoltSetCountPerPipe,
-  closureWeight as getClosureWeight,
   fittingBranchNbMm as getFittingBranchNbMm,
   fittingFlangeCounts as getFittingFlangeCounts,
   flangesPerPipe as getFlangesPerPipe,
-  tackWeldEndsPerPipe as getTackWeldEndsPerPipe,
-  tackWeldWeight as getTackWeldWeight,
 } from "@/app/lib/config/rfq";
 import {
   blankFlangeSurfaceArea,

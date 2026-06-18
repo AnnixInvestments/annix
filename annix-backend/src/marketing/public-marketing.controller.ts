@@ -169,7 +169,7 @@ export class PublicMarketingController {
   @Header("Content-Type", "text/html")
   @ApiOperation({ summary: "Unsubscribe an email address from the marketing newsletter" })
   async newsletterUnsubscribe(@Query("email") email?: string): Promise<string> {
-    if (email && email.includes("@")) {
+    if (email?.includes("@")) {
       await this.newsletterService.unsubscribe(email);
     }
     return `<!doctype html><html><head><meta charset="utf-8"><title>Unsubscribed</title></head><body style="font-family:Arial,sans-serif;text-align:center;padding:60px;color:#333;"><h2>You're unsubscribed</h2><p>You will no longer receive Annix newsletter emails.</p><p><a href="https://annix.co.za">Return to annix.co.za</a></p></body></html>`;

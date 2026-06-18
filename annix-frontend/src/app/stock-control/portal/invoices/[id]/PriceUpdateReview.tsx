@@ -174,13 +174,13 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
             {items.map((item) => {
               const edits = editingItems[item.id];
               const isEditingRow = edits !== undefined;
-              const rawQuantity = edits.quantity;
+              const rawQuantity = isEditingRow ? edits.quantity : null;
               const rawNewPrice = item.newPrice;
-              const description = edits.description;
+              const description = isEditingRow ? edits.description : null;
               const quantity = item.quantity;
               const newPrice = item.newPrice;
               const changePercent = item.changePercent;
-              const unitPrice = edits.unitPrice;
+              const unitPrice = isEditingRow ? edits.unitPrice : null;
               const displayQty = isEditingRow ? Number(rawQuantity || 0) : Number(quantity || 0);
               const displayPrice = isEditingRow ? Number(unitPrice || 0) : Number(rawNewPrice || 0);
               const lineTotal = displayQty * displayPrice;
