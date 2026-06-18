@@ -432,7 +432,7 @@ export class WorkflowController {
   }
 
   @Get("job-cards/:id/print")
-  @StockControlRoles("receiving-clerk", "manager", "admin")
+  @StockControlRoles("receiving-clerk", "manager", "admin", "accounts")
   @PermissionKey("job-cards.print")
   @ApiOperation({ summary: "Download signed job card PDF" })
   async printJobCard(@Req() req: any, @Param("id") id: number, @Res() res: Response) {

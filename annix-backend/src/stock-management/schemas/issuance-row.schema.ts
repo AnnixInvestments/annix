@@ -28,7 +28,7 @@ export class IssuanceRow {
   @Prop({ type: Number, required: false })
   jobCardId: number;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, required: false, default: false })
   undone: boolean;
 
   @Prop({ type: Date, required: false })

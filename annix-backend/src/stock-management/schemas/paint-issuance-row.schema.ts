@@ -14,6 +14,9 @@ export class PaintIssuanceRow {
   _id: number;
 
   @Prop({ type: Number, required: true })
+  rowId: number;
+
+  @Prop({ type: Number, required: true })
   litres: number;
 
   @Prop({ type: Number, required: false })

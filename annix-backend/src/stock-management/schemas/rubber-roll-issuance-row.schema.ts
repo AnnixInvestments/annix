@@ -14,6 +14,9 @@ export class RubberRollIssuanceRow {
   _id: number;
 
   @Prop({ type: Number, required: true })
+  rowId: number;
+
+  @Prop({ type: Number, required: true })
   weightKgIssued: number;
 
   @Prop({ type: Number, required: false })

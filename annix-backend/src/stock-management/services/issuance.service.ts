@@ -91,6 +91,7 @@ export class IssuanceService {
           productId: rowInput.productId,
           jobCardId: rowInput.jobCardId ?? null,
           notes: rowInput.notes ?? null,
+          undone: false,
         });
         const savedRow = await rowRepo.save(baseRow);
 

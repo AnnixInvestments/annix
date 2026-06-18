@@ -50,7 +50,7 @@ export class MongoIssuanceRowRepository
       }>([
         {
           $lookup: {
-            from: "issuancesessions",
+            from: "sm_issuance_session",
             localField: "sessionId",
             foreignField: "_id",
             as: "session",
@@ -67,7 +67,7 @@ export class MongoIssuanceRowRepository
         },
         {
           $lookup: {
-            from: "issuableproducts",
+            from: "sm_issuable_product",
             localField: "productId",
             foreignField: "_id",
             as: "product",
@@ -76,7 +76,7 @@ export class MongoIssuanceRowRepository
         { $unwind: "$product" },
         {
           $lookup: {
-            from: "paintissuancerows",
+            from: "sm_paint_issuance_row",
             localField: "_id",
             foreignField: "rowId",
             as: "paint",
@@ -84,7 +84,7 @@ export class MongoIssuanceRowRepository
         },
         {
           $lookup: {
-            from: "consumableissuancerows",
+            from: "sm_consumable_issuance_row",
             localField: "_id",
             foreignField: "rowId",
             as: "consumable",
@@ -92,7 +92,7 @@ export class MongoIssuanceRowRepository
         },
         {
           $lookup: {
-            from: "rubberrollissuancerows",
+            from: "sm_rubber_roll_issuance_row",
             localField: "_id",
             foreignField: "rowId",
             as: "rubber",
@@ -100,7 +100,7 @@ export class MongoIssuanceRowRepository
         },
         {
           $lookup: {
-            from: "solutionissuancerows",
+            from: "sm_solution_issuance_row",
             localField: "_id",
             foreignField: "rowId",
             as: "solution",
@@ -137,11 +137,11 @@ export class MongoIssuanceRowRepository
 
   async paintSplitsForCpo(companyId: number, cpoId: number): Promise<CpoPaintSplitRow[]> {
     const rows = await this.model.db
-      .collection("paintissuancerows")
+      .collection("sm_paint_issuance_row")
       .aggregate<{ productId: number; cpoProRataSplit: Record<string, number> | null }>([
         {
           $lookup: {
-            from: "issuancerows",
+            from: "sm_issuance_row",
             localField: "rowId",
             foreignField: "_id",
             as: "row",
@@ -150,7 +150,7 @@ export class MongoIssuanceRowRepository
         { $unwind: "$row" },
         {
           $lookup: {
-            from: "issuancesessions",
+            from: "sm_issuance_session",
             localField: "row.sessionId",
             foreignField: "_id",
             as: "session",
@@ -177,14 +177,14 @@ export class MongoIssuanceRowRepository
 
   async coatTrackingForCpo(companyId: number, cpoId: number): Promise<CpoCoatTrackingRow[]> {
     const rows = await this.model.db
-      .collection("issuanceitemcoattrackings")
+      .collection("sm_issuance_item_coat_tracking")
       .aggregate<{
         _id: { lineItemId: number; jobCardId: number; coatType: string };
         totalQuantityIssued: number;
       }>([
         {
           $lookup: {
-            from: "issuancerows",
+            from: "sm_issuance_row",
             localField: "issuanceRowId",
             foreignField: "_id",
             as: "row",
@@ -193,7 +193,7 @@ export class MongoIssuanceRowRepository
         { $unwind: "$row" },
         {
           $lookup: {
-            from: "issuancesessions",
+            from: "sm_issuance_session",
             localField: "row.sessionId",
             foreignField: "_id",
             as: "session",
@@ -236,7 +236,7 @@ export class MongoIssuanceRowRepository
       }>([
         {
           $lookup: {
-            from: "issuancesessions",
+            from: "sm_issuance_session",
             localField: "sessionId",
             foreignField: "_id",
             as: "session",
@@ -254,7 +254,7 @@ export class MongoIssuanceRowRepository
         },
         {
           $lookup: {
-            from: "issuableproducts",
+            from: "sm_issuable_product",
             localField: "productId",
             foreignField: "_id",
             as: "product",
@@ -263,7 +263,7 @@ export class MongoIssuanceRowRepository
         { $unwind: "$product" },
         {
           $lookup: {
-            from: "paintissuancerows",
+            from: "sm_paint_issuance_row",
             localField: "_id",
             foreignField: "rowId",
             as: "paint",
@@ -286,7 +286,7 @@ export class MongoIssuanceRowRepository
 
   async jobCardIdsForCpo(companyId: number, cpoId: number): Promise<CpoJobCardIdRow[]> {
     const rows = await this.model.db
-      .collection("jobcards")
+      .collection("job_cards")
       .find({ cpoId, companyId })
       .project<{ _id: number }>({ _id: 1 })
       .toArray();
@@ -298,7 +298,7 @@ export class MongoIssuanceRowRepository
     jobCardIds: number[],
   ): Promise<CoatingAnalysisRow[]> {
     const rows = await this.model.db
-      .collection("jobcardcoatinganalyses")
+      .collection("job_card_coating_analyses")
       .find({ companyId, jobCardId: { $in: jobCardIds } })
       .toArray();
     return rows.map((row) => ({
@@ -309,7 +309,7 @@ export class MongoIssuanceRowRepository
 
   async lineItemsForJobCards(jobCardIds: number[]): Promise<JobCardLineItemRow[]> {
     const rows = await this.model.db
-      .collection("jobcardlineitems")
+      .collection("job_card_line_items")
       .find({ jobCardId: { $in: jobCardIds } })
       .toArray();
     return rows.map((row) => ({

@@ -14,6 +14,9 @@ export class SolutionIssuanceRow {
   _id: number;
 
   @Prop({ type: Number, required: true })
+  rowId: number;
+
+  @Prop({ type: Number, required: true })
   volumeL: number;
 
   @Prop({ type: Number, required: false })

@@ -14,6 +14,9 @@ export class ConsumableIssuanceRow {
   _id: number;
 
   @Prop({ type: Number, required: true })
+  rowId: number;
+
+  @Prop({ type: Number, required: true })
   quantity: number;
 
   @Prop({ type: String, required: false })
