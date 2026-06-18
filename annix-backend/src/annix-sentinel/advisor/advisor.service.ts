@@ -1,8 +1,11 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
+import { CompanyRepository } from "../../platform/company.repository";
+import { AnnixSentinelComplianceRequirementRepository } from "../compliance/compliance-requirement.repository";
+import { AnnixSentinelComplianceStatusRepository } from "../compliance/compliance-status.repository";
+import { AnnixSentinelComplianceRequirement } from "../compliance/entities/compliance-requirement.entity";
 import { AnnixSentinelComplianceStatus } from "../compliance/entities/compliance-status.entity";
-import { formatDateZA, fromJSDate } from "../lib/datetime";
+import { formatDateZA, fromJSDate, now } from "../lib/datetime";
+import { AnnixSentinelAdvisorClientRepository } from "./advisor-client.repository";
 
 const SCORE_THRESHOLD_LOW = 50;
 const SCORE_THRESHOLD_HIGH = 80;
@@ -39,32 +42,33 @@ export interface CalendarDeadline {
 @Injectable()
 export class AnnixSentinelAdvisorService {
   constructor(
-    @InjectRepository(AnnixSentinelAdvisorClient)
-    private readonly advisorClientRepository: Repository<AnnixSentinelAdvisorClient>,
-    @InjectRepository(AnnixSentinelComplianceStatus)
-    private readonly statusRepository: Repository<AnnixSentinelComplianceStatus>,
+    private readonly advisorClientRepository: AnnixSentinelAdvisorClientRepository,
+    private readonly statusRepository: AnnixSentinelComplianceStatusRepository,
+    private readonly requirementRepository: AnnixSentinelComplianceRequirementRepository,
+    private readonly companyRepository: CompanyRepository,
   ) {}
 
   async addClient(advisorUserId: number, companyId: number): Promise<AnnixSentinelAdvisorClient> {
-    const existing = await this.advisorClientRepository.findOne({
-      where: { advisorUserId, clientCompanyId: companyId },
+    const existing = await this.advisorClientRepository.findOneWhere({
+      advisorUserId,
+      clientCompanyId: companyId,
     });
 
     if (existing !== null) {
       return existing;
     }
 
-    const advisorClient = this.advisorClientRepository.create({
+    return this.advisorClientRepository.create({
       advisorUserId,
       clientCompanyId: companyId,
+      addedAt: now().toJSDate(),
     });
-
-    return this.advisorClientRepository.save(advisorClient);
   }
 
   async removeClient(advisorUserId: number, companyId: number): Promise<void> {
-    const advisorClient = await this.advisorClientRepository.findOne({
-      where: { advisorUserId, clientCompanyId: companyId },
+    const advisorClient = await this.advisorClientRepository.findOneWhere({
+      advisorUserId,
+      clientCompanyId: companyId,
     });
 
     if (advisorClient === null) {
@@ -75,10 +79,7 @@ export class AnnixSentinelAdvisorService {
   }
 
   async clientList(advisorUserId: number): Promise<ClientSummary[]> {
-    const clients = await this.advisorClientRepository.find({
-      where: { advisorUserId },
-      relations: ["clientCompany"],
-    });
+    const clients = await this.advisorClientRepository.findManyWhere({ advisorUserId });
 
     const clientCompanyIds = clients.map((c) => c.clientCompanyId);
 
@@ -86,9 +87,9 @@ export class AnnixSentinelAdvisorService {
       return [];
     }
 
-    const allStatuses = await this.statusRepository.find({
-      where: { companyId: In(clientCompanyIds) },
-    });
+    const companyNameById = await this.companyNameIndex(clientCompanyIds);
+
+    const allStatuses = await this.statusRepository.findByCompanyIds(clientCompanyIds);
 
     const statusesByCompany = allStatuses.reduce<Record<number, AnnixSentinelComplianceStatus[]>>(
       (acc, status) => ({
@@ -108,7 +109,7 @@ export class AnnixSentinelAdvisorService {
 
       return {
         companyId: client.clientCompanyId,
-        companyName: client.clientCompany.name,
+        companyName: companyNameById[client.clientCompanyId] ?? "Unknown",
         score,
         overdueCount,
         warningCount,
@@ -149,10 +150,7 @@ export class AnnixSentinelAdvisorService {
     month: number,
     year: number,
   ): Promise<CalendarDeadline[]> {
-    const clients = await this.advisorClientRepository.find({
-      where: { advisorUserId },
-      relations: ["clientCompany"],
-    });
+    const clients = await this.advisorClientRepository.findManyWhere({ advisorUserId });
 
     const clientCompanyIds = clients.map((c) => c.clientCompanyId);
 
@@ -160,14 +158,10 @@ export class AnnixSentinelAdvisorService {
       return [];
     }
 
-    const allStatuses = await this.statusRepository.find({
-      where: { companyId: In(clientCompanyIds) },
-      relations: ["requirement"],
-    });
+    const companyNameById = await this.companyNameIndex(clientCompanyIds);
 
-    const companyNameById = clients.reduce<Record<number, string>>(
-      (acc, client) => ({ ...acc, [client.clientCompanyId]: client.clientCompany.name }),
-      {},
+    const allStatuses = await this.attachRequirements(
+      await this.statusRepository.findByCompanyIds(clientCompanyIds),
     );
 
     return allStatuses
@@ -185,5 +179,35 @@ export class AnnixSentinelAdvisorService {
         dueDate: formatDateZA(fromJSDate(status.nextDueDate!)),
         status: status.status,
       }));
+  }
+
+  private async attachRequirements(
+    statuses: AnnixSentinelComplianceStatus[],
+  ): Promise<AnnixSentinelComplianceStatus[]> {
+    const requirementIds = [...new Set(statuses.map((s) => s.requirementId))];
+
+    if (requirementIds.length === 0) {
+      return statuses;
+    }
+
+    const requirements = await this.requirementRepository.findByIds(requirementIds);
+    const requirementById = requirements.reduce(
+      (acc, requirement) => ({ ...acc, [requirement.id]: requirement }),
+      {} as Record<number, AnnixSentinelComplianceRequirement>,
+    );
+
+    return statuses.map((status) => {
+      status.requirement = (requirementById[status.requirementId] ??
+        null) as AnnixSentinelComplianceRequirement;
+      return status;
+    });
+  }
+
+  private async companyNameIndex(companyIds: number[]): Promise<Record<number, string>> {
+    const companies = await this.companyRepository.findByIds(companyIds);
+    return companies.reduce<Record<number, string>>(
+      (acc, company) => ({ ...acc, [Number(company.id)]: company.name }),
+      {},
+    );
   }
 }

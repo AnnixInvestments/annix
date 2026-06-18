@@ -1,11 +1,15 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
+import { Repository } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
 import { Company } from "../../platform/entities/company.entity";
-import { AnnixSentinelCompanyDetails } from "../companies/entities/annix-sentinel-company-details.entity";
+import { AnnixSentinelCompanyDetailsRepository } from "../companies/annix-sentinel-company-details.repository";
 import { daysBetween, fromISO, fromJSDate, now } from "../lib/datetime";
+import { AnnixSentinelDocumentRepository } from "../sentinel-documents/document.repository";
 import { AnnixSentinelDocument } from "../sentinel-documents/entities/document.entity";
+import { AnnixSentinelChecklistProgressRepository } from "./checklist-progress.repository";
+import { AnnixSentinelComplianceRequirementRepository } from "./compliance-requirement.repository";
+import { AnnixSentinelComplianceStatusRepository } from "./compliance-status.repository";
 import { AnnixSentinelChecklistProgress } from "./entities/checklist-progress.entity";
 import { AnnixSentinelComplianceRequirement } from "./entities/compliance-requirement.entity";
 import { AnnixSentinelComplianceStatus } from "./entities/compliance-status.entity";
@@ -23,18 +27,13 @@ export class AnnixSentinelComplianceService {
   private readonly logger = new Logger(AnnixSentinelComplianceService.name);
 
   constructor(
-    @InjectRepository(AnnixSentinelComplianceStatus)
-    private readonly statusRepository: Repository<AnnixSentinelComplianceStatus>,
-    @InjectRepository(AnnixSentinelComplianceRequirement)
-    private readonly requirementRepository: Repository<AnnixSentinelComplianceRequirement>,
-    @InjectRepository(AnnixSentinelChecklistProgress)
-    private readonly checklistRepository: Repository<AnnixSentinelChecklistProgress>,
+    private readonly statusRepository: AnnixSentinelComplianceStatusRepository,
+    private readonly requirementRepository: AnnixSentinelComplianceRequirementRepository,
+    private readonly checklistRepository: AnnixSentinelChecklistProgressRepository,
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
-    @InjectRepository(AnnixSentinelCompanyDetails)
-    private readonly detailsRepository: Repository<AnnixSentinelCompanyDetails>,
-    @InjectRepository(AnnixSentinelDocument)
-    private readonly documentRepository: Repository<AnnixSentinelDocument>,
+    private readonly detailsRepository: AnnixSentinelCompanyDetailsRepository,
+    private readonly documentRepository: AnnixSentinelDocumentRepository,
     private readonly ruleEngineService: AnnixSentinelRuleEngineService,
     private readonly deadlineService: AnnixSentinelDeadlineService,
     private readonly auditService: AuditService,
@@ -49,16 +48,15 @@ export class AnnixSentinelComplianceService {
       throw new NotFoundException("Company not found");
     }
 
-    const details = await this.detailsRepository.findOne({
-      where: { companyId },
-    });
+    const details = await this.detailsRepository.findOneByCompanyId(companyId);
 
     const matchedRequirements = await this.ruleEngineService.matchRequirements(company, details);
 
     const statuses = await Promise.all(
       matchedRequirements.map(async (requirement) => {
-        const existing = await this.statusRepository.findOne({
-          where: { companyId, requirementId: requirement.id },
+        const existing = await this.statusRepository.findOneWhere({
+          companyId,
+          requirementId: requirement.id,
         });
 
         const nextDueDate = this.deadlineService.calculateNextDueDate(
@@ -71,13 +69,12 @@ export class AnnixSentinelComplianceService {
           existing.nextDueDate = nextDueDate;
           return this.statusRepository.save(existing);
         } else {
-          const status = this.statusRepository.create({
+          return this.statusRepository.create({
             companyId,
             requirementId: requirement.id,
             status: "in_progress",
             nextDueDate,
           });
-          return this.statusRepository.save(status);
         }
       }),
     );
@@ -86,13 +83,12 @@ export class AnnixSentinelComplianceService {
   }
 
   async companyDashboard(companyId: number) {
-    const [company, statuses] = await Promise.all([
+    const [company, statusesRaw] = await Promise.all([
       this.companyRepository.findOne({ where: { id: companyId } }),
-      this.statusRepository.find({
-        where: { companyId },
-        relations: ["requirement"],
-      }),
+      this.statusRepository.findManyWhere({ companyId }),
     ]);
+
+    const statuses = await this.attachRequirements(statusesRaw);
 
     const totalCount = statuses.length;
     const compliantCount = statuses.filter((s) => s.status === "compliant").length;
@@ -106,14 +102,10 @@ export class AnnixSentinelComplianceService {
 
     const [checklistProgress, documents] = await Promise.all([
       requirementIds.length > 0
-        ? this.checklistRepository.find({
-            where: { companyId, requirementId: In(requirementIds) },
-          })
+        ? this.checklistRepository.findByCompanyAndRequirementIds(companyId, requirementIds)
         : Promise.resolve([]),
       requirementIds.length > 0
-        ? this.documentRepository.find({
-            where: { companyId, requirementId: In(requirementIds) },
-          })
+        ? this.documentRepository.findByCompanyAndRequirementIds(companyId, requirementIds)
         : Promise.resolve([]),
     ]);
 
@@ -201,8 +193,9 @@ export class AnnixSentinelComplianceService {
     statusId: number,
     dto: UpdateStatusDto,
   ): Promise<AnnixSentinelComplianceStatus> {
-    const status = await this.statusRepository.findOne({
-      where: { id: statusId, companyId },
+    const status = await this.statusRepository.findOneWhere({
+      id: statusId,
+      companyId,
     });
 
     if (status === null) {
@@ -241,16 +234,15 @@ export class AnnixSentinelComplianceService {
     stepIndices: number[],
     reasoning: string,
   ): Promise<void> {
-    const requirement = await this.requirementRepository.findOne({
-      where: { id: requirementId },
-    });
+    const requirement = await this.requirementRepository.findById(requirementId);
 
     if (requirement === null || requirement.checklistSteps === null) {
       return;
     }
 
-    const existingProgress = await this.checklistRepository.find({
-      where: { companyId, requirementId },
+    const existingProgress = await this.checklistRepository.findManyWhere({
+      companyId,
+      requirementId,
     });
 
     const existingByIndex = existingProgress.reduce(
@@ -278,7 +270,7 @@ export class AnnixSentinelComplianceService {
           existing.notes = `AI-verified: ${reasoning}`;
           await this.checklistRepository.save(existing);
         } else {
-          const progress = this.checklistRepository.create({
+          await this.checklistRepository.create({
             companyId,
             requirementId,
             stepIndex,
@@ -288,7 +280,6 @@ export class AnnixSentinelComplianceService {
             completedByUserId: null,
             notes: `AI-verified: ${reasoning}`,
           });
-          await this.checklistRepository.save(progress);
         }
       }),
     );
@@ -311,8 +302,10 @@ export class AnnixSentinelComplianceService {
     stepIndex: number,
     userId: number,
   ): Promise<AnnixSentinelChecklistProgress> {
-    const existing = await this.checklistRepository.findOne({
-      where: { companyId, requirementId, stepIndex },
+    const existing = await this.checklistRepository.findOneWhere({
+      companyId,
+      requirementId,
+      stepIndex,
     });
 
     if (existing !== null) {
@@ -323,9 +316,7 @@ export class AnnixSentinelComplianceService {
       await this.autoCompleteStatus(companyId, requirementId, userId);
       return saved;
     } else {
-      const requirement = await this.requirementRepository.findOne({
-        where: { id: requirementId },
-      });
+      const requirement = await this.requirementRepository.findById(requirementId);
 
       if (requirement === null) {
         throw new NotFoundException("Requirement not found");
@@ -336,7 +327,7 @@ export class AnnixSentinelComplianceService {
           ? requirement.checklistSteps[stepIndex]
           : `Step ${stepIndex + 1}`;
 
-      const progress = this.checklistRepository.create({
+      const saved = await this.checklistRepository.create({
         companyId,
         requirementId,
         stepIndex,
@@ -345,8 +336,6 @@ export class AnnixSentinelComplianceService {
         completedAt: now().toJSDate(),
         completedByUserId: userId,
       });
-
-      const saved = await this.checklistRepository.save(progress);
       await this.autoCompleteStatus(companyId, requirementId, userId);
       return saved;
     }
@@ -361,13 +350,12 @@ export class AnnixSentinelComplianceService {
     page: number;
     limit: number;
   }> {
-    const [data, total] = await this.requirementRepository.findAndCount({
-      skip: (page - 1) * limit,
-      take: limit,
-      order: { id: "ASC" },
-    });
+    const result = await this.requirementRepository.findPage(
+      {},
+      { page, limit, sort: { id: "ASC" } },
+    );
 
-    return { data, total, page, limit };
+    return { data: result.items, total: result.total, page, limit };
   }
 
   private async autoCompleteStatus(
@@ -375,9 +363,7 @@ export class AnnixSentinelComplianceService {
     requirementId: number,
     userId: number | null,
   ): Promise<void> {
-    const requirement = await this.requirementRepository.findOne({
-      where: { id: requirementId },
-    });
+    const requirement = await this.requirementRepository.findById(requirementId);
 
     if (requirement === null || requirement.checklistSteps === null) {
       return;
@@ -385,12 +371,15 @@ export class AnnixSentinelComplianceService {
 
     const totalSteps = requirement.checklistSteps.length;
     const completedSteps = await this.checklistRepository.count({
-      where: { companyId, requirementId, completed: true },
+      companyId,
+      requirementId,
+      completed: true,
     });
 
     if (completedSteps >= totalSteps) {
-      const status = await this.statusRepository.findOne({
-        where: { companyId, requirementId },
+      const status = await this.statusRepository.findOneWhere({
+        companyId,
+        requirementId,
       });
 
       if (status !== null && status.status !== "compliant") {
@@ -415,7 +404,7 @@ export class AnnixSentinelComplianceService {
   async updateVatSubmissionCycle(companyId: number, cycle: "odd" | "even"): Promise<void> {
     const [company, details] = await Promise.all([
       this.companyRepository.findOne({ where: { id: companyId } }),
-      this.detailsRepository.findOne({ where: { companyId } }),
+      this.detailsRepository.findOneByCompanyId(companyId),
     ]);
 
     if (company === null || details === null || details.vatSubmissionCycle === cycle) {
@@ -427,13 +416,14 @@ export class AnnixSentinelComplianceService {
 
     this.logger.log(`Updated VAT submission cycle for company ${companyId} to ${cycle}`);
 
-    const vatRequirement = await this.requirementRepository.findOne({
-      where: { code: "SARS_VAT_RETURNS" },
+    const vatRequirement = await this.requirementRepository.findOneWhere({
+      code: "SARS_VAT_RETURNS",
     });
 
     if (vatRequirement !== null) {
-      const status = await this.statusRepository.findOne({
-        where: { companyId, requirementId: vatRequirement.id },
+      const status = await this.statusRepository.findOneWhere({
+        companyId,
+        requirementId: vatRequirement.id,
       });
 
       if (status !== null) {
@@ -454,6 +444,28 @@ export class AnnixSentinelComplianceService {
       entityType: "company",
       entityId: companyId,
       details: { vatSubmissionCycle: cycle, source: "ai_document_analysis" },
+    });
+  }
+
+  private async attachRequirements(
+    statuses: AnnixSentinelComplianceStatus[],
+  ): Promise<AnnixSentinelComplianceStatus[]> {
+    const requirementIds = [...new Set(statuses.map((s) => s.requirementId))];
+
+    if (requirementIds.length === 0) {
+      return statuses;
+    }
+
+    const requirements = await this.requirementRepository.findByIds(requirementIds);
+    const requirementById = requirements.reduce(
+      (acc, requirement) => ({ ...acc, [requirement.id]: requirement }),
+      {} as Record<number, AnnixSentinelComplianceRequirement>,
+    );
+
+    return statuses.map((status) => {
+      status.requirement = (requirementById[status.requirementId] ??
+        null) as AnnixSentinelComplianceRequirement;
+      return status;
     });
   }
 }

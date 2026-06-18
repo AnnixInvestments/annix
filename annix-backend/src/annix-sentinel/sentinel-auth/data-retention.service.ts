@@ -4,7 +4,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { LessThan, Repository } from "typeorm";
 import { Company } from "../../platform/entities/company.entity";
 import { User } from "../../user/entities/user.entity";
-import { AnnixSentinelCompanyDetails } from "../companies/entities/annix-sentinel-company-details.entity";
+import { AnnixSentinelCompanyDetailsRepository } from "../companies/annix-sentinel-company-details.repository";
 import { now } from "../lib/datetime";
 
 const TAX_DATA_RETENTION_YEARS = 5;
@@ -20,8 +20,7 @@ export class AnnixSentinelDataRetentionService {
     private readonly usersRepository: Repository<User>,
     @InjectRepository(Company)
     private readonly companiesRepository: Repository<Company>,
-    @InjectRepository(AnnixSentinelCompanyDetails)
-    private readonly detailsRepository: Repository<AnnixSentinelCompanyDetails>,
+    private readonly detailsRepository: AnnixSentinelCompanyDetailsRepository,
   ) {}
 
   @Cron("0 3 1 * *", {
@@ -40,19 +39,10 @@ export class AnnixSentinelDataRetentionService {
         .minus({ years: DELETED_ACCOUNT_RETENTION_YEARS })
         .toJSDate();
 
-      const expiredTaxRecords = await this.detailsRepository.count({
-        where: {
-          createdAt: LessThan(taxCutoff),
-          subscriptionStatus: "cancelled",
-        },
-      });
+      const expiredTaxRecords = await this.detailsRepository.countCancelledCreatedBefore(taxCutoff);
 
-      const expiredCompanyRecords = await this.detailsRepository.count({
-        where: {
-          createdAt: LessThan(companyCutoff),
-          subscriptionStatus: "cancelled",
-        },
-      });
+      const expiredCompanyRecords =
+        await this.detailsRepository.countCancelledCreatedBefore(companyCutoff);
 
       const expiredDeletedAccounts = await this.usersRepository.count({
         where: {

@@ -2,6 +2,9 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Company } from "../../platform/entities/company.entity";
+import { AnnixSentinelComplianceRequirementRepository } from "../compliance/compliance-requirement.repository";
+import { AnnixSentinelComplianceStatusRepository } from "../compliance/compliance-status.repository";
+import { AnnixSentinelComplianceRequirement } from "../compliance/entities/compliance-requirement.entity";
 import { AnnixSentinelComplianceStatus } from "../compliance/entities/compliance-status.entity";
 import { formatDateLongZA, formatDateZA, fromJSDate, now } from "../lib/datetime";
 
@@ -189,8 +192,8 @@ export class AnnixSentinelTemplatesService {
   constructor(
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
-    @InjectRepository(AnnixSentinelComplianceStatus)
-    private readonly statusRepository: Repository<AnnixSentinelComplianceStatus>,
+    private readonly statusRepository: AnnixSentinelComplianceStatusRepository,
+    private readonly requirementRepository: AnnixSentinelComplianceRequirementRepository,
   ) {}
 
   availableTemplates(): TemplateMetadata[] {
@@ -235,10 +238,9 @@ export class AnnixSentinelTemplatesService {
       throw new NotFoundException("Company not found");
     }
 
-    const statuses = await this.statusRepository.find({
-      where: { companyId },
-      relations: ["requirement"],
-    });
+    const statuses = await this.attachRequirements(
+      await this.statusRepository.findManyWhere({ companyId }),
+    );
 
     const totalCount = statuses.length;
     const compliantCount = statuses.filter((s) => s.status === "compliant").length;
@@ -358,6 +360,28 @@ ${recommendations.length > 0 ? `<h2>Recommendations</h2><ul>${recommendations}</
 </body></html>`;
 
     return { html };
+  }
+
+  private async attachRequirements(
+    statuses: AnnixSentinelComplianceStatus[],
+  ): Promise<AnnixSentinelComplianceStatus[]> {
+    const requirementIds = [...new Set(statuses.map((s) => s.requirementId))];
+
+    if (requirementIds.length === 0) {
+      return statuses;
+    }
+
+    const requirements = await this.requirementRepository.findByIds(requirementIds);
+    const requirementById = requirements.reduce(
+      (acc, requirement) => ({ ...acc, [requirement.id]: requirement }),
+      {} as Record<number, AnnixSentinelComplianceRequirement>,
+    );
+
+    return statuses.map((status) => {
+      status.requirement = (requirementById[status.requirementId] ??
+        null) as AnnixSentinelComplianceRequirement;
+      return status;
+    });
   }
 
   private popiaPrivacyPolicy(data: Record<string, string>): string {

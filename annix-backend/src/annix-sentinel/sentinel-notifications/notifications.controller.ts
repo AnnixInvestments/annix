@@ -10,12 +10,9 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { AnnixSentinelCompanyScopeGuard } from "../sentinel-auth/guards/company-scope.guard";
 import { AnnixSentinelJwtAuthGuard } from "../sentinel-auth/guards/jwt-auth.guard";
 import { AnnixSentinelUpdatePreferencesDto } from "./dto/update-preferences.dto";
-import { AnnixSentinelNotificationPreferences } from "./entities/notification-preferences.entity";
 import { AnnixSentinelNotificationsService } from "./notifications.service";
 
 @ApiTags("annix-sentinel/notifications")
@@ -23,11 +20,7 @@ import { AnnixSentinelNotificationsService } from "./notifications.service";
 @UseGuards(AnnixSentinelJwtAuthGuard, AnnixSentinelCompanyScopeGuard)
 @Controller("annix-sentinel/notifications")
 export class AnnixSentinelNotificationsController {
-  constructor(
-    private readonly notificationsService: AnnixSentinelNotificationsService,
-    @InjectRepository(AnnixSentinelNotificationPreferences)
-    private readonly preferencesRepository: Repository<AnnixSentinelNotificationPreferences>,
-  ) {}
+  constructor(private readonly notificationsService: AnnixSentinelNotificationsService) {}
 
   @Get()
   async unread(@Req() req: { user: { userId: number } }) {
@@ -41,25 +34,7 @@ export class AnnixSentinelNotificationsController {
 
   @Get("preferences")
   async preferences(@Req() req: { user: { userId: number } }) {
-    const existing = await this.preferencesRepository.findOne({
-      where: { userId: req.user.userId },
-    });
-
-    if (existing !== null) {
-      return existing;
-    }
-
-    const defaults = this.preferencesRepository.create({
-      userId: req.user.userId,
-      emailEnabled: true,
-      smsEnabled: false,
-      whatsappEnabled: false,
-      inAppEnabled: true,
-      weeklyDigest: true,
-      phone: null,
-    });
-
-    return this.preferencesRepository.save(defaults);
+    return this.notificationsService.preferencesForUser(req.user.userId);
   }
 
   @Put("preferences")
@@ -67,20 +42,6 @@ export class AnnixSentinelNotificationsController {
     @Req() req: { user: { userId: number } },
     @Body() dto: AnnixSentinelUpdatePreferencesDto,
   ) {
-    const existing = await this.preferencesRepository.findOne({
-      where: { userId: req.user.userId },
-    });
-
-    if (existing !== null) {
-      const updated = this.preferencesRepository.merge(existing, dto);
-      return this.preferencesRepository.save(updated);
-    }
-
-    const preferences = this.preferencesRepository.create({
-      userId: req.user.userId,
-      ...dto,
-    });
-
-    return this.preferencesRepository.save(preferences);
+    return this.notificationsService.upsertPreferences(req.user.userId, dto);
   }
 }

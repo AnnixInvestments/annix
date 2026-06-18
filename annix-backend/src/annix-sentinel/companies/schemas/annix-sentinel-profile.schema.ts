@@ -20,10 +20,10 @@ export class AnnixSentinelProfile {
   companyId: number;
 
   @Prop({ type: Date, required: false })
-  termsAcceptedAt: Date;
+  termsAcceptedAt: Date | null;
 
   @Prop({ type: String, required: false })
-  termsVersion: string;
+  termsVersion: string | null;
 
   @Prop({ type: Date, required: false })
   createdAt: Date;

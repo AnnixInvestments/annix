@@ -2,15 +2,14 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Company } from "../../platform/entities/company.entity";
-import { AnnixSentinelCompanyDetails } from "./entities/annix-sentinel-company-details.entity";
+import { AnnixSentinelCompanyDetailsRepository } from "./annix-sentinel-company-details.repository";
 
 @Injectable()
 export class AnnixSentinelCompaniesService {
   constructor(
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
-    @InjectRepository(AnnixSentinelCompanyDetails)
-    private readonly detailsRepository: Repository<AnnixSentinelCompanyDetails>,
+    private readonly detailsRepository: AnnixSentinelCompanyDetailsRepository,
   ) {}
 
   async companyProfile(companyId: number): Promise<Company> {

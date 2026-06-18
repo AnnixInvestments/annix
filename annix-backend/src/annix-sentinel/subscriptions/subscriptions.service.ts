@@ -1,9 +1,8 @@
 import { ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
 import { fromJSDate, now } from "../lib/datetime";
 import { AnnixSentinelSubscription } from "./entities/subscription.entity";
+import { AnnixSentinelSubscriptionRepository } from "./subscription.repository";
 
 const PRICING: Record<string, { monthly: number; name: string; description: string }> = {
   starter: { monthly: 199_00, name: "Starter", description: "Essential compliance tracking" },
@@ -62,15 +61,14 @@ export class AnnixSentinelSubscriptionsService {
   private readonly logger = new Logger(AnnixSentinelSubscriptionsService.name);
 
   constructor(
-    @InjectRepository(AnnixSentinelSubscription)
-    private readonly subscriptionRepository: Repository<AnnixSentinelSubscription>,
+    private readonly subscriptionRepository: AnnixSentinelSubscriptionRepository,
     private readonly auditService: AuditService,
   ) {}
 
   async createTrialSubscription(companyId: number): Promise<AnnixSentinelSubscription> {
     const trialEndsAt = now().plus({ days: 14 }).toJSDate();
 
-    const subscription = this.subscriptionRepository.create({
+    const subscription = await this.subscriptionRepository.create({
       companyId,
       tier: "starter",
       status: "trial",
@@ -79,7 +77,7 @@ export class AnnixSentinelSubscriptionsService {
 
     this.logger.log(`Trial subscription created for company ${companyId}`);
 
-    return this.subscriptionRepository.save(subscription);
+    return subscription;
   }
 
   async subscriptionStatus(companyId: number): Promise<{
@@ -89,9 +87,7 @@ export class AnnixSentinelSubscriptionsService {
     features: string[];
     limits: { maxRequirements: number; maxClients: number };
   }> {
-    const subscription = await this.subscriptionRepository.findOne({
-      where: { companyId },
-    });
+    const subscription = await this.subscriptionRepository.findByCompany(companyId);
 
     if (subscription === null) {
       throw new NotFoundException("Subscription not found");
@@ -128,9 +124,7 @@ export class AnnixSentinelSubscriptionsService {
       throw new ForbiddenException(`Invalid tier: ${tier}`);
     }
 
-    const subscription = await this.subscriptionRepository.findOne({
-      where: { companyId },
-    });
+    const subscription = await this.subscriptionRepository.findByCompany(companyId);
 
     if (subscription === null) {
       throw new NotFoundException("Subscription not found");
@@ -155,9 +149,7 @@ export class AnnixSentinelSubscriptionsService {
   }
 
   async cancelSubscription(companyId: number): Promise<AnnixSentinelSubscription> {
-    const subscription = await this.subscriptionRepository.findOne({
-      where: { companyId },
-    });
+    const subscription = await this.subscriptionRepository.findByCompany(companyId);
 
     if (subscription === null) {
       throw new NotFoundException("Subscription not found");
@@ -186,9 +178,8 @@ export class AnnixSentinelSubscriptionsService {
     const paystackCustomerId = data["customer_code"] as string | null;
 
     if (event === "charge.success" && paystackCustomerId !== null) {
-      const subscription = await this.subscriptionRepository.findOne({
-        where: { paystackCustomerId },
-      });
+      const subscription =
+        await this.subscriptionRepository.findByPaystackCustomerId(paystackCustomerId);
 
       if (subscription !== null) {
         subscription.status = "active";
@@ -203,9 +194,8 @@ export class AnnixSentinelSubscriptionsService {
         this.logger.log(`Webhook charge.success for customer ${paystackCustomerId}`);
       }
     } else if (event === "subscription.disable" && paystackCustomerId !== null) {
-      const subscription = await this.subscriptionRepository.findOne({
-        where: { paystackCustomerId },
-      });
+      const subscription =
+        await this.subscriptionRepository.findByPaystackCustomerId(paystackCustomerId);
 
       if (subscription !== null) {
         subscription.status = "cancelled";
@@ -224,9 +214,7 @@ export class AnnixSentinelSubscriptionsService {
   }
 
   async isFeatureAllowed(companyId: number, feature: string): Promise<boolean> {
-    const subscription = await this.subscriptionRepository.findOne({
-      where: { companyId },
-    });
+    const subscription = await this.subscriptionRepository.findByCompany(companyId);
 
     if (subscription === null) {
       const freeFeatures = FEATURE_MATRIX["free"];

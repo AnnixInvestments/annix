@@ -1,17 +1,25 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, IsNull, Not, Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import {
   ChannelKey,
   NotificationDispatcherService,
 } from "../../notifications/notification-dispatcher.service";
+import { User } from "../../user/entities/user.entity";
+import { AnnixSentinelProfileRepository } from "../companies/annix-sentinel-profile.repository";
 import { AnnixSentinelProfile } from "../companies/entities/annix-sentinel-profile.entity";
+import { AnnixSentinelComplianceRequirementRepository } from "../compliance/compliance-requirement.repository";
+import { AnnixSentinelComplianceStatusRepository } from "../compliance/compliance-status.repository";
+import { AnnixSentinelComplianceRequirement } from "../compliance/entities/compliance-requirement.entity";
 import { AnnixSentinelComplianceStatus } from "../compliance/entities/compliance-status.entity";
 import { daysBetween, formatDateZA, fromJSDate, now } from "../lib/datetime";
-import { AnnixSentinelDocument } from "../sentinel-documents/entities/document.entity";
+import { AnnixSentinelDocumentRepository } from "../sentinel-documents/document.repository";
+import { AnnixSentinelUpdatePreferencesDto } from "./dto/update-preferences.dto";
 import { AnnixSentinelNotification } from "./entities/notification.entity";
 import { AnnixSentinelNotificationPreferences } from "./entities/notification-preferences.entity";
+import { AnnixSentinelNotificationRepository } from "./notification.repository";
+import { AnnixSentinelNotificationPreferencesRepository } from "./notification-preferences.repository";
 
 const REMINDER_THRESHOLD_DAYS = 30;
 
@@ -27,18 +35,38 @@ export class AnnixSentinelNotificationsService {
   private readonly logger = new Logger(AnnixSentinelNotificationsService.name);
 
   constructor(
-    @InjectRepository(AnnixSentinelComplianceStatus)
-    private readonly statusRepository: Repository<AnnixSentinelComplianceStatus>,
-    @InjectRepository(AnnixSentinelNotification)
-    private readonly notificationRepository: Repository<AnnixSentinelNotification>,
-    @InjectRepository(AnnixSentinelNotificationPreferences)
-    private readonly preferencesRepository: Repository<AnnixSentinelNotificationPreferences>,
-    @InjectRepository(AnnixSentinelProfile)
-    private readonly profileRepository: Repository<AnnixSentinelProfile>,
-    @InjectRepository(AnnixSentinelDocument)
-    private readonly documentRepository: Repository<AnnixSentinelDocument>,
+    private readonly statusRepository: AnnixSentinelComplianceStatusRepository,
+    private readonly requirementRepository: AnnixSentinelComplianceRequirementRepository,
+    private readonly notificationRepository: AnnixSentinelNotificationRepository,
+    private readonly preferencesRepository: AnnixSentinelNotificationPreferencesRepository,
+    private readonly profileRepository: AnnixSentinelProfileRepository,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    private readonly documentRepository: AnnixSentinelDocumentRepository,
     private readonly dispatcher: NotificationDispatcherService,
   ) {}
+
+  private async profilesWithUsers(companyIds: number[]): Promise<AnnixSentinelProfile[]> {
+    if (companyIds.length === 0) {
+      return [];
+    }
+
+    const profiles = await this.profileRepository.findByCompanyIds(companyIds);
+    const userIds = [...new Set(profiles.map((profile) => profile.userId))];
+
+    const users =
+      userIds.length > 0 ? await this.userRepository.find({ where: { id: In(userIds) } }) : [];
+
+    const userById = users.reduce(
+      (acc, user) => ({ ...acc, [user.id]: user }),
+      {} as Record<number, User>,
+    );
+
+    return profiles.map((profile) => {
+      profile.user = userById[profile.userId] ?? (null as unknown as User);
+      return profile;
+    });
+  }
 
   @Cron("0 6 * * *", {
     name: "annix-sentinel:deadline-notifications",
@@ -46,10 +74,9 @@ export class AnnixSentinelNotificationsService {
   })
   async processDeadlineNotifications(): Promise<void> {
     try {
-      const statusesWithDueDates = await this.statusRepository.find({
-        where: { nextDueDate: Not(IsNull()) },
-        relations: ["requirement"],
-      });
+      const statusesWithDueDates = await this.attachRequirements(
+        await this.statusRepository.findWithDueDates(),
+      );
 
       const today = now();
 
@@ -84,22 +111,12 @@ export class AnnixSentinelNotificationsService {
         ...new Set(pendingNotifications.map(({ status }) => status.companyId)),
       ];
 
-      const allProfiles =
-        affectedCompanyIds.length > 0
-          ? await this.profileRepository.find({
-              where: { companyId: In(affectedCompanyIds) },
-              relations: ["user"],
-            })
-          : [];
+      const allProfiles = await this.profilesWithUsers(affectedCompanyIds);
 
       const allUserIds = allProfiles.map((p) => p.userId);
 
       const allPreferences =
-        allUserIds.length > 0
-          ? await this.preferencesRepository.find({
-              where: { userId: In(allUserIds) },
-            })
-          : [];
+        allUserIds.length > 0 ? await this.preferencesRepository.findByUserIds(allUserIds) : [];
 
       const profilesByCompany = allProfiles.reduce<Record<number, AnnixSentinelProfile[]>>(
         (acc, profile) => ({
@@ -146,15 +163,15 @@ export class AnnixSentinelNotificationsService {
               const prefs = preferencesByUserId[profile.userId] ?? null;
 
               if (channels.inApp) {
-                const notification = this.notificationRepository.create({
+                await this.notificationRepository.create({
                   companyId: status.companyId,
                   userId: profile.userId,
                   requirementId: status.requirementId,
                   channel: "in_app",
                   type,
                   message,
+                  sentAt: now().toJSDate(),
                 });
-                await this.notificationRepository.save(notification);
               }
 
               const channelKeys: ChannelKey[] = [];
@@ -234,9 +251,7 @@ export class AnnixSentinelNotificationsService {
     try {
       const today = now();
 
-      const allDocumentsWithExpiry = await this.documentRepository.find({
-        where: { expiryDate: Not(IsNull()) },
-      });
+      const allDocumentsWithExpiry = await this.documentRepository.findWithExpiryDate();
 
       const documentsInRange = allDocumentsWithExpiry.filter((doc) => {
         const expiryDt = fromJSDate(doc.expiryDate!);
@@ -246,22 +261,12 @@ export class AnnixSentinelNotificationsService {
 
       const docCompanyIds = [...new Set(documentsInRange.map((doc) => doc.companyId))];
 
-      const docProfiles =
-        docCompanyIds.length > 0
-          ? await this.profileRepository.find({
-              where: { companyId: In(docCompanyIds) },
-              relations: ["user"],
-            })
-          : [];
+      const docProfiles = await this.profilesWithUsers(docCompanyIds);
 
       const docUserIds = docProfiles.map((p) => p.userId);
 
       const docPreferences =
-        docUserIds.length > 0
-          ? await this.preferencesRepository.find({
-              where: { userId: In(docUserIds) },
-            })
-          : [];
+        docUserIds.length > 0 ? await this.preferencesRepository.findByUserIds(docUserIds) : [];
 
       const docProfilesByCompany = docProfiles.reduce<Record<number, AnnixSentinelProfile[]>>(
         (acc, profile) => ({
@@ -315,14 +320,14 @@ export class AnnixSentinelNotificationsService {
               const channels = docChannelsFromPreferences(profile.userId);
 
               if (channels.inApp) {
-                const notification = this.notificationRepository.create({
+                await this.notificationRepository.create({
                   companyId: doc.companyId,
                   userId: profile.userId,
                   channel: "in_app",
                   type,
                   message,
+                  sentAt: now().toJSDate(),
                 });
-                await this.notificationRepository.save(notification);
               }
 
               if (channels.email) {
@@ -355,16 +360,11 @@ export class AnnixSentinelNotificationsService {
   }
 
   async unreadForUser(userId: number): Promise<AnnixSentinelNotification[]> {
-    return this.notificationRepository.find({
-      where: { userId, readAt: IsNull() },
-      order: { sentAt: "DESC" },
-    });
+    return this.notificationRepository.findUnreadForUser(userId);
   }
 
   async markRead(notificationId: number): Promise<AnnixSentinelNotification> {
-    const notification = await this.notificationRepository.findOne({
-      where: { id: notificationId },
-    });
+    const notification = await this.notificationRepository.findById(notificationId);
 
     if (notification === null) {
       this.logger.warn(`Notification ${notificationId} not found for markRead`);
@@ -373,6 +373,60 @@ export class AnnixSentinelNotificationsService {
 
     notification.readAt = now().toJSDate();
     return this.notificationRepository.save(notification);
+  }
+
+  async preferencesForUser(userId: number): Promise<AnnixSentinelNotificationPreferences> {
+    const existing = await this.preferencesRepository.findOneByUserId(userId);
+
+    if (existing !== null) {
+      return existing;
+    }
+
+    return this.preferencesRepository.create({
+      userId,
+      emailEnabled: true,
+      smsEnabled: false,
+      whatsappEnabled: false,
+      inAppEnabled: true,
+      weeklyDigest: true,
+      phone: null,
+    });
+  }
+
+  async upsertPreferences(
+    userId: number,
+    dto: AnnixSentinelUpdatePreferencesDto,
+  ): Promise<AnnixSentinelNotificationPreferences> {
+    const existing = await this.preferencesRepository.findOneByUserId(userId);
+
+    if (existing !== null) {
+      const updated = { ...existing, ...dto };
+      return this.preferencesRepository.save(updated);
+    }
+
+    return this.preferencesRepository.create({ userId, ...dto });
+  }
+
+  private async attachRequirements(
+    statuses: AnnixSentinelComplianceStatus[],
+  ): Promise<AnnixSentinelComplianceStatus[]> {
+    const requirementIds = [...new Set(statuses.map((s) => s.requirementId))];
+
+    if (requirementIds.length === 0) {
+      return statuses;
+    }
+
+    const requirements = await this.requirementRepository.findByIds(requirementIds);
+    const requirementById = requirements.reduce(
+      (acc, requirement) => ({ ...acc, [requirement.id]: requirement }),
+      {} as Record<number, AnnixSentinelComplianceRequirement>,
+    );
+
+    return statuses.map((status) => {
+      status.requirement = (requirementById[status.requirementId] ??
+        null) as AnnixSentinelComplianceRequirement;
+      return status;
+    });
   }
 
   private buildMessage(

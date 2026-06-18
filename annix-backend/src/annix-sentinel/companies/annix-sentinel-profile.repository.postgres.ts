@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { TypeOrmCrudRepository } from "../../lib/persistence/typeorm-crud-repository";
 import { AnnixSentinelProfileRepository } from "./annix-sentinel-profile.repository";
 import { AnnixSentinelProfile } from "./entities/annix-sentinel-profile.entity";
@@ -14,5 +14,13 @@ export class PostgresAnnixSentinelProfileRepository
     @InjectRepository(AnnixSentinelProfile) repository: Repository<AnnixSentinelProfile>,
   ) {
     super(repository);
+  }
+
+  findOneByUserId(userId: number): Promise<AnnixSentinelProfile | null> {
+    return this.repository.findOne({ where: { userId } });
+  }
+
+  findByCompanyIds(companyIds: number[]): Promise<AnnixSentinelProfile[]> {
+    return this.repository.find({ where: { companyId: In(companyIds) } });
   }
 }

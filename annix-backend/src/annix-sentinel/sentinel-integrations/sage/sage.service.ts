@@ -1,11 +1,10 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { sageRateLimiter } from "../../../lib/sage-rate-limiter";
 import { fromJSDate, now } from "../../lib/datetime";
 import { AnnixSentinelSageConnection } from "./sage-connection.entity";
+import { AnnixSentinelSageConnectionRepository } from "./sage-connection.repository";
 
 export interface SageCompanyInfo {
   tradingName: string | null;
@@ -53,8 +52,7 @@ export class SageService {
   private readonly enabled: boolean;
 
   constructor(
-    @InjectRepository(AnnixSentinelSageConnection)
-    private readonly connectionRepository: Repository<AnnixSentinelSageConnection>,
+    private readonly connectionRepository: AnnixSentinelSageConnectionRepository,
     private readonly configService: ConfigService,
   ) {
     this.clientId = this.configService.get<string>("SAGE_CLIENT_ID") ?? null;
@@ -110,7 +108,7 @@ export class SageService {
     const encryptedRefresh = this.encrypt(tokenData.refresh_token);
     const expiresAt = now().plus({ seconds: tokenData.expires_in }).toJSDate();
 
-    const existing = await this.connectionRepository.findOne({ where: { companyId } });
+    const existing = await this.connectionRepository.findByCompany(companyId);
 
     if (existing !== null) {
       existing.accessTokenEncrypted = encryptedAccess;
@@ -119,26 +117,26 @@ export class SageService {
       existing.sageResourceOwnerId = tokenData.resource_owner_id ?? null;
       await this.connectionRepository.save(existing);
     } else {
-      const connection = this.connectionRepository.create({
+      await this.connectionRepository.create({
         companyId,
         accessTokenEncrypted: encryptedAccess,
         refreshTokenEncrypted: encryptedRefresh,
         tokenExpiresAt: expiresAt,
         sageResourceOwnerId: tokenData.resource_owner_id ?? null,
+        connectedAt: now().toJSDate(),
       });
-      await this.connectionRepository.save(connection);
     }
 
     return { connected: true };
   }
 
   async disconnect(companyId: number): Promise<{ disconnected: boolean }> {
-    const result = await this.connectionRepository.delete({ companyId });
-    return { disconnected: (result.affected ?? 0) > 0 };
+    const deleted = await this.connectionRepository.deleteByCompany(companyId);
+    return { disconnected: deleted > 0 };
   }
 
   async isConnected(companyId: number): Promise<{ connected: boolean; lastSync: string | null }> {
-    const connection = await this.connectionRepository.findOne({ where: { companyId } });
+    const connection = await this.connectionRepository.findByCompany(companyId);
 
     if (connection === null) {
       return { connected: false, lastSync: null };
@@ -226,7 +224,7 @@ export class SageService {
     const financialData = await this.syncFinancialData(companyId);
     const contacts = await this.syncContacts(companyId);
 
-    const connection = await this.connectionRepository.findOne({ where: { companyId } });
+    const connection = await this.connectionRepository.findByCompany(companyId);
     if (connection !== null) {
       connection.lastSyncAt = now().toJSDate();
       await this.connectionRepository.save(connection);
@@ -238,7 +236,7 @@ export class SageService {
   }
 
   private async validAccessToken(companyId: number): Promise<string> {
-    const connection = await this.connectionRepository.findOne({ where: { companyId } });
+    const connection = await this.connectionRepository.findByCompany(companyId);
 
     if (connection === null) {
       throw new Error(`No Sage connection found for company ${companyId}`);
@@ -339,7 +337,7 @@ export class SageService {
 
   async rotateEncryptionKeys(): Promise<{ rotated: number }> {
     this.assertEnabled();
-    const connections = await this.connectionRepository.find();
+    const connections = await this.connectionRepository.findAll();
 
     const updated = await Promise.all(
       connections.map(async (connection) => {

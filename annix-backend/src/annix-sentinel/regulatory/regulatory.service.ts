@@ -1,10 +1,9 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { fromISO, now } from "../lib/datetime";
 import { AnnixSentinelRegulatoryUpdate } from "./entities/regulatory-update.entity";
+import { AnnixSentinelRegulatoryUpdateRepository } from "./regulatory-update.repository";
 
 interface ExtractedUpdate {
   title: string;
@@ -57,23 +56,16 @@ export class AnnixSentinelRegulatoryService {
   private readonly logger = new Logger(AnnixSentinelRegulatoryService.name);
 
   constructor(
-    @InjectRepository(AnnixSentinelRegulatoryUpdate)
-    private readonly regulatoryUpdateRepository: Repository<AnnixSentinelRegulatoryUpdate>,
+    private readonly regulatoryUpdateRepository: AnnixSentinelRegulatoryUpdateRepository,
     private readonly aiChatService: AiChatService,
   ) {}
 
   async recentUpdates(limit: number): Promise<AnnixSentinelRegulatoryUpdate[]> {
-    return this.regulatoryUpdateRepository.find({
-      order: { publishedAt: "DESC" },
-      take: limit,
-    });
+    return this.regulatoryUpdateRepository.findRecent(limit);
   }
 
   async updatesByCategory(category: string): Promise<AnnixSentinelRegulatoryUpdate[]> {
-    return this.regulatoryUpdateRepository.find({
-      where: { category },
-      order: { publishedAt: "DESC" },
-    });
+    return this.regulatoryUpdateRepository.findByCategoryNewestFirst(category);
   }
 
   async createUpdate(data: {
@@ -87,13 +79,13 @@ export class AnnixSentinelRegulatoryService {
     const effectiveDate =
       typeof data.effectiveDate === "string" ? fromISO(data.effectiveDate).toJSDate() : null;
 
-    const update = this.regulatoryUpdateRepository.create({
+    return this.regulatoryUpdateRepository.create({
       ...data,
       effectiveDate,
       sourceUrl: data.sourceUrl ?? null,
       affectedRequirementCodes: data.affectedRequirementCodes ?? null,
+      publishedAt: now().toJSDate(),
     });
-    return this.regulatoryUpdateRepository.save(update);
   }
 
   @Cron("0 5 * * *", { name: "annix-sentinel:regulatory-sync", timeZone: "Africa/Johannesburg" })
@@ -147,23 +139,24 @@ export class AnnixSentinelRegulatoryService {
       return 0;
     }
 
-    const entities = newUpdates.map((update) =>
-      this.regulatoryUpdateRepository.create({
-        title: update.title,
-        summary: update.summary,
-        category: update.category,
-        effectiveDate:
-          update.effectiveDate !== null ? fromISO(update.effectiveDate).toJSDate() : null,
-        sourceUrl: update.sourceUrl,
-        affectedRequirementCodes:
-          update.affectedRequirementCodes.length > 0 ? update.affectedRequirementCodes : null,
-        publishedAt: now().toJSDate(),
-      }),
+    await Promise.all(
+      newUpdates.map((update) =>
+        this.regulatoryUpdateRepository.create({
+          title: update.title,
+          summary: update.summary,
+          category: update.category,
+          effectiveDate:
+            update.effectiveDate !== null ? fromISO(update.effectiveDate).toJSDate() : null,
+          sourceUrl: update.sourceUrl,
+          affectedRequirementCodes:
+            update.affectedRequirementCodes.length > 0 ? update.affectedRequirementCodes : null,
+          publishedAt: now().toJSDate(),
+        }),
+      ),
     );
 
-    await this.regulatoryUpdateRepository.save(entities);
-    this.logger.log(`Inserted ${entities.length} new updates from ${sourceName}`);
-    return entities.length;
+    this.logger.log(`Inserted ${newUpdates.length} new updates from ${sourceName}`);
+    return newUpdates.length;
   }
 
   private async fetchHtml(url: string): Promise<string | null> {
@@ -261,13 +254,7 @@ export class AnnixSentinelRegulatoryService {
   }
 
   private async existingTitleIndex(): Promise<string[]> {
-    const recent = await this.regulatoryUpdateRepository.find({
-      select: ["title"],
-      order: { publishedAt: "DESC" },
-      take: 500,
-    });
-
-    return recent.map((r) => r.title);
+    return this.regulatoryUpdateRepository.recentTitles(500);
   }
 
   private titleSimilarity(a: string, b: string): number {

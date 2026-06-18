@@ -1,9 +1,8 @@
-import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { AnnixSentinelAiService } from "../ai/ai.service";
 import { AnnixSentinelComplianceService } from "../compliance/compliance.service";
+import { AnnixSentinelDocumentRepository } from "./document.repository";
 import { AnnixSentinelDocument } from "./entities/document.entity";
 
 const PRESIGNED_URL_TTL_SECONDS = 3600;
@@ -13,11 +12,11 @@ export class AnnixSentinelDocumentsService {
   private readonly logger = new Logger(AnnixSentinelDocumentsService.name);
 
   constructor(
-    @InjectRepository(AnnixSentinelDocument)
-    private readonly documentRepository: Repository<AnnixSentinelDocument>,
+    private readonly documentRepository: AnnixSentinelDocumentRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly aiService: AnnixSentinelAiService,
+    @Inject(forwardRef(() => AnnixSentinelComplianceService))
     private readonly complianceService: AnnixSentinelComplianceService,
   ) {}
 
@@ -36,7 +35,7 @@ export class AnnixSentinelDocumentsService {
 
     this.logger.log(`Document uploaded: ${result.originalFilename} -> ${result.path}`);
 
-    const document = this.documentRepository.create({
+    const saved = await this.documentRepository.create({
       companyId,
       requirementId,
       name: result.originalFilename,
@@ -45,8 +44,6 @@ export class AnnixSentinelDocumentsService {
       sizeBytes: result.size,
       uploadedByUserId: userId,
     });
-
-    const saved = await this.documentRepository.save(document);
 
     if (requirementId !== null) {
       this.analyzeDocumentForChecklist(saved).catch((error) =>
@@ -88,26 +85,18 @@ export class AnnixSentinelDocumentsService {
   }
 
   async documentsForCompany(companyId: number): Promise<AnnixSentinelDocument[]> {
-    return this.documentRepository.find({
-      where: { companyId },
-      order: { createdAt: "DESC" },
-    });
+    return this.documentRepository.findByCompanyNewestFirst(companyId);
   }
 
   async documentsByRequirement(
     companyId: number,
     requirementId: number,
   ): Promise<AnnixSentinelDocument[]> {
-    return this.documentRepository.find({
-      where: { companyId, requirementId },
-      order: { createdAt: "DESC" },
-    });
+    return this.documentRepository.findByCompanyAndRequirementNewestFirst(companyId, requirementId);
   }
 
   async presignedUrl(companyId: number, documentId: number): Promise<string> {
-    const document = await this.documentRepository.findOne({
-      where: { id: documentId, companyId },
-    });
+    const document = await this.documentRepository.findByIdAndCompany(documentId, companyId);
 
     if (document === null) {
       throw new NotFoundException("Document not found");
@@ -117,9 +106,7 @@ export class AnnixSentinelDocumentsService {
   }
 
   async remove(companyId: number, documentId: number): Promise<void> {
-    const document = await this.documentRepository.findOne({
-      where: { id: documentId, companyId },
-    });
+    const document = await this.documentRepository.findByIdAndCompany(documentId, companyId);
 
     if (document === null) {
       throw new NotFoundException("Document not found");

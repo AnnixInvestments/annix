@@ -1,18 +1,15 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PassportStrategy } from "@nestjs/passport";
-import { InjectRepository } from "@nestjs/typeorm";
 import { Request } from "express";
 import { ExtractJwt, Strategy } from "passport-jwt";
-import { Repository } from "typeorm";
-import { AnnixSentinelProfile } from "../../companies/entities/annix-sentinel-profile.entity";
+import { AnnixSentinelProfileRepository } from "../../companies/annix-sentinel-profile.repository";
 
 @Injectable()
 export class AnnixSentinelJwtStrategy extends PassportStrategy(Strategy, "annix-sentinel-jwt") {
   constructor(
     configService: ConfigService,
-    @InjectRepository(AnnixSentinelProfile)
-    private readonly profileRepo: Repository<AnnixSentinelProfile>,
+    private readonly profileRepo: AnnixSentinelProfileRepository,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
@@ -25,9 +22,7 @@ export class AnnixSentinelJwtStrategy extends PassportStrategy(Strategy, "annix-
   }
 
   async validate(payload: { sub: number; email: string; companyId: number }) {
-    const profile = await this.profileRepo.findOne({
-      where: { userId: payload.sub },
-    });
+    const profile = await this.profileRepo.findOneByUserId(payload.sub);
 
     return {
       userId: payload.sub,

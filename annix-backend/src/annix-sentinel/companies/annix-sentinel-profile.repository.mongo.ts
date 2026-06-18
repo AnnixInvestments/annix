@@ -13,4 +13,17 @@ export class MongoAnnixSentinelProfileRepository
   constructor(@InjectModel("AnnixSentinelProfile") model: Model<AnnixSentinelProfile>) {
     super(model);
   }
+
+  async findOneByUserId(userId: number): Promise<AnnixSentinelProfile | null> {
+    const document = await this.documents.findOne({ userId }).lean().exec();
+    return this.toDomain(document);
+  }
+
+  async findByCompanyIds(companyIds: number[]): Promise<AnnixSentinelProfile[]> {
+    const documents = await this.documents
+      .find({ companyId: { $in: companyIds } })
+      .lean()
+      .exec();
+    return this.toDomainList(documents);
+  }
 }

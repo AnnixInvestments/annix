@@ -5,18 +5,13 @@ import {
   Injectable,
   Logger,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { AnnixSentinelProfile } from "../../companies/entities/annix-sentinel-profile.entity";
+import { AnnixSentinelProfileRepository } from "../../companies/annix-sentinel-profile.repository";
 
 @Injectable()
 export class AnnixSentinelCompanyScopeGuard implements CanActivate {
   private readonly logger = new Logger(AnnixSentinelCompanyScopeGuard.name);
 
-  constructor(
-    @InjectRepository(AnnixSentinelProfile)
-    private readonly profileRepository: Repository<AnnixSentinelProfile>,
-  ) {}
+  constructor(private readonly profileRepository: AnnixSentinelProfileRepository) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -26,9 +21,7 @@ export class AnnixSentinelCompanyScopeGuard implements CanActivate {
       throw new ForbiddenException("Authentication required");
     }
 
-    const profile = await this.profileRepository.findOne({
-      where: { userId: jwtPayload.userId },
-    });
+    const profile = await this.profileRepository.findOneByUserId(jwtPayload.userId);
 
     if (profile === null) {
       throw new ForbiddenException("User not found");

@@ -1,8 +1,7 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { AnnixSentinelGovernmentDocument } from "./entities/government-document.entity";
+import { AnnixSentinelGovernmentDocumentRepository } from "./government-document.repository";
 
 const PRESIGNED_URL_TTL_SECONDS = 3600;
 
@@ -25,16 +24,13 @@ export class AnnixSentinelGovernmentDocumentsService {
   private readonly logger = new Logger(AnnixSentinelGovernmentDocumentsService.name);
 
   constructor(
-    @InjectRepository(AnnixSentinelGovernmentDocument)
-    private readonly repository: Repository<AnnixSentinelGovernmentDocument>,
+    private readonly repository: AnnixSentinelGovernmentDocumentRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {}
 
   async listGroupedByCategory(): Promise<CategoryGroup[]> {
-    const documents = await this.repository.find({
-      order: { category: "ASC", sortOrder: "ASC" },
-    });
+    const documents = await this.repository.findAllOrderedByCategory();
 
     const categoryMap = new Map<string, CategoryGroup>();
 
@@ -85,7 +81,7 @@ export class AnnixSentinelGovernmentDocumentsService {
   }
 
   async documentDownloadUrl(documentId: number): Promise<string> {
-    const doc = await this.repository.findOne({ where: { id: documentId } });
+    const doc = await this.repository.findById(documentId);
 
     if (doc === null) {
       throw new NotFoundException("Government document not found");
@@ -99,7 +95,7 @@ export class AnnixSentinelGovernmentDocumentsService {
   }
 
   async syncDocument(documentId: number): Promise<AnnixSentinelGovernmentDocument> {
-    const doc = await this.repository.findOne({ where: { id: documentId } });
+    const doc = await this.repository.findById(documentId);
 
     if (doc === null) {
       throw new NotFoundException("Government document not found");
@@ -152,7 +148,7 @@ export class AnnixSentinelGovernmentDocumentsService {
   }
 
   async syncAll(): Promise<{ syncedCount: number; failedCount: number; errors: string[] }> {
-    const unsyncedDocs = await this.repository.find({ where: { synced: false } });
+    const unsyncedDocs = await this.repository.findManyWhere({ synced: false });
     const errors: string[] = [];
     let syncedCount = 0;
     let failedCount = 0;

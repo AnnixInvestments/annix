@@ -9,8 +9,6 @@ import { AppRole } from "../../rbac/entities/app-role.entity";
 import { UserAppAccess } from "../../rbac/entities/user-app-access.entity";
 import { User } from "../../user/entities/user.entity";
 import { AnnixSentinelCompaniesModule } from "../companies/companies.module";
-import { AnnixSentinelCompanyDetails } from "../companies/entities/annix-sentinel-company-details.entity";
-import { AnnixSentinelProfile } from "../companies/entities/annix-sentinel-profile.entity";
 import { AnnixSentinelAuthController } from "./auth.controller";
 import { AnnixSentinelAuthService } from "./auth.service";
 import { AnnixSentinelDataRetentionService } from "./data-retention.service";
@@ -22,15 +20,7 @@ import { AnnixSentinelJwtStrategy } from "./strategies/jwt.strategy";
   imports: [
     AnnixSentinelCompaniesModule,
     PassportModule,
-    TypeOrmModule.forFeature([
-      User,
-      Company,
-      AnnixSentinelProfile,
-      AnnixSentinelCompanyDetails,
-      App,
-      AppRole,
-      UserAppAccess,
-    ]),
+    TypeOrmModule.forFeature([User, Company, App, AppRole, UserAppAccess]),
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({

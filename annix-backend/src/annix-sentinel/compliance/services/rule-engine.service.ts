@@ -1,8 +1,7 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { Company } from "../../../platform/entities/company.entity";
 import { AnnixSentinelCompanyDetails } from "../../companies/entities/annix-sentinel-company-details.entity";
+import { AnnixSentinelComplianceRequirementRepository } from "../compliance-requirement.repository";
 import { AnnixSentinelComplianceRequirement } from "../entities/compliance-requirement.entity";
 
 interface CompanyWithDetails {
@@ -72,15 +71,14 @@ const CONDITION_EVALUATORS: ConditionCheck[] = [
 @Injectable()
 export class AnnixSentinelRuleEngineService {
   constructor(
-    @InjectRepository(AnnixSentinelComplianceRequirement)
-    private readonly requirementsRepository: Repository<AnnixSentinelComplianceRequirement>,
+    private readonly requirementsRepository: AnnixSentinelComplianceRequirementRepository,
   ) {}
 
   async matchRequirements(
     company: Company,
     details: AnnixSentinelCompanyDetails | null,
   ): Promise<AnnixSentinelComplianceRequirement[]> {
-    const allRequirements = await this.requirementsRepository.find();
+    const allRequirements = await this.requirementsRepository.findAll();
     const ctx: CompanyWithDetails = { company, details };
 
     return allRequirements.filter((requirement) => this.conditionsMet(requirement, ctx));

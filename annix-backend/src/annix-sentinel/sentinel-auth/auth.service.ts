@@ -16,8 +16,8 @@ import { AppRole } from "../../rbac/entities/app-role.entity";
 import { UserAppAccess } from "../../rbac/entities/user-app-access.entity";
 import { PasswordService } from "../../shared/auth/password.service";
 import { User } from "../../user/entities/user.entity";
-import { AnnixSentinelCompanyDetails } from "../companies/entities/annix-sentinel-company-details.entity";
-import { AnnixSentinelProfile } from "../companies/entities/annix-sentinel-profile.entity";
+import { AnnixSentinelCompanyDetailsRepository } from "../companies/annix-sentinel-company-details.repository";
+import { AnnixSentinelProfileRepository } from "../companies/annix-sentinel-profile.repository";
 import { fromJSDate, now } from "../lib/datetime";
 import { AnnixSentinelLoginDto } from "./dto/login.dto";
 import { AnnixSentinelSignupDto } from "./dto/signup.dto";
@@ -32,12 +32,10 @@ export class AnnixSentinelAuthService {
   constructor(
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
-    @InjectRepository(AnnixSentinelProfile)
-    private readonly profileRepo: Repository<AnnixSentinelProfile>,
+    private readonly profileRepo: AnnixSentinelProfileRepository,
     @InjectRepository(Company)
     private readonly companyRepo: Repository<Company>,
-    @InjectRepository(AnnixSentinelCompanyDetails)
-    private readonly companyDetailsRepo: Repository<AnnixSentinelCompanyDetails>,
+    private readonly companyDetailsRepo: AnnixSentinelCompanyDetailsRepository,
     @InjectRepository(App)
     private readonly appRepo: Repository<App>,
     @InjectRepository(AppRole)
@@ -86,7 +84,7 @@ export class AnnixSentinelAuthService {
     });
     const savedUnifiedCompany = await this.companyRepo.save(unifiedCompany);
 
-    const companyDetails = this.companyDetailsRepo.create({
+    await this.companyDetailsRepo.create({
       companyId: savedUnifiedCompany.id,
       entityType,
       complianceAreas: (dto.complianceAreas as unknown as Record<string, unknown>) ?? null,
@@ -102,7 +100,6 @@ export class AnnixSentinelAuthService {
       businessAddress: dto.businessAddress ?? null,
       profileComplete: dto.profileComplete ?? false,
     });
-    await this.companyDetailsRepo.save(companyDetails);
 
     const passwordHash = await this.passwordService.hashSimple(dto.password);
     const verificationToken = randomBytes(32).toString("hex");
@@ -118,13 +115,12 @@ export class AnnixSentinelAuthService {
     } as Partial<User>);
     const savedUser = await this.userRepo.save(user);
 
-    const profile = this.profileRepo.create({
+    await this.profileRepo.create({
       userId: savedUser.id,
       companyId: savedUnifiedCompany.id,
       termsAcceptedAt: now().toJSDate(),
       termsVersion: CURRENT_TERMS_VERSION,
     });
-    await this.profileRepo.save(profile);
 
     await this.bridgeToRbac(savedUser.id);
 
@@ -207,10 +203,7 @@ export class AnnixSentinelAuthService {
     user.lastLoginAt = now().toJSDate();
     await this.userRepo.save(user);
 
-    const profile = await this.profileRepo.findOne({
-      where: { userId: user.id },
-      relations: ["company"],
-    });
+    const profile = await this.profileRepo.findOneByUserId(user.id);
 
     const termsOutdated = profile?.termsVersion !== CURRENT_TERMS_VERSION;
     const companyId = profile?.companyId ?? null;
@@ -288,9 +281,7 @@ export class AnnixSentinelAuthService {
       throw new UnauthorizedException("User no longer exists");
     }
 
-    const profile = await this.profileRepo.findOne({
-      where: { userId: user.id },
-    });
+    const profile = await this.profileRepo.findOneByUserId(user.id);
 
     const companyId = profile?.companyId ?? null;
     const userName = user.firstName || user.email;
@@ -314,7 +305,7 @@ export class AnnixSentinelAuthService {
   }
 
   async acceptCurrentTerms(userId: number): Promise<{ accepted: boolean }> {
-    const profile = await this.profileRepo.findOne({ where: { userId } });
+    const profile = await this.profileRepo.findOneByUserId(userId);
 
     if (profile === null) {
       throw new UnauthorizedException("User not found");

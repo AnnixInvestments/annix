@@ -4,7 +4,9 @@ import { Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { Company } from "../../platform/entities/company.entity";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
-import { AnnixSentinelCompanyDetails } from "../companies/entities/annix-sentinel-company-details.entity";
+import { AnnixSentinelCompanyDetailsRepository } from "../companies/annix-sentinel-company-details.repository";
+import { AnnixSentinelComplianceRequirementRepository } from "../compliance/compliance-requirement.repository";
+import { AnnixSentinelComplianceStatusRepository } from "../compliance/compliance-status.repository";
 import { AnnixSentinelComplianceRequirement } from "../compliance/entities/compliance-requirement.entity";
 import { AnnixSentinelComplianceStatus } from "../compliance/entities/compliance-status.entity";
 import { formatDateZA, fromJSDate } from "../lib/datetime";
@@ -67,12 +69,9 @@ export class AnnixSentinelAiService {
   constructor(
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
-    @InjectRepository(AnnixSentinelCompanyDetails)
-    private readonly detailsRepository: Repository<AnnixSentinelCompanyDetails>,
-    @InjectRepository(AnnixSentinelComplianceStatus)
-    private readonly statusRepository: Repository<AnnixSentinelComplianceStatus>,
-    @InjectRepository(AnnixSentinelComplianceRequirement)
-    private readonly requirementRepository: Repository<AnnixSentinelComplianceRequirement>,
+    private readonly detailsRepository: AnnixSentinelCompanyDetailsRepository,
+    private readonly statusRepository: AnnixSentinelComplianceStatusRepository,
+    private readonly requirementRepository: AnnixSentinelComplianceRequirementRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly aiChatService: AiChatService,
@@ -87,13 +86,12 @@ export class AnnixSentinelAiService {
       throw new NotFoundException("Company not found");
     }
 
-    const [statuses, details] = await Promise.all([
-      this.statusRepository.find({
-        where: { companyId },
-        relations: ["requirement"],
-      }),
-      this.detailsRepository.findOne({ where: { companyId } }),
+    const [statusesRaw, details] = await Promise.all([
+      this.statusRepository.findManyWhere({ companyId }),
+      this.detailsRepository.findOneByCompanyId(companyId),
     ]);
+
+    const statuses = await this.attachRequirements(statusesRaw);
 
     const contextParts = [
       `Company: ${company.name}`,
@@ -169,9 +167,7 @@ export class AnnixSentinelAiService {
       return emptyResult;
     }
 
-    const requirement = await this.requirementRepository.findOne({
-      where: { id: requirementId },
-    });
+    const requirement = await this.requirementRepository.findById(requirementId);
 
     if (
       requirement === null ||
@@ -271,6 +267,28 @@ export class AnnixSentinelAiService {
       );
       return emptyResult;
     }
+  }
+
+  private async attachRequirements(
+    statuses: AnnixSentinelComplianceStatus[],
+  ): Promise<AnnixSentinelComplianceStatus[]> {
+    const requirementIds = [...new Set(statuses.map((s) => s.requirementId))];
+
+    if (requirementIds.length === 0) {
+      return statuses;
+    }
+
+    const requirements = await this.requirementRepository.findByIds(requirementIds);
+    const requirementById = requirements.reduce(
+      (acc, requirement) => ({ ...acc, [requirement.id]: requirement }),
+      {} as Record<number, AnnixSentinelComplianceRequirement>,
+    );
+
+    return statuses.map((status) => {
+      status.requirement = (requirementById[status.requirementId] ??
+        null) as AnnixSentinelComplianceRequirement;
+      return status;
+    });
   }
 
   private identifyRelatedRequirements(

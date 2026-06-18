@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Company } from "../../platform/entities/company.entity";
-import { AnnixSentinelDocument } from "../sentinel-documents/entities/document.entity";
+import { AnnixSentinelDocumentRepository } from "../sentinel-documents/document.repository";
 
 export interface TenderDocument {
   name: string;
@@ -55,8 +55,7 @@ export class AnnixSentinelTenderService {
   constructor(
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
-    @InjectRepository(AnnixSentinelDocument)
-    private readonly documentRepository: Repository<AnnixSentinelDocument>,
+    private readonly documentRepository: AnnixSentinelDocumentRepository,
   ) {}
 
   async requiredDocuments(companyId: number): Promise<TenderDocument[]> {
@@ -68,9 +67,7 @@ export class AnnixSentinelTenderService {
       throw new NotFoundException("Company not found");
     }
 
-    const companyDocuments = await this.documentRepository.find({
-      where: { companyId },
-    });
+    const companyDocuments = await this.documentRepository.findManyWhere({ companyId });
 
     return REQUIRED_TENDER_DOCUMENTS.map((required) => {
       const lowerName = required.name.toLowerCase();
