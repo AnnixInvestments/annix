@@ -34,4 +34,23 @@ if ($databaseDriver -eq 'mongo') {
     }
 }
 
-pnpm start:dev
+$env:NODE_OPTIONS = "--max-old-space-size=8192"
+
+$rapidRestarts = 0
+while ($true) {
+    Write-Host "[run-backend] starting backend watcher (heap 8 GB)..." -ForegroundColor Green
+    $startedAt = Get-Date
+    pnpm start:dev
+    $exitCode = $LASTEXITCODE
+    $uptimeSeconds = [int](New-TimeSpan -Start $startedAt).TotalSeconds
+
+    if ($uptimeSeconds -lt 20) { $rapidRestarts++ } else { $rapidRestarts = 0 }
+    if ($rapidRestarts -ge 5) {
+        Write-Host "[run-backend] backend exited 5 times within 20s each - looks like a real boot error, not auto-restarting. Fix the issue and relaunch the swarm." -ForegroundColor Red
+        break
+    }
+
+    Write-Host "[run-backend] backend watcher exited (code $exitCode) after ${uptimeSeconds}s - auto-restarting in 3s..." -ForegroundColor Yellow
+    Start-Sleep -Seconds 3
+    Remove-OrphanedNestWatchers
+}
