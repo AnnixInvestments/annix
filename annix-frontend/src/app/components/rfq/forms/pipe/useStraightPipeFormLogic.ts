@@ -71,6 +71,7 @@ export function useStraightPipeFormLogic(props: StraightPipeFormProps) {
   const showSurfaceProtection = requiredProducts.includes("surface_protection");
 
   const [flangeSpecs, setFlangeSpecs] = useState<FlangeSpecData | null>(null);
+  const [spigotFlangeSpecs, setSpigotFlangeSpecs] = useState<FlangeSpecData | null>(null);
 
   const rawSpecs = entry.specs;
 
@@ -85,6 +86,19 @@ export function useStraightPipeFormLogic(props: StraightPipeFormProps) {
   const rawPipeEndConfiguration = specs.pipeEndConfiguration;
   const pipeEndConfiguration = rawPipeEndConfiguration || "PE";
   const hasFlanges = pipeEndConfiguration !== "PE";
+
+  // Spigot branch flange — its standard/class/type each default to the main
+  // pipe's when not explicitly set on the spigot.
+  const spigotNominalBoreMm = specs.spigotNominalBoreMm;
+  const rawSpigotFlangeConfig = specs.spigotFlangeConfig;
+  const spigotFlangeConfig = rawSpigotFlangeConfig || "PE";
+  const spigotHasFlanges = spigotFlangeConfig !== "PE";
+  const rawSpigotFlangeStandardId = specs.spigotFlangeStandardId;
+  const spigotFlangeStandardId = rawSpigotFlangeStandardId || flangeStandardId;
+  const rawSpigotFlangePressureClassId = specs.spigotFlangePressureClassId;
+  const spigotFlangePressureClassId = rawSpigotFlangePressureClassId || flangePressureClassId;
+  const rawSpigotFlangeTypeCode = specs.spigotFlangeTypeCode;
+  const spigotFlangeTypeCode = rawSpigotFlangeTypeCode || flangeTypeCode;
 
   const {
     groupedOptions: groupedSteelOptions,
@@ -401,18 +415,20 @@ export function useStraightPipeFormLogic(props: StraightPipeFormProps) {
         (p: PressureClassItem) => p.id === flangePressureClassId,
       );
       const flangeStd = masterData?.flangeStandards?.find((s: any) => s.id === flangeStandardId);
+      const storedDesignation = storedPc?.designation;
       const combinedDesignation = combineClassWithFlangeType(
-        storedPc?.designation || "",
+        storedDesignation || "",
         flangeTypeCode,
         flangeStd?.code,
       );
       const combinedPc =
-        combinedDesignation && combinedDesignation !== storedPc?.designation
+        combinedDesignation && combinedDesignation !== storedDesignation
           ? masterData?.pressureClasses?.find(
               (p: PressureClassItem) => p.designation === combinedDesignation,
             )
           : null;
-      const lookupPressureClassId = combinedPc?.id || flangePressureClassId;
+      const combinedPcId = combinedPc?.id;
+      const lookupPressureClassId = combinedPcId || flangePressureClassId;
 
       const specs = await fetchFlangeSpecsStatic(
         nominalBoreMm,
@@ -433,6 +449,71 @@ export function useStraightPipeFormLogic(props: StraightPipeFormProps) {
     flangeTypeCode,
     flangeTypesLength,
     masterData?.flangeTypes,
+  ]);
+
+  // Spigot flanges have their own DB dimension row. Look it up at the spigot
+  // NB so the 3D info card shows the real row (e.g. b=16mm for DN150 1000/3)
+  // instead of the generic per-DN fallback (which read 20mm). #358
+  useEffect(() => {
+    const fetchSpigotSpecs = async () => {
+      if (
+        !spigotHasFlanges ||
+        !spigotNominalBoreMm ||
+        !spigotFlangeStandardId ||
+        !spigotFlangePressureClassId
+      ) {
+        setSpigotFlangeSpecs(null);
+        return;
+      }
+
+      const flangeType = masterData?.flangeTypes?.find(
+        (ft: FlangeTypeItem) => ft.code === spigotFlangeTypeCode,
+      );
+      const flangeTypeId = flangeType?.id;
+
+      // Mirror the main-pipe lookup: normalize to the (class, selected type)
+      // dimension row before fetching.
+      const storedPc = masterData?.pressureClasses?.find(
+        (p: PressureClassItem) => p.id === spigotFlangePressureClassId,
+      );
+      const flangeStd = masterData?.flangeStandards?.find(
+        (s: { id: number; code?: string }) => s.id === spigotFlangeStandardId,
+      );
+      const storedDesignation = storedPc?.designation;
+      const combinedDesignation = combineClassWithFlangeType(
+        storedDesignation || "",
+        spigotFlangeTypeCode,
+        flangeStd?.code,
+      );
+      const combinedPc =
+        combinedDesignation && combinedDesignation !== storedDesignation
+          ? masterData?.pressureClasses?.find(
+              (p: PressureClassItem) => p.designation === combinedDesignation,
+            )
+          : null;
+      const combinedPcId = combinedPc?.id;
+      const lookupPressureClassId = combinedPcId || spigotFlangePressureClassId;
+
+      const result = await fetchFlangeSpecsStatic(
+        spigotNominalBoreMm,
+        spigotFlangeStandardId,
+        lookupPressureClassId,
+        flangeTypeId,
+      );
+      setSpigotFlangeSpecs(result);
+    };
+
+    fetchSpigotSpecs();
+  }, [
+    spigotHasFlanges,
+    spigotNominalBoreMm,
+    spigotFlangeStandardId,
+    spigotFlangePressureClassId,
+    spigotFlangeTypeCode,
+    flangeTypesLength,
+    masterData?.flangeTypes,
+    masterData?.pressureClasses,
+    masterData?.flangeStandards,
   ]);
 
   // A puddle pipe is always FOE (one pipe-sized end flange + a puddle
@@ -514,6 +595,7 @@ export function useStraightPipeFormLogic(props: StraightPipeFormProps) {
     flangePressureClassId,
     flangeResolution,
     flangeSpecs,
+    spigotFlangeSpecs,
     flangeStandardId,
     flangeTypeCode,
     flangeTypesLength,

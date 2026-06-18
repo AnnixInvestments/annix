@@ -80,6 +80,7 @@ function StraightPipeFormComponent(props: StraightPipeFormProps) {
     flangePressureClassId,
     flangeResolution,
     flangeSpecs,
+    spigotFlangeSpecs,
     flangeStandardId,
     flangeTypeCode,
     flangeTypesLength,
@@ -253,6 +254,7 @@ function StraightPipeFormComponent(props: StraightPipeFormProps) {
                     }}
                     selectedNotes={entry.selectedNotes}
                     flangeSpecs={flangeSpecs}
+                    spigotFlangeSpecs={spigotFlangeSpecs}
                     flangeStandardName={flangeStandardName}
                     pressureClassDesignation={pressureClassDesignation}
                     flangeTypeCode={flangeTypeCode}

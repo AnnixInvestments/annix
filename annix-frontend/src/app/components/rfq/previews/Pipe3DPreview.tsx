@@ -47,6 +47,7 @@ interface Pipe3DPreviewProps {
   onCameraChange?: (position: [number, number, number], target: [number, number, number]) => void;
   selectedNotes?: string[];
   flangeSpecs?: FlangeSpecData | null;
+  spigotFlangeSpecs?: FlangeSpecData | null;
   flangeStandardName?: string;
   pressureClassDesignation?: string;
   flangeTypeCode?: string;
@@ -1094,7 +1095,7 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
                   props.spigotFlangeConfig && props.spigotFlangeConfig !== "PE";
                 const spigotFlangeResult =
                   spigotHasFlanges && props.spigotNominalBoreMm
-                    ? getFlangeSpecs(props.spigotNominalBoreMm, null)
+                    ? getFlangeSpecs(props.spigotNominalBoreMm, props.spigotFlangeSpecs)
                     : null;
                 const rawSpecs2 = spigotFlangeResult?.specs;
                 const spigotFlangeSpecs = rawSpecs2 || null;
