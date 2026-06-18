@@ -8,10 +8,12 @@ import {
   type OrbitEmailComposerRecipient,
 } from "@/app/components/orbit/OrbitEmailComposer";
 import { useToast } from "@/app/components/Toast";
+import { WhatsAppConsentCell } from "@/app/components/ui/WhatsAppConsentCell";
 import { adminApiClient } from "@/app/lib/api/adminApi";
+import { extractErrorMessage } from "@/app/lib/api/apiError";
 import { formatDateZA } from "@/app/lib/datetime";
 import { useAlert } from "@/app/lib/hooks/useAlert";
-import { useAdminOrbitSeekers } from "@/app/lib/query/hooks";
+import { useAdminOrbitSeekers, useRequestWhatsAppConsent } from "@/app/lib/query/hooks";
 import { seekerStatusBadgeClass, seekerTierBadgeClass } from "./seekerBadges";
 
 const PAGE_SIZE = 20;
@@ -40,6 +42,29 @@ export default function OrbitSeekersPage() {
   const seekersQuery = useAdminOrbitSeekers({ search: appliedSearch, page, limit: PAGE_SIZE });
   const queryData = seekersQuery.data;
   const seekers = queryData ? queryData.seekers : [];
+
+  const requestConsent = useRequestWhatsAppConsent();
+  const pendingVariables = requestConsent.isPending ? requestConsent.variables : null;
+  const requestingId = pendingVariables ? pendingVariables.userId : null;
+  const requestingChannel = pendingVariables ? pendingVariables.channel : null;
+
+  const handleRequestConsent = async (
+    e: React.MouseEvent,
+    userId: number,
+    channel: "email" | "whatsapp",
+  ) => {
+    e.stopPropagation();
+    try {
+      const result = await requestConsent.mutateAsync({ userId, channel });
+      const via = result.channel === "whatsapp" ? " via WhatsApp" : "";
+      showToast(`Consent request sent${via} to ${result.sentTo}`, "success");
+    } catch (err) {
+      showToast(
+        extractErrorMessage(err, "Could not send the consent request — please try again."),
+        "error",
+      );
+    }
+  };
 
   // Bulk-email recipients = every seeker on the current view that has an email.
   const composerRecipients = useMemo<OrbitEmailComposerRecipient[]>(
@@ -202,9 +227,11 @@ export default function OrbitSeekersPage() {
               <tr>
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Email</th>
+                <th className="px-4 py-3 font-medium">Contact</th>
                 <th className="px-4 py-3 font-medium">Match tier</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">CV</th>
+                <th className="px-4 py-3 font-medium">WhatsApp</th>
                 <th className="px-4 py-3 font-medium">Last active</th>
                 <th className="px-4 py-3 font-medium">Joined</th>
               </tr>
@@ -215,6 +242,8 @@ export default function OrbitSeekersPage() {
                 const name = nameValue || "—";
                 const emailValue = seeker.email;
                 const email = emailValue || "—";
+                const contactPhoneValue = seeker.contactPhone;
+                const contactPhone = contactPhoneValue || "—";
                 const cvLabel = seeker.hasCv ? "Yes" : "No";
                 const lastActiveRaw = seeker.lastActiveAt;
                 const lastActive = lastActiveRaw ? formatDateZA(lastActiveRaw) : "—";
@@ -224,6 +253,15 @@ export default function OrbitSeekersPage() {
                 const statusBadge = seekerStatusBadgeClass(seeker.status);
                 const seekerId = seeker.id;
                 const isProspect = seeker.isProspect === true;
+                const whatsappOptIn = seeker.whatsappOptIn;
+                const whatsappRequestedAt = seeker.whatsappConsentRequestedAt;
+                const whatsappPhone = seeker.whatsappPhone;
+                const hasWhatsAppNumber = Boolean(contactPhoneValue || whatsappPhone);
+                const isRequestingConsent = requestingId === seekerId;
+                const isRequestingWhatsApp =
+                  isRequestingConsent && requestingChannel === "whatsapp";
+                const isRequestingEmail = isRequestingConsent && requestingChannel === "email";
+                const consentVerb = whatsappRequestedAt ? "Resend" : "Request";
                 return (
                   <tr
                     key={seekerId}
@@ -241,6 +279,9 @@ export default function OrbitSeekersPage() {
                   >
                     <td className="px-4 py-3 font-medium">{name}</td>
                     <td className="px-4 py-3 text-gray-600">{email}</td>
+                    <td className="px-4 py-3 text-gray-600 tabular-nums whitespace-nowrap">
+                      {contactPhone}
+                    </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${tierBadge}`}>
                         {seeker.matchTier}
@@ -254,6 +295,41 @@ export default function OrbitSeekersPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-gray-600">{cvLabel}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <WhatsAppConsentCell
+                          optIn={whatsappOptIn}
+                          requestedAt={whatsappRequestedAt}
+                          phone={whatsappPhone}
+                        />
+                        {!whatsappOptIn && !isProspect ? (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={(e) => void handleRequestConsent(e, seekerId, "whatsapp")}
+                              disabled={isRequestingConsent || !hasWhatsAppNumber}
+                              title={
+                                hasWhatsAppNumber
+                                  ? `${consentVerb} consent via WhatsApp`
+                                  : "No number on file"
+                              }
+                              className="px-2 py-0.5 rounded-md border border-green-300 text-xs font-medium text-green-700 hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                            >
+                              {isRequestingWhatsApp ? "Sending…" : "WhatsApp"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => void handleRequestConsent(e, seekerId, "email")}
+                              disabled={isRequestingConsent}
+                              title={`${consentVerb} consent via email`}
+                              className="px-2 py-0.5 rounded-md border border-gray-300 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 whitespace-nowrap"
+                            >
+                              {isRequestingEmail ? "Sending…" : "Email"}
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-gray-500">{lastActive}</td>
                     <td className="px-4 py-3 text-gray-500">{joined}</td>
                   </tr>

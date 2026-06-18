@@ -272,6 +272,18 @@ export class MongoUserRepository extends MongoCrudRepository<User> implements Us
     return this.toDomainList(documents);
   }
 
+  async findByEmailsAnyScope(emails: string[]): Promise<User[]> {
+    if (emails.length === 0) {
+      return [];
+    }
+    const patterns = emails.map((email) => new RegExp(`^${escapeRegExp(email)}$`, "i"));
+    const documents = await this.documents
+      .find({ email: { $in: patterns } })
+      .lean()
+      .exec();
+    return this.toDomainList(documents);
+  }
+
   async findAllIdAndEmail(): Promise<Pick<User, "id" | "email">[]> {
     const documents = await this.documents.find().select("email").lean().exec();
     return documents.map((document) => ({
@@ -309,6 +321,11 @@ export class MongoUserRepository extends MongoCrudRepository<User> implements Us
       )
       .exec();
     return result.modifiedCount ?? 0;
+  }
+
+  async findOneByWhatsAppPhone(waId: string): Promise<User | null> {
+    const doc = await this.documents.findOne({ whatsappPhone: waId }).lean().exec();
+    return this.toDomain(doc);
   }
 
   countWithWhatsAppPhone(): Promise<number> {

@@ -121,6 +121,10 @@ export interface AdminSeekerSummary {
   hasCv: boolean;
   lastActiveAt: string | null;
   createdAt: string | null;
+  whatsappOptIn: boolean;
+  whatsappConsentRequestedAt: string | null;
+  whatsappPhone: string | null;
+  contactPhone: string | null;
 }
 
 export interface AdminSeekerDocument {
@@ -181,6 +185,13 @@ export interface SeekerEntitlementsResult {
   label: string;
   features: OrbitTierFeatures;
   cvBuilds: SeekerCvBuildQuota;
+}
+
+interface SeekerContactState {
+  whatsappOptIn: boolean;
+  whatsappConsentRequestedAt: string | null;
+  whatsappPhone: string | null;
+  contactPhone: string | null;
 }
 
 function candidateHasCv(candidate: Candidate): boolean {
@@ -658,18 +669,59 @@ export class SeekerJobFeedService {
       skip: (page - 1) * limit,
       limit,
     });
-    const seekers = rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      email: row.email,
-      matchTier: row.matchTier,
-      matchScore: row.matchScore,
-      status: row.status,
-      hasCv: candidateHasCv(row),
-      lastActiveAt: row.lastActiveAt ? row.lastActiveAt.toISOString() : null,
-      createdAt: row.createdAt ? row.createdAt.toISOString() : null,
-    }));
+    const whatsappByEmail = await this.whatsappStateByEmail(
+      rows.map((row) => row.email).filter((email): email is string => Boolean(email)),
+    );
+    const seekers = rows.map((row) => {
+      const whatsapp = row.email ? (whatsappByEmail.get(row.email.toLowerCase()) ?? null) : null;
+      return {
+        id: row.id,
+        name: row.name,
+        email: row.email,
+        matchTier: row.matchTier,
+        matchScore: row.matchScore,
+        status: row.status,
+        hasCv: candidateHasCv(row),
+        lastActiveAt: row.lastActiveAt ? row.lastActiveAt.toISOString() : null,
+        createdAt: row.createdAt ? row.createdAt.toISOString() : null,
+        whatsappOptIn: whatsapp ? whatsapp.whatsappOptIn : false,
+        whatsappConsentRequestedAt: whatsapp ? whatsapp.whatsappConsentRequestedAt : null,
+        whatsappPhone: whatsapp ? whatsapp.whatsappPhone : null,
+        contactPhone: whatsapp ? whatsapp.contactPhone : null,
+      };
+    });
     return { seekers, total };
+  }
+
+  private async whatsappStateByEmail(emails: string[]): Promise<Map<string, SeekerContactState>> {
+    const unique = [...new Set(emails.map((email) => email.toLowerCase()))];
+    if (unique.length === 0) {
+      return new Map();
+    }
+    const users = await this.userRepo.findByEmailsAnyScope(unique);
+    const profiles = await this.profileRepo.findByUserIds(users.map((user) => user.id));
+    const phoneByUserId = profiles.reduce((map, profile) => {
+      const phone = profile.phone;
+      if (phone && !map.has(profile.userId)) {
+        map.set(profile.userId, phone);
+      }
+      return map;
+    }, new Map<number, string>());
+
+    return users.reduce((map, user) => {
+      if (!user.email) {
+        return map;
+      }
+      map.set(user.email.toLowerCase(), {
+        whatsappOptIn: user.whatsappOptIn === true,
+        whatsappConsentRequestedAt: user.whatsappConsentRequestedAt
+          ? user.whatsappConsentRequestedAt.toISOString()
+          : null,
+        whatsappPhone: user.whatsappPhone ?? null,
+        contactPhone: phoneByUserId.get(user.id) ?? null,
+      });
+      return map;
+    }, new Map<string, SeekerContactState>());
   }
 
   async seekerDetail(id: number): Promise<AdminSeekerDetail> {
@@ -714,6 +766,12 @@ export class SeekerJobFeedService {
       hasCv: candidateHasCv(candidate) || profileHasCv,
       lastActiveAt: candidate.lastActiveAt ? candidate.lastActiveAt.toISOString() : null,
       createdAt: candidate.createdAt ? candidate.createdAt.toISOString() : null,
+      whatsappOptIn: seekerUser ? seekerUser.whatsappOptIn === true : false,
+      whatsappConsentRequestedAt: seekerUser?.whatsappConsentRequestedAt
+        ? seekerUser.whatsappConsentRequestedAt.toISOString()
+        : null,
+      whatsappPhone: seekerUser ? (seekerUser.whatsappPhone ?? null) : null,
+      contactPhone: seekerProfile?.phone ?? null,
       popiaConsent: candidate.popiaConsent,
       popiaConsentedAt: candidate.popiaConsentedAt
         ? candidate.popiaConsentedAt.toISOString()

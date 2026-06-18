@@ -6,6 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../email/email.service";
 import { now } from "../lib/datetime";
@@ -15,6 +16,8 @@ import { StockControlUserRepository } from "../stock-control/repositories/stock-
 import { User } from "../user/entities/user.entity";
 import { UserRepository } from "../user/user.repository";
 import { UserSyncService } from "../user-sync/user-sync.service";
+import { createConsentToken } from "../whatsapp/consent-token";
+import { normalizeWaId } from "../whatsapp/wa-id";
 import {
   AssignUserAccessDto,
   UpdateUserAccessDto,
@@ -69,6 +72,7 @@ export class RbacService {
     private readonly userSyncService: UserSyncService,
     private readonly emailService: EmailService,
     private readonly passwordService: PasswordService,
+    private readonly configService: ConfigService,
   ) {}
 
   private invalidateAppCaches(): void {
@@ -454,6 +458,49 @@ export class RbacService {
     user.status = "active";
     await this.userRepo.save(user);
     this.logger.log(`User ${userId} reactivated`);
+  }
+
+  async updateUserWhatsApp(
+    userId: number,
+    dto: { whatsappPhone?: string | null; whatsappOptIn?: boolean },
+  ): Promise<User> {
+    const user = await this.loadManagedUser(userId);
+    if (dto.whatsappPhone !== undefined) {
+      user.whatsappPhone = normalizeWaId(dto.whatsappPhone);
+    }
+    if (dto.whatsappOptIn !== undefined) {
+      user.whatsappOptIn = dto.whatsappOptIn;
+      user.whatsappOptInAt = dto.whatsappOptIn ? now().toJSDate() : null;
+    }
+    await this.userRepo.save(user);
+    this.logger.log(`User ${userId} WhatsApp settings updated`);
+    return user;
+  }
+
+  async requestWhatsAppConsent(userId: number): Promise<{ requested: true; sentTo: string }> {
+    const user = await this.loadManagedUser(userId);
+    if (!user.email) {
+      throw new BadRequestException("This user has no email address to send a consent request to.");
+    }
+
+    const secret = this.configService.get<string>("JWT_SECRET") || "";
+    const token = createConsentToken(user.id, secret);
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const consentUrl = `${frontendUrl}/whatsapp-consent/${token}`;
+
+    const sent = await this.emailService.sendWhatsAppConsentRequestEmail(
+      user.email,
+      user.firstName ?? null,
+      consentUrl,
+    );
+    if (!sent) {
+      throw new Error("Failed to send WhatsApp consent request email");
+    }
+
+    user.whatsappConsentRequestedAt = now().toJSDate();
+    await this.userRepo.save(user);
+    this.logger.log(`WhatsApp consent request sent to user ${userId}`);
+    return { requested: true, sentTo: user.email };
   }
 
   async deleteUser(userId: number, actingUserId: number): Promise<void> {

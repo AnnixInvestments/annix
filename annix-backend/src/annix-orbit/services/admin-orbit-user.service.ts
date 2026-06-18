@@ -52,6 +52,10 @@ export interface OrbitSeekerProspect {
   // completed sign-up), independent of whether they've logged in since.
   // Drives the "registered" vs "invited" status badge on the admin pages.
   isRegistered: boolean;
+  whatsappOptIn: boolean;
+  whatsappConsentRequestedAt: string | null;
+  whatsappPhone: string | null;
+  contactPhone: string | null;
 }
 
 function parseUserType(value?: string | null): AnnixOrbitUserType | null {
@@ -165,6 +169,12 @@ export class AdminOrbitUserService {
             profile != null &&
             (profile.userType === AnnixOrbitUserType.INDIVIDUAL ||
               profile.userType === AnnixOrbitUserType.STUDENT),
+          whatsappOptIn: user.whatsappOptIn === true,
+          whatsappConsentRequestedAt: user.whatsappConsentRequestedAt
+            ? user.whatsappConsentRequestedAt.toISOString()
+            : null,
+          whatsappPhone: user.whatsappPhone ?? null,
+          contactPhone: profile?.phone ?? null,
         };
       }),
     );

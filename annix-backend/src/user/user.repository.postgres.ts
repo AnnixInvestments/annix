@@ -190,6 +190,18 @@ export class PostgresUserRepository extends TypeOrmCrudRepository<User> implemen
     return this.repository.find({ select: ["id", "email"] });
   }
 
+  findByEmailsAnyScope(emails: string[]): Promise<User[]> {
+    if (emails.length === 0) {
+      return Promise.resolve([]);
+    }
+    return this.repository
+      .createQueryBuilder("user")
+      .where("LOWER(user.email) IN (:...emails)", {
+        emails: emails.map((email) => email.toLowerCase()),
+      })
+      .getMany();
+  }
+
   findWhatsAppCandidates(userIds: number[] | null): Promise<User[]> {
     const where =
       userIds === null
@@ -221,5 +233,9 @@ export class PostgresUserRepository extends TypeOrmCrudRepository<User> implemen
 
   countWithWhatsAppPhone(): Promise<number> {
     return this.repository.count({ where: { whatsappPhone: Not(IsNull()) } });
+  }
+
+  findOneByWhatsAppPhone(waId: string): Promise<User | null> {
+    return this.repository.findOne({ where: { whatsappPhone: waId } });
   }
 }

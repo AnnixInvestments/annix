@@ -20,10 +20,12 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
+import { UpdateUserWhatsAppDto } from "../admin/dto/admin-user-management.dto";
 import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { ApiMessageResponse, messageResponse } from "../shared/dto";
+import { User } from "../user/entities/user.entity";
 import {
   AssignUserAccessDto,
   UpdateUserAccessDto,
@@ -212,6 +214,18 @@ export class RbacController {
   async reactivateUser(@Param("userId", ParseIntPipe) userId: number): Promise<ApiMessageResponse> {
     await this.rbacService.reactivateUser(userId);
     return messageResponse("User reactivated");
+  }
+
+  @Patch("users/:userId/whatsapp")
+  @ApiOperation({ summary: "Set a user's WhatsApp number and consent" })
+  @ApiParam({ name: "userId", description: "User ID", example: 42 })
+  @ApiResponse({ status: 200, description: "WhatsApp settings updated", type: User })
+  @ApiResponse({ status: 404, description: "User not found" })
+  async updateUserWhatsApp(
+    @Param("userId", ParseIntPipe) userId: number,
+    @Body() dto: UpdateUserWhatsAppDto,
+  ): Promise<User> {
+    return this.rbacService.updateUserWhatsApp(userId, dto);
   }
 
   @Delete("users/:userId")

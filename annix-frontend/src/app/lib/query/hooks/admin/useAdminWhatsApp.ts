@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   adminApiClient,
   type RbacUserWithAccessSummary,
+  type RequestWhatsAppConsentResult,
   type UpdateUserWhatsAppPayload,
   type WhatsAppBackfillPhonesResult,
   type WhatsAppBroadcastCandidatesResponse,
@@ -98,6 +99,21 @@ export function useWhatsAppBackfillPhones() {
   return useMutation<WhatsAppBackfillPhonesResult, Error, void>({
     mutationFn: () => adminApiClient.whatsAppBackfillPhones(),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.whatsApp.all });
+    },
+  });
+}
+
+export function useRequestWhatsAppConsent() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    RequestWhatsAppConsentResult,
+    Error,
+    { userId: number; channel: "email" | "whatsapp" }
+  >({
+    mutationFn: ({ userId, channel }) => adminApiClient.requestWhatsAppConsent(userId, channel),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.orbitSeekers.all });
       queryClient.invalidateQueries({ queryKey: adminKeys.whatsApp.all });
     },
   });

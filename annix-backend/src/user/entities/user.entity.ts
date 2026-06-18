@@ -98,6 +98,13 @@ export class User {
   @Column({ name: "whatsapp_opt_in_at", type: "timestamptz", nullable: true })
   whatsappOptInAt: Date | null;
 
+  @ApiProperty({
+    description: "When a WhatsApp consent request was last emailed to the user",
+    nullable: true,
+  })
+  @Column({ name: "whatsapp_consent_requested_at", type: "timestamptz", nullable: true })
+  whatsappConsentRequestedAt: Date | null;
+
   @ApiProperty({ description: "User account status", example: "active" })
   @Column({ default: "active" })
   status: string;

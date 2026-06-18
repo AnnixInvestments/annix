@@ -40,8 +40,10 @@ export abstract class UserRepository extends CrudRepository<User> {
   abstract findIdsByRoleName(roleName: string): Promise<number[]>;
   abstract countByCompanyId(companyId: number): Promise<number>;
   abstract findAllIdAndEmail(): Promise<Pick<User, "id" | "email">[]>;
+  abstract findByEmailsAnyScope(emails: string[]): Promise<User[]>;
   abstract findWhatsAppCandidates(userIds: number[] | null): Promise<User[]>;
   abstract findEmailsByIds(ids: number[]): Promise<Array<{ id: number; email: string }>>;
   abstract setWhatsAppPhoneWhereMissingByEmail(email: string, phone: string): Promise<number>;
   abstract countWithWhatsAppPhone(): Promise<number>;
+  abstract findOneByWhatsAppPhone(waId: string): Promise<User | null>;
 }

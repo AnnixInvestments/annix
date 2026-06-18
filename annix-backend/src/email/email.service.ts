@@ -637,6 +637,51 @@ export class EmailService {
     });
   }
 
+  async sendWhatsAppConsentRequestEmail(
+    email: string,
+    firstName: string | null,
+    consentUrl: string,
+  ): Promise<boolean> {
+    const safeName = firstName ? firstName : "there";
+    const html = emailLayout({
+      title: "WhatsApp updates from Annix",
+      heading: "Get Annix updates on WhatsApp",
+      headingColor: "#16a34a",
+      bodyHtml: `
+          <p>Hi ${safeName},</p>
+          <p>Annix would like to send you important updates and notifications on WhatsApp — so you never miss anything that needs your attention.</p>
+          <p>To opt in, confirm your WhatsApp number using the button below. You can opt out again at any time.</p>`,
+      cta: {
+        href: consentUrl,
+        label: "Confirm WhatsApp updates",
+        color: "#16a34a",
+        expiryNote: "This link will expire in 7 days.",
+      },
+      footerText:
+        "If you did not expect this email, you can safely ignore it — no WhatsApp messages will be sent without your consent.",
+    });
+
+    const text = `
+      Get Annix updates on WhatsApp
+
+      Hi ${safeName}, Annix would like to send you important updates and notifications on WhatsApp.
+
+      Confirm your WhatsApp number to opt in: ${consentUrl}
+
+      This link will expire in 7 days. You can opt out again at any time.
+
+      If you did not expect this email, you can safely ignore it.
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: "Get Annix updates on WhatsApp",
+      html,
+      text,
+      isTransactional: true,
+    });
+  }
+
   async sendStockControlAdminTransferEmail(
     email: string,
     token: string,

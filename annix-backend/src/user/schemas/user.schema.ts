@@ -61,6 +61,9 @@ export class User {
   @Prop({ type: Date, required: false })
   whatsappOptInAt: Date;
 
+  @Prop({ type: Date, required: false })
+  whatsappConsentRequestedAt: Date;
+
   @Prop({ type: String, required: true })
   status: string;
 

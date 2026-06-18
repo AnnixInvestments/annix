@@ -11,6 +11,7 @@ import {
 import { ApiExcludeController } from "@nestjs/swagger";
 import { fromMillis, now } from "../../lib/datetime";
 import { WhatsAppCloudApiService } from "../services/whatsapp-cloud-api.service";
+import { WhatsAppConsentService } from "../services/whatsapp-consent.service";
 import { WhatsAppConversationService } from "../services/whatsapp-conversation.service";
 
 interface WebhookContact {
@@ -73,6 +74,7 @@ export class WhatsAppWebhookController {
   constructor(
     private readonly cloudApi: WhatsAppCloudApiService,
     private readonly conversations: WhatsAppConversationService,
+    private readonly consent: WhatsAppConsentService,
   ) {}
 
   @Get("webhook")
@@ -114,11 +116,12 @@ export class WhatsAppWebhookController {
           (value.messages ?? []).map(async (message) => {
             const from = message.from;
             if (!from) return;
+            const body = messageBody(message);
             try {
               await this.conversations.recordInbound({
                 waId: from,
                 profileName: contactNames.get(from) ?? null,
-                body: messageBody(message),
+                body,
                 messageType: message.type ?? "text",
                 waMessageId: message.id ?? null,
                 sentAt: messageSentAt(message),
@@ -126,6 +129,15 @@ export class WhatsAppWebhookController {
             } catch (error) {
               this.logger.error(
                 `Failed to record inbound WhatsApp message from ${from}: ${
+                  error instanceof Error ? error.message : String(error)
+                }`,
+              );
+            }
+            try {
+              await this.consent.handleInboundConsentReply(from, body);
+            } catch (error) {
+              this.logger.error(
+                `Failed to process WhatsApp consent reply from ${from}: ${
                   error instanceof Error ? error.message : String(error)
                 }`,
               );

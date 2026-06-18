@@ -21,6 +21,8 @@ import { UserRepository } from "../user/user.repository";
 import { MongoUserRepository } from "../user/user.repository.mongo";
 import { PostgresUserRepository } from "../user/user.repository.postgres";
 import { AdminWhatsAppController } from "./controllers/admin-whatsapp.controller";
+import { WhatsAppConsentController } from "./controllers/whatsapp-consent.controller";
+import { WhatsAppConsentAdminController } from "./controllers/whatsapp-consent-admin.controller";
 import { WhatsAppWebhookController } from "./controllers/whatsapp-webhook.controller";
 import { WhatsAppConversation } from "./entities/whatsapp-conversation.entity";
 import { WhatsAppMessage } from "./entities/whatsapp-message.entity";
@@ -34,6 +36,8 @@ import { WhatsAppConversationSchema } from "./schemas/whatsapp-conversation.sche
 import { WhatsAppMessageSchema } from "./schemas/whatsapp-message.schema";
 import { WhatsAppBroadcastService } from "./services/whatsapp-broadcast.service";
 import { WhatsAppCloudApiService } from "./services/whatsapp-cloud-api.service";
+import { WhatsAppConsentService } from "./services/whatsapp-consent.service";
+import { WhatsAppConsentSenderService } from "./services/whatsapp-consent-sender.service";
 import { WhatsAppConversationService } from "./services/whatsapp-conversation.service";
 
 @Module({
@@ -65,10 +69,17 @@ import { WhatsAppConversationService } from "./services/whatsapp-conversation.se
           ]),
         ]),
   ],
-  controllers: [WhatsAppWebhookController, AdminWhatsAppController],
+  controllers: [
+    WhatsAppWebhookController,
+    AdminWhatsAppController,
+    WhatsAppConsentController,
+    WhatsAppConsentAdminController,
+  ],
   providers: [
     WhatsAppCloudApiService,
     WhatsAppConversationService,
+    WhatsAppConsentService,
+    WhatsAppConsentSenderService,
     WhatsAppBroadcastService,
     repositoryProvider(
       WhatsAppConversationRepository,

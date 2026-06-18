@@ -135,6 +135,7 @@ export {
   useAdminWhatsAppConversations,
   useAdminWhatsAppMessages,
   useAdminWhatsAppStatus,
+  useRequestWhatsAppConsent,
   useUpdateUserWhatsApp,
   useWhatsAppBackfillPhones,
 } from "./admin/useAdminWhatsApp";

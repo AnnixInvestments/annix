@@ -1665,7 +1665,7 @@ class AdminApiClient {
     userId: number,
     payload: UpdateUserWhatsAppPayload,
   ): Promise<RbacUserWithAccessSummary> {
-    return this.request(`/admin/users/${userId}/whatsapp`, {
+    return this.request(`/admin/rbac/users/${userId}/whatsapp`, {
       method: "PATCH",
       body: JSON.stringify(payload),
     });
@@ -1674,6 +1674,16 @@ class AdminApiClient {
   async whatsAppBackfillPhones(): Promise<WhatsAppBackfillPhonesResult> {
     return this.request("/admin/whatsapp/broadcast/backfill-phones", {
       method: "POST",
+    });
+  }
+
+  async requestWhatsAppConsent(
+    userId: number,
+    channel: "email" | "whatsapp" = "email",
+  ): Promise<RequestWhatsAppConsentResult> {
+    return this.request(`/admin/rbac/users/${userId}/request-whatsapp-consent`, {
+      method: "POST",
+      body: JSON.stringify({ channel }),
     });
   }
 }
@@ -1757,6 +1767,12 @@ export interface UpdateUserWhatsAppPayload {
 export interface WhatsAppBackfillPhonesResult {
   updated: number;
   totalUsersWithPhone: number;
+}
+
+export interface RequestWhatsAppConsentResult {
+  requested: boolean;
+  channel: "email" | "whatsapp";
+  sentTo: string;
 }
 
 export interface OrbitEarlyAccessRow {
@@ -1952,6 +1968,10 @@ export interface OrbitSeekerSummary {
   lastActiveAt: string | null;
   createdAt: string | null;
   isProspect?: boolean;
+  contactPhone: string | null;
+  whatsappOptIn: boolean;
+  whatsappConsentRequestedAt: string | null;
+  whatsappPhone: string | null;
 }
 
 export interface OrbitSeekerDocument {

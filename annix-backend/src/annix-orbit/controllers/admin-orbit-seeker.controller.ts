@@ -86,6 +86,9 @@ export class AdminOrbitSeekerController {
         hasCv: prospect.hasCv,
         lastActiveAt: prospect.lastLoginAt,
         createdAt: prospect.invitedAt,
+        whatsappOptIn: prospect.whatsappOptIn,
+        whatsappConsentRequestedAt: prospect.whatsappConsentRequestedAt,
+        whatsappPhone: prospect.whatsappPhone,
         isProspect: true,
       }));
     return {
