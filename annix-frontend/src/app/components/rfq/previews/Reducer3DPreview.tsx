@@ -809,18 +809,15 @@ export default function Reducer3DPreview(props: Reducer3DPreviewProps) {
   const smallFlangeLabel = hasSmallEndFlange ? flangeTypeLabel(smallEndFlangeType) : "";
 
   const rawLargeNominalBore2 = FLANGE_DATA[largeNominalBore];
+  const rawSmallNominalBore2 = FLANGE_DATA[smallNominalBore];
 
   const largeFlangeData = rawLargeNominalBore2 || FLANGE_DATA[200];
+  const smallFlangeData = rawSmallNominalBore2 || FLANGE_DATA[200];
   const flangeCount = [hasLargeEndFlange, hasSmallEndFlange].filter(Boolean).length;
   const looseFlangeCount = [
     hasLargeEndFlange && largeEndFlangeType === "loose",
     hasSmallEndFlange && smallEndFlangeType === "loose",
   ].filter(Boolean).length;
-
-  const flangeTypeDisplay =
-    largeFlangeLabel && smallFlangeLabel && largeFlangeLabel !== smallFlangeLabel
-      ? `${largeFlangeLabel}/${smallFlangeLabel}`
-      : largeFlangeLabel || smallFlangeLabel || "S/O";
 
   if (isHidden) {
     return (
@@ -917,22 +914,45 @@ export default function Reducer3DPreview(props: Reducer3DPreviewProps) {
           )}
           {flangeCount > 0 && (
             <>
-              <div className="font-bold text-blue-800 mt-1 mb-0.5">
-                FLANGE ({flangeCount > 1 ? `${flangeCount}X_` : ""}
-                {flangeTypeDisplay})
-              </div>
               {looseFlangeCount > 0 && <div className="text-gray-700">C1: {closureLengthMm}mm</div>}
-              <div className="text-gray-700">
-                OD: {largeFlangeData.flangeOD}mm | PCD: {largeFlangeData.pcd}mm
-              </div>
-              <div className="text-gray-700">
-                Holes: {largeFlangeData.boltHoles} × Ø{largeFlangeData.holeID}mm
-              </div>
-              <div className="text-gray-700">
-                Bolts: {largeFlangeData.boltHoles} × M{largeFlangeData.boltSize} ×{" "}
-                {largeFlangeData.boltLength}mm
-              </div>
-              <div className="text-gray-700">Thickness: {largeFlangeData.thickness}mm</div>
+              {hasLargeEndFlange && (
+                <>
+                  <div className="font-bold text-blue-800 mt-1 mb-0.5">
+                    LARGE FLANGE ({largeNominalBore}NB
+                    {largeFlangeLabel ? ` ${largeFlangeLabel}` : ""})
+                  </div>
+                  <div className="text-gray-700">
+                    OD: {largeFlangeData.flangeOD}mm | PCD: {largeFlangeData.pcd}mm
+                  </div>
+                  <div className="text-gray-700">
+                    Holes: {largeFlangeData.boltHoles} × Ø{largeFlangeData.holeID}mm
+                  </div>
+                  <div className="text-gray-700">
+                    Bolts: {largeFlangeData.boltHoles} × M{largeFlangeData.boltSize} ×{" "}
+                    {largeFlangeData.boltLength}mm
+                  </div>
+                  <div className="text-gray-700">Thickness: {largeFlangeData.thickness}mm</div>
+                </>
+              )}
+              {hasSmallEndFlange && (
+                <>
+                  <div className="font-bold text-blue-800 mt-1 mb-0.5">
+                    SMALL FLANGE ({smallNominalBore}NB
+                    {smallFlangeLabel ? ` ${smallFlangeLabel}` : ""})
+                  </div>
+                  <div className="text-gray-700">
+                    OD: {smallFlangeData.flangeOD}mm | PCD: {smallFlangeData.pcd}mm
+                  </div>
+                  <div className="text-gray-700">
+                    Holes: {smallFlangeData.boltHoles} × Ø{smallFlangeData.holeID}mm
+                  </div>
+                  <div className="text-gray-700">
+                    Bolts: {smallFlangeData.boltHoles} × M{smallFlangeData.boltSize} ×{" "}
+                    {smallFlangeData.boltLength}mm
+                  </div>
+                  <div className="text-gray-700">Thickness: {smallFlangeData.thickness}mm</div>
+                </>
+              )}
               <div className="text-blue-700 font-medium">SABS 1123 T1000/3</div>
             </>
           )}

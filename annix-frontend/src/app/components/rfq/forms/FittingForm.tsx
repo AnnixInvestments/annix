@@ -381,13 +381,16 @@ function FittingFormComponent(props: FittingFormProps) {
               Additional Specs
             </h4>
             <div className="space-y-3">
-              {/* Branch Nominal Diameter - For Reducing Tees */}
+              {/* Branch Nominal Diameter - For Reducing Tees and Reducing Laterals */}
               {(specs.fittingType === "SHORT_REDUCING_TEE" ||
-                specs.fittingType === "GUSSET_REDUCING_TEE") && (
+                specs.fittingType === "GUSSET_REDUCING_TEE" ||
+                specs.fittingType === "REDUCING_LATERAL") && (
                 <div>
                   <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                     Branch Nominal Diameter (mm) *
-                    <span className="text-blue-600 text-xs ml-2">(Tee Outlet Size)</span>
+                    <span className="text-blue-600 text-xs ml-2">
+                      {isLateral ? "(Lateral Branch Size)" : "(Tee Outlet Size)"}
+                    </span>
                   </label>
                   {(() => {
                     const selectId = `fitting-branch-nb-${entry.id}`;
