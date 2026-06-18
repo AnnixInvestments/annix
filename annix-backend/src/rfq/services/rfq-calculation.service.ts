@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { BoltMassRepository } from "../../bolt-mass/bolt-mass.repository";
+import { FlangeTypeWeightService } from "../../flange-type-weight/flange-type-weight.service";
 import { NutMassRepository } from "../../nut-mass/nut-mass.repository";
 import { PipeDimension } from "../../pipe-dimension/entities/pipe-dimension.entity";
 import { BendCalculationResultDto } from "../dto/bend-calculation-result.dto";
@@ -31,6 +32,7 @@ export class RfqCalculationService {
     private boltMassRepository: BoltMassRepository,
     private nutMassRepository: NutMassRepository,
     private referenceDataCache: ReferenceDataCacheService,
+    private flangeTypeWeightService: FlangeTypeWeightService,
   ) {}
 
   async calculateStraightPipeRequirements(
@@ -149,7 +151,19 @@ export class RfqCalculationService {
         );
 
         if (flangeDimension) {
-          totalFlangeWeight = numberOfFlanges * flangeDimension.mass_kg;
+          // Prefer the authoritative per-type weight table (true weight varies
+          // by flange type /1,/2,/3,...); fall back to the type-ambiguous
+          // flange_dimensions.mass_kg only when no per-type row is found.
+          const perTypeWeight = await this.flangeTypeWeightService.flangeTypeWeightForDesignation(
+            dto.nominalBoreMm,
+            flangeDimension.pressureClass?.designation,
+            flangeDimension.standard?.code,
+          );
+          const perFlangeWeight =
+            perTypeWeight.found && perTypeWeight.weightKg !== null
+              ? perTypeWeight.weightKg
+              : flangeDimension.mass_kg;
+          totalFlangeWeight = numberOfFlanges * perFlangeWeight;
 
           if (flangeDimension.bolt) {
             const estimatedBoltLengthMm = Math.max(50, flangeDimension.b * 3);
@@ -374,7 +388,19 @@ export class RfqCalculationService {
             dto.flangePressureClassId,
           )
         : null;
-    const flangeMassKg = flangeDim?.mass_kg || 0;
+    let flangeMassKg = flangeDim?.mass_kg || 0;
+    if (flangeDim) {
+      // Prefer the per-type weight table; fall back to mass_kg when no
+      // per-type row is found (unchanged number in that case).
+      const perTypeWeight = await this.flangeTypeWeightService.flangeTypeWeightForDesignation(
+        dto.nominalBoreMm,
+        flangeDim.pressureClass?.designation,
+        flangeDim.standard?.code,
+      );
+      if (perTypeWeight.found && perTypeWeight.weightKg !== null) {
+        flangeMassKg = perTypeWeight.weightKg;
+      }
+    }
     const flangeWeight = flangeMassKg * numberOfFlanges;
 
     const nbLookup = this.referenceDataCache.nbNpsLookupByNb(dto.nominalBoreMm);

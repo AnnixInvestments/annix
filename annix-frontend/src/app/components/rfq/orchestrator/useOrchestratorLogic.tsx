@@ -42,16 +42,32 @@ export interface Props {
 // even though the backend's per-item loop offers no streaming
 // progress signal. Pure local state — mounted/unmounted purely by
 // the `visible` prop so the timer resets cleanly between attempts.
+function SubmitSpinner({ className }: { className: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" aria-hidden="true">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+      />
+    </svg>
+  );
+}
+
 export function SubmissionProgressPopup(props: { visible: boolean; itemCount: number }) {
   const { visible, itemCount } = props;
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [minimized, setMinimized] = useState(false);
 
   useEffect(() => {
     if (!visible) {
       setElapsedSeconds(0);
       return;
     }
+    // Each submission starts expanded; the user can minimize it afterwards.
     setElapsedSeconds(0);
+    setMinimized(false);
     const interval = setInterval(() => {
       setElapsedSeconds((s) => s + 1);
     }, 1000);
@@ -64,36 +80,57 @@ export function SubmissionProgressPopup(props: { visible: boolean; itemCount: nu
     .toString()
     .padStart(2, "0");
   const ss = (elapsedSeconds % 60).toString().padStart(2, "0");
+  const itemLabel = `${itemCount.toLocaleString()} item${itemCount === 1 ? "" : "s"}`;
+
+  // Minimized: a non-blocking corner badge so the user can keep using the tab
+  // while a large BOQ submission continues. Click to re-expand.
+  if (minimized) {
+    return (
+      <button
+        type="button"
+        onClick={() => setMinimized(false)}
+        className="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-lg bg-white px-4 py-3 shadow-2xl ring-1 ring-gray-200 hover:ring-blue-300"
+        aria-label="Submitting RFQ in progress — click to expand"
+      >
+        <SubmitSpinner className="w-5 h-5 animate-spin text-blue-600" />
+        <span className="text-left">
+          <span className="block text-sm font-semibold text-gray-900">Submitting RFQ…</span>
+          <span className="block text-xs text-gray-500">
+            {itemLabel} · {mm}:{ss}
+          </span>
+        </span>
+      </button>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full mx-4">
-        <div className="flex items-center justify-center mb-6">
+      <div className="relative bg-white rounded-lg shadow-2xl p-8 max-w-md w-full mx-4">
+        <button
+          type="button"
+          onClick={() => setMinimized(true)}
+          className="absolute top-3 right-3 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+          aria-label="Minimize — submission continues in the background"
+          title="Minimize — submission keeps running"
+        >
           <svg
-            className="w-12 h-12 animate-spin text-blue-600"
+            className="w-5 h-5"
             fill="none"
             viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
             aria-hidden="true"
           >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            />
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            />
+            <path strokeLinecap="round" d="M5 12h14" />
           </svg>
+        </button>
+        <div className="flex items-center justify-center mb-6">
+          <SubmitSpinner className="w-12 h-12 animate-spin text-blue-600" />
         </div>
         <h2 className="text-xl font-semibold text-gray-900 text-center mb-2">Submitting RFQ</h2>
         <p className="text-sm text-gray-600 text-center mb-4">
-          Processing {itemCount.toLocaleString()} item{itemCount === 1 ? "" : "s"}. Large bills of
-          quantities can take several minutes — please keep this tab open.
+          Processing {itemLabel}. Large bills of quantities can take several minutes — please keep
+          this tab open. You can minimize this and keep working.
         </p>
         <div className="bg-gray-50 rounded p-3 text-center">
           <div className="text-xs uppercase tracking-wide text-gray-500">Elapsed</div>

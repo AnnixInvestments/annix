@@ -760,6 +760,11 @@ export async function submitBoqForRfq(
   allBnw: BnwSetWeightRecord[],
   allGaskets: GasketWeightRecord[],
   boqApi: any,
+  showToast?: (
+    message: string,
+    type?: "success" | "error" | "warning" | "info",
+    duration?: number,
+  ) => void,
 ) {
   const rawProjectName = rfqData.projectName;
   const boq = await boqApi.create({
@@ -789,6 +794,17 @@ export async function submitBoqForRfq(
   log.debug(
     `BOQ submitted: ${submitResult.sectionsCreated} sections, ${submitResult.suppliersNotified} suppliers notified`,
   );
+
+  // Guard: a BOQ can submit successfully yet match no suppliers (none active /
+  // none with a capability for its sections), so nobody is notified to quote it.
+  // Surface that instead of letting it pass silently as a normal submission.
+  if (submitResult.suppliersNotified === 0) {
+    showToast?.(
+      "Your RFQ was submitted, but no matching suppliers are set up to quote it yet, so none have been notified. Our team will follow up to engage suppliers.",
+      "warning",
+      8000,
+    );
+  }
 
   return boq;
 }

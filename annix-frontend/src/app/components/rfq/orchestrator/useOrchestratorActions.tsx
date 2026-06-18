@@ -812,6 +812,7 @@ export function useOrchestratorActions(deps: OrchestratorActionsDeps) {
             allBnw,
             allGaskets,
             boqApi,
+            showToast,
           );
         } catch (boqError) {
           log.error("Failed to create/submit BOQ:", boqError);
@@ -920,6 +921,7 @@ export function useOrchestratorActions(deps: OrchestratorActionsDeps) {
           allBnw,
           allGaskets,
           boqApi,
+          showToast,
         );
       }
 
@@ -983,6 +985,7 @@ export function useOrchestratorActions(deps: OrchestratorActionsDeps) {
           allBnw,
           allGaskets,
           boqApi,
+          showToast,
         );
       }
       showToast("BOQ re-sent to suppliers successfully.", "success");

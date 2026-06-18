@@ -33,6 +33,7 @@ import { FlangePressureClass } from "../flange-pressure-class/entities/flange-pr
 import { FlangePressureClassSchema } from "../flange-pressure-class/schemas/flange-pressure-class.schema";
 import { FlangeStandard } from "../flange-standard/entities/flange-standard.entity";
 import { FlangeStandardSchema } from "../flange-standard/schemas/flange-standard.schema";
+import { FlangeTypeWeightModule } from "../flange-type-weight/flange-type-weight.module";
 import { isMongoDriver } from "../lib/persistence/database-driver";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
 import { NbNpsLookup } from "../nb-nps-lookup/entities/nb-nps-lookup.entity";
@@ -166,6 +167,7 @@ import { PostgresValveRfqRepository } from "./valve-rfq.repository.postgres";
     forwardRef(() => CustomerModule),
     EmailModule,
     FittingModule,
+    FlangeTypeWeightModule,
     ...(isMongoDriver()
       ? [
           MongooseModule.forFeature([
@@ -247,7 +249,8 @@ import { PostgresValveRfqRepository } from "./valve-rfq.repository.postgres";
         ]),
     MulterModule.register({
       limits: {
-        fileSize: 50 * 1024 * 1024, // 50 MB
+        // 50 MB
+        fileSize: 50 * 1024 * 1024,
       },
     }),
   ],

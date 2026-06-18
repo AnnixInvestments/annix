@@ -2,7 +2,10 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { FlangeWeightTestCase, testScenarios } from "../test/flange-data-test-scenarios";
 import { FlangeTypeWeight } from "./entities/flange-type-weight.entity";
 import { FlangeTypeWeightRepository } from "./flange-type-weight.repository";
-import { FlangeTypeWeightService } from "./flange-type-weight.service";
+import {
+  FlangeTypeWeightService,
+  flangeTypeCodeFromDesignation,
+} from "./flange-type-weight.service";
 
 describe("FlangeTypeWeightService", () => {
   let service: FlangeTypeWeightService;
@@ -88,6 +91,96 @@ describe("FlangeTypeWeightService", () => {
       await service.flangeTypeWeight(50, "PN10", null, "WN");
 
       expect(mockRepository.findFlangeTypeWeight).toHaveBeenCalledWith(50, "PN10", "WN", null);
+    });
+  });
+
+  describe("flangeTypeCodeFromDesignation", () => {
+    it("derives the /type suffix for SABS 1123 designations", () => {
+      expect(flangeTypeCodeFromDesignation("1000/3", "SABS 1123")).toBe("/3");
+      expect(flangeTypeCodeFromDesignation("600/1", "SANS 1123")).toBe("/1");
+    });
+
+    it("derives the /type suffix for BS 4504 designations", () => {
+      expect(flangeTypeCodeFromDesignation("10/3", "BS 4504")).toBe("/3");
+    });
+
+    it("returns null for non-SANS / non-BS4504 standards", () => {
+      expect(flangeTypeCodeFromDesignation("Class 150", "ASME B16.5")).toBeNull();
+    });
+
+    it("returns null when the designation has no /type suffix", () => {
+      expect(flangeTypeCodeFromDesignation("1000", "SABS 1123")).toBeNull();
+    });
+
+    it("returns null for missing inputs", () => {
+      expect(flangeTypeCodeFromDesignation(null, "SABS 1123")).toBeNull();
+      expect(flangeTypeCodeFromDesignation("1000/3", null)).toBeNull();
+    });
+  });
+
+  describe("flangeTypeWeightForDesignation", () => {
+    it("returns the per-type weight when a row exists (preferred over mass_kg)", async () => {
+      mockRepository.findFlangeTypeWeight.mockResolvedValue({
+        weight_kg: 100.0,
+        flangeStandard: { code: "SABS 1123" },
+      } as FlangeTypeWeight);
+
+      const result = await service.flangeTypeWeightForDesignation(1000, "1000/3", "SABS 1123");
+
+      expect(result.found).toBe(true);
+      expect(result.weightKg).toBe(100.0);
+      // The combined designation is passed through as pressure_class and the
+      // derived /3 suffix as the flange_type_code.
+      expect(mockRepository.findFlangeTypeWeight).toHaveBeenCalledWith(
+        1000,
+        "1000/3",
+        "/3",
+        "SABS 1123",
+      );
+    });
+
+    it("returns found=false (mass_kg fallback) when no per-type row exists", async () => {
+      mockRepository.findFlangeTypeWeight.mockResolvedValue(null);
+
+      const result = await service.flangeTypeWeightForDesignation(1000, "1000/3", "SABS 1123");
+
+      expect(result.found).toBe(false);
+      expect(result.weightKg).toBeNull();
+    });
+
+    it("returns found=false WITHOUT querying when no type code can be derived", async () => {
+      const result = await service.flangeTypeWeightForDesignation(100, "Class 150", "ASME B16.5");
+
+      expect(result.found).toBe(false);
+      expect(result.weightKg).toBeNull();
+      expect(mockRepository.findFlangeTypeWeight).not.toHaveBeenCalled();
+    });
+
+    it("falls back to the standard-agnostic (null) row when no standard-specific row exists", async () => {
+      // Production type-weight rows carry a null flange_standard_id, so the
+      // standard-specific lookup misses and the resolver must retry with null.
+      mockRepository.findFlangeTypeWeight
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ weight_kg: 4.37 } as never);
+
+      const result = await service.flangeTypeWeightForDesignation(125, "1000/3", "SABS 1123");
+
+      expect(result.found).toBe(true);
+      expect(result.weightKg).toBe(4.37);
+      expect(mockRepository.findFlangeTypeWeight).toHaveBeenNthCalledWith(
+        1,
+        125,
+        "1000/3",
+        "/3",
+        "SABS 1123",
+      );
+      expect(mockRepository.findFlangeTypeWeight).toHaveBeenNthCalledWith(
+        2,
+        125,
+        "1000/3",
+        "/3",
+        null,
+      );
     });
   });
 

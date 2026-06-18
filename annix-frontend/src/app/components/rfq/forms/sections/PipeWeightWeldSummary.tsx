@@ -641,8 +641,18 @@ function WeldCard(props: { entry: any; specs: any; nbToOdMap: Record<number, num
   const totalSpigotWelds = isSpigotPipe && spigotNb > 0 ? spigotCount * numPipes : 0;
   const spigotWeldLengthM = (spigotCircumferenceMm * totalSpigotWelds) / 1000;
 
-  const totalWelds = totalFlangeWelds + totalSpigotWelds;
-  const totalWeldLengthM = flangeWeldLengthM + tackWeldLengthM + spigotWeldLengthM;
+  // Spigot flange attachment welds: a slip-on (FAE) / rotating (RF) flange on
+  // each spigot is fillet-welded inside + outside (2 passes per flanged spigot).
+  // Previously uncounted, undercounting weld length for flanged spigots (#358).
+  const rawSpigotFlangeConfig = entry.specs.spigotFlangeConfig;
+  const spigotFlangeConfig = rawSpigotFlangeConfig || "PE";
+  const spigotHasFlange = isSpigotPipe && spigotNb > 0 && spigotFlangeConfig !== "PE";
+  const totalSpigotFlangeWelds = spigotHasFlange ? spigotCount * numPipes : 0;
+  const spigotFlangeWeldLengthM = (spigotCircumferenceMm * 2 * totalSpigotFlangeWelds) / 1000;
+
+  const totalWelds = totalFlangeWelds + totalSpigotWelds + totalSpigotFlangeWelds;
+  const totalWeldLengthM =
+    flangeWeldLengthM + tackWeldLengthM + spigotWeldLengthM + spigotFlangeWeldLengthM;
 
   if (totalWelds === 0 && totalTackWeldEnds === 0) return null;
 
@@ -676,6 +686,12 @@ function WeldCard(props: { entry: any; specs: any; nbToOdMap: Record<number, num
           <p>
             {totalSpigotWelds} spigot x {spigotCircumferenceMm.toFixed(0)}mm ={" "}
             {spigotWeldLengthM.toFixed(2)} l/m
+          </p>
+        )}
+        {totalSpigotFlangeWelds > 0 && (
+          <p>
+            {totalSpigotFlangeWelds} spigot flange x 2x{spigotCircumferenceMm.toFixed(0)}mm ={" "}
+            {spigotFlangeWeldLengthM.toFixed(2)} l/m
           </p>
         )}
         {totalTackWeldEnds > 0 && (

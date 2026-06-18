@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
+import { FlangeTypeWeightService } from "../flange-type-weight/flange-type-weight.service";
 import { PipeDimension } from "../pipe-dimension/entities/pipe-dimension.entity";
 import { BendCenterToFaceRepository } from "./bend-center-to-face.repository";
 import { BendCenterToFace } from "./entities/bend-center-to-face.entity";
 
 @Injectable()
 export class BendCenterToFaceService {
-  constructor(private readonly bendCenterToFaceRepository: BendCenterToFaceRepository) {}
+  constructor(
+    private readonly bendCenterToFaceRepository: BendCenterToFaceRepository,
+    private readonly flangeTypeWeightService: FlangeTypeWeightService,
+  ) {}
 
   async findAll(): Promise<BendCenterToFace[]> {
     return this.bendCenterToFaceRepository.findAllOrdered();
@@ -140,7 +144,18 @@ export class BendCenterToFaceService {
         );
 
         if (flangeDimension) {
-          flangeWeight = numberOfFlanges * (flangeDimension.mass_kg || 0);
+          // Prefer the per-type weight table; fall back to the type-ambiguous
+          // flange_dimensions.mass_kg only when no per-type row is found.
+          const perTypeWeight = await this.flangeTypeWeightService.flangeTypeWeightForDesignation(
+            nominalBoreMm,
+            flangeDimension.pressureClass?.designation,
+            flangeDimension.standard?.code,
+          );
+          const perFlangeWeight =
+            perTypeWeight.found && perTypeWeight.weightKg !== null
+              ? perTypeWeight.weightKg
+              : flangeDimension.mass_kg || 0;
+          flangeWeight = numberOfFlanges * perFlangeWeight;
           numberOfFlangeWelds = numberOfFlanges;
 
           const weldCircumference = Math.PI * (nominalBoreMm / 1000);

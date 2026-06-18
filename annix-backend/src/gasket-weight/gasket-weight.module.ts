@@ -5,6 +5,7 @@ import { FlangeDimension } from "../flange-dimension/entities/flange-dimension.e
 import { FlangeDimensionSchema } from "../flange-dimension/schemas/flange-dimension.schema";
 import { FlangePressureClassSchema } from "../flange-pressure-class/schemas/flange-pressure-class.schema";
 import { FlangeStandardSchema } from "../flange-standard/schemas/flange-standard.schema";
+import { FlangeTypeWeightModule } from "../flange-type-weight/flange-type-weight.module";
 import { isMongoDriver } from "../lib/persistence/database-driver";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
 import { NominalOutsideDiameterMmSchema } from "../nominal-outside-diameter-mm/schemas/nominal-outside-diameter-mm.schema";
@@ -18,6 +19,7 @@ import { GasketWeightSchema } from "./schemas/gasket-weight.schema";
 
 @Module({
   imports: [
+    FlangeTypeWeightModule,
     ...(isMongoDriver()
       ? [
           MongooseModule.forFeature([

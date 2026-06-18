@@ -3,6 +3,7 @@ import { MongooseModule } from "@nestjs/mongoose";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { FlangeDimension } from "../flange-dimension/entities/flange-dimension.entity";
 import { FlangeDimensionSchema } from "../flange-dimension/schemas/flange-dimension.schema";
+import { FlangeTypeWeightModule } from "../flange-type-weight/flange-type-weight.module";
 import { isMongoDriver } from "../lib/persistence/database-driver";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
 import { NominalOutsideDiameterMmSchema } from "../nominal-outside-diameter-mm/schemas/nominal-outside-diameter-mm.schema";
@@ -18,6 +19,7 @@ import { BendCenterToFaceSchema } from "./schemas/bend-center-to-face.schema";
 
 @Module({
   imports: [
+    FlangeTypeWeightModule,
     ...(isMongoDriver()
       ? [
           MongooseModule.forFeature([

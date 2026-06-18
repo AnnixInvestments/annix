@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { FlangeTypeWeightService } from "../flange-type-weight/flange-type-weight.service";
 import { GasketWeight } from "./entities/gasket-weight.entity";
 import { GasketWeightRepository } from "./gasket-weight.repository";
 
@@ -25,7 +26,10 @@ export interface BoltSetInfo {
 
 @Injectable()
 export class GasketWeightService {
-  constructor(private readonly gasketWeightRepository: GasketWeightRepository) {}
+  constructor(
+    private readonly gasketWeightRepository: GasketWeightRepository,
+    private readonly flangeTypeWeightService: FlangeTypeWeightService,
+  ) {}
 
   async findAll(): Promise<GasketWeight[]> {
     return this.gasketWeightRepository.findAllGaskets();
@@ -77,9 +81,21 @@ export class GasketWeightService {
       };
     }
 
+    // Prefer the authoritative per-type weight table (true weight varies by
+    // flange type /1,/2,/3,...); fall back to the type-ambiguous
+    // flange_dimensions.mass_kg only when no per-type row is found.
+    const perTypeWeight = await this.flangeTypeWeightService.flangeTypeWeightForDesignation(
+      nominalBoreMm,
+      pressureClass,
+      flangeStandardCode ?? null,
+    );
+
     return {
       found: true,
-      weightKg: flangeDimension.mass_kg,
+      weightKg:
+        perTypeWeight.found && perTypeWeight.weightKg !== null
+          ? perTypeWeight.weightKg
+          : flangeDimension.mass_kg,
       nominalBoreMm,
       pressureClass,
     };

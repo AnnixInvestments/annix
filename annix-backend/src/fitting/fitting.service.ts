@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { BoltMassRepository } from "../bolt-mass/bolt-mass.repository";
 import { FlangeDimensionRepository } from "../flange-dimension/flange-dimension.repository";
+import { FlangeTypeWeightService } from "../flange-type-weight/flange-type-weight.service";
 import { STEEL_DENSITY_KG_M3 } from "../lib/steel-constants";
 import { NbNpsLookupRepository } from "../nb-nps-lookup/nb-nps-lookup.repository";
 import { NutMassRepository } from "../nut-mass/nut-mass.repository";
@@ -26,7 +27,36 @@ export class FittingService {
     private boltMassRepository: BoltMassRepository,
     private nutMassRepository: NutMassRepository,
     private steelSpecRepository: SteelSpecificationRepository,
+    private flangeTypeWeightService: FlangeTypeWeightService,
   ) {}
+
+  // Prefer the authoritative per-type flange weight table; fall back to the
+  // type-ambiguous flange_dimensions.mass_kg only when no per-type row is
+  // found (so the number is unchanged in that case). The fitting DTO carries
+  // only standard/pressure-class IDs, so resolve the standard code and
+  // pressure-class designation (which embeds the /type suffix for SABS 1123 /
+  // BS 4504) from the flange-dimension reference tables.
+  private async perFlangeWeightKg(
+    nominalDiameterMm: number,
+    flangeStandardId: number,
+    flangePressureClassId: number,
+    massKgFallback: number,
+  ): Promise<number> {
+    const [standard, pressureClass] = await Promise.all([
+      this.flangeDimensionRepository.findStandardById(flangeStandardId),
+      this.flangeDimensionRepository.findPressureClassById(flangePressureClassId),
+    ]);
+
+    const perTypeWeight = await this.flangeTypeWeightService.flangeTypeWeightForDesignation(
+      nominalDiameterMm,
+      pressureClass?.designation,
+      standard?.code,
+    );
+
+    return perTypeWeight.found && perTypeWeight.weightKg !== null
+      ? perTypeWeight.weightKg
+      : massKgFallback;
+  }
 
   async getFittingDimensions(
     standard: FittingStandard,
@@ -220,9 +250,11 @@ export class FittingService {
         // Triangle area = 0.5 × leg × leg (isoceles right triangle at 45°)
         const gussetAreaMm2 = 0.5 * gussetLegMm * gussetLegMm;
         const gussetVolumeMm3 = gussetAreaMm2 * gussetThicknessMm;
-        const gussetVolumeDm3 = gussetVolumeMm3 / 1e6; // Convert mm³ to dm³
+        // Convert mm³ to dm³
+        const gussetVolumeDm3 = gussetVolumeMm3 / 1e6;
 
-        const steelDensity = 7.85; // kg/dm³
+        // kg/dm³
+        const steelDensity = 7.85;
         const singleGussetWeight = gussetVolumeDm3 * steelDensity;
 
         // 2 gussets per tee
@@ -244,7 +276,8 @@ export class FittingService {
     const numberOfFlangesPerFitting = 3;
     const numberOfFlanges = numberOfFlangesPerFitting * dto.quantityValue;
     const numberOfFlangeWelds = numberOfFlanges;
-    const numberOfTeeWelds = dto.quantityValue; // 1 tee weld per fitting
+    // 1 tee weld per fitting
+    const numberOfTeeWelds = dto.quantityValue;
 
     // Calculate weld lengths - 2 welds per flange (inside + outside)
     const circumferenceM = (Math.PI * outsideDiameterMm) / 1000;
@@ -272,7 +305,13 @@ export class FittingService {
           );
 
         if (flangeDimension) {
-          totalFlangeWeight = numberOfFlanges * flangeDimension.mass_kg;
+          const perFlangeWeight = await this.perFlangeWeightKg(
+            dto.nominalDiameterMm,
+            dto.flangeStandardId,
+            dto.flangePressureClassId,
+            flangeDimension.mass_kg,
+          );
+          totalFlangeWeight = numberOfFlanges * perFlangeWeight;
 
           if (flangeDimension.bolt) {
             const estimatedBoltLengthMm = Math.max(50, flangeDimension.b * 3);
@@ -368,19 +407,17 @@ export class FittingService {
 
     // Estimate fitting weight based on center-to-face and nominal diameter
     // This is a simplified calculation - in reality, exact volumes would be used
-    // Formula: C/F length × cross-section area × shape factor
+    // Formula: C/F length (mm->m) × π × (OD mm->m)² × 0.5 tee/cross/lateral shape factor
     const estimatedVolumeM3 =
-      (fittingDimensions.centreToFaceCMm / 1000) * // mm to m
-      Math.PI *
-      (outsideDiameterMm / 1000) ** 2 * // (mm to m)²
-      0.5; // factor for tee/cross/lateral shape
+      (fittingDimensions.centreToFaceCMm / 1000) * Math.PI * (outsideDiameterMm / 1000) ** 2 * 0.5;
     const fittingWeight = estimatedVolumeM3 * steelDensityKgM3 * dto.quantityValue;
 
     // For SABS62, typically 3 flanges for tees/crosses/laterals
     const numberOfFlangesPerFitting = 3;
     const numberOfFlanges = numberOfFlangesPerFitting * dto.quantityValue;
     const numberOfFlangeWelds = numberOfFlanges;
-    const numberOfTeeWelds = 0; // SABS62 are standard fittings, no fabrication welds
+    // SABS62 are standard fittings, no fabrication welds
+    const numberOfTeeWelds = 0;
 
     // Calculate weld lengths - 2 welds per flange (inside + outside)
     const circumferenceM = (Math.PI * outsideDiameterMm) / 1000;
@@ -425,7 +462,8 @@ export class FittingService {
         if (pipeDimension.mass_kgm && pipeDimension.mass_kgm > 0) {
           pipeWeightPerMeter = pipeDimension.mass_kgm;
         } else {
-          const steelDensity = 7.85; // kg/dm³ - used with /1000 for pipe weight formula
+          // kg/dm³ - used with /1000 for pipe weight formula
+          const steelDensity = 7.85;
           pipeWeightPerMeter =
             (Math.PI *
               pipeDimension.wall_thickness_mm *
@@ -475,7 +513,13 @@ export class FittingService {
           );
 
         if (flangeDimension) {
-          totalFlangeWeight = numberOfFlanges * flangeDimension.mass_kg;
+          const perFlangeWeight = await this.perFlangeWeightKg(
+            dto.nominalDiameterMm,
+            dto.flangeStandardId,
+            dto.flangePressureClassId,
+            flangeDimension.mass_kg,
+          );
+          totalFlangeWeight = numberOfFlanges * perFlangeWeight;
 
           if (flangeDimension.bolt) {
             const estimatedBoltLengthMm = Math.max(50, flangeDimension.b * 3);

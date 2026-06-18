@@ -14,6 +14,7 @@ import { PostgresFlangeDimensionRepository } from "../flange-dimension/flange-di
 import { FlangeDimensionSchema } from "../flange-dimension/schemas/flange-dimension.schema";
 import { FlangePressureClass } from "../flange-pressure-class/entities/flange-pressure-class.entity";
 import { FlangeStandard } from "../flange-standard/entities/flange-standard.entity";
+import { FlangeTypeWeightModule } from "../flange-type-weight/flange-type-weight.module";
 import { isMongoDriver } from "../lib/persistence/database-driver";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
 import { NbNpsLookup } from "../nb-nps-lookup/entities/nb-nps-lookup.entity";
@@ -57,6 +58,7 @@ import { FittingSchema } from "./schemas/fitting.schema";
 
 @Module({
   imports: [
+    FlangeTypeWeightModule,
     ...(isMongoDriver()
       ? [
           MongooseModule.forFeature([

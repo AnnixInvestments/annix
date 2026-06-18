@@ -2,6 +2,7 @@ import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { BoltMassRepository } from "../bolt-mass/bolt-mass.repository";
 import { FlangeDimensionRepository } from "../flange-dimension/flange-dimension.repository";
+import { FlangeTypeWeightService } from "../flange-type-weight/flange-type-weight.service";
 import { NbNpsLookupRepository } from "../nb-nps-lookup/nb-nps-lookup.repository";
 import { NutMassRepository } from "../nut-mass/nut-mass.repository";
 import { PipeDimensionRepository } from "../pipe-dimension/pipe-dimension.repository";
@@ -38,6 +39,12 @@ describe("FittingService", () => {
 
   const mockFlangeDimensionRepository = {
     findByNominalDiameterStandardAndPressureClassWithBolt: jest.fn(),
+    findStandardById: jest.fn(),
+    findPressureClassById: jest.fn(),
+  };
+
+  const mockFlangeTypeWeightService = {
+    flangeTypeWeightForDesignation: jest.fn(),
   };
 
   const mockBoltMassRepository = {
@@ -70,6 +77,7 @@ describe("FittingService", () => {
         { provide: BoltMassRepository, useValue: mockBoltMassRepository },
         { provide: NutMassRepository, useValue: mockNutMassRepository },
         { provide: SteelSpecificationRepository, useValue: mockSteelSpecRepository },
+        { provide: FlangeTypeWeightService, useValue: mockFlangeTypeWeightService },
       ],
     }).compile();
 
@@ -191,6 +199,60 @@ describe("FittingService", () => {
       await expect(
         service.calculateFitting({ ...baseDto, scheduleNumber: "WT9.9" }),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe("flange weight source (mass_kg vs per-type table)", () => {
+    const flangeDto = {
+      fittingStandard: FittingStandard.SABS62,
+      fittingType: FittingType.EQUAL_TEE,
+      nominalDiameterMm: 100,
+      quantityValue: 1,
+      flangeStandardId: 1,
+      flangePressureClassId: 2,
+    } as CalculateFittingDto;
+
+    beforeEach(() => {
+      // SABS62 path: fitting dimensions + OD lookup, no schedule/pipe needed.
+      mockSabs62Repository.findByTypeAndDiameter.mockResolvedValue({ centreToFaceCMm: 150 });
+      mockNbNpsLookupRepository.findByNbMm.mockResolvedValue({ outside_diameter_mm: 114.3 });
+      mockFlangeDimensionRepository.findByNominalDiameterStandardAndPressureClassWithBolt.mockResolvedValue(
+        { mass_kg: 3.55, num_holes: 4 },
+      );
+      mockFlangeDimensionRepository.findStandardById.mockResolvedValue({ code: "SABS 1123" });
+      mockFlangeDimensionRepository.findPressureClassById.mockResolvedValue({
+        designation: "1000/3",
+      });
+    });
+
+    it("uses the per-type weight (NOT mass_kg) when a per-type row exists", async () => {
+      // mass_kg is 3.55, but the authoritative per-type table says 5.0.
+      mockFlangeTypeWeightService.flangeTypeWeightForDesignation.mockResolvedValue({
+        found: true,
+        weightKg: 5.0,
+      });
+
+      const result = await service.calculateFitting(flangeDto);
+
+      // 3 flanges per SABS62 fitting × 5.0 (per-type) = 15.0
+      expect(result.flangeWeight).toBe(15);
+      expect(mockFlangeTypeWeightService.flangeTypeWeightForDesignation).toHaveBeenCalledWith(
+        100,
+        "1000/3",
+        "SABS 1123",
+      );
+    });
+
+    it("falls back to mass_kg (unchanged number) when no per-type row exists", async () => {
+      mockFlangeTypeWeightService.flangeTypeWeightForDesignation.mockResolvedValue({
+        found: false,
+        weightKg: null,
+      });
+
+      const result = await service.calculateFitting(flangeDto);
+
+      // 3 flanges × 3.55 (mass_kg fallback) = 10.65 — identical to pre-change.
+      expect(result.flangeWeight).toBe(10.65);
     });
   });
 });
