@@ -30,3 +30,20 @@ function snapshot(): boolean {
 export function useSeekerTourActive(): boolean {
   return useSyncExternalStore(subscribe, snapshot, () => false);
 }
+
+// A page (e.g. the dashboard once its first-run popups close, or the plans page
+// during onboarding) can ask Nix to launch a guided walkthrough by key. The
+// SeekerAssistant in the seeker layout owns the tour runner and listens here, so
+// the request survives the page that fired it navigating away.
+const tourRequestListeners = new Set<(key: string) => void>();
+
+export function requestSeekerTour(key: string): void {
+  tourRequestListeners.forEach((listener) => listener(key));
+}
+
+export function onSeekerTourRequested(listener: (key: string) => void): () => void {
+  tourRequestListeners.add(listener);
+  return () => {
+    tourRequestListeners.delete(listener);
+  };
+}

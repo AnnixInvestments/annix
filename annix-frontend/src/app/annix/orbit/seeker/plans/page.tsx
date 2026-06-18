@@ -1,8 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { TierPlans } from "@/app/components/orbit/TierPlans";
 import { useToast } from "@/app/components/Toast";
+import { requestSeekerTour } from "@/app/lib/annix-orbit/seekerTourSignal";
 import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
@@ -40,6 +42,23 @@ export default function SeekerPlansPage() {
     ? "bg-[var(--brand-accent,#FF8A00)] text-[#1a1a40] hover:bg-[var(--brand-accent-light,#FF9C33)]"
     : "bg-violet-600 text-white hover:bg-violet-700";
 
+  const plansTourRequestedRef = useRef(false);
+  useEffect(() => {
+    if (!inOnboarding || plansTourRequestedRef.current) {
+      return;
+    }
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (window.sessionStorage.getItem("seeker-plans-onboarding-shown")) {
+      return;
+    }
+    plansTourRequestedRef.current = true;
+    window.sessionStorage.setItem("seeker-plans-onboarding-shown", "1");
+    requestSeekerTour("plans-onboarding");
+  }, [inOnboarding]);
+
   const handleContinue = async () => {
     await completeOnboarding.mutateAsync().catch(() => {});
     router.push("/annix/orbit/seeker/dashboard");
@@ -74,7 +93,7 @@ export default function SeekerPlansPage() {
         </p>
       </div>
 
-      <div className="mt-8">
+      <div className="mt-8" data-nix-target="seeker-plans-tiers">
         {isLoading ? (
           <p className="text-sm text-white/60">Loading plans…</p>
         ) : plans.length === 0 ? (
@@ -93,6 +112,7 @@ export default function SeekerPlansPage() {
       <div className="mt-8">
         <button
           type="button"
+          data-nix-target="seeker-plans-finish"
           onClick={handleContinue}
           disabled={completeOnboarding.isPending}
           className={`inline-flex items-center gap-1 rounded-lg px-5 py-2.5 text-sm font-semibold transition-colors disabled:opacity-60 ${finishPalette}`}

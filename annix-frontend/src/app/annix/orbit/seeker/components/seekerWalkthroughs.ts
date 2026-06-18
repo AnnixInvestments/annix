@@ -26,6 +26,73 @@ export interface SeekerWalkthrough {
 }
 
 const SEEKER_WALKTHROUGHS: Record<string, SeekerWalkthrough> = {
+  "first-run": {
+    key: "first-run",
+    label: "Get started",
+    steps: [
+      {
+        kind: "instruction",
+        title: "Welcome to Annix Orbit",
+        body: "Welcome! Here's a quick tour. First stop — your **CV**. Upload it here and Nix matches you to jobs from it, and can even polish it for you.",
+        target: "cv-section",
+        route: "/annix/orbit/seeker/profile",
+      },
+      {
+        kind: "instruction",
+        title: "Complete your Work Profile",
+        body: "Next, fill in your **Work Profile** — experience, role, salary and availability. This is what employers match against.",
+        target: "work-profile-section",
+      },
+      {
+        kind: "instruction",
+        title: "Browse matched jobs",
+        body: "Once your CV's in, **Browse Jobs** shows roles matched to you. Filter by province, city and category, then apply.",
+        target: "nav-jobs",
+      },
+      {
+        kind: "instruction",
+        title: "Track your applications",
+        body: "Every job you apply to is tracked here under **Applications**, so you always know where each one stands.",
+        target: "nav-applications",
+      },
+      {
+        kind: "instruction",
+        title: "Manage your interviews",
+        body: "Book and manage interviews under **Interviews** — they sync straight to your phone or email calendar.",
+        target: "nav-interviews",
+      },
+      {
+        kind: "instruction",
+        title: "Nix is always here",
+        body: "That's the tour! Need a hand with any step, tap **Ask Nix** and I'll walk you through it. Good luck with the search!",
+        target: "ask-nix-button",
+      },
+    ],
+  },
+  "plans-onboarding": {
+    key: "plans-onboarding",
+    label: "Choosing your plan",
+    steps: [
+      {
+        kind: "instruction",
+        title: "Your plans",
+        body: "These are your plans. **Explorer** is free, and higher plans unlock sharper matching and more **Nix Job Finds**. It's all free while Annix Orbit is in testing.",
+        target: "seeker-plans-tiers",
+      },
+      {
+        kind: "instruction",
+        title: "Change any time",
+        body: "Not sure yet? Pick any plan now — you can change it any time from the **Plans** tab. No commitment.",
+        target: "nav-plans",
+      },
+      {
+        kind: "instruction",
+        title: "Finish setup",
+        body: "When you're ready, tap here to finish setup and head to your **dashboard**.",
+        target: "seeker-plans-finish",
+      },
+    ],
+  },
   "apply-for-a-job": {
     key: "apply-for-a-job",
     label: "Apply for a job",

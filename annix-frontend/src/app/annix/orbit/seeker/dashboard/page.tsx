@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
+import { requestSeekerTour } from "@/app/lib/annix-orbit/seekerTourSignal";
 import type {
   SeekerApplication,
   SeekerApplicationStatus,
@@ -85,6 +86,7 @@ export default function SeekerDashboardPage() {
   const finishOnboardingTour = () => {
     setTourStep(0);
     updatePreferences.mutate({ appGuideSeen: true });
+    requestSeekerTour("first-run");
   };
 
   const invitesData = invitesQuery.data;

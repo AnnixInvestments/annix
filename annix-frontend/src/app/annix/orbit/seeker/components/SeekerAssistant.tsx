@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { onSeekerTourRequested } from "@/app/lib/annix-orbit/seekerTourSignal";
 import type {
   IndividualProfileStatus,
   SeekerAssistantAction,
@@ -170,6 +171,21 @@ export function SeekerAssistant() {
     }
   }, [messages, pending]);
 
+  const startTourRef = useRef<(action: SeekerAssistantAction) => void>(() => {});
+  const walkthroughActiveRef = useRef(false);
+  walkthroughActiveRef.current = walkthroughSteps !== null;
+
+  useEffect(
+    () =>
+      onSeekerTourRequested((key) => {
+        if (walkthroughActiveRef.current) {
+          return;
+        }
+        startTourRef.current({ type: "walkthrough", walkthrough: key });
+      }),
+    [],
+  );
+
   function buildContext(): SeekerAssistantContext {
     const status = profileStatusQuery.data;
     const context: SeekerAssistantContext = { currentPage: currentPageLabel(pathname) };
@@ -197,6 +213,7 @@ export function SeekerAssistant() {
     setTourId((prev) => prev + 1);
     setWalkthroughSteps(steps);
   }
+  startTourRef.current = startTour;
 
   async function send(text: string) {
     const trimmed = text.trim();
@@ -305,6 +322,7 @@ export function SeekerAssistant() {
         {nudgeBubble}
         <button
           type="button"
+          data-nix-target="ask-nix-button"
           onClick={() => setOpen(true)}
           aria-label="Ask Nix"
           className="fixed bottom-5 right-5 z-[9998] flex items-center gap-2 rounded-full px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:opacity-90"
