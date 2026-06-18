@@ -14,7 +14,7 @@ export abstract class BroadcastRepository extends CrudRepository<Broadcast> {
     skip: number,
     limit: number,
   ): Promise<BroadcastPage<Broadcast>>;
-  abstract findPage(
+  abstract findBroadcastPage(
     filters: BroadcastFilterDto,
     skip: number,
     limit: number,

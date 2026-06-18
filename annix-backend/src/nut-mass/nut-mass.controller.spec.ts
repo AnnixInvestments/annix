@@ -29,6 +29,7 @@ describe("NutMassController", () => {
     findAll: jest.fn(),
     findOneWhere: jest.fn(),
     findManyWhere: jest.fn(),
+    findPage: jest.fn(),
     save: jest.fn(),
     remove: jest.fn(),
     count: jest.fn(),

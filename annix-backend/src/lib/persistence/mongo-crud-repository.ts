@@ -1,9 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type { ClientSession, Model, Schema } from "mongoose";
+import type { PaginatedResult } from "../dto/pagination-query.dto";
 import {
   CrudRepository,
   type DeepPartial,
   type EntityId,
+  type FindPageOptions,
   type PersistedEntity,
 } from "./crud-repository";
 import { nestPopulate } from "./nest-populate";
@@ -14,6 +16,10 @@ type MongoDocument = Record<string, unknown>;
 const COUNTERS_COLLECTION = "counters";
 
 const MAX_RELATION_MAPPING_DEPTH = 4;
+
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 25;
+const MAX_LIMIT = 200;
 
 const relationRefsCache = new WeakMap<Schema, Map<string, string>>();
 
@@ -304,6 +310,54 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
       .lean()
       .exec();
     return this.toDomainList(documents);
+  }
+
+  async findPage(
+    criteria: DeepPartial<Entity>,
+    options: FindPageOptions<Entity> = {},
+  ): Promise<PaginatedResult<Entity>> {
+    const page = Math.max(1, options.page ?? DEFAULT_PAGE);
+    const limit = Math.min(MAX_LIMIT, Math.max(1, options.limit ?? DEFAULT_LIMIT));
+    const finalFilter = { ...toMongoShape(criteria as MongoDocument), ...(options.filter ?? {}) };
+    const sort: Record<string, 1 | -1> | null = options.sort
+      ? Object.fromEntries(
+          Object.entries(options.sort).map(([field, direction]) => [
+            field,
+            direction === "ASC" ? 1 : -1,
+          ]),
+        )
+      : null;
+
+    const query = this.documents
+      .find(finalFilter)
+      .populate(nestPopulate(options.relations ?? []))
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .allowDiskUse(true)
+      .session(this.session)
+      .lean();
+
+    if (sort) {
+      query.sort(sort);
+    }
+    if (options.excludeFields && options.excludeFields.length > 0) {
+      query.select(options.excludeFields.map((field) => `-${field}`).join(" "));
+    } else if (options.projection && options.projection.length > 0) {
+      query.select(options.projection.join(" "));
+    }
+
+    const [documents, total] = await Promise.all([
+      query.exec(),
+      this.documents.countDocuments(finalFilter).session(this.session).exec(),
+    ]);
+
+    return {
+      items: this.toDomainList(documents),
+      total,
+      page,
+      limit,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    };
   }
 
   async save(entity: Entity): Promise<Entity> {

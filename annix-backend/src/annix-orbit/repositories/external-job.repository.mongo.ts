@@ -73,17 +73,11 @@ export class MongoExternalJobRepository
       ];
     }
 
-    const [docs, total] = await Promise.all([
-      this.documents
-        .find(filter)
-        .sort({ postedAt: -1 })
-        .skip((page - 1) * limit)
-        .limit(limit)
-        .lean()
-        .exec(),
-      this.documents.countDocuments(filter).exec(),
-    ]);
-    return { jobs: this.toDomainList(docs), total };
+    const { items, total } = await this.findPage(
+      {},
+      { page, limit, filter, sort: { postedAt: "DESC" } },
+    );
+    return { jobs: items, total };
   }
 
   async platformGlobalExternalJobs(
@@ -110,17 +104,11 @@ export class MongoExternalJobRepository
       ];
     }
 
-    const [docs, total] = await Promise.all([
-      this.documents
-        .find(filter)
-        .sort({ postedAt: -1 })
-        .skip((page - 1) * limit)
-        .limit(limit)
-        .lean()
-        .exec(),
-      this.documents.countDocuments(filter).exec(),
-    ]);
-    return { jobs: this.toDomainList(docs), total };
+    const { items, total } = await this.findPage(
+      {},
+      { page, limit, filter, sort: { postedAt: "DESC" } },
+    );
+    return { jobs: items, total };
   }
 
   async jobsWithEmbedding(
@@ -204,19 +192,11 @@ export class MongoExternalJobRepository
         { company: { $regex: options.search, $options: "i" } },
       ];
     }
-    const [docs, total] = await Promise.all([
-      this.documents
-        .find(filter)
-        .select({ embedding: 0 })
-        .sort({ postedAt: -1 })
-        .skip((page - 1) * limit)
-        .limit(limit)
-        .allowDiskUse(true)
-        .lean()
-        .exec(),
-      this.documents.countDocuments(filter).exec(),
-    ]);
-    return { jobs: this.toDomainList(docs), total };
+    const { items, total } = await this.findPage(
+      {},
+      { page, limit, filter, excludeFields: ["embedding"], sort: { postedAt: "DESC" } },
+    );
+    return { jobs: items, total };
   }
 
   async findByExternalIds(externalIds: string[], sourceId: number): Promise<ExternalJob[]> {

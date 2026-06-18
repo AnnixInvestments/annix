@@ -34,7 +34,7 @@ export class PostgresBroadcastRepository
     return { broadcasts, total };
   }
 
-  async findPage(
+  async findBroadcastPage(
     filters: BroadcastFilterDto,
     skip: number,
     limit: number,

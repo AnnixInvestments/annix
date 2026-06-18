@@ -114,7 +114,7 @@ export class BroadcastService {
     const limit = filters.limit || 20;
     const skip = (page - 1) * limit;
 
-    const { broadcasts, total } = await this.broadcastRepo.findPage(filters, skip, limit);
+    const { broadcasts, total } = await this.broadcastRepo.findBroadcastPage(filters, skip, limit);
 
     const details = await Promise.all(broadcasts.map((b) => this.broadcastDetailFromEntity(b)));
 

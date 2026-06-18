@@ -33,7 +33,7 @@ export class MongoBroadcastRepository
     return { broadcasts: this.toDomainList(rawDocs), total };
   }
 
-  async findPage(
+  async findBroadcastPage(
     filters: BroadcastFilterDto,
     skip: number,
     limit: number,
