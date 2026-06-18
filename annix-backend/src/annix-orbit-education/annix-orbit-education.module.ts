@@ -3,7 +3,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
 import { MongooseModule } from "@nestjs/mongoose";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { ANNIX_ORBIT_JWT_SECRET_DEFAULT } from "../annix-orbit/annix-orbit.constants";
+import { resolveAnnixOrbitJwtSecret } from "../annix-orbit/annix-orbit.constants";
 import { AnnixOrbitEeConsentTextVersion } from "../annix-orbit/entities/annix-orbit-ee-consent-text-version.entity";
 import { AnnixOrbitProfile } from "../annix-orbit/entities/annix-orbit-profile.entity";
 import { Candidate } from "../annix-orbit/entities/candidate.entity";
@@ -208,9 +208,7 @@ import { GuardianLinkService } from "./services/guardian-link.service";
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        secret:
-          configService.get<string>("ANNIX_ORBIT_JWT_SECRET") ??
-          configService.get<string>("CV_ASSISTANT_JWT_SECRET", ANNIX_ORBIT_JWT_SECRET_DEFAULT),
+        secret: resolveAnnixOrbitJwtSecret(configService),
         signOptions: { expiresIn: "8h" },
       }),
     }),

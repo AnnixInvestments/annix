@@ -1,6 +1,9 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { AuditService } from "../../audit/audit.service";
+import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { CompanyRepository } from "../../platform/company.repository";
 import { AppRepository, UserAppAccessRepository } from "../../rbac/rbac.repository";
+import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import type { User } from "../../user/entities/user.entity";
 import { UserRepository } from "../../user/user.repository";
 import { AnnixOrbitProfile, AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
@@ -8,6 +11,11 @@ import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile
 import { CandidateRepository } from "../repositories/candidate.repository";
 import { CandidateJobMatchRepository } from "../repositories/candidate-job-match.repository";
 import { AnnixOrbitAuthService } from "./auth.service";
+
+export interface OrbitAdminActor {
+  id: number;
+  email: string;
+}
 
 export interface OrbitAdminUserRow {
   userId: number;
@@ -67,6 +75,9 @@ export class AdminOrbitUserService {
     private readonly matchRepo: CandidateJobMatchRepository,
     private readonly appRepo: AppRepository,
     private readonly userAppAccessRepo: UserAppAccessRepository,
+    private readonly auditService: AuditService,
+    @Inject(STORAGE_SERVICE)
+    private readonly storageService: IStorageService,
   ) {}
 
   async list(params: {
@@ -247,6 +258,10 @@ export class AdminOrbitUserService {
   }
 
   async resendInvite(userId: number): Promise<void> {
+    const user = await this.userRepo.findOrbitUserById(userId);
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
     return this.authService.adminResendInvite(userId);
   }
 
@@ -258,8 +273,9 @@ export class AdminOrbitUserService {
       status?: string | null;
       tier?: string | null;
     },
+    actor: OrbitAdminActor,
   ): Promise<void> {
-    const user = await this.userRepo.findById(userId);
+    const user = await this.userRepo.findOrbitUserById(userId);
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
@@ -284,42 +300,52 @@ export class AdminOrbitUserService {
         await this.profileRepo.save(profile);
       }
     }
+
+    await this.recordAudit(actor, userId, AuditAction.USER_UPDATED, {
+      changed: Object.keys(changes).filter(
+        (key) => changes[key as keyof typeof changes] !== undefined,
+      ),
+    });
   }
 
-  async deactivate(userId: number): Promise<void> {
-    const user = await this.userRepo.findById(userId);
+  async deactivate(userId: number, actor: OrbitAdminActor): Promise<void> {
+    const user = await this.userRepo.findOrbitUserById(userId);
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
     user.status = "deactivated";
     await this.userRepo.save(user);
+    await this.recordAudit(actor, userId, AuditAction.USER_DEACTIVATED, {});
     this.logger.log(`Orbit user ${userId} deactivated`);
   }
 
-  async reactivate(userId: number): Promise<void> {
-    const user = await this.userRepo.findById(userId);
+  async reactivate(userId: number, actor: OrbitAdminActor): Promise<void> {
+    const user = await this.userRepo.findOrbitUserById(userId);
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
     user.status = "active";
     await this.userRepo.save(user);
+    await this.recordAudit(actor, userId, AuditAction.USER_REACTIVATED, {});
     this.logger.log(`Orbit user ${userId} reactivated`);
   }
 
-  async remove(userId: number): Promise<void> {
-    const user = await this.userRepo.findById(userId);
+  async remove(userId: number, actor: OrbitAdminActor): Promise<void> {
+    const user = await this.userRepo.findOrbitUserById(userId);
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
     const profile = await this.profileRepo.findByUserId(userId);
 
-    if (profile?.userType === AnnixOrbitUserType.INDIVIDUAL) {
-      const candidates = await this.candidateRepo.findByEmail(user.email);
-      const candidateIds = candidates.map((candidate) => candidate.id);
-      if (candidateIds.length > 0) {
-        await this.matchRepo.deleteForCandidates(candidateIds);
-        await Promise.all(candidates.map((candidate) => this.candidateRepo.remove(candidate)));
-      }
+    const candidates = await this.candidateRepo.findByEmail(user.email);
+    const candidateIds = candidates.map((candidate) => candidate.id);
+    if (candidateIds.length > 0) {
+      await this.matchRepo.deleteForCandidates(candidateIds);
+      await Promise.all(candidates.map((candidate) => this.candidateRepo.remove(candidate)));
+    }
+
+    if (profile) {
+      await this.eraseProfileFiles(profile);
     }
 
     const app = await this.appRepo.findByCode("annix-orbit");
@@ -334,6 +360,52 @@ export class AdminOrbitUserService {
       await this.profileRepo.remove(profile);
     }
     await this.userRepo.deleteById(userId);
+    await this.recordAudit(actor, userId, AuditAction.DELETE, {
+      email: user.email,
+      erasedCandidates: candidateIds.length,
+    });
     this.logger.log(`Orbit user ${userId} permanently deleted`);
+  }
+
+  private async eraseProfileFiles(profile: AnnixOrbitProfile): Promise<void> {
+    const paths = [
+      profile.cvFilePath,
+      profile.photoFilePath,
+      profile.identityVerification?.documentFilePath ?? null,
+    ].filter((path): path is string => path != null && path.length > 0);
+
+    await Promise.all(
+      paths.map(async (path) => {
+        try {
+          await this.storageService.delete(path);
+        } catch (error) {
+          this.logger.warn(`Failed to erase profile file ${path} from storage: ${error}`);
+        }
+      }),
+    );
+  }
+
+  private async recordAudit(
+    actor: OrbitAdminActor,
+    targetUserId: number,
+    action: AuditAction,
+    metadata: Record<string, unknown>,
+  ): Promise<void> {
+    try {
+      await this.auditService.log({
+        entityType: "annix-orbit-user",
+        entityId: targetUserId,
+        action,
+        userId: actor.id,
+        metadata: {
+          actorId: actor.id,
+          actorEmail: actor.email,
+          targetUserId,
+          ...metadata,
+        },
+      });
+    } catch (error) {
+      this.logger.warn(`Failed to write audit log for orbit user ${targetUserId}: ${error}`);
+    }
   }
 }

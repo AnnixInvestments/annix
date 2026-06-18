@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { ILike, In, LessThan, MoreThan, Repository } from "typeorm";
+import { ILike, In, LessThan, Like, MoreThan, Repository } from "typeorm";
 import type { QueryDeepPartialEntity } from "typeorm/query-builder/QueryPartialEntity";
 import { type DeepPartial } from "../lib/persistence/crud-repository";
 import { TypeOrmCrudRepository } from "../lib/persistence/typeorm-crud-repository";
@@ -27,6 +27,10 @@ export class PostgresUserRepository extends TypeOrmCrudRepository<User> implemen
 
   findByEmailWithRoles(email: string): Promise<User | null> {
     return this.repository.findOne({ where: { email }, relations: ["roles"] });
+  }
+
+  findOrbitUserById(id: number): Promise<User | null> {
+    return this.repository.findOne({ where: { id, appScope: Like("orbit:%") } });
   }
 
   findByIds(ids: number[]): Promise<User[]> {

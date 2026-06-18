@@ -10,6 +10,7 @@ type UserRoleLink = { userId: number; userRoleId: number };
 type UserRoleRow = { _id: number; name: string };
 
 const NON_ORBIT_SCOPE_FILTER = { appScope: { $not: /^orbit:/ } };
+const ORBIT_SCOPE_FILTER = { appScope: { $regex: /^orbit:/ } };
 
 @Injectable()
 export class MongoUserRepository extends MongoCrudRepository<User> implements UserRepository {
@@ -83,6 +84,14 @@ export class MongoUserRepository extends MongoCrudRepository<User> implements Us
   async findByIdWithRoles(id: number): Promise<User | null> {
     const doc = await this.documents.findById(id).lean().exec();
     return this.withRolesAttached(doc);
+  }
+
+  async findOrbitUserById(id: number): Promise<User | null> {
+    const doc = await this.documents
+      .findOne({ _id: id, ...ORBIT_SCOPE_FILTER })
+      .lean()
+      .exec();
+    return this.toDomain(doc);
   }
 
   async findByEmailWithRoles(email: string): Promise<User | null> {

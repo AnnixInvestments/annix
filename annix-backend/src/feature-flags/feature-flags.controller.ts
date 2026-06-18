@@ -17,14 +17,14 @@ export class FeatureFlagsController {
   constructor(private readonly featureFlagsService: FeatureFlagsService) {}
 
   @Get()
-  @ApiOperation({ summary: "Get all feature flags (public)" })
+  @ApiOperation({ summary: "Get public feature flags (allow-listed)" })
   @ApiResponse({
     status: 200,
-    description: "Feature flags returned",
+    description: "Public feature flags returned",
     type: AllFlagsResponseDto,
   })
   async allFlags(): Promise<Record<string, boolean>> {
-    return this.featureFlagsService.allFlags();
+    return this.featureFlagsService.publicFlags();
   }
 
   @Get("detailed")

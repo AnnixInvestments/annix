@@ -8,6 +8,7 @@ import {
   FEATURE_FLAG_DESCRIPTIONS,
   FEATURE_FLAGS,
   FeatureFlagKey,
+  PUBLIC_FEATURE_FLAGS,
 } from "./feature-flags.constants";
 import { FeatureFlagRepository } from "./feature-flags.repository";
 
@@ -73,6 +74,15 @@ export class FeatureFlagsService {
     const map = await this.loadCache();
     return Array.from(map.values()).reduce(
       (acc, flag) => ({ ...acc, [flag.flagKey]: flag.enabled }),
+      {} as Record<string, boolean>,
+    );
+  }
+
+  async publicFlags(): Promise<Record<string, boolean>> {
+    const flags = await this.allFlags();
+    return Object.entries(flags).reduce(
+      (acc, [key, enabled]) =>
+        PUBLIC_FEATURE_FLAGS.has(key as FeatureFlagKey) ? { ...acc, [key]: enabled } : acc,
       {} as Record<string, boolean>,
     );
   }

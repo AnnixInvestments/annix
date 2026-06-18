@@ -2,7 +2,7 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { Request } from "express";
-import { ANNIX_ORBIT_JWT_SECRET_DEFAULT } from "../../annix-orbit/annix-orbit.constants";
+import { resolveAnnixOrbitJwtSecret } from "../../annix-orbit/annix-orbit.constants";
 
 export interface FeedbackSubmitter {
   type: string;
@@ -66,10 +66,7 @@ export class FeedbackAuthGuard implements CanActivate {
   }
 
   private verifyAcrossPortals(token: string): DecodedFeedbackToken | null {
-    const orbitSecret = this.configService.get<string>(
-      "ANNIX_ORBIT_JWT_SECRET",
-      ANNIX_ORBIT_JWT_SECRET_DEFAULT,
-    );
+    const orbitSecret = resolveAnnixOrbitJwtSecret(this.configService);
     const candidateSecrets: Array<string | undefined> = [undefined, orbitSecret];
 
     return candidateSecrets.reduce<DecodedFeedbackToken | null>((found, secret) => {

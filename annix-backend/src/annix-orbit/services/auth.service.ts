@@ -21,7 +21,7 @@ import { AuthConfigService } from "../../shared/auth/auth-config.service";
 import { PasswordService } from "../../shared/auth/password.service";
 import { User } from "../../user/entities/user.entity";
 import { UserRepository } from "../../user/user.repository";
-import { ANNIX_ORBIT_JWT_SECRET_DEFAULT } from "../annix-orbit.constants";
+import { resolveAnnixOrbitJwtSecret } from "../annix-orbit.constants";
 import type { RegisterEeDisclosureDto } from "../dto/auth.dto";
 import {
   EeConsentSource,
@@ -264,7 +264,7 @@ export class AnnixOrbitAuthService {
   }
 
   private jwtSecret(): string {
-    return this.configService.get<string>("ANNIX_ORBIT_JWT_SECRET", ANNIX_ORBIT_JWT_SECRET_DEFAULT);
+    return resolveAnnixOrbitJwtSecret(this.configService);
   }
 
   /**

@@ -54,6 +54,7 @@ import { UserSchema } from "../user/schemas/user.schema";
 import { UserRepository } from "../user/user.repository";
 import { MongoUserRepository } from "../user/user.repository.mongo";
 import { PostgresUserRepository } from "../user/user.repository.postgres";
+import { resolveAnnixOrbitJwtSecret } from "./annix-orbit.constants";
 import { AnnixOrbitLicensingRegistrar } from "./annix-orbit-licensing.registrar";
 import { AnnixOrbitRecruiterLicensingRegistrar } from "./annix-orbit-recruiter-licensing.registrar";
 import { AnnixOrbitStudentLicensingRegistrar } from "./annix-orbit-student-licensing.registrar";
@@ -770,9 +771,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        secret:
-          configService.get<string>("ANNIX_ORBIT_JWT_SECRET") ??
-          configService.get<string>("CV_ASSISTANT_JWT_SECRET", "annix-orbit-jwt-secret"),
+        secret: resolveAnnixOrbitJwtSecret(configService),
         signOptions: { expiresIn: "8h" },
       }),
     }),

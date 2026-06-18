@@ -4,7 +4,7 @@ import { JwtService } from "@nestjs/jwt";
 import { Request } from "express";
 
 import { AdminAuthService } from "../../admin/admin-auth.service";
-import { ANNIX_ORBIT_JWT_SECRET_DEFAULT } from "../../annix-orbit/annix-orbit.constants";
+import { resolveAnnixOrbitJwtSecret } from "../../annix-orbit/annix-orbit.constants";
 import { CustomerAuthService } from "../../customer/customer-auth.service";
 import { SupplierAuthService } from "../../supplier/supplier-auth.service";
 
@@ -76,9 +76,7 @@ export class AnyUserAuthGuard implements CanActivate {
    * UnauthorizedException when none of them did.
    */
   private async verifyWithKnownSecrets(token: string): Promise<AnyUserJwtPayload> {
-    const orbitSecret =
-      this.configService.get<string>("ANNIX_ORBIT_JWT_SECRET") ??
-      this.configService.get<string>("CV_ASSISTANT_JWT_SECRET", ANNIX_ORBIT_JWT_SECRET_DEFAULT);
+    const orbitSecret = resolveAnnixOrbitJwtSecret(this.configService);
     const secrets = [this.configService.get<string>("JWT_SECRET"), orbitSecret].filter(
       (s): s is string => Boolean(s),
     );

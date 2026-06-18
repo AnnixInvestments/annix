@@ -8,13 +8,16 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from "@nestjs/common";
 import { IsIn, IsOptional, IsString, MaxLength } from "class-validator";
-import { AdminAuthGuard } from "../../admin/guards/admin-auth.guard";
+import { AdminAuthGuard, AdminRequest } from "../../admin/guards/admin-auth.guard";
+import { Roles } from "../../auth/roles.decorator";
+import { RolesGuard } from "../../auth/roles.guard";
 import { ApiMessageResponse, messageResponse } from "../../shared/dto";
 import { AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
-import { AdminOrbitUserService } from "../services/admin-orbit-user.service";
+import { AdminOrbitUserService, OrbitAdminActor } from "../services/admin-orbit-user.service";
 
 const USER_TYPES = [
   AnnixOrbitUserType.COMPANY,
@@ -74,9 +77,14 @@ class UpdateOrbitUserDto {
 }
 
 @Controller("admin/annix-orbit/users")
-@UseGuards(AdminAuthGuard)
+@UseGuards(AdminAuthGuard, RolesGuard)
+@Roles("admin")
 export class AdminOrbitUsersController {
   constructor(private readonly userService: AdminOrbitUserService) {}
+
+  private actor(req: AdminRequest): OrbitAdminActor {
+    return { id: req.user.id, email: req.user.email };
+  }
 
   @Get()
   async list(
@@ -115,31 +123,45 @@ export class AdminOrbitUsersController {
   async update(
     @Param("userId", ParseIntPipe) userId: number,
     @Body() dto: UpdateOrbitUserDto,
+    @Req() req: AdminRequest,
   ): Promise<ApiMessageResponse> {
-    await this.userService.update(userId, {
-      firstName: dto.firstName,
-      lastName: dto.lastName,
-      status: dto.status,
-      tier: dto.tier,
-    });
+    await this.userService.update(
+      userId,
+      {
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        status: dto.status,
+        tier: dto.tier,
+      },
+      this.actor(req),
+    );
     return messageResponse("User updated");
   }
 
   @Post(":userId/deactivate")
-  async deactivate(@Param("userId", ParseIntPipe) userId: number): Promise<ApiMessageResponse> {
-    await this.userService.deactivate(userId);
+  async deactivate(
+    @Param("userId", ParseIntPipe) userId: number,
+    @Req() req: AdminRequest,
+  ): Promise<ApiMessageResponse> {
+    await this.userService.deactivate(userId, this.actor(req));
     return messageResponse("User deactivated");
   }
 
   @Post(":userId/reactivate")
-  async reactivate(@Param("userId", ParseIntPipe) userId: number): Promise<ApiMessageResponse> {
-    await this.userService.reactivate(userId);
+  async reactivate(
+    @Param("userId", ParseIntPipe) userId: number,
+    @Req() req: AdminRequest,
+  ): Promise<ApiMessageResponse> {
+    await this.userService.reactivate(userId, this.actor(req));
     return messageResponse("User reactivated");
   }
 
   @Delete(":userId")
-  async remove(@Param("userId", ParseIntPipe) userId: number): Promise<ApiMessageResponse> {
-    await this.userService.remove(userId);
+  async remove(
+    @Param("userId", ParseIntPipe) userId: number,
+    @Req() req: AdminRequest,
+  ): Promise<ApiMessageResponse> {
+    await this.userService.remove(userId, this.actor(req));
     return messageResponse("User deleted");
   }
 }

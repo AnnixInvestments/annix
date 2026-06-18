@@ -4,7 +4,7 @@ import { JwtService } from "@nestjs/jwt";
 import { now } from "../../lib/datetime";
 import { UserAppAccessRepository } from "../../rbac/rbac.repository";
 import { UserRepository } from "../../user/user.repository";
-import { ANNIX_ORBIT_JWT_SECRET_DEFAULT } from "../annix-orbit.constants";
+import { resolveAnnixOrbitJwtSecret } from "../annix-orbit.constants";
 import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import { CandidateRepository } from "../repositories/candidate.repository";
@@ -31,10 +31,7 @@ export class AnnixOrbitAuthGuard implements CanActivate {
     }
 
     const token = authHeader.substring(7);
-    const secret = this.configService.get<string>(
-      "ANNIX_ORBIT_JWT_SECRET",
-      ANNIX_ORBIT_JWT_SECRET_DEFAULT,
-    );
+    const secret = resolveAnnixOrbitJwtSecret(this.configService);
 
     try {
       const payload = this.jwtService.verify(token, { secret });
