@@ -174,5 +174,7 @@ export const adminKeys = {
     conversations: (page: number) => [...adminKeys.whatsApp.all, "conversations", page] as const,
     messages: (conversationId: string) =>
       [...adminKeys.whatsApp.all, "messages", conversationId] as const,
+    broadcastCandidates: (appCode: string | null) =>
+      [...adminKeys.whatsApp.all, "broadcastCandidates", appCode ?? "all"] as const,
   },
 } as const;

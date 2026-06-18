@@ -24,4 +24,5 @@ export abstract class AnnixOrbitProfileRepository extends CrudRepository<AnnixOr
   // self-registered seekers on the admin Seekers / seeker-testing pages even
   // when they have no candidate record (no CV uploaded) or app-access row.
   abstract findIndividualSeekers(): Promise<AnnixOrbitProfile[]>;
+  abstract userPhonePairs(): Promise<Array<{ userId: number; phone: string }>>;
 }

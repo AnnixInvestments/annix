@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, MoreThan, Repository } from "typeorm";
+import { In, IsNull, MoreThan, Not, Repository } from "typeorm";
 import { TypeOrmCrudRepository } from "../../lib/persistence/typeorm-crud-repository";
 import { AnnixOrbitProfile, AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
 import { AnnixOrbitProfileRepository } from "./annix-orbit-profile.repository";
@@ -110,5 +110,15 @@ export class PostgresAnnixOrbitProfileRepository
       where: { userType: In([AnnixOrbitUserType.INDIVIDUAL, AnnixOrbitUserType.STUDENT]) },
       order: { createdAt: "DESC" },
     });
+  }
+
+  async userPhonePairs(): Promise<Array<{ userId: number; phone: string }>> {
+    const profiles = await this.repository.find({
+      where: { phone: Not(IsNull()) },
+      select: ["userId", "phone"],
+    });
+    return profiles
+      .filter((profile) => profile.phone != null && profile.phone !== "")
+      .map((profile) => ({ userId: profile.userId, phone: profile.phone as string }));
   }
 }

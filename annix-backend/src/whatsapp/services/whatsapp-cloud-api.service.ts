@@ -87,4 +87,53 @@ export class WhatsAppCloudApiService {
     const first = payload.messages?.[0];
     return { waMessageId: first?.id ?? null };
   }
+
+  async sendTemplate(
+    toWaId: string,
+    templateName: string,
+    languageCode: string,
+    bodyParams: string[],
+  ): Promise<CloudApiSendResult> {
+    if (!this.isConfigured()) {
+      throw new Error("WhatsApp is not configured in this environment.");
+    }
+
+    const url = `https://graph.facebook.com/${GRAPH_VERSION}/${this.phoneNumberId}/messages`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: toWaId,
+        type: "template",
+        template: {
+          name: templateName,
+          language: { code: languageCode },
+          components: [
+            {
+              type: "body",
+              parameters: bodyParams.map((text) => ({ type: "text", text })),
+            },
+          ],
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const detail = (await response.json().catch(() => ({}))) as GraphErrorBody;
+      const graphError = detail.error;
+      const code = graphError ? graphError.code : null;
+      const message = graphError?.message ?? `HTTP ${response.status}`;
+      this.logger.error(`WhatsApp template send to ${toWaId} failed: ${message} (code ${code})`);
+      throw new Error(`WhatsApp could not deliver the template message: ${message}`);
+    }
+
+    const payload = (await response.json()) as { messages?: Array<{ id?: string }> };
+    const first = payload.messages?.[0];
+    return { waMessageId: first?.id ?? null };
+  }
 }

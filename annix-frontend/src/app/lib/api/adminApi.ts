@@ -1644,6 +1644,38 @@ class AdminApiClient {
       method: "POST",
     });
   }
+
+  async whatsAppBroadcastCandidates(
+    appCode: string | null,
+  ): Promise<WhatsAppBroadcastCandidatesResponse> {
+    const query = appCode ? `?appCode=${encodeURIComponent(appCode)}` : "";
+    return this.request(`/admin/whatsapp/broadcast/candidates${query}`);
+  }
+
+  async whatsAppBroadcastSendOne(
+    payload: WhatsAppBroadcastSendOnePayload,
+  ): Promise<WhatsAppBroadcastSendOneResult> {
+    return this.request("/admin/whatsapp/broadcast/send-one", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateUserWhatsApp(
+    userId: number,
+    payload: UpdateUserWhatsAppPayload,
+  ): Promise<RbacUserWithAccessSummary> {
+    return this.request(`/admin/users/${userId}/whatsapp`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async whatsAppBackfillPhones(): Promise<WhatsAppBackfillPhonesResult> {
+    return this.request("/admin/whatsapp/broadcast/backfill-phones", {
+      method: "POST",
+    });
+  }
 }
 
 export interface WhatsAppStatus {
@@ -1684,6 +1716,47 @@ export interface WhatsAppMessage {
   sentBy: string | null;
   sentAt: string;
   createdAt: string;
+}
+
+export interface WhatsAppBroadcastCandidate {
+  userId: number;
+  firstName: string | null;
+  whatsappPhone: string;
+  whatsappOptIn: boolean;
+  appScope: string | null;
+}
+
+export interface WhatsAppBroadcastCandidatesResponse {
+  candidates: WhatsAppBroadcastCandidate[];
+  totalCandidates: number;
+  optedInCount: number;
+}
+
+export type WhatsAppBroadcastMode = "freeform" | "template";
+
+export interface WhatsAppBroadcastSendOnePayload {
+  userId: number;
+  message: string;
+  mode: WhatsAppBroadcastMode;
+  templateName?: string;
+  languageCode?: string;
+}
+
+export interface WhatsAppBroadcastSendOneResult {
+  userId: number;
+  status: "sent" | "failed";
+  waMessageId?: string;
+  error?: string;
+}
+
+export interface UpdateUserWhatsAppPayload {
+  whatsappPhone?: string | null;
+  whatsappOptIn?: boolean;
+}
+
+export interface WhatsAppBackfillPhonesResult {
+  updated: number;
+  totalUsersWithPhone: number;
 }
 
 export interface OrbitEarlyAccessRow {
@@ -2475,6 +2548,9 @@ export interface RbacUserWithAccessSummary {
   lastLoginAt: string | null;
   createdAt: string;
   appAccess: RbacAppAccessSummary[];
+  whatsappPhone?: string | null;
+  whatsappOptIn?: boolean;
+  whatsappOptInAt?: string | null;
 }
 
 export interface AssignUserAccessDto {

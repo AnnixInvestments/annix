@@ -54,6 +54,15 @@ export class UserWithAccessSummaryDto {
   @ApiProperty({ description: "Account creation timestamp" })
   createdAt: Date;
 
+  @ApiProperty({ description: "WhatsApp number in waId form", nullable: true })
+  whatsappPhone: string | null;
+
+  @ApiProperty({ description: "Whether the user consented to WhatsApp messages" })
+  whatsappOptIn: boolean;
+
+  @ApiProperty({ description: "When WhatsApp consent was granted", nullable: true })
+  whatsappOptInAt: Date | null;
+
   @ApiProperty({
     description: "Summary of app access for this user",
     type: [AppAccessSummaryDto],

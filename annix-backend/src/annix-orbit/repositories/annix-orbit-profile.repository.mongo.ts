@@ -158,4 +158,15 @@ export class MongoAnnixOrbitProfileRepository
       .exec();
     return this.toDomainList(docs);
   }
+
+  async userPhonePairs(): Promise<Array<{ userId: number; phone: string }>> {
+    const docs = await this.documents
+      .find({ phone: { $nin: [null, ""] } })
+      .select("userId phone")
+      .lean()
+      .exec();
+    return docs
+      .filter((doc) => doc.userId != null && typeof doc.phone === "string" && doc.phone !== "")
+      .map((doc) => ({ userId: doc.userId as number, phone: doc.phone as string }));
+  }
 }

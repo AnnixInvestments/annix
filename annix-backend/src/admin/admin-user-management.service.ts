@@ -16,6 +16,7 @@ import { User } from "../user/entities/user.entity";
 import { UserRepository } from "../user/user.repository";
 import { UserRoleRepository } from "../user-roles/user-roles.repository";
 import { UserSyncService } from "../user-sync/user-sync.service";
+import { normalizeWaId } from "../whatsapp/wa-id";
 import {
   AdminAuditItemDto,
   AdminLoginHistoryItemDto,
@@ -26,6 +27,7 @@ import {
   CreateAdminUserDto,
   DeactivateAdminUserDto,
   UpdateAdminRoleDto,
+  UpdateUserWhatsAppDto,
 } from "./dto/admin-user-management.dto";
 import { AdminSessionRepository } from "./repositories/admin-session.repository";
 
@@ -196,6 +198,58 @@ export class AdminUserManagementService {
     this.logger.log(
       `User ${userId} role updated from ${oldRoles.join(",")} to ${dto.role} by user ${updatedBy}`,
     );
+
+    return updatedUser;
+  }
+
+  /**
+   * Set a user's WhatsApp number and/or opt-in consent
+   */
+  async updateUserWhatsApp(
+    userId: number,
+    dto: UpdateUserWhatsAppDto,
+    updatedBy: number,
+  ): Promise<User> {
+    const user = await this.userRepo.findById(userId);
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    const oldValues = {
+      whatsappPhone: user.whatsappPhone,
+      whatsappOptIn: user.whatsappOptIn,
+    };
+
+    if (dto.whatsappPhone !== undefined) {
+      user.whatsappPhone = normalizeWaId(dto.whatsappPhone);
+    }
+
+    if (dto.whatsappOptIn !== undefined) {
+      const wasOptedIn = user.whatsappOptIn === true;
+      user.whatsappOptIn = dto.whatsappOptIn;
+      if (dto.whatsappOptIn && !wasOptedIn) {
+        user.whatsappOptInAt = now().toJSDate();
+      } else if (!dto.whatsappOptIn) {
+        user.whatsappOptInAt = null;
+      }
+    }
+
+    const updatedUser = await this.userRepo.save(user);
+
+    await this.auditService.log({
+      entityType: "user",
+      entityId: userId,
+      action: AuditAction.USER_UPDATED,
+      oldValues,
+      newValues: {
+        whatsappPhone: updatedUser.whatsappPhone,
+        whatsappOptIn: updatedUser.whatsappOptIn,
+        updatedByAdmin: updatedBy,
+      },
+    });
+
+    this.logger.log(`User ${userId} WhatsApp settings updated by user ${updatedBy}`);
 
     return updatedUser;
   }

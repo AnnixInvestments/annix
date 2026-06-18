@@ -52,6 +52,15 @@ export class User {
   @Prop({ type: String, required: false })
   appScope: string;
 
+  @Prop({ type: String, required: false })
+  whatsappPhone: string;
+
+  @Prop({ type: Boolean, required: false, default: false })
+  whatsappOptIn: boolean;
+
+  @Prop({ type: Date, required: false })
+  whatsappOptInAt: Date;
+
   @Prop({ type: String, required: true })
   status: string;
 

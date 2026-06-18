@@ -1,4 +1,13 @@
-import { IsEmail, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from "class-validator";
+import {
+  IsBoolean,
+  IsEmail,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from "class-validator";
 
 export enum AdminUserRole {
   ADMIN = "admin",
@@ -55,6 +64,16 @@ export class DeactivateAdminUserDto {
   @IsString()
   @IsNotEmpty()
   reason: string;
+}
+
+export class UpdateUserWhatsAppDto {
+  @IsOptional()
+  @IsString()
+  whatsappPhone?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  whatsappOptIn?: boolean;
 }
 
 export class AdminUserListItemDto {

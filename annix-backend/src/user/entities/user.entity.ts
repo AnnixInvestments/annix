@@ -79,6 +79,25 @@ export class User {
   @Column({ name: "app_scope", type: "varchar", length: 64, nullable: true })
   appScope: string | null;
 
+  @ApiProperty({
+    description: "WhatsApp phone number in E.164-ish digit form (nullable)",
+    example: "27110000000",
+    nullable: true,
+  })
+  @Column({ name: "whatsapp_phone", type: "varchar", length: 32, nullable: true })
+  whatsappPhone: string | null;
+
+  @ApiProperty({
+    description: "Whether the user has opted in to WhatsApp messaging",
+    example: false,
+  })
+  @Column({ name: "whatsapp_opt_in", type: "boolean", default: false })
+  whatsappOptIn: boolean;
+
+  @ApiProperty({ description: "When the user opted in to WhatsApp messaging", nullable: true })
+  @Column({ name: "whatsapp_opt_in_at", type: "timestamptz", nullable: true })
+  whatsappOptInAt: Date | null;
+
   @ApiProperty({ description: "User account status", example: "active" })
   @Column({ default: "active" })
   status: string;

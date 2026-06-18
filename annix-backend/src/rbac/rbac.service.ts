@@ -184,6 +184,9 @@ export class RbacService {
         status: user.status,
         lastLoginAt: user.lastLoginAt ?? null,
         createdAt: user.createdAt,
+        whatsappPhone: user.whatsappPhone ?? null,
+        whatsappOptIn: user.whatsappOptIn ?? false,
+        whatsappOptInAt: user.whatsappOptInAt ?? null,
         appAccess,
       };
     });
@@ -237,11 +240,23 @@ export class RbacService {
         status: scUser.emailVerified ? "active" : "pending",
         lastLoginAt: null,
         createdAt: scUser.createdAt,
+        whatsappPhone: null,
+        whatsappOptIn: false,
+        whatsappOptInAt: null,
         appAccess: scAccess ? [scAccess] : [],
       });
     }
 
     return [...mainUsers, ...stockControlOnlyDtos].sort((a, b) => a.email.localeCompare(b.email));
+  }
+
+  async userIdsForApp(appCode: string): Promise<number[]> {
+    const app = await this.appByCode(appCode);
+    if (!app) {
+      throw new NotFoundException(`App '${appCode}' not found`);
+    }
+    const accessRecords = await this.accessRepo.findManyByAppId(app.id);
+    return Array.from(new Set(accessRecords.map((access) => access.userId)));
   }
 
   async searchUsers(

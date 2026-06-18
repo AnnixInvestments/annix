@@ -1,6 +1,8 @@
 import { Body, Controller, Get, Param, Post, Query, Request, UseGuards } from "@nestjs/common";
 import { IsNotEmpty, IsString, MaxLength } from "class-validator";
 import { AdminAuthGuard } from "../../admin/guards/admin-auth.guard";
+import { BroadcastSendOneDto } from "../dto/broadcast-send-one.dto";
+import { WhatsAppBroadcastService } from "../services/whatsapp-broadcast.service";
 import { WhatsAppConversationService } from "../services/whatsapp-conversation.service";
 
 class SendWhatsAppReplyDto {
@@ -10,6 +12,8 @@ class SendWhatsAppReplyDto {
   body: string;
 }
 
+const ALL_APPS_TOKEN = "all";
+
 interface AdminRequest {
   user?: { email?: string };
   admin?: { email?: string };
@@ -18,7 +22,10 @@ interface AdminRequest {
 @Controller("admin/whatsapp")
 @UseGuards(AdminAuthGuard)
 export class AdminWhatsAppController {
-  constructor(private readonly conversations: WhatsAppConversationService) {}
+  constructor(
+    private readonly conversations: WhatsAppConversationService,
+    private readonly broadcast: WhatsAppBroadcastService,
+  ) {}
 
   @Get("status")
   status() {
@@ -50,5 +57,29 @@ export class AdminWhatsAppController {
   async markRead(@Param("id") id: string) {
     await this.conversations.markRead(id);
     return { success: true };
+  }
+
+  @Get("broadcast/candidates")
+  broadcastCandidates(@Query("appCode") appCode?: string) {
+    const resolvedAppCode = appCode && appCode !== ALL_APPS_TOKEN ? appCode : null;
+    return this.broadcast.candidates(resolvedAppCode);
+  }
+
+  @Post("broadcast/backfill-phones")
+  backfillPhones() {
+    return this.broadcast.backfillPhones();
+  }
+
+  @Post("broadcast/send-one")
+  sendBroadcastOne(@Body() dto: BroadcastSendOneDto, @Request() req: AdminRequest) {
+    const sentBy = req.user?.email ?? req.admin?.email ?? null;
+    return this.broadcast.sendOne({
+      userId: dto.userId,
+      message: dto.message,
+      mode: dto.mode,
+      templateName: dto.templateName ?? null,
+      languageCode: dto.languageCode ?? null,
+      sentBy,
+    });
   }
 }

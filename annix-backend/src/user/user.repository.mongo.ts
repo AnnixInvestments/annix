@@ -265,12 +265,54 @@ export class MongoUserRepository extends MongoCrudRepository<User> implements Us
     return this.documents.countDocuments({ companyId }).exec();
   }
 
+  async findWhatsAppCandidates(userIds: number[] | null): Promise<User[]> {
+    const phonePresent = { whatsappPhone: { $nin: [null, ""] } };
+    const filter = userIds === null ? phonePresent : { ...phonePresent, _id: { $in: userIds } };
+    const documents = await this.documents.find(filter).sort({ email: 1 }).lean().exec();
+    return this.toDomainList(documents);
+  }
+
   async findAllIdAndEmail(): Promise<Pick<User, "id" | "email">[]> {
     const documents = await this.documents.find().select("email").lean().exec();
     return documents.map((document) => ({
       id: document._id as number,
       email: document.email as string,
     }));
+  }
+
+  async findEmailsByIds(ids: number[]): Promise<Array<{ id: number; email: string }>> {
+    if (ids.length === 0) {
+      return [];
+    }
+    const documents = await this.documents
+      .find({ _id: { $in: ids } })
+      .select("email")
+      .lean()
+      .exec();
+    return documents
+      .filter((document) => typeof document.email === "string" && document.email !== "")
+      .map((document) => ({ id: document._id as number, email: document.email as string }));
+  }
+
+  async setWhatsAppPhoneWhereMissingByEmail(email: string, phone: string): Promise<number> {
+    const result = await this.documents
+      .updateMany(
+        {
+          email: { $regex: `^${escapeRegExp(email)}$`, $options: "i" },
+          $or: [
+            { whatsappPhone: null },
+            { whatsappPhone: "" },
+            { whatsappPhone: { $exists: false } },
+          ],
+        },
+        { $set: { whatsappPhone: phone } },
+      )
+      .exec();
+    return result.modifiedCount ?? 0;
+  }
+
+  countWithWhatsAppPhone(): Promise<number> {
+    return this.documents.countDocuments({ whatsappPhone: { $nin: [null, ""] } }).exec();
   }
 
   async findAdminOrEmployeesPaginated(params: {

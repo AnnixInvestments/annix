@@ -23,6 +23,7 @@ import { AppToggleCard } from "./components/AppToggleCard";
 import { InviteUserModal, type OrbitInviteExtra } from "./components/InviteUserModal";
 import { UserNavigationBar } from "./components/UserNavigationBar";
 import { UserSelector } from "./components/UserSelector";
+import { UserWhatsAppSection } from "./components/UserWhatsAppSection";
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   active: { bg: "bg-green-100 dark:bg-green-900/50", text: "text-green-700 dark:text-green-300" },
@@ -490,6 +491,8 @@ export default function AdminUsersPage() {
                   </div>
                 </div>
               </div>
+
+              <UserWhatsAppSection user={selectedUser} />
             </>
           )}
         </>

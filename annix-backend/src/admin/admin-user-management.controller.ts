@@ -23,6 +23,7 @@ import {
   CreateAdminUserDto,
   DeactivateAdminUserDto,
   UpdateAdminRoleDto,
+  UpdateUserWhatsAppDto,
 } from "./dto/admin-user-management.dto";
 import { AdminAuthGuard } from "./guards/admin-auth.guard";
 
@@ -85,6 +86,23 @@ export class AdminUserManagementController {
   ): Promise<User> {
     const updatedBy = req.user.sub || req.user.userId;
     return this.userManagementService.updateAdminRole(id, updateDto, updatedBy);
+  }
+
+  @Patch(":id/whatsapp")
+  @ApiOperation({ summary: "Set a user's WhatsApp number and consent" })
+  @ApiResponse({
+    status: 200,
+    description: "User WhatsApp settings updated successfully",
+    type: User,
+  })
+  @ApiResponse({ status: 404, description: "User not found" })
+  async updateUserWhatsApp(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() updateDto: UpdateUserWhatsAppDto,
+    @Request() req,
+  ): Promise<User> {
+    const updatedBy = req.user.sub || req.user.userId;
+    return this.userManagementService.updateUserWhatsApp(id, updateDto, updatedBy);
   }
 
   @Post(":id/deactivate")

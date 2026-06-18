@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { ILike, In, LessThan, Like, MoreThan, Repository } from "typeorm";
+import { ILike, In, IsNull, LessThan, Like, MoreThan, Not, Repository } from "typeorm";
 import type { QueryDeepPartialEntity } from "typeorm/query-builder/QueryPartialEntity";
 import { type DeepPartial } from "../lib/persistence/crud-repository";
 import { TypeOrmCrudRepository } from "../lib/persistence/typeorm-crud-repository";
@@ -188,5 +188,38 @@ export class PostgresUserRepository extends TypeOrmCrudRepository<User> implemen
 
   findAllIdAndEmail(): Promise<Pick<User, "id" | "email">[]> {
     return this.repository.find({ select: ["id", "email"] });
+  }
+
+  findWhatsAppCandidates(userIds: number[] | null): Promise<User[]> {
+    const where =
+      userIds === null
+        ? { whatsappPhone: Not(IsNull()) }
+        : { whatsappPhone: Not(IsNull()), id: In(userIds) };
+    return this.repository.find({ where, order: { email: "ASC" } });
+  }
+
+  async findEmailsByIds(ids: number[]): Promise<Array<{ id: number; email: string }>> {
+    if (ids.length === 0) {
+      return [];
+    }
+    const users = await this.repository.find({ where: { id: In(ids) }, select: ["id", "email"] });
+    return users
+      .filter((user) => user.email != null && user.email !== "")
+      .map((user) => ({ id: user.id, email: user.email }));
+  }
+
+  async setWhatsAppPhoneWhereMissingByEmail(email: string, phone: string): Promise<number> {
+    const result = await this.repository
+      .createQueryBuilder()
+      .update()
+      .set({ whatsappPhone: phone } as QueryDeepPartialEntity<User>)
+      .where("LOWER(email) = LOWER(:email)", { email })
+      .andWhere("(whatsapp_phone IS NULL OR whatsapp_phone = '')")
+      .execute();
+    return result.affected ?? 0;
+  }
+
+  countWithWhatsAppPhone(): Promise<number> {
+    return this.repository.count({ where: { whatsappPhone: Not(IsNull()) } });
   }
 }

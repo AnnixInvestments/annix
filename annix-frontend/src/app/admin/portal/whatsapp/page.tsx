@@ -11,6 +11,7 @@ import {
   useAdminWhatsAppMessages,
   useAdminWhatsAppStatus,
 } from "@/app/lib/query/hooks";
+import { BroadcastComposer } from "./BroadcastComposer";
 
 function displayName(conversation: WhatsAppConversation): string {
   const profileName = conversation.profileName;
@@ -31,6 +32,7 @@ export default function AdminWhatsAppPage() {
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
 
   const statusQuery = useAdminWhatsAppStatus();
   const conversationsQuery = useAdminWhatsAppConversations(page);
@@ -90,13 +92,28 @@ export default function AdminWhatsAppPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">WhatsApp</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Platform-wide inbox for the global Annix WhatsApp number — conversations from every app
-          land here.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">WhatsApp</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Platform-wide inbox for the global Annix WhatsApp number — conversations from every app
+            land here.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setBroadcastOpen(true)}
+          className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--brand-navbar,#323288)] text-white text-sm font-medium hover:bg-[var(--brand-navbar-active,#252560)]"
+        >
+          New broadcast
+        </button>
       </div>
+
+      <BroadcastComposer
+        isOpen={broadcastOpen}
+        onClose={() => setBroadcastOpen(false)}
+        configured={configured}
+      />
 
       {!configured && (
         <div className="rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">

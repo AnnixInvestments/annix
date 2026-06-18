@@ -3,8 +3,23 @@ import { ConfigModule } from "@nestjs/config";
 import { MongooseModule } from "@nestjs/mongoose";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AdminModule } from "../admin/admin.module";
+import { AnnixOrbitProfile } from "../annix-orbit/entities/annix-orbit-profile.entity";
+import { AnnixOrbitProfileRepository } from "../annix-orbit/repositories/annix-orbit-profile.repository";
+import { MongoAnnixOrbitProfileRepository } from "../annix-orbit/repositories/annix-orbit-profile.repository.mongo";
+import { PostgresAnnixOrbitProfileRepository } from "../annix-orbit/repositories/annix-orbit-profile.repository.postgres";
+import { AnnixOrbitProfileSchema } from "../annix-orbit/schemas/annix-orbit-profile.schema";
 import { isMongoDriver } from "../lib/persistence/database-driver";
+import { ORBIT_CONNECTION } from "../lib/persistence/mongo-connections";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
+import { MetricsModule } from "../metrics/metrics.module";
+import { Company } from "../platform/entities/company.entity";
+import { CompanySchema } from "../platform/schemas/company.schema";
+import { RbacModule } from "../rbac/rbac.module";
+import { User } from "../user/entities/user.entity";
+import { UserSchema } from "../user/schemas/user.schema";
+import { UserRepository } from "../user/user.repository";
+import { MongoUserRepository } from "../user/user.repository.mongo";
+import { PostgresUserRepository } from "../user/user.repository.postgres";
 import { AdminWhatsAppController } from "./controllers/admin-whatsapp.controller";
 import { WhatsAppWebhookController } from "./controllers/whatsapp-webhook.controller";
 import { WhatsAppConversation } from "./entities/whatsapp-conversation.entity";
@@ -17,6 +32,7 @@ import { MongoWhatsAppMessageRepository } from "./repositories/whatsapp-message.
 import { PostgresWhatsAppMessageRepository } from "./repositories/whatsapp-message.repository.postgres";
 import { WhatsAppConversationSchema } from "./schemas/whatsapp-conversation.schema";
 import { WhatsAppMessageSchema } from "./schemas/whatsapp-message.schema";
+import { WhatsAppBroadcastService } from "./services/whatsapp-broadcast.service";
 import { WhatsAppCloudApiService } from "./services/whatsapp-cloud-api.service";
 import { WhatsAppConversationService } from "./services/whatsapp-conversation.service";
 
@@ -24,19 +40,36 @@ import { WhatsAppConversationService } from "./services/whatsapp-conversation.se
   imports: [
     ConfigModule,
     AdminModule,
+    RbacModule,
+    MetricsModule,
     ...(isMongoDriver()
       ? [
           MongooseModule.forFeature([
             { name: "WhatsAppConversation", schema: WhatsAppConversationSchema },
             { name: "WhatsAppMessage", schema: WhatsAppMessageSchema },
+            { name: "User", schema: UserSchema },
+            { name: "Company", schema: CompanySchema },
           ]),
+          MongooseModule.forFeature(
+            [{ name: "AnnixOrbitProfile", schema: AnnixOrbitProfileSchema }],
+            ORBIT_CONNECTION,
+          ),
         ]
-      : [TypeOrmModule.forFeature([WhatsAppConversation, WhatsAppMessage])]),
+      : [
+          TypeOrmModule.forFeature([
+            WhatsAppConversation,
+            WhatsAppMessage,
+            User,
+            Company,
+            AnnixOrbitProfile,
+          ]),
+        ]),
   ],
   controllers: [WhatsAppWebhookController, AdminWhatsAppController],
   providers: [
     WhatsAppCloudApiService,
     WhatsAppConversationService,
+    WhatsAppBroadcastService,
     repositoryProvider(
       WhatsAppConversationRepository,
       PostgresWhatsAppConversationRepository,
@@ -46,6 +79,12 @@ import { WhatsAppConversationService } from "./services/whatsapp-conversation.se
       WhatsAppMessageRepository,
       PostgresWhatsAppMessageRepository,
       MongoWhatsAppMessageRepository,
+    ),
+    repositoryProvider(UserRepository, PostgresUserRepository, MongoUserRepository),
+    repositoryProvider(
+      AnnixOrbitProfileRepository,
+      PostgresAnnixOrbitProfileRepository,
+      MongoAnnixOrbitProfileRepository,
     ),
   ],
   exports: [WhatsAppCloudApiService, WhatsAppConversationService],
