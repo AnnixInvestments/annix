@@ -1,7 +1,9 @@
 import { CrudRepository, type DeepPartial } from "../lib/persistence/crud-repository";
+import type { TransactionContext } from "../lib/persistence/transaction-context";
 import { User } from "./entities/user.entity";
 
 export abstract class UserRepository extends CrudRepository<User> {
+  abstract withTransaction(context: TransactionContext): CrudRepository<User>;
   abstract instantiate(data: DeepPartial<User>): User;
   abstract findAllWithRoles(): Promise<User[]>;
   abstract findByIdWithRoles(id: number): Promise<User | null>;

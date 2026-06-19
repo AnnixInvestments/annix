@@ -1,14 +1,4 @@
 import { ApiProperty } from "@nestjs/swagger";
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  OneToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from "typeorm";
 import { BendRfq } from "./bend-rfq.entity";
 import { ExpansionJointRfq } from "./expansion-joint-rfq.entity";
 import { FastenerRfq } from "./fastener-rfq.entity";
@@ -44,25 +34,20 @@ export enum MaterialType {
   PVC = "pvc",
 }
 
-@Entity("rfq_items")
 export class RfqItem {
   @ApiProperty({ description: "Primary key", example: 1 })
-  @PrimaryGeneratedColumn()
   id: number;
 
   @ApiProperty({ description: "Line number in the RFQ", example: 1 })
-  @Column({ name: "line_number", type: "int" })
   lineNumber: number;
 
   @ApiProperty({
     description: "Item description",
     example: "500NB Sch20 Straight Pipe for 10 Bar Pipeline",
   })
-  @Column({ name: "description" })
   description: string;
 
   @ApiProperty({ description: "Type of RFQ item", enum: RfqItemType })
-  @Column({ name: "item_type", type: "enum", enum: RfqItemType })
   itemType: RfqItemType;
 
   @ApiProperty({
@@ -70,72 +55,30 @@ export class RfqItem {
     enum: MaterialType,
     default: MaterialType.STEEL,
   })
-  @Column({
-    name: "material_type",
-    type: "enum",
-    enum: MaterialType,
-    default: MaterialType.STEEL,
-  })
   materialType: MaterialType;
 
   @ApiProperty({ description: "Quantity required", example: 656 })
-  @Column({ name: "quantity", type: "int" })
   quantity: number;
 
   @ApiProperty({
     description: "Estimated weight per unit in kg",
     required: false,
   })
-  @Column({
-    name: "weight_per_unit_kg",
-    type: "decimal",
-    precision: 10,
-    scale: 3,
-    nullable: true,
-  })
   weightPerUnitKg?: number;
 
   @ApiProperty({ description: "Total estimated weight in kg", required: false })
-  @Column({
-    name: "total_weight_kg",
-    type: "decimal",
-    precision: 10,
-    scale: 2,
-    nullable: true,
-  })
   totalWeightKg?: number;
 
   @ApiProperty({ description: "Unit price", required: false })
-  @Column({
-    name: "unit_price",
-    type: "decimal",
-    precision: 15,
-    scale: 2,
-    nullable: true,
-  })
   unitPrice?: number;
 
   @ApiProperty({ description: "Total price", required: false })
-  @Column({
-    name: "total_price",
-    type: "decimal",
-    precision: 15,
-    scale: 2,
-    nullable: true,
-  })
   totalPrice?: number;
 
   @ApiProperty({ description: "Additional notes", required: false })
-  @Column({ name: "notes", type: "text", nullable: true })
   notes?: string;
 
   @ApiProperty({ description: "Parent RFQ", type: () => Rfq })
-  @ManyToOne(
-    () => Rfq,
-    (rfq) => rfq.items,
-    { onDelete: "CASCADE" },
-  )
-  @JoinColumn({ name: "rfq_id" })
   rfq: Rfq;
 
   @ApiProperty({
@@ -143,14 +86,6 @@ export class RfqItem {
     required: false,
     type: () => StraightPipeRfq,
   })
-  @OneToOne(
-    () => StraightPipeRfq,
-    (straightPipe) => straightPipe.rfqItem,
-    {
-      cascade: true,
-      nullable: true,
-    },
-  )
   straightPipeDetails?: StraightPipeRfq;
 
   @ApiProperty({
@@ -158,14 +93,6 @@ export class RfqItem {
     required: false,
     type: () => BendRfq,
   })
-  @OneToOne(
-    () => BendRfq,
-    (bend) => bend.rfqItem,
-    {
-      cascade: true,
-      nullable: true,
-    },
-  )
   bendDetails?: BendRfq;
 
   @ApiProperty({
@@ -173,14 +100,6 @@ export class RfqItem {
     required: false,
     type: () => FittingRfq,
   })
-  @OneToOne(
-    () => FittingRfq,
-    (fitting) => fitting.rfqItem,
-    {
-      cascade: true,
-      nullable: true,
-    },
-  )
   fittingDetails?: FittingRfq;
 
   @ApiProperty({
@@ -188,14 +107,6 @@ export class RfqItem {
     required: false,
     type: () => PipeSteelWorkRfq,
   })
-  @OneToOne(
-    () => PipeSteelWorkRfq,
-    (pipeSteelWork) => pipeSteelWork.rfqItem,
-    {
-      cascade: true,
-      nullable: true,
-    },
-  )
   pipeSteelWorkDetails?: PipeSteelWorkRfq;
 
   @ApiProperty({
@@ -203,14 +114,6 @@ export class RfqItem {
     required: false,
     type: () => ExpansionJointRfq,
   })
-  @OneToOne(
-    () => ExpansionJointRfq,
-    (expansionJoint) => expansionJoint.rfqItem,
-    {
-      cascade: true,
-      nullable: true,
-    },
-  )
   expansionJointDetails?: ExpansionJointRfq;
 
   @ApiProperty({
@@ -218,14 +121,6 @@ export class RfqItem {
     required: false,
     type: () => ValveRfq,
   })
-  @OneToOne(
-    () => ValveRfq,
-    (valve) => valve.rfqItem,
-    {
-      cascade: true,
-      nullable: true,
-    },
-  )
   valveDetails?: ValveRfq;
 
   @ApiProperty({
@@ -233,14 +128,6 @@ export class RfqItem {
     required: false,
     type: () => InstrumentRfq,
   })
-  @OneToOne(
-    () => InstrumentRfq,
-    (instrument) => instrument.rfqItem,
-    {
-      cascade: true,
-      nullable: true,
-    },
-  )
   instrumentDetails?: InstrumentRfq;
 
   @ApiProperty({
@@ -248,14 +135,6 @@ export class RfqItem {
     required: false,
     type: () => PumpRfq,
   })
-  @OneToOne(
-    () => PumpRfq,
-    (pump) => pump.rfqItem,
-    {
-      cascade: true,
-      nullable: true,
-    },
-  )
   pumpDetails?: PumpRfq;
 
   @ApiProperty({
@@ -263,14 +142,6 @@ export class RfqItem {
     required: false,
     type: () => SurfaceProtectionRfq,
   })
-  @OneToOne(
-    () => SurfaceProtectionRfq,
-    (surfaceProtection) => surfaceProtection.rfqItem,
-    {
-      cascade: true,
-      nullable: true,
-    },
-  )
   surfaceProtectionDetails?: SurfaceProtectionRfq;
 
   @ApiProperty({
@@ -278,14 +149,6 @@ export class RfqItem {
     required: false,
     type: () => TankChuteRfq,
   })
-  @OneToOne(
-    () => TankChuteRfq,
-    (tankChute) => tankChute.rfqItem,
-    {
-      cascade: true,
-      nullable: true,
-    },
-  )
   tankChuteDetails?: TankChuteRfq;
 
   @ApiProperty({
@@ -293,19 +156,9 @@ export class RfqItem {
     required: false,
     type: () => FastenerRfq,
   })
-  @OneToOne(
-    () => FastenerRfq,
-    (fastener) => fastener.rfqItem,
-    {
-      cascade: true,
-      nullable: true,
-    },
-  )
   fastenerDetails?: FastenerRfq;
 
-  @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 }

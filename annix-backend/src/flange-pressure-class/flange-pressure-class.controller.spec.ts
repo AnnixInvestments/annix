@@ -1,8 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { FlangeStandard } from "../flange-standard/entities/flange-standard.entity";
-import { FlangePressureClass } from "./entities/flange-pressure-class.entity";
+import { FlangeStandardRepository } from "../flange-standard/flange-standard.repository";
 import { FlangePressureClassController } from "./flange-pressure-class.controller";
+import { FlangePressureClassRepository } from "./flange-pressure-class.repository";
 import { FlangePressureClassService } from "./flange-pressure-class.service";
 
 describe("FlangePressureClassController", () => {
@@ -12,13 +11,14 @@ describe("FlangePressureClassController", () => {
   const mockPressureRepo = {
     create: jest.fn(),
     save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
+    findAll: jest.fn(),
+    findById: jest.fn(),
+    findOneWhere: jest.fn(),
     remove: jest.fn(),
   };
 
   const mockStandardRepo = {
-    findOne: jest.fn(),
+    findOneWhere: jest.fn(),
   };
 
   const mockFlangePressureClassService = {
@@ -39,11 +39,11 @@ describe("FlangePressureClassController", () => {
           useValue: mockFlangePressureClassService,
         },
         {
-          provide: getRepositoryToken(FlangePressureClass),
+          provide: FlangePressureClassRepository,
           useValue: mockPressureRepo,
         },
         {
-          provide: getRepositoryToken(FlangeStandard),
+          provide: FlangeStandardRepository,
           useValue: mockStandardRepo,
         },
       ],

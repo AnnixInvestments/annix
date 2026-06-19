@@ -5,9 +5,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-  Optional,
 } from "@nestjs/common";
-import { DataSource } from "typeorm";
 import type { DeepPartial } from "../../lib/persistence/crud-repository";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { LearningSource, LearningType } from "../../nix/entities/nix-learning.entity";
@@ -56,7 +54,6 @@ export class InventoryService {
     private readonly storageService: IStorageService,
     @Inject(forwardRef(() => RequisitionService))
     private readonly requisitionService: RequisitionService,
-    @Optional() private readonly dataSource: DataSource,
     private readonly aiChatService: AiChatService,
     private readonly supplierService: DeliverySupplierService,
   ) {}
@@ -515,7 +512,7 @@ export class InventoryService {
     return refreshed;
   }
 
-  async backfillRubberRollStock(companyId: number): Promise<{
+  async backfillRubberRollStock(_companyId: number): Promise<{
     diagnostics: {
       stockItemsWithRollPattern: number;
       rubberRollStockTotal: number;
@@ -525,124 +522,9 @@ export class InventoryService {
     updated: number;
     details: Array<{ stockItemId: number; sku: string; extractedRoll: string; matched: boolean }>;
   }> {
-    const candidateItems: Array<{ id: number; name: string; sku: string }> =
-      await this.dataSource.query(
-        `SELECT id, name, sku FROM stock_items
-       WHERE company_id = $1
-         AND roll_number IS NULL
-         AND (name ~* 'ROLL[\\s#-]*(\\d{4,6})' OR sku ~* 'Roll\\s*#?\\s*(\\d{4,6})')
-       LIMIT 200`,
-        [companyId],
-      );
-
-    const rollStockCount: Array<{ count: string }> = await this.dataSource.query(
-      "SELECT COUNT(*) as count FROM rubber_roll_stock",
+    throw new BadRequestException(
+      "Rubber roll backfill is no longer available. This was a one-off data migration tool and has been retired.",
     );
-
-    const sampleRollStock: Array<{ roll_number: string }> = await this.dataSource.query(
-      "SELECT roll_number FROM rubber_roll_stock ORDER BY id DESC LIMIT 10",
-    );
-
-    this.logger.log(
-      `Backfill diagnostics: ${candidateItems.length} candidate stock items, ` +
-        `${rollStockCount[0]?.count || 0} rubber_roll_stock rows, ` +
-        `sample roll numbers: ${sampleRollStock.map((r) => r.roll_number).join(", ")}`,
-    );
-
-    const details: Array<{
-      stockItemId: number;
-      sku: string;
-      extractedRoll: string;
-      matched: boolean;
-    }> = [];
-    let updated = 0;
-
-    for (const item of candidateItems) {
-      const combined = `${item.name || ""} ${item.sku || ""}`;
-      const match = combined.match(/ROLL[\s#-]*(\d{4,6})/i);
-      if (!match) continue;
-
-      const extractedRoll = match[1];
-
-      const matchingRolls: Array<{
-        roll_number: string;
-        compound_name: string | null;
-        compound_code: string | null;
-        thickness_mm: number | null;
-        width_mm: number | null;
-        length_m: number | null;
-      }> = await this.dataSource.query(
-        `SELECT rrs.roll_number, rpc.name as compound_name, rpc.code as compound_code,
-                rrs.thickness_mm, rrs.width_mm, rrs.length_m
-         FROM rubber_roll_stock rrs
-         LEFT JOIN rubber_product_coding rpc ON rpc.id = rrs.compound_coding_id
-         WHERE rrs.roll_number = $1
-            OR rrs.roll_number LIKE '%' || $1
-            OR rrs.roll_number LIKE $1 || '%'`,
-        [extractedRoll],
-      );
-
-      if (matchingRolls.length > 0) {
-        const roll = matchingRolls[0];
-        const dimensionParts = [
-          roll.thickness_mm ? `${roll.thickness_mm}mm thick` : null,
-          roll.width_mm ? `${roll.width_mm}mm wide` : null,
-          roll.length_m ? `${roll.length_m}m long` : null,
-        ].filter((p): p is string => p !== null);
-
-        const enrichedSku = roll.compound_code
-          ? `${roll.compound_code}-R${extractedRoll}`
-          : item.sku;
-        const rollLabel = `Roll #${extractedRoll}`;
-        const description =
-          dimensionParts.length > 0 ? `${rollLabel} — ${dimensionParts.join(" x ")}` : rollLabel;
-
-        await this.dataSource.query(
-          `UPDATE stock_items SET
-            name = COALESCE($2, name),
-            sku = $3,
-            description = CASE WHEN $4 != '' THEN $4 ELSE description END,
-            category = 'RUBBER',
-            compound_code = COALESCE($5, compound_code),
-            thickness_mm = COALESCE($6, thickness_mm),
-            width_mm = COALESCE($7, width_mm),
-            length_m = COALESCE($8, length_m),
-            roll_number = $9
-           WHERE id = $1`,
-          [
-            item.id,
-            roll.compound_name,
-            enrichedSku,
-            description,
-            roll.compound_code,
-            roll.thickness_mm,
-            roll.width_mm,
-            roll.length_m,
-            roll.roll_number,
-          ],
-        );
-        updated++;
-        details.push({ stockItemId: item.id, sku: item.sku, extractedRoll, matched: true });
-      } else {
-        this.logger.log(
-          `No rubber_roll_stock match for extracted roll "${extractedRoll}" (item ${item.id}: ${item.sku})`,
-        );
-        details.push({ stockItemId: item.id, sku: item.sku, extractedRoll, matched: false });
-      }
-    }
-
-    this.logger.log(`Backfill complete: ${updated}/${candidateItems.length} items enriched`);
-
-    return {
-      diagnostics: {
-        stockItemsWithRollPattern: candidateItems.length,
-        rubberRollStockTotal: Number(rollStockCount[0]?.count || 0),
-        sampleStockItems: candidateItems.slice(0, 5),
-        sampleRollStock: sampleRollStock.map((r) => ({ rollNumber: r.roll_number })),
-      },
-      updated,
-      details,
-    };
   }
 
   async normalizeRubberItems(companyId: number): Promise<{

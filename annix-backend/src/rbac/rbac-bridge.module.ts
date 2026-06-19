@@ -1,22 +1,12 @@
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
-import { TypeOrmModule } from "@nestjs/typeorm";
-import { isMongoDriver } from "../lib/persistence/database-driver";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
-import { App } from "./entities/app.entity";
-import { AppRole } from "./entities/app-role.entity";
-import { UserAppAccess } from "./entities/user-app-access.entity";
 import { AppRepository, AppRoleRepository, UserAppAccessRepository } from "./rbac.repository";
 import {
   MongoAppRepository,
   MongoAppRoleRepository,
   MongoUserAppAccessRepository,
 } from "./rbac.repository.mongo";
-import {
-  PostgresAppRepository,
-  PostgresAppRoleRepository,
-  PostgresUserAppAccessRepository,
-} from "./rbac.repository.postgres";
 import { RbacBridgeService } from "./rbac-bridge.service";
 import { AppSchema } from "./schemas/app.schema";
 import { AppRoleSchema } from "./schemas/app-role.schema";
@@ -33,25 +23,17 @@ import { UserAppAccessSchema } from "./schemas/user-app-access.schema";
  */
 @Module({
   imports: [
-    ...(isMongoDriver()
-      ? [
-          MongooseModule.forFeature([
-            { name: "App", schema: AppSchema },
-            { name: "AppRole", schema: AppRoleSchema },
-            { name: "UserAppAccess", schema: UserAppAccessSchema },
-          ]),
-        ]
-      : [TypeOrmModule.forFeature([App, AppRole, UserAppAccess])]),
+    MongooseModule.forFeature([
+      { name: "App", schema: AppSchema },
+      { name: "AppRole", schema: AppRoleSchema },
+      { name: "UserAppAccess", schema: UserAppAccessSchema },
+    ]),
   ],
   providers: [
     RbacBridgeService,
-    repositoryProvider(AppRepository, PostgresAppRepository, MongoAppRepository),
-    repositoryProvider(AppRoleRepository, PostgresAppRoleRepository, MongoAppRoleRepository),
-    repositoryProvider(
-      UserAppAccessRepository,
-      PostgresUserAppAccessRepository,
-      MongoUserAppAccessRepository,
-    ),
+    repositoryProvider(AppRepository, MongoAppRepository),
+    repositoryProvider(AppRoleRepository, MongoAppRoleRepository),
+    repositoryProvider(UserAppAccessRepository, MongoUserAppAccessRepository),
   ],
   exports: [RbacBridgeService],
 })

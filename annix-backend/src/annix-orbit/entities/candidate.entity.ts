@@ -1,14 +1,4 @@
 import type { WorkProfile } from "@annix/product-data/sa-market";
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from "typeorm";
 import { CandidateReference } from "./candidate-reference.entity";
 import { JobPosting } from "./job-posting.entity";
 
@@ -70,112 +60,70 @@ export interface MatchAnalysis {
   reasoning: string | null;
 }
 
-@Entity("cv_assistant_candidates")
 export class Candidate {
-  @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: "varchar", length: 255, nullable: true })
   email: string | null;
 
-  @Column({ type: "varchar", length: 255, nullable: true })
   name: string | null;
 
-  @Column({ name: "cv_file_path", type: "varchar", length: 500, nullable: true })
   cvFilePath: string | null;
 
-  @Column({ name: "raw_cv_text", type: "text", nullable: true })
   rawCvText: string | null;
 
-  @Column({ name: "extracted_data", type: "jsonb", nullable: true })
   extractedData: ExtractedCvData | null;
 
-  @Column({ name: "match_analysis", type: "jsonb", nullable: true })
   matchAnalysis: MatchAnalysis | null;
 
-  @Column({ name: "match_score", type: "int", nullable: true })
   matchScore: number | null;
 
-  @Column({ type: "varchar", length: 30, default: CandidateStatus.NEW })
   status: CandidateStatus;
 
-  @Column({ name: "source_email_id", type: "varchar", length: 255, nullable: true })
   sourceEmailId: string | null;
 
-  @Column({ name: "bee_level", type: "int", nullable: true })
   beeLevel: number | null;
 
-  @Column({ name: "popia_consent", type: "boolean", default: false })
   popiaConsent: boolean;
 
-  @Column({ name: "popia_consented_at", type: "timestamptz", nullable: true })
   popiaConsentedAt: Date | null;
 
-  @Column({ name: "last_active_at", type: "timestamptz", nullable: true })
   lastActiveAt: Date | null;
 
-  @Column({ name: "job_alerts_opt_in", type: "boolean", default: false })
   jobAlertsOptIn: boolean;
 
-  @Column({ name: "rejection_sent_at", type: "timestamptz", nullable: true })
   rejectionSentAt: Date | null;
 
-  @Column({ name: "is_test_fixture", type: "boolean", default: false })
   isTestFixture: boolean;
 
-  @Column({ name: "work_profile", type: "jsonb", nullable: true })
   workProfile: WorkProfile | null;
 
-  @Column({ name: "location_lat", type: "double precision", nullable: true })
   locationLat: number | null;
 
-  @Column({ name: "location_lon", type: "double precision", nullable: true })
   locationLon: number | null;
 
-  @Column({ name: "acceptance_sent_at", type: "timestamptz", nullable: true })
   acceptanceSentAt: Date | null;
 
-  @ManyToOne(
-    () => JobPosting,
-    (jobPosting) => jobPosting.candidates,
-    { onDelete: "CASCADE", nullable: true },
-  )
-  @JoinColumn({ name: "job_posting_id" })
   jobPosting: JobPosting | null;
 
-  @Column({ name: "job_posting_id", nullable: true })
   jobPostingId: number | null;
 
-  @OneToMany(
-    () => CandidateReference,
-    (reference) => reference.candidate,
-  )
   references: CandidateReference[];
 
-  @Column({ type: "varchar", nullable: true })
   embedding: Buffer | null;
 
-  @Column({ name: "embedding_text_hash", type: "varchar", length: 64, nullable: true })
   embeddingTextHash: string | null;
 
-  @Column({ name: "target_categories", type: "jsonb", nullable: true })
   targetCategories: string[] | null;
 
-  @Column({ name: "target_countries", type: "jsonb", nullable: true })
   targetCountries: string[] | null;
 
-  @Column({ name: "match_tier", type: "varchar", length: 16, default: "soft" })
   matchTier: string;
 
-  @Column({ name: "trial_tier", type: "varchar", length: 16, nullable: true })
   trialTier: string | null;
 
-  @Column({ name: "trial_ends_at", type: "timestamptz", nullable: true })
   trialEndsAt: Date | null;
 
-  @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 }

@@ -1,8 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { AngleRangeController } from "./angle-range.controller";
+import { AngleRangeRepository } from "./angle-range.repository";
 import { AngleRangeService } from "./angle-range.service";
-import { AngleRange } from "./entities/angle-range.entity";
 
 describe("AngleRangeController", () => {
   let controller: AngleRangeController;
@@ -11,8 +10,9 @@ describe("AngleRangeController", () => {
   const mockRangeRepo = {
     create: jest.fn(),
     save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
+    findAll: jest.fn(),
+    findById: jest.fn(),
+    findOneWhere: jest.fn(),
     remove: jest.fn(),
   };
 
@@ -29,7 +29,7 @@ describe("AngleRangeController", () => {
       controllers: [AngleRangeController],
       providers: [
         { provide: AngleRangeService, useValue: mockAngleRangeService },
-        { provide: getRepositoryToken(AngleRange), useValue: mockRangeRepo },
+        { provide: AngleRangeRepository, useValue: mockRangeRepo },
       ],
     }).compile();
 

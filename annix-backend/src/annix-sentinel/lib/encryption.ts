@@ -1,9 +1,7 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
-import { ValueTransformer } from "typeorm";
 
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 16;
-const AUTH_TAG_LENGTH = 16;
 
 export function encryptPhone(plaintext: string, key: string): string {
   const iv = randomBytes(IV_LENGTH);
@@ -22,49 +20,3 @@ export function decryptPhone(encrypted: string, key: string): string {
   decipher.setAuthTag(authTag);
   return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");
 }
-
-export const encryptionTransformer: ValueTransformer = {
-  to(value: string | null): string | null {
-    if (value === null) {
-      return null;
-    }
-    const key = process.env.ANNIX_SENTINEL_ENCRYPTION_KEY;
-    if (!key) {
-      return value;
-    }
-    return encryptPhone(value, key);
-  },
-  from(value: string | null): string | null {
-    if (value === null) {
-      return null;
-    }
-    const key = process.env.ANNIX_SENTINEL_ENCRYPTION_KEY;
-    if (!key) {
-      return value;
-    }
-    return decryptPhone(value, key);
-  },
-};
-
-export const phoneEncryptionTransformer: ValueTransformer = {
-  to(value: string | null): string | null {
-    if (value === null) {
-      return null;
-    }
-    const key = process.env.ANNIX_SENTINEL_ENCRYPTION_KEY;
-    if (!key) {
-      return value;
-    }
-    return encryptPhone(value, key);
-  },
-  from(value: string | null): string | null {
-    if (value === null) {
-      return null;
-    }
-    const key = process.env.ANNIX_SENTINEL_ENCRYPTION_KEY;
-    if (!key) {
-      return value;
-    }
-    return decryptPhone(value, key);
-  },
-};

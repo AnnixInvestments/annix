@@ -1,6 +1,5 @@
 import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import request from "supertest";
 import { CustomerAuthGuard } from "../src/customer/guards/customer-auth.guard";
 import { now } from "../src/lib/datetime";
@@ -13,7 +12,10 @@ import {
 } from "../src/rfq/entities/pump-rfq.entity";
 import { Rfq, RfqStatus } from "../src/rfq/entities/rfq.entity";
 import { RfqItem, RfqItemType } from "../src/rfq/entities/rfq-item.entity";
+import { PumpRfqRepository } from "../src/rfq/pump-rfq.repository";
 import { RfqModule } from "../src/rfq/rfq.module";
+import { RfqRepository } from "../src/rfq/rfq.repository";
+import { RfqItemRepository } from "../src/rfq/rfq-item.repository";
 
 describe("RfqController - Pump RFQ Endpoints (e2e)", () => {
   let app: INestApplication;
@@ -119,11 +121,11 @@ describe("RfqController - Pump RFQ Endpoints (e2e)", () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [RfqModule],
     })
-      .overrideProvider(getRepositoryToken(Rfq))
+      .overrideProvider(RfqRepository)
       .useValue(mockRfqRepository)
-      .overrideProvider(getRepositoryToken(RfqItem))
+      .overrideProvider(RfqItemRepository)
       .useValue(mockRfqItemRepository)
-      .overrideProvider(getRepositoryToken(PumpRfq))
+      .overrideProvider(PumpRfqRepository)
       .useValue(mockPumpRfqRepository)
       .overrideGuard(CustomerAuthGuard)
       .useValue(mockCustomerAuthGuard)

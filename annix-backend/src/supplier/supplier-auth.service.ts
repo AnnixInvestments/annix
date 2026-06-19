@@ -6,21 +6,17 @@ import {
   Logger,
   UnauthorizedException,
 } from "@nestjs/common";
-import { EntityTarget, ObjectLiteral, type Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
 import { EmailService } from "../email/email.service";
 import { FeatureFlagsService } from "../feature-flags/feature-flags.service";
 import { now } from "../lib/datetime";
-import {
-  TransactionContext,
-  TypeOrmTransactionContext,
-} from "../lib/persistence/transaction-context";
+import type { TransactionContext } from "../lib/persistence/transaction-context";
 import { TransactionRunner } from "../lib/persistence/transaction-runner";
 import { DocumentVerificationService } from "../nix/services/document-verification.service";
 import { CompanyRepository } from "../platform/company.repository";
-import { Company, CompanyType } from "../platform/entities/company.entity";
+import { CompanyType } from "../platform/entities/company.entity";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import {
   AUTH_CONSTANTS,
@@ -35,7 +31,6 @@ import {
 import { S3StorageService } from "../storage/s3-storage.service";
 import { User } from "../user/entities/user.entity";
 import { UserRepository } from "../user/user.repository";
-import { UserRole } from "../user-roles/entities/user-role.entity";
 import { UserRoleRepository } from "../user-roles/user-roles.repository";
 import { CreateSupplierRegistrationDto, SupplierLoginDto, SupplierLoginResponseDto } from "./dto";
 import {
@@ -107,16 +102,6 @@ export class SupplierAuthService {
     }
   }
 
-  private transactionalRepo<Entity extends ObjectLiteral>(
-    ctx: TransactionContext,
-    entity: EntityTarget<Entity>,
-  ): Repository<Entity> {
-    if (!(ctx instanceof TypeOrmTransactionContext)) {
-      throw new Error("Supplier auth writes require a TypeOrmTransactionContext");
-    }
-    return ctx.manager.getRepository(entity);
-  }
-
   async register(
     dto: CreateSupplierRegistrationDto,
     clientIp: string,
@@ -129,24 +114,20 @@ export class SupplierAuthService {
     const { savedUser, savedProfile } = await this.txRunner.run(async (ctx) => {
       const profileRepo = this.profileRepository.withTransaction(ctx);
       const onboardingRepo = this.onboardingRepository.withTransaction(ctx);
-      const userRepo = this.transactionalRepo(ctx, User);
-      const userRoleRepo = this.transactionalRepo(ctx, UserRole);
+      const userRepo = this.userRepo.withTransaction(ctx);
+      const userRoleRepo = this.userRoleRepo.withTransaction(ctx);
 
       const { passwordHash } = await this.passwordService.hash(dto.password);
 
-      let supplierRole = await this.userRoleRepo.findByName("supplier");
-      if (!supplierRole) {
-        supplierRole = await userRoleRepo.save(userRoleRepo.create({ name: "supplier" }));
-      }
+      const existingRole = await this.userRoleRepo.findByName("supplier");
+      const supplierRole = existingRole ?? (await userRoleRepo.create({ name: "supplier" }));
 
-      const savedUser = await userRepo.save(
-        userRepo.create({
-          username: dto.email,
-          email: dto.email,
-          passwordHash,
-          roles: [supplierRole],
-        }),
-      );
+      const savedUser = await userRepo.create({
+        username: dto.email,
+        email: dto.email,
+        passwordHash,
+        roles: [supplierRole],
+      });
 
       const verificationToken = this.tokenService.generateVerificationToken(
         {
@@ -277,51 +258,45 @@ export class SupplierAuthService {
         const profileRepo = this.profileRepository.withTransaction(ctx);
         const onboardingRepo = this.onboardingRepository.withTransaction(ctx);
         const deviceBindingRepo = this.deviceBindingRepository.withTransaction(ctx);
-        const userRepo = this.transactionalRepo(ctx, User);
-        const userRoleRepo = this.transactionalRepo(ctx, UserRole);
-        const companyRepo = this.transactionalRepo(ctx, Company);
+        const userRepo = this.userRepo.withTransaction(ctx);
+        const userRoleRepo = this.userRoleRepo.withTransaction(ctx);
+        const companyRepo = this.companyRepo.withTransaction(ctx);
 
-        const savedCompany = await companyRepo.save(
-          companyRepo.create({
-            name: dto.company.legalName,
-            companyType: CompanyType.SUPPLIER,
-            legalName: dto.company.legalName,
-            tradingName: dto.company.tradingName,
-            registrationNumber: dto.company.registrationNumber,
-            vatNumber: dto.company.vatNumber,
-            streetAddress: dto.company.streetAddress,
-            city: dto.company.city,
-            province: dto.company.provinceState,
-            postalCode: dto.company.postalCode,
-            country: dto.company.country || "South Africa",
-            phone: dto.company.primaryPhone || dto.company.primaryContactPhone,
-            contactPerson: dto.company.primaryContactName,
-            email: dto.company.generalEmail || dto.company.primaryContactEmail,
-            websiteUrl: dto.company.website,
-            industry: dto.company.industryType,
-            companySize: dto.company.companySize,
-            beeLevel: dto.company.beeLevel,
-            beeCertificateExpiry: dto.company.beeCertificateExpiry,
-            beeVerificationAgency: dto.company.beeVerificationAgency,
-            isExemptMicroEnterprise: dto.company.isExemptMicroEnterprise || false,
-          }),
-        );
+        const savedCompany = await companyRepo.create({
+          name: dto.company.legalName,
+          companyType: CompanyType.SUPPLIER,
+          legalName: dto.company.legalName,
+          tradingName: dto.company.tradingName,
+          registrationNumber: dto.company.registrationNumber,
+          vatNumber: dto.company.vatNumber,
+          streetAddress: dto.company.streetAddress,
+          city: dto.company.city,
+          province: dto.company.provinceState,
+          postalCode: dto.company.postalCode,
+          country: dto.company.country || "South Africa",
+          phone: dto.company.primaryPhone || dto.company.primaryContactPhone,
+          contactPerson: dto.company.primaryContactName,
+          email: dto.company.generalEmail || dto.company.primaryContactEmail,
+          websiteUrl: dto.company.website,
+          industry: dto.company.industryType,
+          companySize: dto.company.companySize,
+          beeLevel: dto.company.beeLevel,
+          beeCertificateExpiry: dto.company.beeCertificateExpiry,
+          beeVerificationAgency: dto.company.beeVerificationAgency,
+          isExemptMicroEnterprise: dto.company.isExemptMicroEnterprise || false,
+        });
 
         const { passwordHash } = await this.passwordService.hash(dto.password);
 
-        let supplierRole = await this.userRoleRepo.findByName("supplier");
-        if (!supplierRole) {
-          supplierRole = await userRoleRepo.save(userRoleRepo.create({ name: "supplier" }));
-        }
+        const existingRole = await this.userRoleRepo.findByName("supplier");
+        const supplierRole = existingRole ?? (await userRoleRepo.create({ name: "supplier" }));
 
-        const savedUser = await userRepo.save(
-          userRepo.create({
-            username: dto.email,
-            email: dto.email,
-            passwordHash,
-            roles: [supplierRole],
-          }),
-        );
+        const savedUser = await userRepo.create({
+          username: dto.email,
+          email: dto.email,
+          passwordHash,
+          roles: [supplierRole],
+        });
 
         const savedProfile = await profileRepo.create({
           userId: savedUser.id,

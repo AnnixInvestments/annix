@@ -1,21 +1,16 @@
 import { forwardRef, Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
-import { TypeOrmModule } from "@nestjs/typeorm";
 import { AdminModule } from "../admin/admin.module";
-import { isMongoDriver } from "../lib/persistence/database-driver";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
 import { MetricsModule } from "../metrics/metrics.module";
 import { NixModule } from "../nix/nix.module";
 import { RbacBridgeModule } from "../rbac/rbac-bridge.module";
 import { SharedModule } from "../shared/shared.module";
 import { StorageModule } from "../storage/storage.module";
-import { User } from "../user/entities/user.entity";
 import { UserSchema } from "../user/schemas/user.schema";
 import { UserRepository } from "../user/user.repository";
 import { MongoUserRepository } from "../user/user.repository.mongo";
-import { PostgresUserRepository } from "../user/user.repository.postgres";
 import { TeacherAssistantCapabilities } from "./capabilities/teacher-assistant.capabilities";
-import { TeacherAssistantUser } from "./entities/teacher-assistant-user.entity";
 import { TeacherAssistantAuthGuard } from "./guards/teacher-assistant-auth.guard";
 import { TeacherAssistantUserSchema } from "./schemas/teacher-assistant-user.schema";
 import { AssignmentDocxService } from "./services/assignment-docx.service";
@@ -29,19 +24,13 @@ import { TeacherAssistantController } from "./teacher-assistant.controller";
 import { TeacherAssistantAuthController } from "./teacher-assistant-auth.controller";
 import { TeacherAssistantUserRepository } from "./teacher-assistant-user.repository";
 import { MongoTeacherAssistantUserRepository } from "./teacher-assistant-user.repository.mongo";
-import { PostgresTeacherAssistantUserRepository } from "./teacher-assistant-user.repository.postgres";
 
 @Module({
   imports: [
-    ...(isMongoDriver()
-      ? [
-          MongooseModule.forFeature([
-            { name: "TeacherAssistantUser", schema: TeacherAssistantUserSchema },
-            { name: "User", schema: UserSchema },
-          ]),
-        ]
-      : []),
-    ...(isMongoDriver() ? [] : [TypeOrmModule.forFeature([TeacherAssistantUser, User])]),
+    MongooseModule.forFeature([
+      { name: "TeacherAssistantUser", schema: TeacherAssistantUserSchema },
+      { name: "User", schema: UserSchema },
+    ]),
     forwardRef(() => AdminModule),
     forwardRef(() => NixModule),
     MetricsModule,
@@ -60,12 +49,8 @@ import { PostgresTeacherAssistantUserRepository } from "./teacher-assistant-user
     TeacherAssistantAuthService,
     TeacherAssistantAuthGuard,
     TeacherAssistantCapabilities,
-    repositoryProvider(
-      TeacherAssistantUserRepository,
-      PostgresTeacherAssistantUserRepository,
-      MongoTeacherAssistantUserRepository,
-    ),
-    repositoryProvider(UserRepository, PostgresUserRepository, MongoUserRepository),
+    repositoryProvider(TeacherAssistantUserRepository, MongoTeacherAssistantUserRepository),
+    repositoryProvider(UserRepository, MongoUserRepository),
   ],
   exports: [
     AssignmentGeneratorService,

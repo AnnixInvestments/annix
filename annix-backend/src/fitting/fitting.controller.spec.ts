@@ -1,13 +1,12 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { BoltMass } from "../bolt-mass/entities/bolt-mass.entity";
-import { FlangeDimension } from "../flange-dimension/entities/flange-dimension.entity";
-import { NbNpsLookup } from "../nb-nps-lookup/entities/nb-nps-lookup.entity";
-import { NutMass } from "../nut-mass/entities/nut-mass.entity";
-import { PipeDimension } from "../pipe-dimension/entities/pipe-dimension.entity";
+import { BoltMassRepository } from "../bolt-mass/bolt-mass.repository";
+import { FlangeDimensionRepository } from "../flange-dimension/flange-dimension.repository";
+import { NbNpsLookupRepository } from "../nb-nps-lookup/nb-nps-lookup.repository";
+import { NutMassRepository } from "../nut-mass/nut-mass.repository";
+import { PipeDimensionRepository } from "../pipe-dimension/pipe-dimension.repository";
 import { Sabs62FittingDimensionRepository } from "../sabs62-fitting-dimension/sabs62-fitting-dimension.repository";
 import { Sabs719FittingDimensionRepository } from "../sabs719-fitting-dimension/sabs719-fitting-dimension.repository";
-import { SteelSpecification } from "../steel-specification/entities/steel-specification.entity";
+import { SteelSpecificationRepository } from "../steel-specification/steel-specification.repository";
 import { FittingController } from "./fitting.controller";
 import { FittingService } from "./fitting.service";
 
@@ -29,27 +28,27 @@ describe("FittingController", () => {
   };
 
   const mockPipeDimensionRepo = {
-    findOne: jest.fn(),
+    findOneWhere: jest.fn(),
   };
 
   const mockNbNpsLookupRepo = {
-    findOne: jest.fn(),
+    findOneWhere: jest.fn(),
   };
 
   const mockFlangeDimensionRepo = {
-    findOne: jest.fn(),
+    findOneWhere: jest.fn(),
   };
 
   const mockBoltMassRepo = {
-    createQueryBuilder: jest.fn(),
+    findManyWhere: jest.fn(),
   };
 
   const mockNutMassRepo = {
-    findOne: jest.fn(),
+    findOneWhere: jest.fn(),
   };
 
   const mockSteelSpecRepo = {
-    findOne: jest.fn(),
+    findOneWhere: jest.fn(),
   };
 
   const mockFittingService = {
@@ -74,21 +73,21 @@ describe("FittingController", () => {
           useValue: mockSabs719Repo,
         },
         {
-          provide: getRepositoryToken(PipeDimension),
+          provide: PipeDimensionRepository,
           useValue: mockPipeDimensionRepo,
         },
         {
-          provide: getRepositoryToken(NbNpsLookup),
+          provide: NbNpsLookupRepository,
           useValue: mockNbNpsLookupRepo,
         },
         {
-          provide: getRepositoryToken(FlangeDimension),
+          provide: FlangeDimensionRepository,
           useValue: mockFlangeDimensionRepo,
         },
-        { provide: getRepositoryToken(BoltMass), useValue: mockBoltMassRepo },
-        { provide: getRepositoryToken(NutMass), useValue: mockNutMassRepo },
+        { provide: BoltMassRepository, useValue: mockBoltMassRepo },
+        { provide: NutMassRepository, useValue: mockNutMassRepo },
         {
-          provide: getRepositoryToken(SteelSpecification),
+          provide: SteelSpecificationRepository,
           useValue: mockSteelSpecRepo,
         },
       ],

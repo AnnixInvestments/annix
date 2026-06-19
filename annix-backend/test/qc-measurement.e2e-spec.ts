@@ -1,22 +1,19 @@
 import { INestApplication } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import request from "supertest";
 import { StockControlAuthGuard } from "../src/stock-control/guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "../src/stock-control/guards/stock-control-role.guard";
 import { QcMeasurementController } from "../src/stock-control/qc/controllers/qc-measurement.controller";
-import { QcBlastProfile } from "../src/stock-control/qc/entities/qc-blast-profile.entity";
-import { QcControlPlan } from "../src/stock-control/qc/entities/qc-control-plan.entity";
-import { QcDftReading } from "../src/stock-control/qc/entities/qc-dft-reading.entity";
-import { QcDustDebrisTest } from "../src/stock-control/qc/entities/qc-dust-debris-test.entity";
-import {
-  ItemReleaseResult,
-  QcItemsRelease,
-} from "../src/stock-control/qc/entities/qc-items-release.entity";
-import { QcPullTest } from "../src/stock-control/qc/entities/qc-pull-test.entity";
-import { QcReleaseCertificate } from "../src/stock-control/qc/entities/qc-release-certificate.entity";
-import { QcShoreHardness } from "../src/stock-control/qc/entities/qc-shore-hardness.entity";
+import { ItemReleaseResult } from "../src/stock-control/qc/entities/qc-items-release.entity";
 import { QcEnabledGuard } from "../src/stock-control/qc/guards/qc-enabled.guard";
+import { QcBlastProfileRepository } from "../src/stock-control/qc/repositories/qc-blast-profile.repository";
+import { QcControlPlanRepository } from "../src/stock-control/qc/repositories/qc-control-plan.repository";
+import { QcDftReadingRepository } from "../src/stock-control/qc/repositories/qc-dft-reading.repository";
+import { QcDustDebrisTestRepository } from "../src/stock-control/qc/repositories/qc-dust-debris-test.repository";
+import { QcItemsReleaseRepository } from "../src/stock-control/qc/repositories/qc-items-release.repository";
+import { QcPullTestRepository } from "../src/stock-control/qc/repositories/qc-pull-test.repository";
+import { QcReleaseCertificateRepository } from "../src/stock-control/qc/repositories/qc-release-certificate.repository";
+import { QcShoreHardnessRepository } from "../src/stock-control/qc/repositories/qc-shore-hardness.repository";
 import { QcMeasurementService } from "../src/stock-control/qc/services/qc-measurement.service";
 import { WORK_ITEM_PROVIDER } from "../src/stock-control/qc/work-item-provider.interface";
 
@@ -54,14 +51,14 @@ describe("QcMeasurementController (e2e)", () => {
       controllers: [QcMeasurementController],
       providers: [
         QcMeasurementService,
-        { provide: getRepositoryToken(QcShoreHardness), useValue: shoreHardnessRepo },
-        { provide: getRepositoryToken(QcDftReading), useValue: dftReadingRepo },
-        { provide: getRepositoryToken(QcBlastProfile), useValue: blastProfileRepo },
-        { provide: getRepositoryToken(QcDustDebrisTest), useValue: dustDebrisRepo },
-        { provide: getRepositoryToken(QcPullTest), useValue: pullTestRepo },
-        { provide: getRepositoryToken(QcControlPlan), useValue: controlPlanRepo },
-        { provide: getRepositoryToken(QcReleaseCertificate), useValue: releaseCertRepo },
-        { provide: getRepositoryToken(QcItemsRelease), useValue: itemsReleaseRepo },
+        { provide: QcShoreHardnessRepository, useValue: shoreHardnessRepo },
+        { provide: QcDftReadingRepository, useValue: dftReadingRepo },
+        { provide: QcBlastProfileRepository, useValue: blastProfileRepo },
+        { provide: QcDustDebrisTestRepository, useValue: dustDebrisRepo },
+        { provide: QcPullTestRepository, useValue: pullTestRepo },
+        { provide: QcControlPlanRepository, useValue: controlPlanRepo },
+        { provide: QcReleaseCertificateRepository, useValue: releaseCertRepo },
+        { provide: QcItemsReleaseRepository, useValue: itemsReleaseRepo },
         { provide: WORK_ITEM_PROVIDER, useValue: mockWorkItemProvider },
       ],
     })

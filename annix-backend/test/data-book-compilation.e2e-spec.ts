@@ -1,18 +1,16 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { JobCard } from "../src/stock-control/entities/job-card.entity";
-import { StockControlCompany } from "../src/stock-control/entities/stock-control-company.entity";
-import { QcBlastProfile } from "../src/stock-control/qc/entities/qc-blast-profile.entity";
-import { QcControlPlan } from "../src/stock-control/qc/entities/qc-control-plan.entity";
-import { DftCoatType, QcDftReading } from "../src/stock-control/qc/entities/qc-dft-reading.entity";
-import { QcDustDebrisTest } from "../src/stock-control/qc/entities/qc-dust-debris-test.entity";
-import {
-  ItemReleaseResult,
-  QcItemsRelease,
-} from "../src/stock-control/qc/entities/qc-items-release.entity";
-import { QcPullTest } from "../src/stock-control/qc/entities/qc-pull-test.entity";
-import { QcReleaseCertificate } from "../src/stock-control/qc/entities/qc-release-certificate.entity";
-import { QcShoreHardness } from "../src/stock-control/qc/entities/qc-shore-hardness.entity";
+import { DftCoatType } from "../src/stock-control/qc/entities/qc-dft-reading.entity";
+import { ItemReleaseResult } from "../src/stock-control/qc/entities/qc-items-release.entity";
+import { QcBlastProfileRepository } from "../src/stock-control/qc/repositories/qc-blast-profile.repository";
+import { QcControlPlanRepository } from "../src/stock-control/qc/repositories/qc-control-plan.repository";
+import { QcDftReadingRepository } from "../src/stock-control/qc/repositories/qc-dft-reading.repository";
+import { QcDustDebrisTestRepository } from "../src/stock-control/qc/repositories/qc-dust-debris-test.repository";
+import { QcItemsReleaseRepository } from "../src/stock-control/qc/repositories/qc-items-release.repository";
+import { QcPullTestRepository } from "../src/stock-control/qc/repositories/qc-pull-test.repository";
+import { QcReleaseCertificateRepository } from "../src/stock-control/qc/repositories/qc-release-certificate.repository";
+import { QcShoreHardnessRepository } from "../src/stock-control/qc/repositories/qc-shore-hardness.repository";
+import { JobCardRepository } from "../src/stock-control/repositories/job-card.repository";
+import { StockControlCompanyRepository } from "../src/stock-control/repositories/stock-control-company.repository";
 import { DataBookPdfService } from "../src/stock-control/services/data-book-pdf.service";
 
 const COMPANY_ID = 1;
@@ -45,16 +43,16 @@ describe("Data Book Compilation (E2E smoke test)", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DataBookPdfService,
-        { provide: getRepositoryToken(QcShoreHardness), useValue: shoreHardnessRepo },
-        { provide: getRepositoryToken(QcDftReading), useValue: dftReadingRepo },
-        { provide: getRepositoryToken(QcBlastProfile), useValue: blastProfileRepo },
-        { provide: getRepositoryToken(QcDustDebrisTest), useValue: dustDebrisRepo },
-        { provide: getRepositoryToken(QcPullTest), useValue: pullTestRepo },
-        { provide: getRepositoryToken(QcControlPlan), useValue: controlPlanRepo },
-        { provide: getRepositoryToken(QcReleaseCertificate), useValue: releaseCertRepo },
-        { provide: getRepositoryToken(QcItemsRelease), useValue: itemsReleaseRepo },
-        { provide: getRepositoryToken(JobCard), useValue: jobCardRepo },
-        { provide: getRepositoryToken(StockControlCompany), useValue: companyRepo },
+        { provide: QcShoreHardnessRepository, useValue: shoreHardnessRepo },
+        { provide: QcDftReadingRepository, useValue: dftReadingRepo },
+        { provide: QcBlastProfileRepository, useValue: blastProfileRepo },
+        { provide: QcDustDebrisTestRepository, useValue: dustDebrisRepo },
+        { provide: QcPullTestRepository, useValue: pullTestRepo },
+        { provide: QcControlPlanRepository, useValue: controlPlanRepo },
+        { provide: QcReleaseCertificateRepository, useValue: releaseCertRepo },
+        { provide: QcItemsReleaseRepository, useValue: itemsReleaseRepo },
+        { provide: JobCardRepository, useValue: jobCardRepo },
+        { provide: StockControlCompanyRepository, useValue: companyRepo },
       ],
     }).compile();
 

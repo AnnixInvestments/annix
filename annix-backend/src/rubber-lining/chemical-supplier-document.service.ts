@@ -1,7 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { ILike, Repository } from "typeorm";
 import { now } from "../lib/datetime";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../storage/storage.interface";
 import {
@@ -15,19 +13,19 @@ import {
   type ChemicalDocExtractedData,
   ChemicalSupplierDocument,
 } from "./entities/chemical-supplier-document.entity";
-import { CompanyType, RubberCompany } from "./entities/rubber-company.entity";
+import { CompanyType } from "./entities/rubber-company.entity";
 import { CocProcessingStatus } from "./entities/rubber-supplier-coc.entity";
 import { AuRubberDocumentType, sanitizeAuRubberDocNumber } from "./lib/au-rubber-document-paths";
+import { ChemicalSupplierDocumentRepository } from "./repositories/chemical-supplier-document.repository";
+import { RubberCompanyRepository } from "./repositories/rubber-company.repository";
 
 @Injectable()
 export class ChemicalSupplierDocumentService {
   private readonly logger = new Logger(ChemicalSupplierDocumentService.name);
 
   constructor(
-    @InjectRepository(ChemicalSupplierDocument)
-    private readonly documentRepository: Repository<ChemicalSupplierDocument>,
-    @InjectRepository(RubberCompany)
-    private readonly companyRepository: Repository<RubberCompany>,
+    private readonly documentRepository: ChemicalSupplierDocumentRepository,
+    private readonly companyRepository: RubberCompanyRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {}
@@ -35,30 +33,11 @@ export class ChemicalSupplierDocumentService {
   async list(
     filters: ChemicalSupplierDocumentFilters = {},
   ): Promise<ChemicalSupplierDocumentDto[]> {
-    const qb = this.documentRepository
-      .createQueryBuilder("doc")
-      .leftJoinAndSelect("doc.supplierCompany", "supplier")
-      .orderBy("doc.createdAt", "DESC");
-
-    if (filters.supplierCompanyId) {
-      qb.andWhere("doc.supplierCompanyId = :supplierCompanyId", {
-        supplierCompanyId: filters.supplierCompanyId,
-      });
-    }
-    if (filters.processingStatus) {
-      qb.andWhere("doc.processingStatus = :processingStatus", {
-        processingStatus: filters.processingStatus,
-      });
-    }
-    if (filters.search) {
-      const term = `%${filters.search.trim()}%`;
-      qb.andWhere(
-        "(doc.deliveryNoteNumber ILIKE :term OR doc.batchNumber ILIKE :term OR doc.productName ILIKE :term)",
-        { term },
-      );
-    }
-
-    const docs = await qb.getMany();
+    const docs = await this.documentRepository.listWithFilters({
+      supplierCompanyId: filters.supplierCompanyId,
+      processingStatus: filters.processingStatus,
+      search: filters.search,
+    });
     return docs.map((doc) => this.toDto(doc));
   }
 
@@ -87,10 +66,7 @@ export class ChemicalSupplierDocumentService {
     }
 
     const documentHash = createHash("sha256").update(file.buffer).digest("hex");
-    const existing = await this.documentRepository.findOne({
-      where: { documentHash },
-      relations: ["supplierCompany"],
-    });
+    const existing = await this.documentRepository.findOneByDocumentHashWithCompany(documentHash);
     if (existing) {
       this.logger.log(
         `Chemical document with hash ${documentHash} already exists (id ${existing.id}) — skipping duplicate ingest`,
@@ -105,7 +81,7 @@ export class ChemicalSupplierDocumentService {
     )}`;
     const upload = await this.storageService.upload(file, subPath);
 
-    const doc = this.documentRepository.create({
+    const saved = await this.documentRepository.create({
       firebaseUid: `chem-doc-${randomUUID()}`,
       supplierCompanyId,
       deliveryNoteNumber: dto.deliveryNoteNumber ?? null,
@@ -117,7 +93,6 @@ export class ChemicalSupplierDocumentService {
       createdBy: createdBy ?? null,
     });
 
-    const saved = await this.documentRepository.save(doc);
     const withSupplier = await this.findEntity(saved.id);
     return this.toDto(withSupplier);
   }
@@ -161,7 +136,9 @@ export class ChemicalSupplierDocumentService {
   }
 
   async markFailed(id: number): Promise<void> {
-    await this.documentRepository.update(id, { processingStatus: CocProcessingStatus.FAILED });
+    await this.documentRepository.updateById(id, {
+      processingStatus: CocProcessingStatus.FAILED,
+    });
   }
 
   async approve(id: number, approvedBy?: string): Promise<ChemicalSupplierDocumentDto> {
@@ -180,10 +157,7 @@ export class ChemicalSupplierDocumentService {
   }
 
   private async findEntity(id: number): Promise<ChemicalSupplierDocument> {
-    const doc = await this.documentRepository.findOne({
-      where: { id },
-      relations: ["supplierCompany"],
-    });
+    const doc = await this.documentRepository.findByIdWithCompany(id);
     if (!doc) {
       throw new NotFoundException(`Chemical supplier document ${id} not found`);
     }
@@ -194,9 +168,7 @@ export class ChemicalSupplierDocumentService {
     dto: CreateChemicalSupplierDocumentDto,
   ): Promise<number | null> {
     if (dto.supplierCompanyId) {
-      const company = await this.companyRepository.findOne({
-        where: { id: dto.supplierCompanyId },
-      });
+      const company = await this.companyRepository.findById(dto.supplierCompanyId);
       if (!company) {
         throw new BadRequestException(`Supplier company ${dto.supplierCompanyId} not found`);
       }
@@ -210,14 +182,13 @@ export class ChemicalSupplierDocumentService {
     const trimmed = name?.trim();
     if (!trimmed) return null;
 
-    const exact = await this.companyRepository.findOne({
-      where: { name: ILike(trimmed), companyType: CompanyType.SUPPLIER },
-    });
+    const exact = await this.companyRepository.findOneByNameAndType(
+      trimmed.toUpperCase(),
+      CompanyType.SUPPLIER,
+    );
     if (exact) return exact.id;
 
-    const suppliers = await this.companyRepository.find({
-      where: { companyType: CompanyType.SUPPLIER },
-    });
+    const suppliers = await this.companyRepository.findByCompanyType(CompanyType.SUPPLIER);
     const lower = trimmed.toLowerCase();
     const found = suppliers.find((supplier) => {
       const supplierName = supplier.name?.trim().toLowerCase() ?? "";
@@ -235,20 +206,17 @@ export class ChemicalSupplierDocumentService {
     const doc = await this.findEntity(id);
 
     if (options.supplierCompanyId) {
-      const company = await this.companyRepository.findOne({
-        where: { id: options.supplierCompanyId },
-      });
+      const company = await this.companyRepository.findById(options.supplierCompanyId);
       if (!company) {
         throw new BadRequestException(`Supplier company ${options.supplierCompanyId} not found`);
       }
       doc.supplierCompanyId = company.id;
     } else if (options.createWithName?.trim()) {
-      const created = await this.companyRepository.save(
-        this.companyRepository.create({
-          name: options.createWithName.trim(),
-          companyType: CompanyType.SUPPLIER,
-        }),
-      );
+      const created = await this.companyRepository.create({
+        firebaseUid: `rubber-company-${randomUUID()}`,
+        name: options.createWithName.trim(),
+        companyType: CompanyType.SUPPLIER,
+      });
       doc.supplierCompanyId = created.id;
     } else {
       throw new BadRequestException("Provide either supplierCompanyId or createWithName");

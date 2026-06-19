@@ -1,10 +1,8 @@
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
-import { TypeOrmModule } from "@nestjs/typeorm";
 import { AuthModule } from "../auth/auth.module";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { RolesGuard } from "../auth/roles.guard";
-import { isMongoDriver } from "../lib/persistence/database-driver";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
 import { MetricsModule } from "../metrics/metrics.module";
 import { NixModule } from "../nix/nix.module";
@@ -15,46 +13,26 @@ import { InsightsNewsController } from "./controllers/insights-news.controller";
 import { InsightsPaperPortfoliosController } from "./controllers/insights-paper-portfolios.controller";
 import { InsightsSignalsController } from "./controllers/insights-signals.controller";
 import { InsightsWatchlistController } from "./controllers/insights-watchlist.controller";
-import { Asset } from "./entities/asset.entity";
-import { MacroSentimentSnapshot } from "./entities/macro-sentiment-snapshot.entity";
-import { NewsItem } from "./entities/news-item.entity";
-import { PaperHolding } from "./entities/paper-holding.entity";
-import { PaperPortfolio } from "./entities/paper-portfolio.entity";
-import { PaperPortfolioSnapshot } from "./entities/paper-portfolio-snapshot.entity";
-import { PaperTrade } from "./entities/paper-trade.entity";
-import { PriceHistory } from "./entities/price-history.entity";
-import { SignalSnapshot } from "./entities/signal-snapshot.entity";
-import { WatchlistItem } from "./entities/watchlist-item.entity";
 import { AssetRepository } from "./repositories/asset.repository";
 import { MongoAssetRepository } from "./repositories/asset.repository.mongo";
-import { PostgresAssetRepository } from "./repositories/asset.repository.postgres";
 import { MacroSentimentSnapshotRepository } from "./repositories/macro-sentiment-snapshot.repository";
 import { MongoMacroSentimentSnapshotRepository } from "./repositories/macro-sentiment-snapshot.repository.mongo";
-import { PostgresMacroSentimentSnapshotRepository } from "./repositories/macro-sentiment-snapshot.repository.postgres";
 import { NewsItemRepository } from "./repositories/news-item.repository";
 import { MongoNewsItemRepository } from "./repositories/news-item.repository.mongo";
-import { PostgresNewsItemRepository } from "./repositories/news-item.repository.postgres";
 import { PaperHoldingRepository } from "./repositories/paper-holding.repository";
 import { MongoPaperHoldingRepository } from "./repositories/paper-holding.repository.mongo";
-import { PostgresPaperHoldingRepository } from "./repositories/paper-holding.repository.postgres";
 import { PaperPortfolioRepository } from "./repositories/paper-portfolio.repository";
 import { MongoPaperPortfolioRepository } from "./repositories/paper-portfolio.repository.mongo";
-import { PostgresPaperPortfolioRepository } from "./repositories/paper-portfolio.repository.postgres";
 import { PaperPortfolioSnapshotRepository } from "./repositories/paper-portfolio-snapshot.repository";
 import { MongoPaperPortfolioSnapshotRepository } from "./repositories/paper-portfolio-snapshot.repository.mongo";
-import { PostgresPaperPortfolioSnapshotRepository } from "./repositories/paper-portfolio-snapshot.repository.postgres";
 import { PaperTradeRepository } from "./repositories/paper-trade.repository";
 import { MongoPaperTradeRepository } from "./repositories/paper-trade.repository.mongo";
-import { PostgresPaperTradeRepository } from "./repositories/paper-trade.repository.postgres";
 import { PriceHistoryRepository } from "./repositories/price-history.repository";
 import { MongoPriceHistoryRepository } from "./repositories/price-history.repository.mongo";
-import { PostgresPriceHistoryRepository } from "./repositories/price-history.repository.postgres";
 import { SignalSnapshotRepository } from "./repositories/signal-snapshot.repository";
 import { MongoSignalSnapshotRepository } from "./repositories/signal-snapshot.repository.mongo";
-import { PostgresSignalSnapshotRepository } from "./repositories/signal-snapshot.repository.postgres";
 import { WatchlistItemRepository } from "./repositories/watchlist-item.repository";
 import { MongoWatchlistItemRepository } from "./repositories/watchlist-item.repository.mongo";
-import { PostgresWatchlistItemRepository } from "./repositories/watchlist-item.repository.postgres";
 import { AssetSchema } from "./schemas/asset.schema";
 import { MacroSentimentSnapshotSchema } from "./schemas/macro-sentiment-snapshot.schema";
 import { NewsItemSchema } from "./schemas/news-item.schema";
@@ -85,38 +63,18 @@ import { YahooMarketDataService } from "./services/yahoo-market-data.service";
     AuthModule,
     MetricsModule,
     NixModule,
-    ...(isMongoDriver()
-      ? [
-          MongooseModule.forFeature([
-            { name: "Asset", schema: AssetSchema },
-            { name: "WatchlistItem", schema: WatchlistItemSchema },
-            { name: "PriceHistory", schema: PriceHistorySchema },
-            { name: "PaperPortfolio", schema: PaperPortfolioSchema },
-            { name: "PaperHolding", schema: PaperHoldingSchema },
-            { name: "PaperTrade", schema: PaperTradeSchema },
-            { name: "PaperPortfolioSnapshot", schema: PaperPortfolioSnapshotSchema },
-            { name: "SignalSnapshot", schema: SignalSnapshotSchema },
-            { name: "NewsItem", schema: NewsItemSchema },
-            { name: "MacroSentimentSnapshot", schema: MacroSentimentSnapshotSchema },
-          ]),
-        ]
-      : []),
-    ...(isMongoDriver()
-      ? []
-      : [
-          TypeOrmModule.forFeature([
-            Asset,
-            WatchlistItem,
-            PriceHistory,
-            PaperPortfolio,
-            PaperHolding,
-            PaperTrade,
-            PaperPortfolioSnapshot,
-            SignalSnapshot,
-            NewsItem,
-            MacroSentimentSnapshot,
-          ]),
-        ]),
+    MongooseModule.forFeature([
+      { name: "Asset", schema: AssetSchema },
+      { name: "WatchlistItem", schema: WatchlistItemSchema },
+      { name: "PriceHistory", schema: PriceHistorySchema },
+      { name: "PaperPortfolio", schema: PaperPortfolioSchema },
+      { name: "PaperHolding", schema: PaperHoldingSchema },
+      { name: "PaperTrade", schema: PaperTradeSchema },
+      { name: "PaperPortfolioSnapshot", schema: PaperPortfolioSnapshotSchema },
+      { name: "SignalSnapshot", schema: SignalSnapshotSchema },
+      { name: "NewsItem", schema: NewsItemSchema },
+      { name: "MacroSentimentSnapshot", schema: MacroSentimentSnapshotSchema },
+    ]),
   ],
   controllers: [
     InsightsHealthController,
@@ -130,48 +88,16 @@ import { YahooMarketDataService } from "./services/yahoo-market-data.service";
   providers: [
     JwtAuthGuard,
     RolesGuard,
-    repositoryProvider(AssetRepository, PostgresAssetRepository, MongoAssetRepository),
-    repositoryProvider(
-      WatchlistItemRepository,
-      PostgresWatchlistItemRepository,
-      MongoWatchlistItemRepository,
-    ),
-    repositoryProvider(
-      PriceHistoryRepository,
-      PostgresPriceHistoryRepository,
-      MongoPriceHistoryRepository,
-    ),
-    repositoryProvider(
-      PaperPortfolioRepository,
-      PostgresPaperPortfolioRepository,
-      MongoPaperPortfolioRepository,
-    ),
-    repositoryProvider(
-      PaperHoldingRepository,
-      PostgresPaperHoldingRepository,
-      MongoPaperHoldingRepository,
-    ),
-    repositoryProvider(
-      PaperTradeRepository,
-      PostgresPaperTradeRepository,
-      MongoPaperTradeRepository,
-    ),
-    repositoryProvider(
-      PaperPortfolioSnapshotRepository,
-      PostgresPaperPortfolioSnapshotRepository,
-      MongoPaperPortfolioSnapshotRepository,
-    ),
-    repositoryProvider(
-      SignalSnapshotRepository,
-      PostgresSignalSnapshotRepository,
-      MongoSignalSnapshotRepository,
-    ),
-    repositoryProvider(NewsItemRepository, PostgresNewsItemRepository, MongoNewsItemRepository),
-    repositoryProvider(
-      MacroSentimentSnapshotRepository,
-      PostgresMacroSentimentSnapshotRepository,
-      MongoMacroSentimentSnapshotRepository,
-    ),
+    repositoryProvider(AssetRepository, MongoAssetRepository),
+    repositoryProvider(WatchlistItemRepository, MongoWatchlistItemRepository),
+    repositoryProvider(PriceHistoryRepository, MongoPriceHistoryRepository),
+    repositoryProvider(PaperPortfolioRepository, MongoPaperPortfolioRepository),
+    repositoryProvider(PaperHoldingRepository, MongoPaperHoldingRepository),
+    repositoryProvider(PaperTradeRepository, MongoPaperTradeRepository),
+    repositoryProvider(PaperPortfolioSnapshotRepository, MongoPaperPortfolioSnapshotRepository),
+    repositoryProvider(SignalSnapshotRepository, MongoSignalSnapshotRepository),
+    repositoryProvider(NewsItemRepository, MongoNewsItemRepository),
+    repositoryProvider(MacroSentimentSnapshotRepository, MongoMacroSentimentSnapshotRepository),
     WatchlistService,
     YahooMarketDataService,
     MarketDataIngestionService,

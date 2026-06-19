@@ -27,11 +27,11 @@ function hostOf(uri: string): string {
 function coreConnectionOptions() {
   const uri = process.env.MONGODB_URI;
   if (!uri) {
-    throw new Error("MONGODB_URI is required when DATABASE_DRIVER is mongo");
+    throw new Error("MONGODB_URI is required");
   }
   const dbName = process.env.MONGO_DATABASE;
   if (!dbName) {
-    throw new Error("MONGO_DATABASE is required when DATABASE_DRIVER is mongo");
+    throw new Error("MONGO_DATABASE is required");
   }
   logger.log(`Core cluster ${hostOf(uri)} / ${dbName}`);
   return { uri, dbName, ...sharedOptions };
@@ -48,9 +48,7 @@ function orbitConnectionOptions() {
   const uri = explicitUri ?? process.env.MONGODB_URI;
   const dbName = explicitDbName ?? process.env.MONGO_DATABASE;
   if (!uri || !dbName) {
-    throw new Error(
-      "ORBIT_MONGODB_URI / ORBIT_MONGO_DATABASE is required when DATABASE_DRIVER is mongo",
-    );
+    throw new Error("ORBIT_MONGODB_URI / ORBIT_MONGO_DATABASE is required");
   }
   const coreUri = process.env.MONGODB_URI;
   const sharesCoreCluster = coreUri != null && hostOf(uri) === hostOf(coreUri);

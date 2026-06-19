@@ -9,7 +9,6 @@ import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { Test, TestingModule } from "@nestjs/testing";
 import * as bcrypt from "bcrypt";
-import { DataSource } from "typeorm";
 import { EmailService } from "../../email/email.service";
 import { now } from "../../lib/datetime";
 import { AppRepository, UserAppAccessRepository } from "../../rbac/rbac.repository";
@@ -168,10 +167,6 @@ describe("StockControlAuthService", () => {
     findOneByUserId: (userId: number) => profileFindOne({ where: { userId } }),
     findOneByUserIdWithRelations: (userId: number) => profileFindOne({ where: { userId } }),
     findOneOrFailByUserId: jest.fn(),
-  };
-
-  const mockDataSource = {
-    query: jest.fn().mockResolvedValue([{ unified_company_id: 1 }]),
   };
 
   const mockAppRepo = {
@@ -337,7 +332,6 @@ describe("StockControlAuthService", () => {
         },
         { provide: UserRepository, useValue: mockUnifiedUserRepo },
         { provide: StockControlProfileRepository, useValue: mockProfileRepo },
-        { provide: DataSource, useValue: mockDataSource },
         { provide: AppRepository, useValue: mockAppRepo },
         { provide: UserAppAccessRepository, useValue: mockUserAppAccessRepo },
         { provide: UserLocationAssignmentRepository, useValue: mockUserLocationAssignmentRepo },

@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { DataSource } from "typeorm";
+import { InjectConnection } from "@nestjs/mongoose";
+import type { Connection } from "mongoose";
 import {
   BellowsOptionDto,
   BellowsSelectionDto,
@@ -81,7 +82,19 @@ export class ThermalService {
     [ThermalMaterial.CHROME_MOLY_P22]: "Chrome-Moly P22",
   };
 
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(@InjectConnection() private readonly connection: Connection) {}
+
+  private numericOrNull(value: unknown): number | null {
+    if (value === null || value === undefined || value === "") {
+      return null;
+    }
+    const num = typeof value === "number" ? value : parseFloat(String(value));
+    return Number.isNaN(num) ? null : num;
+  }
+
+  private numeric(value: unknown): number {
+    return this.numericOrNull(value) ?? 0;
+  }
 
   async expansionRequirement(
     dto: ExpansionRequirementDto,
@@ -148,41 +161,37 @@ export class ThermalService {
       preferredMaterial,
     } = dto;
 
-    let query = `
-      SELECT *
-      FROM bellows_expansion_joints
-      WHERE nominal_size_mm = $1
-      AND max_pressure_bar >= $2
-      AND max_temperature_c >= $3
-      AND min_temperature_c <= $3
-      AND (axial_compression_mm + axial_extension_mm) >= $4
-    `;
-
-    const params: (string | number)[] = [
-      nominalSizeMm,
-      designPressureBar,
-      designTemperatureC,
-      axialMovementMm,
-    ];
+    const filter: Record<string, unknown> = {
+      nominal_size_mm: nominalSizeMm,
+      max_pressure_bar: { $gte: designPressureBar },
+      max_temperature_c: { $gte: designTemperatureC },
+      min_temperature_c: { $lte: designTemperatureC },
+    };
 
     if (lateralMovementMm && lateralMovementMm > 0) {
-      params.push(lateralMovementMm);
-      query += ` AND lateral_offset_mm >= $${params.length}`;
+      filter.lateral_offset_mm = { $gte: lateralMovementMm };
     }
 
     if (angularMovementDeg && angularMovementDeg > 0) {
-      params.push(angularMovementDeg);
-      query += ` AND angular_rotation_deg >= $${params.length}`;
+      filter.angular_rotation_deg = { $gte: angularMovementDeg };
     }
 
     if (preferredMaterial) {
-      params.push(preferredMaterial);
-      query += ` AND bellows_material = $${params.length}`;
+      filter.bellows_material = preferredMaterial;
     }
 
-    query += " ORDER BY list_price_zar ASC";
+    const docs = await this.connection
+      .collection<BellowsJoint>("bellows_expansion_joints")
+      .find(filter)
+      .toArray();
 
-    const results: BellowsJoint[] = await this.dataSource.query(query, params);
+    const results = docs
+      .filter(
+        (b) =>
+          this.numeric(b.axial_compression_mm) + this.numeric(b.axial_extension_mm) >=
+          axialMovementMm,
+      )
+      .sort((a, b) => this.numeric(a.list_price_zar) - this.numeric(b.list_price_zar));
 
     const options: BellowsOptionDto[] = results.map((b) => {
       const suitabilityScore = this.calculateBellowsSuitability(b, dto);
@@ -217,33 +226,22 @@ export class ThermalService {
   async loopSizing(dto: LoopSizingDto): Promise<LoopSizingResponseDto> {
     const { nominalSizeMm, expansionMm, material, schedule, preferredLoopType } = dto;
 
-    let exactQuery = `
-      SELECT *
-      FROM expansion_loop_sizing
-      WHERE nominal_size_mm = $1
-      AND expansion_mm = $2
-      AND material_code = $3
-      AND pipe_schedule = $4
-    `;
+    const loopCollection = this.connection.collection<LoopSizing>("expansion_loop_sizing");
 
-    const exactParams: (string | number)[] = [
-      nominalSizeMm,
-      expansionMm,
-      material,
-      schedule || "Std",
-    ];
+    const exactFilter: Record<string, unknown> = {
+      nominal_size_mm: nominalSizeMm,
+      expansion_mm: expansionMm,
+      material_code: material,
+      pipe_schedule: schedule || "Std",
+    };
 
     if (preferredLoopType) {
-      exactParams.push(preferredLoopType);
-      exactQuery += ` AND loop_type = $${exactParams.length}`;
+      exactFilter.loop_type = preferredLoopType;
     }
 
-    exactQuery += " LIMIT 1";
+    const exactMatch = await loopCollection.findOne(exactFilter);
 
-    const exactResults: LoopSizing[] = await this.dataSource.query(exactQuery, exactParams);
-
-    if (exactResults.length > 0) {
-      const exactMatch = exactResults[0];
+    if (exactMatch) {
       return {
         loopType: exactMatch.loop_type,
         loopHeightMm: exactMatch.loop_height_mm,
@@ -256,33 +254,24 @@ export class ThermalService {
       };
     }
 
-    const lowerQuery = `
-      SELECT *
-      FROM expansion_loop_sizing
-      WHERE nominal_size_mm = $1
-      AND material_code = $2
-      AND expansion_mm <= $3
-      ORDER BY expansion_mm DESC
-      LIMIT 1
-    `;
-
-    const higherQuery = `
-      SELECT *
-      FROM expansion_loop_sizing
-      WHERE nominal_size_mm = $1
-      AND material_code = $2
-      AND expansion_mm >= $3
-      ORDER BY expansion_mm ASC
-      LIMIT 1
-    `;
-
-    const [lowerResults, higherResults]: [LoopSizing[], LoopSizing[]] = await Promise.all([
-      this.dataSource.query(lowerQuery, [nominalSizeMm, material, expansionMm]),
-      this.dataSource.query(higherQuery, [nominalSizeMm, material, expansionMm]),
+    const [nearestLower, nearestHigher] = await Promise.all([
+      loopCollection.findOne(
+        {
+          nominal_size_mm: nominalSizeMm,
+          material_code: material,
+          expansion_mm: { $lte: expansionMm },
+        },
+        { sort: { expansion_mm: -1 } },
+      ),
+      loopCollection.findOne(
+        {
+          nominal_size_mm: nominalSizeMm,
+          material_code: material,
+          expansion_mm: { $gte: expansionMm },
+        },
+        { sort: { expansion_mm: 1 } },
+      ),
     ]);
-
-    const nearestLower = lowerResults[0];
-    const nearestHigher = higherResults[0];
 
     if (nearestLower && nearestHigher) {
       const ratio =
@@ -330,48 +319,41 @@ export class ThermalService {
   }
 
   async coefficientsForMaterial(material: ThermalMaterial): Promise<ExpansionCoefficientDto[]> {
-    const query = `
-      SELECT *
-      FROM pipe_expansion_coefficients
-      WHERE material_code = $1
-      ORDER BY temperature_c ASC
-    `;
+    const docs = await this.connection
+      .collection<ExpansionCoefficient>("pipe_expansion_coefficients")
+      .find({ material_code: material })
+      .toArray();
 
-    const results: ExpansionCoefficient[] = await this.dataSource.query(query, [material]);
-
-    return results.map((r) => ({
-      materialCode: r.material_code,
-      materialName: r.material_name,
-      temperatureC: r.temperature_c,
-      meanCoefficientPerC: parseFloat(r.mean_coefficient_per_c),
-      instantaneousCoefficientPerC: r.instantaneous_coefficient_per_c
-        ? parseFloat(r.instantaneous_coefficient_per_c)
-        : undefined,
-      totalExpansionMmPerM: r.total_expansion_mm_per_m
-        ? parseFloat(r.total_expansion_mm_per_m)
-        : undefined,
-      modulusOfElasticityGpa: r.modulus_of_elasticity_gpa
-        ? parseFloat(r.modulus_of_elasticity_gpa)
-        : undefined,
-      thermalConductivityWmK: r.thermal_conductivity_w_mk
-        ? parseFloat(r.thermal_conductivity_w_mk)
-        : undefined,
-      referenceStandard: r.reference_standard,
-    }));
+    return docs
+      .sort((a, b) => this.numeric(a.temperature_c) - this.numeric(b.temperature_c))
+      .map((r) => ({
+        materialCode: r.material_code,
+        materialName: r.material_name,
+        temperatureC: this.numeric(r.temperature_c),
+        meanCoefficientPerC: this.numeric(r.mean_coefficient_per_c),
+        instantaneousCoefficientPerC:
+          this.numericOrNull(r.instantaneous_coefficient_per_c) ?? undefined,
+        totalExpansionMmPerM: this.numericOrNull(r.total_expansion_mm_per_m) ?? undefined,
+        modulusOfElasticityGpa: this.numericOrNull(r.modulus_of_elasticity_gpa) ?? undefined,
+        thermalConductivityWmK: this.numericOrNull(r.thermal_conductivity_w_mk) ?? undefined,
+        referenceStandard: r.reference_standard,
+      }));
   }
 
   async availableMaterials(): Promise<{ code: string; name: string }[]> {
-    const query = `
-      SELECT DISTINCT material_code as code, material_name as name
-      FROM pipe_expansion_coefficients
-      ORDER BY material_name
-    `;
+    const docs = await this.connection
+      .collection<ExpansionCoefficient>("pipe_expansion_coefficients")
+      .find({}, { projection: { material_code: 1, material_name: 1 } })
+      .toArray();
 
-    const results = await this.dataSource.query(query);
-    return results.map((r: { code: string; name: string }) => ({
-      code: r.code,
-      name: r.name,
-    }));
+    const byCode = docs.reduce<Map<string, { code: string; name: string }>>((acc, doc) => {
+      if (doc.material_code && !acc.has(doc.material_code)) {
+        acc.set(doc.material_code, { code: doc.material_code, name: doc.material_name });
+      }
+      return acc;
+    }, new Map());
+
+    return [...byCode.values()].sort((a, b) => a.name.localeCompare(b.name));
   }
 
   private async interpolatedCoefficient(
@@ -380,51 +362,43 @@ export class ThermalService {
     toTemp: number,
   ): Promise<number> {
     const avgTemp = (fromTemp + toTemp) / 2;
+    const coefficients = this.connection.collection<ExpansionCoefficient>(
+      "pipe_expansion_coefficients",
+    );
 
-    const lowerQuery = `
-      SELECT *
-      FROM pipe_expansion_coefficients
-      WHERE material_code = $1 AND temperature_c <= $2
-      ORDER BY temperature_c DESC
-      LIMIT 1
-    `;
-
-    const higherQuery = `
-      SELECT *
-      FROM pipe_expansion_coefficients
-      WHERE material_code = $1 AND temperature_c >= $2
-      ORDER BY temperature_c ASC
-      LIMIT 1
-    `;
-
-    const [lowerResults, higherResults]: [ExpansionCoefficient[], ExpansionCoefficient[]] =
-      await Promise.all([
-        this.dataSource.query(lowerQuery, [material, avgTemp]),
-        this.dataSource.query(higherQuery, [material, avgTemp]),
-      ]);
-
-    const lower = lowerResults[0];
-    const higher = higherResults[0];
+    const [lower, higher] = await Promise.all([
+      coefficients.findOne(
+        { material_code: material, temperature_c: { $lte: avgTemp } },
+        { sort: { temperature_c: -1 } },
+      ),
+      coefficients.findOne(
+        { material_code: material, temperature_c: { $gte: avgTemp } },
+        { sort: { temperature_c: 1 } },
+      ),
+    ]);
 
     if (!lower && !higher) {
       return this.fallbackCoefficients[material];
     }
 
     if (!lower) {
-      return parseFloat(higher.mean_coefficient_per_c);
+      return this.numeric(higher?.mean_coefficient_per_c);
     }
 
     if (!higher) {
-      return parseFloat(lower.mean_coefficient_per_c);
+      return this.numeric(lower.mean_coefficient_per_c);
     }
 
-    if (lower.temperature_c === higher.temperature_c) {
-      return parseFloat(lower.mean_coefficient_per_c);
+    const lowerTemp = this.numeric(lower.temperature_c);
+    const higherTemp = this.numeric(higher.temperature_c);
+
+    if (lowerTemp === higherTemp) {
+      return this.numeric(lower.mean_coefficient_per_c);
     }
 
-    const ratio = (avgTemp - lower.temperature_c) / (higher.temperature_c - lower.temperature_c);
-    const lowerCoeff = parseFloat(lower.mean_coefficient_per_c);
-    const higherCoeff = parseFloat(higher.mean_coefficient_per_c);
+    const ratio = (avgTemp - lowerTemp) / (higherTemp - lowerTemp);
+    const lowerCoeff = this.numeric(lower.mean_coefficient_per_c);
+    const higherCoeff = this.numeric(higher.mean_coefficient_per_c);
 
     return lowerCoeff + ratio * (higherCoeff - lowerCoeff);
   }

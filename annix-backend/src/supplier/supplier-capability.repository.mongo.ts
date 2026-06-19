@@ -25,4 +25,26 @@ export class MongoSupplierCapabilityRepository
       .exec();
     return this.toDomainList(documents);
   }
+
+  async findActiveBySupplier(supplierProfileId: number): Promise<SupplierCapability[]> {
+    const documents = await this.documents
+      .find({ supplierProfileId, isActive: true })
+      .session(this.session)
+      .lean()
+      .exec();
+    return this.toDomainList(documents);
+  }
+
+  async findBySupplier(supplierProfileId: number): Promise<SupplierCapability[]> {
+    const documents = await this.documents
+      .find({ supplierProfileId })
+      .session(this.session)
+      .lean()
+      .exec();
+    return this.toDomainList(documents);
+  }
+
+  async removeById(id: number): Promise<void> {
+    await this.documents.findByIdAndDelete(id).session(this.session).exec();
+  }
 }

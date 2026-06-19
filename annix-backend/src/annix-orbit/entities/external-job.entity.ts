@@ -1,153 +1,94 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  Index,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from "typeorm";
 import { JobMarketSource } from "./job-market-source.entity";
 
-@Entity("cv_assistant_external_jobs")
-@Index("idx_external_jobs_source_id", ["sourceExternalId", "sourceId"], { unique: true })
-@Index("idx_external_jobs_location", ["country", "locationArea"])
-@Index("idx_external_jobs_category", ["category"])
-@Index("idx_external_jobs_canonical_category", ["canonicalCategory"])
-@Index("idx_external_jobs_canonical_province", ["canonicalProvince"])
 export class ExternalJob {
-  @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: "varchar", length: 500 })
   title: string;
 
-  @Column({ name: "title_key", type: "varchar", length: 500, nullable: true })
   titleKey: string | null;
 
-  @Column({ type: "varchar", length: 500, nullable: true })
   company: string | null;
 
-  @Column({ type: "varchar", length: 10, default: "za" })
   country: string;
 
-  @Column({ name: "location_raw", type: "varchar", length: 500, nullable: true })
   locationRaw: string | null;
 
-  @Column({ name: "location_area", type: "varchar", length: 255, nullable: true })
   locationArea: string | null;
 
-  @Column({ name: "location_lat", type: "double precision", nullable: true })
   locationLat: number | null;
 
-  @Column({ name: "location_lon", type: "double precision", nullable: true })
   locationLon: number | null;
 
-  @Column({ name: "salary_min", type: "decimal", precision: 12, scale: 2, nullable: true })
   salaryMin: number | null;
 
-  @Column({ name: "salary_max", type: "decimal", precision: 12, scale: 2, nullable: true })
   salaryMax: number | null;
 
-  @Column({ name: "salary_currency", type: "varchar", length: 10, nullable: true })
   salaryCurrency: string | null;
 
   // Detected period the source quotes the salary in ("year" | "month"), and the
   // salary normalised to monthly so seekers (whose expectation is monthly) can be
   // matched/filtered against a single comparable figure.
-  @Column({ name: "salary_period", type: "varchar", length: 10, nullable: true })
   salaryPeriod: string | null;
 
-  @Column({ name: "salary_monthly_min", type: "decimal", precision: 12, scale: 2, nullable: true })
   salaryMonthlyMin: number | null;
 
-  @Column({ name: "salary_monthly_max", type: "decimal", precision: 12, scale: 2, nullable: true })
   salaryMonthlyMax: number | null;
 
-  @Column({ type: "text", nullable: true })
   description: string | null;
 
-  @Column({ name: "extracted_skills", type: "jsonb", default: "[]" })
   extractedSkills: string[];
 
   // When the Gemini skill/category analysis last ran for this job. Set even when
   // no skills were found, so empty-shell listings aren't re-analysed forever.
-  @Column({ name: "skills_analyzed_at", type: "timestamptz", nullable: true })
   skillsAnalyzedAt: Date | null;
 
   // When geocoding last ran for this job. Set even when geocoding found nothing,
   // so ungeocodable addresses aren't re-sent to the paid geocode API forever.
-  @Column({ name: "geocode_attempted_at", type: "timestamptz", nullable: true })
   geocodeAttemptedAt: Date | null;
 
-  @Column({ type: "varchar", length: 255, nullable: true })
   category: string | null;
 
-  @Column({ name: "canonical_category", type: "varchar", length: 64, nullable: true })
   canonicalCategory: string | null;
 
-  @Column({ name: "canonical_province", type: "varchar", length: 64, nullable: true })
   canonicalProvince: string | null;
 
-  @Column({ name: "canonical_city", type: "varchar", length: 64, nullable: true })
   canonicalCity: string | null;
 
-  @Column({ name: "source_external_id", type: "varchar", length: 255 })
   sourceExternalId: string;
 
-  @Column({ name: "source_url", type: "varchar", length: 1000, nullable: true })
   sourceUrl: string | null;
 
-  @Column({ name: "posted_at", type: "timestamptz", nullable: true })
   postedAt: Date | null;
 
-  @Column({ name: "expires_at", type: "timestamptz", nullable: true })
   expiresAt: Date | null;
 
-  @Column({ name: "last_seen_at", type: "timestamptz", nullable: true })
   lastSeenAt: Date | null;
 
-  @ManyToOne(() => JobMarketSource, { onDelete: "CASCADE" })
-  @JoinColumn({ name: "source_id" })
   source: JobMarketSource;
 
-  @Column({ name: "source_id" })
   sourceId: number;
 
-  @Column({ type: "varchar", nullable: true })
   embedding: Buffer | null;
 
-  @Column({ name: "embedding_text_hash", type: "varchar", length: 64, nullable: true })
   embeddingTextHash: string | null;
 
-  @Column({ type: "boolean", default: false })
   delisted: boolean;
 
-  @Column({ name: "delist_review", type: "varchar", length: 16, nullable: true })
   delistReview: string | null;
 
-  @Column({ name: "delist_reported_at", type: "timestamptz", nullable: true })
   delistReportedAt: Date | null;
 
-  @Column({ name: "delist_reported_by", type: "varchar", length: 320, nullable: true })
   delistReportedBy: string | null;
 
-  @Column({ name: "delisted_at", type: "timestamptz", nullable: true })
   delistedAt: Date | null;
 
-  @Column({ name: "accepts_za", type: "boolean", nullable: true })
   acceptsZa: boolean | null;
 
-  @Column({ name: "vetting_notes", type: "text", nullable: true })
   vettingNotes: string | null;
 
-  @Column({ name: "vetted_at", type: "timestamptz", nullable: true })
   vettedAt: Date | null;
 
-  @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 }

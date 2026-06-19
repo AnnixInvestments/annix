@@ -1,14 +1,13 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { InboundEmailRegistry } from "../src/inbound-email/inbound-email-registry.service";
 import { AiChatService } from "../src/nix/ai-providers/ai-chat.service";
-import { RubberCompany } from "../src/rubber-lining/entities/rubber-company.entity";
-import { RubberDeliveryNote } from "../src/rubber-lining/entities/rubber-delivery-note.entity";
-import { RubberTaxInvoice } from "../src/rubber-lining/entities/rubber-tax-invoice.entity";
+import { RubberCompanyRepository } from "../src/rubber-lining/repositories/rubber-company.repository";
+import { RubberDeliveryNoteRepository } from "../src/rubber-lining/repositories/rubber-delivery-note.repository";
+import { RubberTaxInvoiceRepository } from "../src/rubber-lining/repositories/rubber-tax-invoice.repository";
 import { ArEmailAdapterService } from "../src/rubber-lining/services/ar-email-adapter.service";
-import { StockControlSupplier } from "../src/stock-control/entities/stock-control-supplier.entity";
+import { StockControlSupplierRepository } from "../src/stock-control/repositories/stock-control-supplier.repository";
 import { DeliveryService } from "../src/stock-control/services/delivery.service";
 import { InvoiceService } from "../src/stock-control/services/invoice.service";
 import { InvoiceExtractionService } from "../src/stock-control/services/invoice-extraction.service";
@@ -70,10 +69,10 @@ describe("Inbound Email Classification (regression harness)", () => {
         { provide: DeliveryService, useValue: {} },
         { provide: InvoiceExtractionService, useValue: {} },
         { provide: WorkflowNotificationService, useValue: {} },
-        { provide: getRepositoryToken(StockControlSupplier), useValue: {} },
-        { provide: getRepositoryToken(RubberDeliveryNote), useValue: {} },
-        { provide: getRepositoryToken(RubberTaxInvoice), useValue: {} },
-        { provide: getRepositoryToken(RubberCompany), useValue: {} },
+        { provide: StockControlSupplierRepository, useValue: {} },
+        { provide: RubberDeliveryNoteRepository, useValue: {} },
+        { provide: RubberTaxInvoiceRepository, useValue: {} },
+        { provide: RubberCompanyRepository, useValue: {} },
       ],
     }).compile();
 

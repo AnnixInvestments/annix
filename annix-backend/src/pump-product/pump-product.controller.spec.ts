@@ -1,13 +1,8 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { now } from "../lib/datetime";
 import { CreatePumpProductDto } from "./dto/create-pump-product.dto";
 import { UpdatePumpProductDto } from "./dto/update-pump-product.dto";
-import {
-  PumpProduct,
-  PumpProductCategory,
-  PumpProductStatus,
-} from "./entities/pump-product.entity";
+import { PumpProductCategory, PumpProductStatus } from "./entities/pump-product.entity";
 import { PumpCurveDigitizerService } from "./pump-curve-digitizer.service";
 import { PumpDataImportService } from "./pump-data-import.service";
 import { PumpDatasheetService } from "./pump-datasheet.service";
@@ -104,10 +99,6 @@ describe("PumpProductController", () => {
         { provide: PumpDatasheetService, useValue: mockDatasheetService },
         { provide: PumpManufacturerApiService, useValue: mockManufacturerApiService },
         { provide: PumpCurveDigitizerService, useValue: mockCurveDigitizerService },
-        {
-          provide: getRepositoryToken(PumpProduct),
-          useValue: mockPumpProductRepo,
-        },
       ],
     }).compile();
 

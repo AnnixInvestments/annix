@@ -2,7 +2,6 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { ScheduleModule } from "@nestjs/schedule";
 import { ThrottlerModule } from "@nestjs/throttler";
-import { TypeOrmModule } from "@nestjs/typeorm";
 import { AiUsageModule } from "./ai-usage/ai-usage.module";
 import { AnnixSentinelModule } from "./annix-sentinel/annix-sentinel.module";
 import { AppController } from "./app.controller";
@@ -12,7 +11,6 @@ import { BendDimensionController } from "./bend-dimension/bend-dimension.control
 import { BendDimensionService } from "./bend-dimension/bend-dimension.service";
 import { BoqModule } from "./boq/boq.module";
 import { BrandingModule } from "./branding/branding.module";
-import typeormConfig from "./config/typeorm";
 import { CustomerModule } from "./customer/customer.module";
 import { DrawingsModule } from "./drawings/drawings.module";
 import { EmailModule } from "./email/email.module";
@@ -22,7 +20,6 @@ import { HdpeModule } from "./hdpe/hdpe.module";
 import { HeavyFeaturesModule } from "./heavy-features";
 import { InboundEmailModule } from "./inbound-email/inbound-email.module";
 import { InsightsModule } from "./insights/insights.module";
-import { isMongoDriver } from "./lib/persistence/database-driver";
 import { MongoConnectionModule } from "./lib/persistence/mongo-connection.module";
 import { MongoMaintenanceModule } from "./lib/persistence/mongo-maintenance.module";
 import { TransactionModule } from "./lib/persistence/transaction.module";
@@ -75,15 +72,8 @@ import { WorkflowModule } from "./workflow/workflow.module";
         },
       ],
     }),
-    ...(isMongoDriver()
-      ? [MongoConnectionModule, MongoMaintenanceModule]
-      : [
-          TypeOrmModule.forRoot({
-            ...typeormConfig(),
-            retryAttempts: 5,
-            retryDelay: 3000,
-          }),
-        ]),
+    MongoConnectionModule,
+    MongoMaintenanceModule,
     TransactionModule,
 
     AiUsageModule,

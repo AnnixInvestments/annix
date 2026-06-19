@@ -14,13 +14,10 @@ import { AuditAction } from "../audit/entities/audit-log.entity";
 import { EmailService } from "../email/email.service";
 import { FeatureFlagsService } from "../feature-flags/feature-flags.service";
 import { now, nowMillis } from "../lib/datetime";
-import {
-  type TransactionContext,
-  TypeOrmTransactionContext,
-} from "../lib/persistence/transaction-context";
+import type { TransactionContext } from "../lib/persistence/transaction-context";
 import { TransactionRunner } from "../lib/persistence/transaction-runner";
 import { CompanyRepository } from "../platform/company.repository";
-import { Company, CompanyType } from "../platform/entities/company.entity";
+import { CompanyType } from "../platform/entities/company.entity";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import {
   AUTH_CONSTANTS,
@@ -34,7 +31,7 @@ import {
 } from "../shared/auth";
 import { User } from "../user/entities/user.entity";
 import { UserRepository } from "../user/user.repository";
-import { UserRole } from "../user-roles/entities/user-role.entity";
+import { UserRoleRepository } from "../user-roles/user-roles.repository";
 import { CustomerDeviceBindingRepository } from "./customer-device-binding.repository";
 import { CustomerDocumentRepository } from "./customer-document.repository";
 import { CustomerLoginAttemptRepository } from "./customer-login-attempt.repository";
@@ -76,6 +73,7 @@ export class CustomerAuthService {
     private readonly onboardingRepository: CustomerOnboardingRepository,
     private readonly documentRepository: CustomerDocumentRepository,
     private readonly userRepo: UserRepository,
+    private readonly userRoleRepo: UserRoleRepository,
     private readonly txRunner: TransactionRunner,
     private readonly auditService: AuditService,
     private readonly emailService: EmailService,
@@ -120,13 +118,12 @@ export class CustomerAuthService {
     }
 
     const { savedProfile, savedUser, savedCompany } = await this.txRunner.run(async (ctx) => {
-      const manager = this.transactionManager(ctx);
-      const companyTxRepo = manager.getRepository(Company);
-      const userRoleTxRepo = manager.getRepository(UserRole);
-      const userTxRepo = manager.getRepository(User);
-      const deviceBindingTxRepo = manager.getRepository(CustomerDeviceBinding);
+      const companyRepo = this.companyRepo.withTransaction(ctx);
+      const userRoleRepo = this.userRoleRepo.withTransaction(ctx);
+      const userRepo = this.userRepo.withTransaction(ctx);
+      const deviceBindingRepo = this.deviceBindingRepository.withTransaction(ctx);
 
-      const company = companyTxRepo.create({
+      const company_ = await companyRepo.create({
         name: dto.company.legalName,
         companyType: CompanyType.CUSTOMER,
         legalName: dto.company.legalName,
@@ -144,25 +141,18 @@ export class CustomerAuthService {
         email: dto.company.generalEmail,
         websiteUrl: dto.company.website,
       });
-      const company_ = await companyTxRepo.save(company);
 
       const { passwordHash } = await this.passwordService.hash(dto.user.password);
 
-      let customerRole = await userRoleTxRepo.findOne({
-        where: { name: "customer" },
-      });
-      if (!customerRole) {
-        customerRole = userRoleTxRepo.create({ name: "customer" });
-        customerRole = await userRoleTxRepo.save(customerRole);
-      }
+      const existingRole = await userRoleRepo.findOneWhere({ name: "customer" });
+      const customerRole = existingRole ?? (await userRoleRepo.create({ name: "customer" }));
 
-      const user = userTxRepo.create({
+      const user_ = await userRepo.create({
         username: dto.user.email,
         email: dto.user.email,
         passwordHash,
         roles: [customerRole],
       });
-      const user_ = await userTxRepo.save(user);
 
       const emailVerificationToken = uuidv4();
       const emailVerificationExpires = now()
@@ -201,7 +191,7 @@ export class CustomerAuthService {
         await this.saveRegistrationDocuments(ctx, profile_.id, vatDocument, companyRegDocument);
       }
 
-      const deviceBinding = deviceBindingTxRepo.create({
+      await deviceBindingRepo.create({
         customerProfileId: profile_.id,
         deviceFingerprint: dto.security.deviceFingerprint,
         registeredIp: clientIp,
@@ -209,7 +199,6 @@ export class CustomerAuthService {
         isPrimary: true,
         isActive: true,
       });
-      await deviceBindingTxRepo.save(deviceBinding);
 
       return { savedProfile: profile_, savedUser: user_, savedCompany: company_ };
     });
@@ -266,13 +255,6 @@ export class CustomerAuthService {
         companyName: savedCompany.tradingName || savedCompany.legalName || "",
       };
     }
-  }
-
-  private transactionManager(context: TransactionContext) {
-    if (!(context instanceof TypeOrmTransactionContext)) {
-      throw new Error("Customer registration requires a TypeOrmTransactionContext");
-    }
-    return context.manager;
   }
 
   private async saveRegistrationDocuments(

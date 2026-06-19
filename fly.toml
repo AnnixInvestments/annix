@@ -4,7 +4,7 @@ primary_region = 'jnb'
 [build]
 
 [deploy]
-  release_command = 'sh -c "if [ x$DATABASE_DRIVER = xmongo ]; then cd annix-backend && ( ALLOW_PRODUCTION=true node -r ts-node/register/transpile-only ./scripts/drop-empty-collections.ts --apply --allow-production || echo empty-collection-cleanup-skipped ) && node -r ts-node/register/transpile-only ./node_modules/migrate-mongo/bin/migrate-mongo.js up -f migrate-mongo-config.ts && if [ x$ORBIT_MONGODB_URI != x ]; then node -r ts-node/register/transpile-only ./node_modules/migrate-mongo/bin/migrate-mongo.js up -f migrate-mongo-orbit-config.ts; fi; else cd annix-backend && npx ts-node --project tsconfig.json --transpile-only ./node_modules/typeorm/cli -d ./src/config/data-source.ts migration:run; fi"'
+  release_command = 'sh -c "cd annix-backend && ( ALLOW_PRODUCTION=true node -r ts-node/register/transpile-only ./scripts/drop-empty-collections.ts --apply --allow-production || echo empty-collection-cleanup-skipped ) && node -r ts-node/register/transpile-only ./node_modules/migrate-mongo/bin/migrate-mongo.js up -f migrate-mongo-config.ts && if [ x$ORBIT_MONGODB_URI != x ]; then node -r ts-node/register/transpile-only ./node_modules/migrate-mongo/bin/migrate-mongo.js up -f migrate-mongo-orbit-config.ts; fi"'
   release_command_timeout = '40m'
 
 [deploy.release_command_machine]

@@ -1,5 +1,4 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { Column, Entity, JoinColumn, ManyToOne, OneToOne, PrimaryGeneratedColumn } from "typeorm";
 import { SteelSpecification } from "../../steel-specification/entities/steel-specification.entity";
 import { RfqItem } from "./rfq-item.entity";
 
@@ -18,40 +17,28 @@ export enum ScheduleType {
   WALL_THICKNESS = "wall_thickness",
 }
 
-@Entity("straight_pipe_rfqs")
 export class StraightPipeRfq {
   @ApiProperty({ description: "Primary key", example: 1 })
-  @PrimaryGeneratedColumn()
   id: number;
 
   @ApiProperty({ description: "Nominal bore in mm", example: 500 })
-  @Column({ name: "nominal_bore_mm", type: "decimal", precision: 8, scale: 3 })
   nominalBoreMm: number;
 
   @ApiProperty({
     description: "Schedule type - using schedule number or wall thickness",
     enum: ScheduleType,
   })
-  @Column({ name: "schedule_type", type: "enum", enum: ScheduleType })
   scheduleType: ScheduleType;
 
   @ApiProperty({
     description: "Schedule number (e.g., Sch20, Sch40)",
     required: false,
   })
-  @Column({ name: "schedule_number", nullable: true })
   scheduleNumber?: string;
 
   @ApiProperty({
     description: "Wall thickness in mm (if not using schedule)",
     required: false,
-  })
-  @Column({
-    name: "wall_thickness_mm",
-    type: "decimal",
-    precision: 8,
-    scale: 3,
-    nullable: true,
   })
   wallThicknessMm?: number;
 
@@ -60,55 +47,32 @@ export class StraightPipeRfq {
     example: "FBE",
     required: false,
   })
-  @Column({ name: "pipe_end_configuration", nullable: true })
   pipeEndConfiguration?: string;
 
   @ApiProperty({ description: "Individual pipe length", example: 12.192 })
-  @Column({
-    name: "individual_pipe_length",
-    type: "decimal",
-    precision: 8,
-    scale: 3,
-  })
   individualPipeLength: number;
 
   @ApiProperty({ description: "Length unit", enum: LengthUnit })
-  @Column({ name: "length_unit", type: "enum", enum: LengthUnit })
   lengthUnit: LengthUnit;
 
   @ApiProperty({
     description: "Quantity type - total length or number of pipes",
     enum: QuantityType,
   })
-  @Column({ name: "quantity_type", type: "enum", enum: QuantityType })
   quantityType: QuantityType;
 
   @ApiProperty({
     description: "Quantity value - total meters or number of pipes",
     example: 8000,
   })
-  @Column({ name: "quantity_value", type: "decimal", precision: 10, scale: 3 })
   quantityValue: number;
 
   @ApiProperty({ description: "Working pressure in bar", example: 10 })
-  @Column({
-    name: "working_pressure_bar",
-    type: "decimal",
-    precision: 8,
-    scale: 2,
-  })
   workingPressureBar: number;
 
   @ApiProperty({
     description: "Working temperature in celsius",
     required: false,
-  })
-  @Column({
-    name: "working_temperature_c",
-    type: "decimal",
-    precision: 8,
-    scale: 2,
-    nullable: true,
   })
   workingTemperatureC?: number;
 
@@ -117,25 +81,11 @@ export class StraightPipeRfq {
     description: "Calculated outside diameter in mm",
     required: false,
   })
-  @Column({
-    name: "calculated_od_mm",
-    type: "decimal",
-    precision: 8,
-    scale: 3,
-    nullable: true,
-  })
   calculatedOdMm?: number;
 
   @ApiProperty({
     description: "Calculated wall thickness in mm",
     required: false,
-  })
-  @Column({
-    name: "calculated_wt_mm",
-    type: "decimal",
-    precision: 8,
-    scale: 3,
-    nullable: true,
   })
   calculatedWtMm?: number;
 
@@ -143,66 +93,35 @@ export class StraightPipeRfq {
     description: "Calculated pipe weight per meter in kg",
     required: false,
   })
-  @Column({
-    name: "pipe_weight_per_meter",
-    type: "decimal",
-    precision: 10,
-    scale: 3,
-    nullable: true,
-  })
   pipeWeightPerMeterKg?: number;
 
   @ApiProperty({
     description: "Calculated total pipe weight in kg",
     required: false,
   })
-  @Column({
-    name: "total_pipe_weight",
-    type: "decimal",
-    precision: 12,
-    scale: 2,
-    nullable: true,
-  })
   totalPipeWeightKg?: number;
 
   @ApiProperty({ description: "Calculated number of pipes", required: false })
-  @Column({ name: "calculated_pipe_count", type: "int", nullable: true })
   calculatedPipeCount?: number;
 
   @ApiProperty({
     description: "Calculated total length in meters",
     required: false,
   })
-  @Column({
-    name: "calculated_total_length",
-    type: "decimal",
-    precision: 10,
-    scale: 3,
-    nullable: true,
-  })
   calculatedTotalLengthM?: number;
 
   @ApiProperty({ description: "Number of flanges required", required: false })
-  @Column({ name: "number_of_flanges", type: "int", nullable: true })
   numberOfFlanges?: number;
 
   @ApiProperty({
     description: "Number of butt welds required",
     required: false,
   })
-  @Column({ name: "number_of_butt_welds", type: "int", nullable: true })
   numberOfButtWelds?: number;
 
   @ApiProperty({
     description: "Total butt weld length in meters",
     required: false,
-  })
-  @Column({
-    name: "total_butt_weld_length",
-    type: "decimal",
-    precision: 10,
-    scale: 3,
-    nullable: true,
   })
   totalButtWeldLengthM?: number;
 
@@ -210,120 +129,78 @@ export class StraightPipeRfq {
     description: "Number of flange welds required",
     required: false,
   })
-  @Column({ name: "number_of_flange_welds", type: "int", nullable: true })
   numberOfFlangeWelds?: number;
 
   @ApiProperty({
     description: "Total flange weld length in meters",
     required: false,
   })
-  @Column({
-    name: "total_flange_weld_length",
-    type: "decimal",
-    precision: 10,
-    scale: 3,
-    nullable: true,
-  })
   totalFlangeWeldLengthM?: number;
 
   @ApiProperty({ description: "PSL level (PSL1 or PSL2) for API 5L specs", required: false })
-  @Column({ name: "psl_level", type: "varchar", length: 10, nullable: true })
   pslLevel?: string;
 
   @ApiProperty({ description: "CVN test temperature in Celsius", required: false })
-  @Column({
-    name: "cvn_test_temperature_c",
-    type: "decimal",
-    precision: 5,
-    scale: 1,
-    nullable: true,
-  })
   cvnTestTemperatureC?: number;
 
   @ApiProperty({ description: "CVN average impact energy in Joules", required: false })
-  @Column({ name: "cvn_average_joules", type: "decimal", precision: 6, scale: 1, nullable: true })
   cvnAverageJoules?: number;
 
   @ApiProperty({ description: "CVN minimum impact energy in Joules", required: false })
-  @Column({ name: "cvn_minimum_joules", type: "decimal", precision: 6, scale: 1, nullable: true })
   cvnMinimumJoules?: number;
 
   @ApiProperty({ description: "Heat number for traceability", required: false })
-  @Column({ name: "heat_number", type: "varchar", length: 50, nullable: true })
   heatNumber?: string;
 
   @ApiProperty({ description: "Material Test Certificate reference", required: false })
-  @Column({ name: "mtc_reference", type: "varchar", length: 100, nullable: true })
   mtcReference?: string;
 
   @ApiProperty({ description: "NDT coverage percentage (100% for PSL2)", required: false })
-  @Column({ name: "ndt_coverage_pct", type: "decimal", precision: 5, scale: 2, nullable: true })
   ndtCoveragePct?: number;
 
   @ApiProperty({ description: "Lot number for traceability", required: false })
-  @Column({ name: "lot_number", type: "varchar", length: 50, nullable: true })
   lotNumber?: string;
 
   @ApiProperty({ description: "NACE MR0175/ISO 15156 compliance", required: false })
-  @Column({ name: "nace_compliant", type: "boolean", nullable: true })
   naceCompliant?: boolean;
 
   @ApiProperty({ description: "H2S zone (1, 2, or 3) for sour service", required: false })
-  @Column({ name: "h2s_zone", type: "integer", nullable: true })
   h2sZone?: number;
 
   @ApiProperty({ description: "Maximum hardness in HRC (<=22 for sour service)", required: false })
-  @Column({ name: "max_hardness_hrc", type: "decimal", precision: 4, scale: 1, nullable: true })
   maxHardnessHrc?: number;
 
   @ApiProperty({ description: "Sulfide Stress Cracking tested", required: false })
-  @Column({ name: "ssc_tested", type: "boolean", nullable: true })
   sscTested?: boolean;
 
   @ApiProperty({ description: "Manufacturing process (Seamless, ERW, SAW, LSAW)", required: false })
-  @Column({ name: "manufacturing_process", type: "varchar", length: 20, nullable: true })
   manufacturingProcess?: string;
 
   @ApiProperty({ description: "Delivery condition (As-Rolled, Normalized, Q&T)", required: false })
-  @Column({ name: "delivery_condition", type: "varchar", length: 20, nullable: true })
   deliveryCondition?: string;
 
   @ApiProperty({ description: "Bevel angle in degrees (default 37.5°)", required: false })
-  @Column({ name: "bevel_angle_deg", type: "decimal", precision: 4, scale: 1, nullable: true })
   bevelAngleDeg?: number;
 
   @ApiProperty({ description: "Root face dimension in mm (default 1.6mm)", required: false })
-  @Column({ name: "root_face_mm", type: "decimal", precision: 4, scale: 2, nullable: true })
   rootFaceMm?: number;
 
   @ApiProperty({ description: "Root gap dimension in mm (1.6-3.2mm range)", required: false })
-  @Column({ name: "root_gap_mm", type: "decimal", precision: 4, scale: 2, nullable: true })
   rootGapMm?: number;
 
   @ApiProperty({ description: "UNS number (e.g., K03006 for A106 Gr.B)", required: false })
-  @Column({ name: "uns_number", type: "varchar", length: 10, nullable: true })
   unsNumber?: string;
 
   @ApiProperty({ description: "Specified Minimum Yield Strength in MPa", required: false })
-  @Column({ name: "smys_mpa", type: "decimal", precision: 6, scale: 1, nullable: true })
   smysMpa?: number;
 
   @ApiProperty({ description: "Carbon equivalent for weldability (Ceq ≤0.43)", required: false })
-  @Column({ name: "carbon_equivalent", type: "decimal", precision: 4, scale: 3, nullable: true })
   carbonEquivalent?: number;
 
   @ApiProperty({ description: "Hydrotest pressure multiplier (default 1.5)", required: false })
-  @Column({
-    name: "hydrotest_pressure_multiplier",
-    type: "decimal",
-    precision: 3,
-    scale: 2,
-    nullable: true,
-  })
   hydrotestPressureMultiplier?: number;
 
   @ApiProperty({ description: "Hydrotest hold time in minutes (default 10)", required: false })
-  @Column({ name: "hydrotest_hold_min", type: "int", nullable: true })
   hydrotestHoldMin?: number;
 
   @ApiProperty({
@@ -331,102 +208,73 @@ export class StraightPipeRfq {
     required: false,
     example: ["RT", "UT"],
   })
-  @Column({ name: "ndt_methods", type: "json", nullable: true })
   ndtMethods?: string[];
 
   @ApiProperty({ description: "Length type (SRL, DRL, Custom)", required: false })
-  @Column({ name: "length_type", type: "varchar", length: 10, nullable: true })
   lengthType?: string;
 
   // HDPE-specific fields
   @ApiProperty({ description: "HDPE PE grade (PE100, PE4710, etc.)", required: false })
-  @Column({ name: "hdpe_pe_grade", type: "varchar", length: 20, nullable: true })
   hdpePeGrade?: string;
 
   @ApiProperty({ description: "HDPE SDR (Standard Dimension Ratio)", required: false })
-  @Column({ name: "hdpe_sdr", type: "decimal", precision: 4, scale: 1, nullable: true })
   hdpeSdr?: number;
 
   @ApiProperty({
     description: "HDPE PN rating in bar (calculated from SDR/grade)",
     required: false,
   })
-  @Column({ name: "hdpe_pn_rating", type: "decimal", precision: 4, scale: 1, nullable: true })
   hdpePnRating?: number;
 
   @ApiProperty({ description: "HDPE color code (black, blue, yellow)", required: false })
-  @Column({ name: "hdpe_color_code", type: "varchar", length: 20, nullable: true })
   hdpeColorCode?: string;
 
   @ApiProperty({
     description: "HDPE operating temperature in Celsius for derating",
     required: false,
   })
-  @Column({
-    name: "hdpe_operating_temp_c",
-    type: "decimal",
-    precision: 4,
-    scale: 1,
-    nullable: true,
-  })
   hdpeOperatingTempC?: number;
 
   @ApiProperty({ description: "HDPE derated PN after temperature adjustment", required: false })
-  @Column({ name: "hdpe_derated_pn", type: "decimal", precision: 4, scale: 1, nullable: true })
   hdpeDeratedPn?: number;
 
   @ApiProperty({
     description: "HDPE welding method (butt_fusion, electrofusion)",
     required: false,
   })
-  @Column({ name: "hdpe_welding_method", type: "varchar", length: 30, nullable: true })
   hdpeWeldingMethod?: string;
 
   @ApiProperty({
     description: "HDPE welding standard (ASTM_F2620, ISO_21307, DVS_2207_1)",
     required: false,
   })
-  @Column({ name: "hdpe_welding_standard", type: "varchar", length: 30, nullable: true })
   hdpeWeldingStandard?: string;
 
   @ApiProperty({ description: "Number of HDPE fusion joints", required: false })
-  @Column({ name: "hdpe_joint_count", type: "int", nullable: true })
   hdpeJointCount?: number;
 
   // PVC-specific fields
   @ApiProperty({ description: "PVC type (uPVC, mPVC, PVC-O, cPVC)", required: false })
-  @Column({ name: "pvc_type", type: "varchar", length: 20, nullable: true })
   pvcType?: string;
 
   @ApiProperty({ description: "PVC SDR (Standard Dimension Ratio)", required: false })
-  @Column({ name: "pvc_sdr", type: "decimal", precision: 4, scale: 1, nullable: true })
   pvcSdr?: number;
 
   @ApiProperty({ description: "PVC pressure class shorthand (e.g. 'Class 16')", required: false })
-  @Column({ name: "pvc_pressure_class", type: "varchar", length: 20, nullable: true })
   pvcPressureClass?: string;
 
   @ApiProperty({
     description: "PVC PN rating in bar (resolved from SDR / class)",
     required: false,
   })
-  @Column({ name: "pvc_pn_rating", type: "decimal", precision: 4, scale: 1, nullable: true })
   pvcPnRating?: number;
 
   @ApiProperty({ description: "PVC derated PN after temperature adjustment", required: false })
-  @Column({ name: "pvc_derated_pn", type: "decimal", precision: 4, scale: 1, nullable: true })
   pvcDeratedPn?: number;
 
   @ApiProperty({
     description: "PVC operating temperature in Celsius for derating",
     required: false,
-  })
-  @Column({
-    name: "pvc_operating_temp_c",
-    type: "decimal",
-    precision: 4,
-    scale: 1,
-    nullable: true,
   })
   pvcOperatingTempC?: number;
 
@@ -434,27 +282,15 @@ export class StraightPipeRfq {
     description: "PVC joining method (solvent_weld, threaded, push_fit, flanged)",
     required: false,
   })
-  @Column({ name: "pvc_joining_method", type: "varchar", length: 30, nullable: true })
   pvcJoiningMethod?: string;
 
   @ApiProperty({ description: "PVC color (grey, white, black, blue)", required: false })
-  @Column({ name: "pvc_color", type: "varchar", length: 20, nullable: true })
   pvcColor?: string;
 
   // Relationships
   @ApiProperty({ description: "Parent RFQ item", type: () => RfqItem })
-  @OneToOne(
-    () => RfqItem,
-    (rfqItem) => rfqItem.straightPipeDetails,
-    {
-      onDelete: "CASCADE",
-    },
-  )
-  @JoinColumn({ name: "rfq_item_id" })
   rfqItem: RfqItem;
 
   @ApiProperty({ description: "Steel specification", required: false })
-  @ManyToOne(() => SteelSpecification, { nullable: true })
-  @JoinColumn({ name: "steel_specification_id" })
   steelSpecification?: SteelSpecification;
 }

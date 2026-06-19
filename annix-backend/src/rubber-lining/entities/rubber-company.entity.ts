@@ -1,12 +1,3 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from "typeorm";
 import { RubberPricingTier } from "./rubber-pricing-tier.entity";
 
 export enum CompanyType {
@@ -14,104 +5,52 @@ export enum CompanyType {
   SUPPLIER = "SUPPLIER",
 }
 
-@Entity("rubber_company")
 export class RubberCompany {
-  @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: "firebase_uid", type: "varchar", length: 100, unique: true })
   firebaseUid: string;
 
-  @Column({ name: "name", type: "varchar", length: 200 })
   name: string;
 
-  @Column({
-    name: "company_type",
-    type: "varchar",
-    length: 20,
-    default: CompanyType.CUSTOMER,
-  })
   companyType: CompanyType;
 
-  @Column({ name: "code", type: "varchar", length: 20, nullable: true })
   code: string | null;
 
-  @Column({
-    name: "pricing_tier_firebase_uid",
-    type: "varchar",
-    length: 100,
-    nullable: true,
-  })
   pricingTierFirebaseUid: string | null;
 
-  @Column({ name: "pricing_tier_id", type: "int", nullable: true })
   pricingTierId: number | null;
 
-  @ManyToOne(() => RubberPricingTier, { nullable: true })
-  @JoinColumn({ name: "pricing_tier_id" })
   pricingTier: RubberPricingTier | null;
 
-  @Column({
-    name: "available_products",
-    type: "jsonb",
-    default: "[]",
-  })
   availableProducts: string[];
 
-  @Column({ name: "is_compound_owner", type: "boolean", default: false })
   isCompoundOwner: boolean;
 
-  @Column({
-    name: "discount_percent",
-    type: "decimal",
-    precision: 5,
-    scale: 2,
-    nullable: true,
-    default: 0.0,
-  })
   discountPercent: string | null;
 
-  @Column({ name: "vat_number", type: "varchar", length: 50, nullable: true })
   vatNumber: string | null;
 
-  @Column({
-    name: "registration_number",
-    type: "varchar",
-    length: 50,
-    nullable: true,
-  })
   registrationNumber: string | null;
 
-  @Column({ name: "address", type: "jsonb", nullable: true })
   address: Record<string, string> | null;
 
-  @Column({ name: "notes", type: "text", nullable: true })
   notes: string | null;
 
-  @Column({ name: "phone", type: "varchar", length: 30, nullable: true })
   phone: string | null;
 
-  @Column({ name: "contact_person", type: "varchar", length: 200, nullable: true })
   contactPerson: string | null;
 
-  @Column({ name: "email_config", type: "jsonb", nullable: true })
   emailConfig: Record<string, string> | null;
 
-  @Column({ name: "sage_contact_id", type: "int", nullable: true })
   sageContactId: number | null;
 
-  @Column({ name: "sage_contact_type", type: "varchar", length: 20, nullable: true })
   sageContactType: string | null;
 
-  @Column({ name: "au_coc_recipient_email", type: "varchar", length: 255, nullable: true })
   auCocRecipientEmail: string | null;
 
-  @Column({ name: "auto_approve_au_cocs", type: "boolean", default: false })
   autoApproveAuCocs: boolean;
 
-  @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 }

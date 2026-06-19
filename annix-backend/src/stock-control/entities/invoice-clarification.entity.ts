@@ -1,12 +1,3 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from "typeorm";
 import { Company } from "../../platform/entities/company.entity";
 import { User } from "../../user/entities/user.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
@@ -52,85 +43,50 @@ export interface SuggestedMatch {
   currentPrice: number;
 }
 
-@Entity("invoice_clarifications")
 export class InvoiceClarification {
-  @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(
-    () => SupplierInvoice,
-    (invoice) => invoice.clarifications,
-    { onDelete: "CASCADE" },
-  )
-  @JoinColumn({ name: "invoice_id" })
   invoice: SupplierInvoice;
 
-  @Column({ name: "invoice_id" })
   invoiceId: number;
 
-  @ManyToOne(() => SupplierInvoiceItem, { nullable: true, onDelete: "CASCADE" })
-  @JoinColumn({ name: "invoice_item_id" })
   invoiceItem: SupplierInvoiceItem | null;
 
-  @Column({ name: "invoice_item_id", nullable: true })
   invoiceItemId: number | null;
 
-  @ManyToOne(() => StockControlCompany, { onDelete: "CASCADE" })
-  @JoinColumn({ name: "company_id" })
   company: StockControlCompany;
 
-  @Column({ name: "company_id" })
   companyId: number;
 
-  @Column({ name: "clarification_type", type: "varchar", length: 50 })
   clarificationType: ClarificationType;
 
-  @Column({ type: "varchar", length: 50, default: ClarificationStatus.PENDING })
   status: ClarificationStatus;
 
-  @Column({ type: "text" })
   question: string;
 
-  @Column({ type: "jsonb", nullable: true })
   context: ClarificationContext | null;
 
-  @ManyToOne(() => StockItem, { nullable: true, onDelete: "SET NULL" })
-  @JoinColumn({ name: "selected_stock_item_id" })
   selectedStockItem: StockItem | null;
 
-  @Column({ name: "selected_stock_item_id", nullable: true })
   selectedStockItemId: number | null;
 
-  @Column({ name: "response_data", type: "jsonb", nullable: true })
   responseData: Record<string, unknown> | null;
 
-  @ManyToOne(() => StockControlUser, { nullable: true })
-  @JoinColumn({ name: "answered_by" })
   answeredByUser: StockControlUser | null;
 
-  @Column({ name: "answered_by", nullable: true })
   answeredBy: number | null;
 
-  @Column({ name: "answered_at", type: "timestamp", nullable: true })
   answeredAt: Date | null;
 
-  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
-  @JoinColumn({ name: "unified_company_id" })
   unifiedCompany?: Company | null;
 
-  @Column({ name: "unified_company_id", nullable: true })
   unifiedCompanyId?: number | null;
 
-  @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
-  @JoinColumn({ name: "unified_answered_by" })
   unifiedAnsweredByUser?: User | null;
 
-  @Column({ name: "unified_answered_by", nullable: true })
   unifiedAnsweredBy?: number | null;
 
-  @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 }

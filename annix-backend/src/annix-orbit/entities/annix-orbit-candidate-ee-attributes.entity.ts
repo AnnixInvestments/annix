@@ -1,11 +1,3 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-} from "typeorm";
 import { AnnixOrbitEeConsentTextVersion } from "./annix-orbit-ee-consent-text-version.entity";
 import { Candidate } from "./candidate.entity";
 
@@ -47,55 +39,36 @@ export enum EeConsentSource {
 
 export type EePurpose = "ee_reporting" | "fairness_monitoring";
 
-@Entity("cv_assistant_candidate_ee_attributes")
 export class AnnixOrbitCandidateEeAttributes {
-  @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => Candidate, { onDelete: "CASCADE" })
-  @JoinColumn({ name: "candidate_id" })
   candidate: Candidate;
 
-  @Column({ name: "candidate_id" })
   candidateId: number;
 
-  @Column({ name: "population_group", type: "varchar", length: 30 })
   populationGroup: EePopulationGroup;
 
-  @Column({ type: "varchar", length: 20 })
   gender: EeGender;
 
-  @Column({ name: "disability_status", type: "varchar", length: 20 })
   disabilityStatus: EeDisabilityStatus;
 
-  @Column({ name: "requires_accommodation", type: "boolean", default: false })
   requiresAccommodation: boolean;
 
-  @Column({ name: "accommodation_notes", type: "text", nullable: true })
   accommodationNotes: string | null;
 
-  @Column({ name: "nationality_status", type: "varchar", length: 30 })
   nationalityStatus: EeNationalityStatus;
 
-  @ManyToOne(() => AnnixOrbitEeConsentTextVersion)
-  @JoinColumn({ name: "consent_text_version_id" })
   consentTextVersion: AnnixOrbitEeConsentTextVersion;
 
-  @Column({ name: "consent_text_version_id" })
   consentTextVersionId: number;
 
-  @Column({ name: "consent_granted_at", type: "timestamptz" })
   consentGrantedAt: Date;
 
-  @Column({ name: "consent_source", type: "varchar", length: 30 })
   consentSource: EeConsentSource;
 
-  @Column({ type: "jsonb", default: () => "'[]'::jsonb" })
   purposes: EePurpose[];
 
-  @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
-  @Column({ name: "deleted_at", type: "timestamptz", nullable: true })
   deletedAt: Date | null;
 }

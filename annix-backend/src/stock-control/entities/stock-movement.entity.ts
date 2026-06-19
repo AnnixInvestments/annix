@@ -1,11 +1,3 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-} from "typeorm";
 import { Company } from "../../platform/entities/company.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 import { StockItem } from "./stock-item.entity";
@@ -26,53 +18,32 @@ export enum ReferenceType {
   STOCK_TAKE = "stock_take",
 }
 
-@Entity("stock_movements")
 export class StockMovement {
-  @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: "int", name: "stock_item_id" })
   stockItemId: number;
 
-  @ManyToOne(
-    () => StockItem,
-    (stockItem) => stockItem.movements,
-  )
-  @JoinColumn({ name: "stock_item_id" })
   stockItem: StockItem;
 
-  @Column({ name: "movement_type", type: "varchar", length: 50 })
   movementType: MovementType;
 
-  @Column({ type: "numeric", precision: 12, scale: 2 })
   quantity: number;
 
-  @Column({ name: "reference_type", type: "varchar", length: 50, nullable: true })
   referenceType: ReferenceType | null;
 
-  @Column({ name: "reference_id", type: "integer", nullable: true })
   referenceId: number | null;
 
-  @Column({ type: "text", nullable: true })
   notes: string | null;
 
-  @Column({ name: "created_by", type: "varchar", length: 255, nullable: true })
   createdBy: string | null;
 
-  @ManyToOne(() => StockControlCompany, { onDelete: "CASCADE" })
-  @JoinColumn({ name: "company_id" })
   company: StockControlCompany;
 
-  @Column({ name: "company_id" })
   companyId: number;
 
-  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
-  @JoinColumn({ name: "unified_company_id" })
   unifiedCompany?: Company | null;
 
-  @Column({ name: "unified_company_id", nullable: true })
   unifiedCompanyId?: number | null;
 
-  @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 }

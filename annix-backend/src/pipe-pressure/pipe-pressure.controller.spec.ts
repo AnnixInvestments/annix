@@ -1,8 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { PipeDimension } from "../pipe-dimension/entities/pipe-dimension.entity";
-import { PipePressure } from "./entities/pipe-pressure.entity";
+import { PipeDimensionRepository } from "../pipe-dimension/pipe-dimension.repository";
 import { PipePressureController } from "./pipe-pressure.controller";
+import { PipePressureRepository } from "./pipe-pressure.repository";
 import { PipePressureService } from "./pipe-pressure.service";
 
 describe("PipePressureController", () => {
@@ -12,14 +11,14 @@ describe("PipePressureController", () => {
   const mockPressureRepo = {
     create: jest.fn(),
     save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
+    findAll: jest.fn(),
+    findById: jest.fn(),
+    findOneWhere: jest.fn(),
     remove: jest.fn(),
-    delete: jest.fn(),
   };
 
   const mockDimensionRepo = {
-    findOne: jest.fn(),
+    findOneWhere: jest.fn(),
   };
 
   const mockPipePressureService = {
@@ -36,11 +35,11 @@ describe("PipePressureController", () => {
       providers: [
         { provide: PipePressureService, useValue: mockPipePressureService },
         {
-          provide: getRepositoryToken(PipePressure),
+          provide: PipePressureRepository,
           useValue: mockPressureRepo,
         },
         {
-          provide: getRepositoryToken(PipeDimension),
+          provide: PipeDimensionRepository,
           useValue: mockDimensionRepo,
         },
       ],

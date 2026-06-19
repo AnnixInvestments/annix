@@ -1,12 +1,3 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from "typeorm";
 import { Company } from "../../platform/entities/company.entity";
 import { JobCard } from "./job-card.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
@@ -44,89 +35,58 @@ export interface StockAssessmentItem {
   sufficient: boolean;
 }
 
-@Entity("job_card_coating_analyses")
 export class JobCardCoatingAnalysis {
-  @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: "job_card_id" })
   jobCardId: number;
 
-  @ManyToOne(() => JobCard, { onDelete: "CASCADE" })
-  @JoinColumn({ name: "job_card_id" })
   jobCard: JobCard;
 
-  @Column({ name: "application_type", type: "varchar", length: 50, nullable: true })
   applicationType: string | null;
 
-  @Column({ name: "surface_prep", type: "varchar", length: 100, nullable: true })
   surfacePrep: string | null;
 
-  @Column({ name: "ext_surface_prep", type: "varchar", length: 100, nullable: true })
   extSurfacePrep: string | null;
 
-  @Column({ name: "int_surface_prep", type: "varchar", length: 100, nullable: true })
   intSurfacePrep: string | null;
 
-  @Column({ name: "ext_m2", type: "numeric", precision: 12, scale: 4, default: 0 })
   extM2: number;
 
-  @Column({ name: "int_m2", type: "numeric", precision: 12, scale: 4, default: 0 })
   intM2: number;
 
-  @Column({ type: "jsonb", default: [] })
   coats: CoatDetail[];
 
-  @Column({ name: "stock_assessment", type: "jsonb", default: [] })
   stockAssessment: StockAssessmentItem[];
 
-  @Column({ name: "has_internal_lining", type: "boolean", default: false })
   hasInternalLining: boolean;
 
-  @Column({ name: "raw_notes", type: "text", nullable: true })
   rawNotes: string | null;
 
-  @Column({ type: "varchar", length: 50, default: CoatingAnalysisStatus.PENDING })
   status: CoatingAnalysisStatus;
 
-  @Column({ type: "text", nullable: true })
   error: string | null;
 
-  @Column({ name: "analysed_at", type: "timestamp", nullable: true })
   analysedAt: Date | null;
 
-  @Column({ name: "accepted_by", type: "varchar", length: 200, nullable: true })
   acceptedBy: string | null;
 
-  @Column({ name: "accepted_at", type: "timestamp", nullable: true })
   acceptedAt: Date | null;
 
-  @Column({ name: "pm_edited_assessment", type: "jsonb", nullable: true })
   pmEditedAssessment: StockAssessmentItem[] | null;
 
-  @Column({ name: "pm_edited_by", type: "varchar", length: 200, nullable: true })
   pmEditedBy: string | null;
 
-  @Column({ name: "pm_edited_at", type: "timestamptz", nullable: true })
   pmEditedAt: Date | null;
 
-  @ManyToOne(() => StockControlCompany, { onDelete: "CASCADE" })
-  @JoinColumn({ name: "company_id" })
   company: StockControlCompany;
 
-  @Column({ name: "company_id" })
   companyId: number;
 
-  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
-  @JoinColumn({ name: "unified_company_id" })
   unifiedCompany?: Company | null;
 
-  @Column({ name: "unified_company_id", nullable: true })
   unifiedCompanyId?: number | null;
 
-  @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 }

@@ -1,7 +1,6 @@
 import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import request from "supertest";
 import { AnnixRepModule } from "../src/annix-rep/annix-rep.module";
 import {
@@ -11,7 +10,10 @@ import {
   MeetingType,
   RecordingProcessingStatus,
 } from "../src/annix-rep/entities";
+import { MeetingRepository } from "../src/annix-rep/meeting.repository";
+import { MeetingRecordingRepository } from "../src/annix-rep/meeting-recording.repository";
 import { User } from "../src/user/entities/user.entity";
+import { UserRepository } from "../src/user/user.repository";
 
 describe("RecordingController (e2e)", () => {
   let app: INestApplication;
@@ -92,11 +94,11 @@ describe("RecordingController (e2e)", () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AnnixRepModule],
     })
-      .overrideProvider(getRepositoryToken(Meeting))
+      .overrideProvider(MeetingRepository)
       .useValue(mockMeetingRepository)
-      .overrideProvider(getRepositoryToken(MeetingRecording))
+      .overrideProvider(MeetingRecordingRepository)
       .useValue(mockRecordingRepository)
-      .overrideProvider(getRepositoryToken(User))
+      .overrideProvider(UserRepository)
       .useValue(mockUserRepository)
       .overrideProvider(ConfigService)
       .useValue(mockConfigService)

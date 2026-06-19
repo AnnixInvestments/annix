@@ -1,10 +1,11 @@
 import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import request from "supertest";
 import { RepProfile } from "../src/annix-rep/rep-profile/rep-profile.entity";
 import { RepProfileModule } from "../src/annix-rep/rep-profile/rep-profile.module";
+import { RepProfileRepository } from "../src/annix-rep/rep-profile/rep-profile.repository";
 import { User } from "../src/user/entities/user.entity";
+import { UserRepository } from "../src/user/user.repository";
 
 describe("RepProfileController - Setup Flow (e2e)", () => {
   let app: INestApplication;
@@ -54,9 +55,9 @@ describe("RepProfileController - Setup Flow (e2e)", () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [RepProfileModule],
     })
-      .overrideProvider(getRepositoryToken(RepProfile))
+      .overrideProvider(RepProfileRepository)
       .useValue(mockProfileRepository)
-      .overrideProvider(getRepositoryToken(User))
+      .overrideProvider(UserRepository)
       .useValue(mockUserRepository)
       .overrideGuard("AnnixRepAuthGuard")
       .useValue({

@@ -1,9 +1,9 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { CreateNominalOutsideDiameterMmDto } from "./dto/create-nominal-outside-diameter-mm.dto";
 import { UpdateNominalOutsideDiameterMmDto } from "./dto/update-nominal-outside-diameter-mm.dto";
 import { NominalOutsideDiameterMm } from "./entities/nominal-outside-diameter-mm.entity";
 import { NominalOutsideDiameterMmController } from "./nominal-outside-diameter-mm.controller";
+import { NominalOutsideDiameterMmRepository } from "./nominal-outside-diameter-mm.repository";
 import { NominalOutsideDiameterMmService } from "./nominal-outside-diameter-mm.service";
 
 describe("NominalOutsideDiameterMmController", () => {
@@ -13,8 +13,9 @@ describe("NominalOutsideDiameterMmController", () => {
   const mockNominalRepo = {
     create: jest.fn(),
     save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
+    findAll: jest.fn(),
+    findById: jest.fn(),
+    findOneWhere: jest.fn(),
     remove: jest.fn(),
   };
 
@@ -33,7 +34,7 @@ describe("NominalOutsideDiameterMmController", () => {
           },
         },
         {
-          provide: getRepositoryToken(NominalOutsideDiameterMm),
+          provide: NominalOutsideDiameterMmRepository,
           useValue: mockNominalRepo,
         },
       ],

@@ -1,9 +1,8 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Bolt } from "../bolt/entities/bolt.entity";
+import { BoltRepository } from "../bolt/bolt.repository";
 import { BoltMassController } from "./bolt-mass.controller";
+import { BoltMassRepository } from "./bolt-mass.repository";
 import { BoltMassService } from "./bolt-mass.service";
-import { BoltMass } from "./entities/bolt-mass.entity";
 
 describe("BoltMassController", () => {
   let controller: BoltMassController;
@@ -12,13 +11,14 @@ describe("BoltMassController", () => {
   const mockBoltMassRepo = {
     create: jest.fn(),
     save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
+    findAll: jest.fn(),
+    findById: jest.fn(),
+    findOneWhere: jest.fn(),
     remove: jest.fn(),
   };
 
   const mockBoltRepo = {
-    findOne: jest.fn(),
+    findOneWhere: jest.fn(),
   };
 
   const mockBoltMassService = {
@@ -34,8 +34,8 @@ describe("BoltMassController", () => {
       controllers: [BoltMassController],
       providers: [
         { provide: BoltMassService, useValue: mockBoltMassService },
-        { provide: getRepositoryToken(BoltMass), useValue: mockBoltMassRepo },
-        { provide: getRepositoryToken(Bolt), useValue: mockBoltRepo },
+        { provide: BoltMassRepository, useValue: mockBoltMassRepo },
+        { provide: BoltRepository, useValue: mockBoltRepo },
       ],
     }).compile();
 

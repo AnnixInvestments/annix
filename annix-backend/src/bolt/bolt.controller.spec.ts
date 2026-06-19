@@ -1,8 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { BoltController } from "./bolt.controller";
+import { BoltRepository } from "./bolt.repository";
 import { BoltService } from "./bolt.service";
-import { Bolt } from "./entities/bolt.entity";
 
 describe("BoltController", () => {
   let controller: BoltController;
@@ -11,8 +10,9 @@ describe("BoltController", () => {
   const mockBoltRepo = {
     create: jest.fn(),
     save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
+    findAll: jest.fn(),
+    findById: jest.fn(),
+    findOneWhere: jest.fn(),
     remove: jest.fn(),
   };
 
@@ -29,7 +29,7 @@ describe("BoltController", () => {
       controllers: [BoltController],
       providers: [
         { provide: BoltService, useValue: mockBoltService },
-        { provide: getRepositoryToken(Bolt), useValue: mockBoltRepo },
+        { provide: BoltRepository, useValue: mockBoltRepo },
       ],
     }).compile();
 

@@ -5,12 +5,10 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-  Optional,
   UnauthorizedException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
-import { DataSource } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../../email/email.service";
 import { now } from "../../lib/datetime";
@@ -62,7 +60,6 @@ export class StockControlAuthService {
     private readonly publicBrandingService: PublicBrandingService,
     private readonly companyRoleService: CompanyRoleService,
     private readonly passwordService: PasswordService,
-    @Optional() private readonly dataSource: DataSource,
     private readonly appRepo: AppRepository,
     private readonly userAppAccessRepo: UserAppAccessRepository,
     private readonly userLocationAssignmentRepo: UserLocationAssignmentRepository,
@@ -535,32 +532,6 @@ export class StockControlAuthService {
     company.heroImageUrl = brandingType === BrandingType.CUSTOM ? (heroImageUrl ?? null) : null;
     await this.companyRepo.save(company);
 
-    // Also update the unified companies table (currentUser reads from there)
-    const unifiedIdResult = await this.dataSource.query(
-      "SELECT unified_company_id FROM stock_control_companies WHERE id = $1",
-      [companyId],
-    );
-    const unifiedCompanyId = unifiedIdResult[0]?.unified_company_id;
-    if (unifiedCompanyId) {
-      await this.dataSource.query(
-        `UPDATE companies SET
-          branding_type = $1, website_url = $2, branding_authorized = $3,
-          primary_color = $4, accent_color = $5, logo_url = $6, hero_image_url = $7,
-          updated_at = NOW()
-        WHERE id = $8`,
-        [
-          company.brandingType,
-          company.websiteUrl,
-          company.brandingAuthorized,
-          company.primaryColor,
-          company.accentColor,
-          company.logoUrl,
-          company.heroImageUrl,
-          unifiedCompanyId,
-        ],
-      );
-    }
-
     this.publicBrandingService.clearIconCache(companyId);
 
     return { message: "Branding preference saved successfully." };
@@ -595,39 +566,6 @@ export class StockControlAuthService {
 
     await this.companyRepo.save(company);
 
-    // Dual-write to unified companies table
-    const unifiedIdResult = await this.dataSource.query(
-      "SELECT unified_company_id FROM stock_control_companies WHERE id = $1",
-      [companyId],
-    );
-    const unifiedCompanyId = unifiedIdResult[0]?.unified_company_id;
-    if (unifiedCompanyId) {
-      await this.dataSource.query(
-        `UPDATE companies SET
-          name = $1, registration_number = $2, vat_number = $3,
-          street_address = $4, city = $5, province = $6, postal_code = $7,
-          phone = $8, email = $9, website_url = $10,
-          qc_enabled = $11, workflow_enabled = $12,
-          updated_at = NOW()
-        WHERE id = $13`,
-        [
-          company.name,
-          company.registrationNumber,
-          company.vatNumber,
-          company.streetAddress,
-          company.city,
-          company.province,
-          company.postalCode,
-          company.phone,
-          company.email,
-          company.websiteUrl,
-          company.qcEnabled,
-          company.workflowEnabled,
-          unifiedCompanyId,
-        ],
-      );
-    }
-
     if (dto.notificationsEnabled === false) {
       await this.pushSubscriptionRepo.deleteForCompany(companyId);
     }
@@ -649,43 +587,6 @@ export class StockControlAuthService {
       legacy.email = dto.email;
       await this.companyRepo.save(legacy);
     }
-
-    const unifiedIdResult = await this.dataSource.query(
-      "SELECT unified_company_id FROM stock_control_companies WHERE id = $1",
-      [companyId],
-    );
-    const unifiedCompanyId = unifiedIdResult[0]?.unified_company_id ?? companyId;
-
-    await this.dataSource.query(
-      `UPDATE companies SET
-        legal_name = $1,
-        name = $1,
-        trading_name = $2,
-        registration_number = $3,
-        vat_number = $4,
-        street_address = $5,
-        city = $6,
-        province = $7,
-        postal_code = $8,
-        phone = $9,
-        email = $10,
-        onboarding_complete = TRUE,
-        updated_at = NOW()
-      WHERE id = $11`,
-      [
-        dto.legalName,
-        dto.tradingName ?? null,
-        dto.registrationNumber,
-        dto.vatNumber ?? null,
-        dto.streetAddress,
-        dto.city,
-        dto.province ?? null,
-        dto.postalCode,
-        dto.phone,
-        dto.email,
-        unifiedCompanyId,
-      ],
-    );
 
     return this.currentUser(unifiedUserId);
   }

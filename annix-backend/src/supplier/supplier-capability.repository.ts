@@ -5,4 +5,7 @@ export abstract class SupplierCapabilityRepository extends CrudRepository<Suppli
   abstract findActiveBySupplierIdsWithRelations(
     supplierProfileIds: number[],
   ): Promise<SupplierCapability[]>;
+  abstract findActiveBySupplier(supplierProfileId: number): Promise<SupplierCapability[]>;
+  abstract findBySupplier(supplierProfileId: number): Promise<SupplierCapability[]>;
+  abstract removeById(id: number): Promise<void>;
 }

@@ -1,10 +1,9 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Fitting } from "../fitting/entities/fitting.entity";
-import { FittingBore } from "../fitting-bore/entities/fitting-bore.entity";
-import { FittingDimension } from "../fitting-dimension/entities/fitting-dimension.entity";
-import { FittingVariant } from "./entities/fitting-variant.entity";
+import { FittingRepository } from "../fitting/fitting.repository";
+import { FittingBoreRepository } from "../fitting-bore/fitting-bore.repository";
+import { FittingDimensionRepository } from "../fitting-dimension/fitting-dimension.repository";
 import { FittingVariantController } from "./fitting-variant.controller";
+import { FittingVariantRepository } from "./fitting-variant.repository";
 import { FittingVariantService } from "./fitting-variant.service";
 
 describe("FittingVariantController", () => {
@@ -14,13 +13,14 @@ describe("FittingVariantController", () => {
   const mockVariantRepo = {
     create: jest.fn(),
     save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
+    findAll: jest.fn(),
+    findById: jest.fn(),
+    findOneWhere: jest.fn(),
     remove: jest.fn(),
   };
 
   const mockFittingRepo = {
-    findOne: jest.fn(),
+    findOneWhere: jest.fn(),
   };
 
   const mockBoreRepo = {
@@ -45,13 +45,13 @@ describe("FittingVariantController", () => {
       providers: [
         { provide: FittingVariantService, useValue: mockFittingVariantService },
         {
-          provide: getRepositoryToken(FittingVariant),
+          provide: FittingVariantRepository,
           useValue: mockVariantRepo,
         },
-        { provide: getRepositoryToken(Fitting), useValue: mockFittingRepo },
-        { provide: getRepositoryToken(FittingBore), useValue: mockBoreRepo },
+        { provide: FittingRepository, useValue: mockFittingRepo },
+        { provide: FittingBoreRepository, useValue: mockBoreRepo },
         {
-          provide: getRepositoryToken(FittingDimension),
+          provide: FittingDimensionRepository,
           useValue: mockDimensionRepo,
         },
       ],

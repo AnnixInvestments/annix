@@ -5,17 +5,11 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-  Optional,
 } from "@nestjs/common";
-import { DataSource, type Repository } from "typeorm";
 import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
 import { BoqDistributionService } from "../boq/boq-distribution.service";
 import { fromISO, now } from "../lib/datetime";
-import {
-  TransactionContext,
-  TypeOrmTransactionContext,
-} from "../lib/persistence/transaction-context";
 import { TransactionRunner } from "../lib/persistence/transaction-runner";
 import { DocumentVerificationService } from "../nix/services/document-verification.service";
 import { CompanyRepository } from "../platform/company.repository";
@@ -36,6 +30,8 @@ import {
   SupplierOnboardingStatus,
   SupplierProfile,
 } from "./entities";
+import { ProductCategory } from "./entities/supplier-capability.entity";
+import { SupplierCapabilityRepository } from "./supplier-capability.repository";
 import { SupplierDocumentRepository } from "./supplier-document.repository";
 import { SupplierOnboardingRepository } from "./supplier-onboarding.repository";
 import { SupplierProfileRepository } from "./supplier-profile.repository";
@@ -56,9 +52,9 @@ export class SupplierService {
     private readonly companyRepo: CompanyRepository,
     private readonly onboardingRepository: SupplierOnboardingRepository,
     private readonly documentRepository: SupplierDocumentRepository,
+    private readonly capabilityRepository: SupplierCapabilityRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
-    @Optional() private readonly dataSource: DataSource,
     private readonly txRunner: TransactionRunner,
     private readonly auditService: AuditService,
     @Inject(forwardRef(() => BoqDistributionService))
@@ -222,7 +218,7 @@ export class SupplierService {
     return this.txRunner.run(async (ctx) => {
       const profileRepo = this.profileRepository.withTransaction(ctx);
       const onboardingRepo = this.onboardingRepository.withTransaction(ctx);
-      const companyRepo = this.transactionalCompanyRepo(ctx);
+      const companyRepo = this.companyRepo.withTransaction(ctx);
 
       let company: Company;
 
@@ -261,31 +257,31 @@ export class SupplierService {
           ipAddress: clientIp,
         });
       } else {
-        company = await companyRepo.save(
-          companyRepo.create({
-            name: dto.legalName,
-            companyType: CompanyType.SUPPLIER,
-            legalName: dto.legalName,
-            tradingName: dto.tradingName,
-            registrationNumber: dto.registrationNumber,
-            vatNumber: dto.vatNumber,
-            streetAddress: dto.streetAddress,
-            city: dto.city,
-            province: dto.provinceState,
-            postalCode: dto.postalCode,
-            country: dto.country || "South Africa",
-            phone: dto.primaryPhone || dto.primaryContactPhone,
-            contactPerson: dto.primaryContactName,
-            email: dto.generalEmail || dto.primaryContactEmail,
-            websiteUrl: dto.website,
-            industry: dto.industryType,
-            companySize: dto.companySize,
-            beeLevel: dto.beeLevel,
-            beeCertificateExpiry: dto.beeCertificateExpiry,
-            beeVerificationAgency: dto.beeVerificationAgency,
-            isExemptMicroEnterprise: dto.isExemptMicroEnterprise || false,
-          }),
-        );
+        company = await companyRepo.create({
+          name: dto.legalName,
+          companyType: CompanyType.SUPPLIER,
+          legalName: dto.legalName,
+          tradingName: dto.tradingName,
+          registrationNumber: dto.registrationNumber,
+          vatNumber: dto.vatNumber,
+          streetAddress: dto.streetAddress,
+          city: dto.city,
+          province: dto.provinceState,
+          postalCode: dto.postalCode,
+          country: dto.country || "South Africa",
+          phone: dto.primaryPhone || dto.primaryContactPhone,
+          contactPerson: dto.primaryContactName,
+          email: dto.generalEmail || dto.primaryContactEmail,
+          websiteUrl: dto.website,
+          industry: dto.industryType,
+          companySize: dto.companySize,
+          beeLevel: dto.beeLevel,
+          beeCertificateExpiry: dto.beeCertificateExpiry
+            ? fromISO(dto.beeCertificateExpiry).toJSDate()
+            : null,
+          beeVerificationAgency: dto.beeVerificationAgency,
+          isExemptMicroEnterprise: dto.isExemptMicroEnterprise || false,
+        });
 
         // Link to profile
         profile.companyId = company.id;
@@ -311,13 +307,6 @@ export class SupplierService {
 
       return company;
     });
-  }
-
-  private transactionalCompanyRepo(ctx: TransactionContext): Repository<Company> {
-    if (!(ctx instanceof TypeOrmTransactionContext)) {
-      throw new Error("Supplier company writes require a TypeOrmTransactionContext");
-    }
-    return ctx.manager.getRepository(Company);
   }
 
   /**
@@ -751,14 +740,10 @@ export class SupplierService {
    * Get supplier capabilities (products/services they can offer)
    */
   async getCapabilities(supplierId: number): Promise<{ capabilities: string[] }> {
-    // Use direct raw SQL query to completely bypass TypeORM entity handling
-    const capabilities = await this.dataSource.query(
-      "SELECT product_category FROM supplier_capabilities WHERE supplier_profile_id = $1 AND is_active = true",
-      [supplierId],
-    );
+    const capabilities = await this.capabilityRepository.findActiveBySupplier(supplierId);
 
     return {
-      capabilities: capabilities.map((c: { product_category: string }) => c.product_category),
+      capabilities: capabilities.map((c) => c.productCategory),
     };
   }
 
@@ -776,35 +761,28 @@ export class SupplierService {
       throw new NotFoundException("Supplier profile not found");
     }
 
-    // Get existing capabilities using raw SQL to completely bypass TypeORM entity handling
-    const existingCapabilities = await this.dataSource.query(
-      "SELECT id, product_category FROM supplier_capabilities WHERE supplier_profile_id = $1",
-      [supplierId],
-    );
+    const existingCapabilities = await this.capabilityRepository.findBySupplier(supplierId);
 
-    const existingCategories = existingCapabilities.map(
-      (c: { id: number; product_category: string }) => c.product_category,
-    );
+    const existingCategories = existingCapabilities.map((c) => c.productCategory);
     const newCategories = dto.capabilities;
 
-    // Find categories to add and remove
-    const toAdd = newCategories.filter((c) => !existingCategories.includes(c));
-    const toRemove = existingCapabilities.filter(
-      (c: { id: number; product_category: string }) => !newCategories.includes(c.product_category),
+    const toAdd = newCategories.filter((c) => !existingCategories.includes(c as ProductCategory));
+    const toRemove = existingCapabilities.filter((c) => !newCategories.includes(c.productCategory));
+
+    await Promise.all(toRemove.map((cap) => this.capabilityRepository.removeById(cap.id)));
+
+    const timestamp = now().toJSDate();
+    await Promise.all(
+      toAdd.map((category) =>
+        this.capabilityRepository.create({
+          supplierProfileId: supplierId,
+          productCategory: category as ProductCategory,
+          isActive: true,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        }),
+      ),
     );
-
-    // Remove capabilities no longer selected
-    for (const cap of toRemove) {
-      await this.dataSource.query("DELETE FROM supplier_capabilities WHERE id = $1", [cap.id]);
-    }
-
-    // Add new capabilities using raw SQL
-    for (const category of toAdd) {
-      await this.dataSource.query(
-        "INSERT INTO supplier_capabilities (supplier_profile_id, product_category, is_active, created_at, updated_at) VALUES ($1, $2, true, NOW(), NOW())",
-        [supplierId, category],
-      );
-    }
 
     await this.auditService.log({
       entityType: "supplier_capabilities",

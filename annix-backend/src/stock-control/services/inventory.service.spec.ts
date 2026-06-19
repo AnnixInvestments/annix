@@ -1,6 +1,5 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { DataSource } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { NixLearningRepository } from "../../nix/nix-learning.repository";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
@@ -99,7 +98,6 @@ describe("InventoryService", () => {
         },
         { provide: STORAGE_SERVICE, useValue: mockStorageService },
         { provide: RequisitionService, useValue: mockRequisitionService },
-        { provide: DataSource, useValue: {} },
         { provide: AiChatService, useValue: { chat: jest.fn().mockResolvedValue("") } },
         {
           provide: DeliverySupplierService,

@@ -1,26 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import { InjectConnection } from "@nestjs/mongoose";
 import type { Connection } from "mongoose";
-import { DataSource } from "typeorm";
-import {
-  MongoTransactionContext,
-  TransactionContext,
-  TypeOrmTransactionContext,
-} from "./transaction-context";
+import { MongoTransactionContext, TransactionContext } from "./transaction-context";
 
 export abstract class TransactionRunner {
   abstract run<T>(work: (context: TransactionContext) => Promise<T>): Promise<T>;
-}
-
-@Injectable()
-export class TypeOrmTransactionRunner extends TransactionRunner {
-  constructor(private readonly dataSource: DataSource) {
-    super();
-  }
-
-  run<T>(work: (context: TransactionContext) => Promise<T>): Promise<T> {
-    return this.dataSource.transaction((manager) => work(new TypeOrmTransactionContext(manager)));
-  }
 }
 
 @Injectable()

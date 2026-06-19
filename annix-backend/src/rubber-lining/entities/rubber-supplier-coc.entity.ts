@@ -1,12 +1,3 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from "typeorm";
 import { DocumentVersionStatus } from "./document-version.types";
 import { RubberCompany } from "./rubber-company.entity";
 
@@ -117,111 +108,64 @@ export interface ExtractedCocData {
   documentDate?: string | null;
 }
 
-@Entity("rubber_supplier_cocs")
 export class RubberSupplierCoc {
-  @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: "firebase_uid", type: "varchar", length: 100, unique: true })
   firebaseUid: string;
 
-  @Column({
-    name: "coc_type",
-    type: "enum",
-    enum: SupplierCocType,
-  })
   cocType: SupplierCocType;
 
-  @Column({ name: "supplier_company_id", type: "int" })
   supplierCompanyId: number;
 
-  @ManyToOne(() => RubberCompany)
-  @JoinColumn({ name: "supplier_company_id" })
   supplierCompany: RubberCompany;
 
-  @Column({ name: "document_path", type: "varchar", length: 500 })
   documentPath: string;
 
-  @Column({ name: "graph_pdf_path", type: "varchar", length: 500, nullable: true })
   graphPdfPath: string | null;
 
-  @Column({ name: "coc_number", type: "varchar", length: 255, nullable: true })
   cocNumber: string | null;
 
-  @Column({ name: "production_date", type: "date", nullable: true })
   productionDate: Date | null;
 
-  @Column({ name: "compound_code", type: "varchar", length: 100, nullable: true })
   compoundCode: string | null;
 
-  @Column({ name: "order_number", type: "varchar", length: 255, nullable: true })
   orderNumber: string | null;
 
-  @Column({ name: "ticket_number", type: "varchar", length: 255, nullable: true })
   ticketNumber: string | null;
 
-  @Column({
-    name: "processing_status",
-    type: "enum",
-    enum: CocProcessingStatus,
-    default: CocProcessingStatus.PENDING,
-  })
   processingStatus: CocProcessingStatus;
 
-  @Column({ name: "extracted_data", type: "jsonb", nullable: true })
   extractedData: ExtractedCocData | null;
 
-  @Column({ name: "review_notes", type: "text", nullable: true })
   reviewNotes: string | null;
 
-  @Column({ name: "approved_by", type: "varchar", length: 100, nullable: true })
   approvedBy: string | null;
 
-  @Column({ name: "approved_at", type: "timestamp", nullable: true })
   approvedAt: Date | null;
 
-  @Column({ name: "linked_delivery_note_id", type: "int", nullable: true })
   linkedDeliveryNoteId: number | null;
 
-  @Column({ name: "linked_calender_roll_coc_id", type: "int", nullable: true })
   linkedCalenderRollCocId: number | null;
 
-  @ManyToOne(() => RubberSupplierCoc, { nullable: true })
-  @JoinColumn({ name: "linked_calender_roll_coc_id" })
   linkedCalenderRollCoc: RubberSupplierCoc | null;
 
-  @Column({ name: "exported_to_sage_at", type: "timestamp", nullable: true })
   exportedToSageAt: Date | null;
 
-  @Column({ name: "created_by", type: "varchar", length: 100, nullable: true })
   createdBy: string | null;
 
-  @Column({ name: "version", type: "int", default: 1 })
   version: number;
 
-  @Column({ name: "previous_version_id", type: "int", nullable: true })
   previousVersionId: number | null;
 
-  @ManyToOne(() => RubberSupplierCoc, { nullable: true })
-  @JoinColumn({ name: "previous_version_id" })
   previousVersion: RubberSupplierCoc | null;
 
-  @Column({
-    name: "version_status",
-    type: "varchar",
-    length: 30,
-    default: DocumentVersionStatus.ACTIVE,
-  })
   versionStatus: DocumentVersionStatus;
 
   // SHA-256 of the source PDF. Used to skip creating a CoC when the exact
   // same document has already been ingested (e.g. re-forwarded email).
-  @Column({ name: "document_hash", type: "varchar", length: 64, nullable: true })
   documentHash: string | null;
 
-  @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 }

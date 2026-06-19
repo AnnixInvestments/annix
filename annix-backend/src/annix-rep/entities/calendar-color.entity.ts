@@ -1,28 +1,18 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, Unique } from "typeorm";
 import { User } from "../../user/entities/user.entity";
 
 export type CalendarColorType = "meeting_type" | "status" | "calendar";
 
-@Entity("annix_rep_calendar_colors")
-@Unique(["userId", "colorType", "colorKey"])
 export class CalendarColor {
-  @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => User, { onDelete: "CASCADE" })
-  @JoinColumn({ name: "user_id" })
   user: User;
 
-  @Column({ name: "user_id" })
   userId: number;
 
-  @Column({ name: "color_type", type: "varchar", length: 50 })
   colorType: CalendarColorType;
 
-  @Column({ name: "color_key", type: "varchar", length: 50 })
   colorKey: string;
 
-  @Column({ name: "color_value", type: "varchar", length: 7 })
   colorValue: string;
 }
 

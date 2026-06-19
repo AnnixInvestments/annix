@@ -1,7 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { NbNpsLookup } from "./entities/nb-nps-lookup.entity";
 import { NbNpsLookupController } from "./nb-nps-lookup.controller";
+import { NbNpsLookupRepository } from "./nb-nps-lookup.repository";
 import { NbNpsLookupService } from "./nb-nps-lookup.service";
 
 describe("NbNpsLookupController", () => {
@@ -11,8 +10,9 @@ describe("NbNpsLookupController", () => {
   const mockRepo = {
     create: jest.fn(),
     save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
+    findAll: jest.fn(),
+    findById: jest.fn(),
+    findOneWhere: jest.fn(),
     remove: jest.fn(),
   };
 
@@ -29,7 +29,7 @@ describe("NbNpsLookupController", () => {
       controllers: [NbNpsLookupController],
       providers: [
         { provide: NbNpsLookupService, useValue: mockNbNpsLookupService },
-        { provide: getRepositoryToken(NbNpsLookup), useValue: mockRepo },
+        { provide: NbNpsLookupRepository, useValue: mockRepo },
       ],
     }).compile();
 

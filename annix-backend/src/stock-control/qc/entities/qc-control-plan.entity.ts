@@ -1,12 +1,3 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from "typeorm";
 import { Company } from "../../../platform/entities/company.entity";
 import { StockControlCompany } from "../../entities/stock-control-company.entity";
 
@@ -54,94 +45,62 @@ export interface QcpApprovalSignature {
   date: string | null;
 }
 
-@Entity("qc_control_plans")
 export class QcControlPlan {
-  @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => StockControlCompany, { onDelete: "CASCADE" })
-  @JoinColumn({ name: "company_id" })
   company: StockControlCompany;
 
-  @Column({ name: "company_id" })
   companyId: number;
 
-  @Column({ name: "job_card_id", type: "integer", nullable: true })
   jobCardId: number | null;
 
-  @Column({ name: "cpo_id", type: "integer", nullable: true })
   cpoId: number | null;
 
-  @Column({ name: "plan_type", type: "varchar", length: 30 })
   planType: QcpPlanType;
 
-  @Column({ name: "qcp_number", type: "varchar", length: 100, nullable: true })
   qcpNumber: string | null;
 
-  @Column({ name: "document_ref", type: "varchar", length: 50, nullable: true })
   documentRef: string | null;
 
-  @Column({ name: "revision", type: "varchar", length: 20, nullable: true })
   revision: string | null;
 
-  @Column({ name: "customer_name", type: "varchar", length: 255, nullable: true })
   customerName: string | null;
 
-  @Column({ name: "order_number", type: "varchar", length: 255, nullable: true })
   orderNumber: string | null;
 
-  @Column({ name: "job_number", type: "varchar", length: 50, nullable: true })
   jobNumber: string | null;
 
-  @Column({ name: "job_name", type: "varchar", length: 255, nullable: true })
   jobName: string | null;
 
-  @Column({ name: "specification", type: "varchar", length: 500, nullable: true })
   specification: string | null;
 
-  @Column({ name: "item_description", type: "varchar", length: 500, nullable: true })
   itemDescription: string | null;
 
-  @Column({ name: "version", type: "int", default: 1 })
   version: number;
 
-  @Column({ name: "approval_status", type: "varchar", length: 30, default: "draft" })
   approvalStatus: string;
 
-  @Column({ name: "client_email", type: "varchar", length: 255, nullable: true })
   clientEmail: string | null;
 
-  @Column({ name: "third_party_email", type: "varchar", length: 255, nullable: true })
   thirdPartyEmail: string | null;
 
-  @Column({ name: "active_parties", type: "jsonb", nullable: true })
   activeParties: string[] | null;
 
-  @Column({ name: "activities", type: "jsonb" })
   activities: QcpActivity[];
 
-  @Column({ name: "approval_signatures", type: "jsonb" })
   approvalSignatures: QcpApprovalSignature[];
 
-  @Column({ name: "source_cpo_qcp_id", type: "integer", nullable: true })
   sourceCpoQcpId: number | null;
 
-  @Column({ name: "created_by_name", type: "varchar", length: 255 })
   createdByName: string;
 
-  @Column({ name: "created_by_id", type: "integer", nullable: true })
   createdById: number | null;
 
-  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
-  @JoinColumn({ name: "unified_company_id" })
   unifiedCompany?: Company | null;
 
-  @Column({ name: "unified_company_id", nullable: true })
   unifiedCompanyId?: number | null;
 
-  @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 }

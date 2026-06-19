@@ -1,12 +1,3 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from "typeorm";
 import { AnnixOrbitCompany } from "./annix-orbit-company.entity";
 
 export enum AnnixOrbitRole {
@@ -17,57 +8,38 @@ export enum AnnixOrbitRole {
   STUDENT = "student",
 }
 
-@Entity("cv_assistant_users")
 export class AnnixOrbitUser {
-  @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: "varchar", length: 255, unique: true })
   email: string;
 
-  @Column({ name: "password_hash", type: "varchar", length: 255 })
   passwordHash: string;
 
-  @Column({ type: "varchar", length: 255 })
   name: string;
 
-  @Column({ type: "varchar", length: 50, default: AnnixOrbitRole.RECRUITER })
   role: AnnixOrbitRole;
 
-  @Column({ name: "email_verified", type: "boolean", default: false })
   emailVerified: boolean;
 
-  @Column({ name: "email_verification_token", type: "varchar", length: 255, nullable: true })
   emailVerificationToken: string | null;
 
-  @Column({ name: "email_verification_expires", type: "timestamptz", nullable: true })
   emailVerificationExpires: Date | null;
 
-  @Column({ name: "reset_password_token", type: "varchar", length: 255, nullable: true })
   resetPasswordToken: string | null;
 
-  @Column({ name: "reset_password_expires", type: "timestamptz", nullable: true })
   resetPasswordExpires: Date | null;
 
-  @ManyToOne(() => AnnixOrbitCompany, { onDelete: "CASCADE" })
-  @JoinColumn({ name: "company_id" })
   company: AnnixOrbitCompany;
 
-  @Column({ name: "company_id" })
   companyId: number;
 
-  @Column({ name: "match_alert_threshold", type: "int", default: 80 })
   matchAlertThreshold: number;
 
-  @Column({ name: "digest_enabled", type: "boolean", default: true })
   digestEnabled: boolean;
 
-  @Column({ name: "push_enabled", type: "boolean", default: false })
   pushEnabled: boolean;
 
-  @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 }

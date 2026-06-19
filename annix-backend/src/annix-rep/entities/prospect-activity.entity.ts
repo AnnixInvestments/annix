@@ -1,11 +1,3 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-} from "typeorm";
 import { User } from "../../user/entities/user.entity";
 import { Prospect } from "./prospect.entity";
 
@@ -23,44 +15,26 @@ export enum ProspectActivityType {
   OWNERSHIP_CHANGED = "ownership_changed",
 }
 
-@Entity("annix_rep_prospect_activities")
 export class ProspectActivity {
-  @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => Prospect, { onDelete: "CASCADE" })
-  @JoinColumn({ name: "prospect_id" })
   prospect: Prospect;
 
-  @Column({ name: "prospect_id" })
   prospectId: number;
 
-  @ManyToOne(() => User)
-  @JoinColumn({ name: "user_id" })
   user: User;
 
-  @Column({ name: "user_id" })
   userId: number;
 
-  @Column({
-    name: "activity_type",
-    type: "enum",
-    enum: ProspectActivityType,
-  })
   activityType: ProspectActivityType;
 
-  @Column({ name: "old_values", type: "json", nullable: true })
   oldValues: Record<string, unknown> | null;
 
-  @Column({ name: "new_values", type: "json", nullable: true })
   newValues: Record<string, unknown> | null;
 
-  @Column({ type: "text", nullable: true })
   description: string | null;
 
-  @Column({ type: "jsonb", nullable: true })
   metadata: Record<string, unknown> | null;
 
-  @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 }

@@ -1,58 +1,33 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-} from "typeorm";
 import { Company } from "../../platform/entities/company.entity";
 import { JobCard } from "./job-card.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 
-@Entity("job_card_line_items")
 export class JobCardLineItem {
-  @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: "job_card_id" })
   jobCardId: number;
 
-  @ManyToOne(
-    () => JobCard,
-    (jc) => jc.lineItems,
-    { onDelete: "CASCADE" },
-  )
-  @JoinColumn({ name: "job_card_id" })
   jobCard: JobCard;
 
-  @Column({ name: "item_code", type: "varchar", length: 500, nullable: true })
   itemCode: string | null;
 
-  @Column({ name: "item_description", type: "text", nullable: true })
   itemDescription: string | null;
 
-  @Column({ name: "item_no", type: "varchar", length: 500, nullable: true })
   itemNo: string | null;
 
-  @Column({ type: "numeric", precision: 12, scale: 2, nullable: true })
   quantity: number | null;
 
-  @Column({ name: "jt_no", type: "varchar", length: 500, nullable: true })
   jtNo: string | null;
 
   // External / paint surface area (outer surface).
-  @Column({ name: "m2", type: "numeric", precision: 12, scale: 4, nullable: true })
   m2: number | null;
 
   // Internal / rubber-lining surface area (bore + flange faces). Drives rubber quoting.
-  @Column({ name: "lining_m2", type: "numeric", precision: 12, scale: 4, nullable: true })
   liningM2: number | null;
 
   // Developed flat plate take-off for a fabricated tank/chute line, from the
   // shared Nix plateBom. Drives the rubber cutting-diagram nesting; null for
   // non-tank rows. (Legacy Postgres path — jsonb; Mongo stores it embedded.)
-  @Column({ name: "plate_bom", type: "jsonb", nullable: true })
   plateBom: Array<{
     mark: string;
     description: string;
@@ -63,26 +38,17 @@ export class JobCardLineItem {
     liningThicknessMm: number;
   }> | null;
 
-  @Column({ type: "text", nullable: true })
   notes: string | null;
 
-  @Column({ name: "sort_order", type: "int", default: 0 })
   sortOrder: number;
 
-  @Column({ name: "company_id" })
   companyId: number;
 
-  @ManyToOne(() => StockControlCompany, { onDelete: "CASCADE" })
-  @JoinColumn({ name: "company_id" })
   company: StockControlCompany;
 
-  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
-  @JoinColumn({ name: "unified_company_id" })
   unifiedCompany?: Company | null;
 
-  @Column({ name: "unified_company_id", nullable: true })
   unifiedCompanyId?: number | null;
 
-  @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 }

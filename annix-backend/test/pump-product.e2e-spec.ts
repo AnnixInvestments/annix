@@ -1,14 +1,13 @@
 import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import request from "supertest";
 import { now } from "../src/lib/datetime";
 import {
-  PumpProduct,
   PumpProductCategory,
   PumpProductStatus,
 } from "../src/pump-product/entities/pump-product.entity";
 import { PumpProductModule } from "../src/pump-product/pump-product.module";
+import { PumpProductRepository } from "../src/pump-product/pump-product.repository";
 
 describe("PumpProductController (e2e)", () => {
   let app: INestApplication;
@@ -63,7 +62,7 @@ describe("PumpProductController (e2e)", () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [PumpProductModule],
     })
-      .overrideProvider(getRepositoryToken(PumpProduct))
+      .overrideProvider(PumpProductRepository)
       .useValue(mockRepository)
       .compile();
 

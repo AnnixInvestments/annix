@@ -1,9 +1,8 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { FittingVariant } from "../fitting-variant/entities/fitting-variant.entity";
-import { NominalOutsideDiameterMm } from "../nominal-outside-diameter-mm/entities/nominal-outside-diameter-mm.entity";
-import { FittingBore } from "./entities/fitting-bore.entity";
+import { FittingVariantRepository } from "../fitting-variant/fitting-variant.repository";
+import { NominalOutsideDiameterMmRepository } from "../nominal-outside-diameter-mm/nominal-outside-diameter-mm.repository";
 import { FittingBoreController } from "./fitting-bore.controller";
+import { FittingBoreRepository } from "./fitting-bore.repository";
 import { FittingBoreService } from "./fitting-bore.service";
 
 describe("FittingBoreController", () => {
@@ -13,17 +12,18 @@ describe("FittingBoreController", () => {
   const mockBoreRepo = {
     create: jest.fn(),
     save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
+    findAll: jest.fn(),
+    findById: jest.fn(),
+    findOneWhere: jest.fn(),
     remove: jest.fn(),
   };
 
   const mockVariantRepo = {
-    findOne: jest.fn(),
+    findOneWhere: jest.fn(),
   };
 
   const mockNominalRepo = {
-    findOne: jest.fn(),
+    findOneWhere: jest.fn(),
   };
 
   const mockFittingBoreService = {
@@ -39,13 +39,13 @@ describe("FittingBoreController", () => {
       controllers: [FittingBoreController],
       providers: [
         { provide: FittingBoreService, useValue: mockFittingBoreService },
-        { provide: getRepositoryToken(FittingBore), useValue: mockBoreRepo },
+        { provide: FittingBoreRepository, useValue: mockBoreRepo },
         {
-          provide: getRepositoryToken(FittingVariant),
+          provide: FittingVariantRepository,
           useValue: mockVariantRepo,
         },
         {
-          provide: getRepositoryToken(NominalOutsideDiameterMm),
+          provide: NominalOutsideDiameterMmRepository,
           useValue: mockNominalRepo,
         },
       ],

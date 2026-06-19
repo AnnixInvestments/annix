@@ -1,11 +1,11 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import {
-  type TransactionContext,
-  TypeOrmTransactionContext,
-} from "../../lib/persistence/transaction-context";
+import type { DeepPartial } from "../../lib/persistence/crud-repository";
 import { TransactionRunner } from "../../lib/persistence/transaction-runner";
-import { JobCard, JobCardStatus } from "../../stock-control/entities/job-card.entity";
-import { JobCardLineItem } from "../../stock-control/entities/job-card-line-item.entity";
+import type { JobCard } from "../../stock-control/entities/job-card.entity";
+import { JobCardStatus } from "../../stock-control/entities/job-card.entity";
+import type { JobCardLineItem } from "../../stock-control/entities/job-card-line-item.entity";
+import { JobCardRepository } from "../../stock-control/repositories/job-card.repository";
+import { JobCardLineItemRepository } from "../../stock-control/repositories/job-card-line-item.repository";
 import { ConvertToJobCardDto, ConvertToJobCardResponseDto } from "../dto/convert-to-job-card.dto";
 import { QuotePdfPoolDto, QuotePdfSnapshotDto } from "../dto/quote-pdf.dto";
 import { NixExtractionSession } from "../entities/nix-extraction-session.entity";
@@ -35,15 +35,10 @@ export class QuoteToJobCardService {
   constructor(
     private readonly sessionService: NixExtractionSessionService,
     private readonly sessionRepository: NixExtractionSessionRepository,
+    private readonly jobCardRepository: JobCardRepository,
+    private readonly jobCardLineItemRepository: JobCardLineItemRepository,
     private readonly txRunner: TransactionRunner,
   ) {}
-
-  private transactionManager(context: TransactionContext) {
-    if (!(context instanceof TypeOrmTransactionContext)) {
-      throw new Error("Quote-to-job-card conversion requires a TypeOrmTransactionContext");
-    }
-    return context.manager;
-  }
 
   async convert(params: {
     sessionId: number;
@@ -71,29 +66,28 @@ export class QuoteToJobCardService {
     }
 
     return await this.txRunner.run(async (ctx) => {
-      const manager = this.transactionManager(ctx);
-      const jobCardRepo = manager.getRepository(JobCard);
-      const jobCardEntity: Partial<JobCard> = {
+      const jobCardRepo = this.jobCardRepository.withTransaction(ctx);
+      const lineItemRepo = this.jobCardLineItemRepository.withTransaction(ctx);
+
+      const jobCardData: DeepPartial<JobCard> = {
         companyId,
         jobNumber: dto.jobNumber.trim(),
         jobName: dto.jobName.trim(),
-        customerName: customerName ?? undefined,
+        customerName,
         description: this.composeDescription(session, dto.snapshot),
-        siteLocation: dto.siteLocation?.trim() || undefined,
-        contactPerson: dto.contactPerson?.trim() || undefined,
+        siteLocation: dto.siteLocation?.trim() || null,
+        contactPerson: dto.contactPerson?.trim() || null,
         dueDate: dto.dueDate ? dto.dueDate.trim() : null,
-        notes: dto.snapshot.generalNotes?.trim() || undefined,
-        reference: session.promotedRef ?? undefined,
+        notes: dto.snapshot.generalNotes?.trim() || null,
+        reference: session.promotedRef ?? null,
         status: JobCardStatus.DRAFT,
         workflowStatus: "draft",
       };
-      const savedJobCard: JobCard = await jobCardRepo.save(jobCardRepo.create(jobCardEntity));
+      const savedJobCard = await jobCardRepo.create(jobCardData);
 
-      const lineItemRepo = manager.getRepository(JobCardLineItem);
-      const items = lineItemRows.map((row) =>
-        lineItemRepo.create({ ...row, jobCardId: savedJobCard.id }),
+      const items = await Promise.all(
+        lineItemRows.map((row) => lineItemRepo.create({ ...row, jobCardId: savedJobCard.id })),
       );
-      await lineItemRepo.save(items);
 
       await this.sessionRepository.withTransaction(ctx).setJobCardId(sessionId, savedJobCard.id);
 
@@ -126,16 +120,17 @@ export class QuoteToJobCardService {
   private composeDescription(
     session: NixExtractionSession,
     snapshot: QuotePdfSnapshotDto,
-  ): string | undefined {
-    const parts: string[] = [];
-    if (session.promotedRef) parts.push(`Source quote: ${session.promotedRef}`);
-    for (const pool of snapshot.pools) {
-      const specLine = [pool.coatingLine, pool.liningLine]
-        .filter((line): line is string => Boolean(line && line.trim().length > 0))
-        .join(" + ");
-      if (specLine) parts.push(specLine);
-    }
-    return parts.length > 0 ? parts.join("\n") : undefined;
+  ): string | null {
+    const refParts = session.promotedRef ? [`Source quote: ${session.promotedRef}`] : [];
+    const poolParts = snapshot.pools
+      .map((pool) =>
+        [pool.coatingLine, pool.liningLine]
+          .filter((line): line is string => Boolean(line && line.trim().length > 0))
+          .join(" + "),
+      )
+      .filter((specLine) => specLine.length > 0);
+    const parts = [...refParts, ...poolParts];
+    return parts.length > 0 ? parts.join("\n") : null;
   }
 }
 
@@ -149,12 +144,10 @@ export class QuoteToJobCardService {
 function flattenPoolsToLineItems(
   snapshot: QuotePdfSnapshotDto,
   companyId: number,
-): Partial<JobCardLineItem>[] {
-  const rows: Partial<JobCardLineItem>[] = [];
-  let sortOrder = 0;
-  for (const pool of snapshot.pools) {
-    for (const item of pool.items) {
-      rows.push({
+): DeepPartial<JobCardLineItem>[] {
+  return snapshot.pools
+    .flatMap((pool) =>
+      pool.items.map((item) => ({
         companyId,
         itemCode: item.mark || null,
         itemNo: item.mark || null,
@@ -163,11 +156,9 @@ function flattenPoolsToLineItems(
         m2: null,
         jtNo: null,
         notes: null,
-        sortOrder: sortOrder++,
-      });
-    }
-  }
-  return rows;
+      })),
+    )
+    .map((row, index) => ({ ...row, sortOrder: index }));
 }
 
 function composeLineDescription(pool: QuotePdfPoolDto, itemDescription: string): string {

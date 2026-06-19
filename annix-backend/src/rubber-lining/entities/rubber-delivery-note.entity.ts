@@ -1,12 +1,3 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from "typeorm";
 import { DocumentVersionStatus } from "./document-version.types";
 import { RubberCompany } from "./rubber-company.entity";
 import { RubberSupplierCoc } from "./rubber-supplier-coc.entity";
@@ -95,99 +86,56 @@ export interface ExtractedCustomerDeliveryNotesResult {
   podPages?: ExtractedCustomerDeliveryNotePodPage[];
 }
 
-@Entity("rubber_delivery_notes")
 export class RubberDeliveryNote {
-  @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: "firebase_uid", type: "varchar", length: 100, unique: true })
   firebaseUid: string;
 
-  @Column({
-    name: "delivery_note_type",
-    type: "enum",
-    enum: DeliveryNoteType,
-  })
   deliveryNoteType: DeliveryNoteType;
 
-  @Column({ name: "delivery_note_number", type: "varchar", length: 100 })
   deliveryNoteNumber: string;
 
-  @Column({ name: "delivery_date", type: "date", nullable: true })
   deliveryDate: Date | null;
 
-  @Column({ name: "customer_reference", type: "varchar", length: 200, nullable: true })
   customerReference: string | null;
 
-  @Column({ name: "supplier_company_id", type: "int" })
   supplierCompanyId: number;
 
-  @ManyToOne(() => RubberCompany)
-  @JoinColumn({ name: "supplier_company_id" })
   supplierCompany: RubberCompany;
 
-  @Column({ name: "document_path", type: "varchar", length: 500, nullable: true })
   documentPath: string | null;
 
-  @Column({
-    name: "status",
-    type: "enum",
-    enum: DeliveryNoteStatus,
-    default: DeliveryNoteStatus.PENDING,
-  })
   status: DeliveryNoteStatus;
 
-  @Column({ name: "linked_coc_id", type: "int", nullable: true })
   linkedCocId: number | null;
 
-  @ManyToOne(() => RubberSupplierCoc, { nullable: true })
-  @JoinColumn({ name: "linked_coc_id" })
   linkedCoc: RubberSupplierCoc | null;
 
-  @Column({ name: "extracted_data", type: "jsonb", nullable: true })
   extractedData: ExtractedDeliveryNoteData | null;
 
-  @Column({ name: "created_by", type: "varchar", length: 100, nullable: true })
   createdBy: string | null;
 
-  @Column({ name: "version", type: "int", default: 1 })
   version: number;
 
-  @Column({ name: "previous_version_id", type: "int", nullable: true })
   previousVersionId: number | null;
 
-  @ManyToOne(() => RubberDeliveryNote, { nullable: true })
-  @JoinColumn({ name: "previous_version_id" })
   previousVersion: RubberDeliveryNote | null;
 
-  @Column({
-    name: "version_status",
-    type: "varchar",
-    length: 30,
-    default: DocumentVersionStatus.ACTIVE,
-  })
   versionStatus: DocumentVersionStatus;
 
-  @Column({ name: "stock_category", type: "varchar", length: 100, nullable: true })
   stockCategory: string | null;
 
-  @Column({ name: "pod_page_numbers", type: "jsonb", nullable: true })
   podPageNumbers: number[] | null;
 
-  @Column({ name: "source_page_numbers", type: "jsonb", nullable: true })
   sourcePageNumbers: number[] | null;
 
-  @Column({ name: "siblings_backfilled_at", type: "timestamp", nullable: true })
   siblingsBackfilledAt: Date | null;
 
   // Set when the "supplier CoC overdue" warning email has been sent for this
   // supplier DN, so the daily reminder cron warns about it exactly once.
-  @Column({ name: "coc_overdue_warned_at", type: "timestamp", nullable: true })
   cocOverdueWarnedAt: Date | null;
 
-  @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 }

@@ -1,6 +1,5 @@
 import * as path from "node:path";
 import { Logger } from "@nestjs/common";
-import { isMongoDriver } from "./database-driver";
 
 interface MigrateMongoConfigApi {
   set: (config: unknown) => void;
@@ -90,9 +89,6 @@ export async function runMongoMigrationsOnBoot(): Promise<void> {
   const logger = new Logger("MongoMigrations");
 
   if (process.env.NODE_ENV === "production") {
-    return;
-  }
-  if (!isMongoDriver()) {
     return;
   }
   if (!process.env.MONGODB_URI && !process.env.ORBIT_MONGODB_URI) {

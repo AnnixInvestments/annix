@@ -1,13 +1,3 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from "typeorm";
 import { Company } from "../../platform/entities/company.entity";
 import { CustomerPurchaseOrder } from "./customer-purchase-order.entity";
 import { DispatchCdn } from "./dispatch-cdn.entity";
@@ -66,190 +56,96 @@ export enum JobCardStatus {
 export const WORKFLOW_STATUS_DRAFT = "draft";
 export const WORKFLOW_STATUS_FILE_CLOSED = "file_closed";
 
-@Entity("job_cards")
 export class JobCard {
-  @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: "job_number", type: "varchar", length: 500 })
   jobNumber: string;
 
-  @Column({ name: "jc_number", type: "varchar", length: 100, nullable: true })
   jcNumber: string | null;
 
-  @Column({ name: "page_number", type: "varchar", length: 50, nullable: true })
   pageNumber: string | null;
 
-  @Column({ name: "job_name", type: "varchar", length: 255 })
   jobName: string;
 
-  @Column({ name: "customer_name", type: "varchar", length: 255, nullable: true })
   customerName: string | null;
 
-  @Column({ type: "text", nullable: true })
   description: string | null;
 
-  @Column({ name: "po_number", type: "varchar", length: 500, nullable: true })
   poNumber: string | null;
 
-  @Column({ name: "site_location", type: "varchar", length: 255, nullable: true })
   siteLocation: string | null;
 
-  @Column({ name: "contact_person", type: "varchar", length: 255, nullable: true })
   contactPerson: string | null;
 
-  @Column({ name: "due_date", type: "varchar", length: 500, nullable: true })
   dueDate: string | null;
 
-  @Column({ type: "text", nullable: true })
   notes: string | null;
 
-  @Column({ type: "varchar", length: 255, nullable: true })
   reference: string | null;
 
-  @Column({ name: "custom_fields", type: "jsonb", nullable: true })
   customFields: Record<string, string> | null;
 
-  @Column({ name: "rubber_plan_override", type: "jsonb", nullable: true })
   rubberPlanOverride: RubberPlanOverride | null;
 
-  @Column({ type: "varchar", length: 50, default: JobCardStatus.DRAFT })
   status: JobCardStatus;
 
-  @Column({
-    name: "workflow_status",
-    type: "varchar",
-    length: 50,
-    default: "'draft'",
-  })
   workflowStatus: string;
 
-  @Column({ name: "version_number", type: "integer", default: 1 })
   versionNumber: number;
 
-  @Column({ name: "source_file_path", type: "varchar", length: 500, nullable: true })
   sourceFilePath: string | null;
 
-  @Column({ name: "source_file_name", type: "varchar", length: 255, nullable: true })
   sourceFileName: string | null;
 
-  @ManyToOne(() => CustomerPurchaseOrder, { nullable: true, onDelete: "SET NULL" })
-  @JoinColumn({ name: "cpo_id" })
   cpo: CustomerPurchaseOrder | null;
 
-  @Column({ name: "cpo_id", nullable: true })
   cpoId: number | null;
 
-  @Column({ name: "is_cpo_calloff", type: "boolean", default: false })
   isCpoCalloff: boolean;
 
-  @ManyToOne(
-    () => JobCard,
-    (jc) => jc.deliveryJobCards,
-    { nullable: true, onDelete: "SET NULL" },
-  )
-  @JoinColumn({ name: "parent_job_card_id" })
   parentJobCard: JobCard | null;
 
-  @Column({ name: "parent_job_card_id", nullable: true })
   parentJobCardId: number | null;
 
-  @OneToMany(
-    () => JobCard,
-    (jc) => jc.parentJobCard,
-  )
   deliveryJobCards: JobCard[];
 
-  @Column({ name: "jt_dn_number", type: "varchar", length: 500, nullable: true })
   jtDnNumber: string | null;
 
-  @Column({ name: "superseded_by_id", nullable: true })
   supersededById: number | null;
 
-  @ManyToOne(() => JobCard, { nullable: true, onDelete: "SET NULL" })
-  @JoinColumn({ name: "superseded_by_id" })
   supersededBy: JobCard | null;
 
-  @Column({ name: "workflow_ceiling", type: "varchar", length: 50, nullable: true })
   workflowCeiling: string | null;
 
-  @ManyToOne(() => StockControlCompany, { onDelete: "CASCADE" })
-  @JoinColumn({ name: "company_id" })
   company: StockControlCompany;
 
-  @Column({ name: "company_id" })
   companyId: number;
 
-  @OneToMany(
-    () => StockAllocation,
-    (allocation) => allocation.jobCard,
-  )
   allocations: StockAllocation[];
 
-  @OneToMany(
-    () => JobCardLineItem,
-    (li) => li.jobCard,
-  )
   lineItems: JobCardLineItem[];
 
-  @OneToMany(
-    () => JobCardDocument,
-    (doc) => doc.jobCard,
-  )
   documents: JobCardDocument[];
 
-  @OneToMany(
-    () => JobCardJobFile,
-    (jobFile) => jobFile.jobCard,
-  )
   jobFiles: JobCardJobFile[];
 
-  @OneToMany(
-    () => JobCardApproval,
-    (approval) => approval.jobCard,
-  )
   approvals: JobCardApproval[];
 
-  @OneToMany(
-    () => DispatchScan,
-    (scan) => scan.jobCard,
-  )
   dispatchScans: DispatchScan[];
 
-  @OneToMany(
-    () => DispatchCdn,
-    (cdn) => cdn.jobCard,
-  )
   dispatchCdns: DispatchCdn[];
 
-  @OneToMany(
-    () => DispatchLoadPhoto,
-    (photo) => photo.jobCard,
-  )
   dispatchLoadPhotos: DispatchLoadPhoto[];
 
-  @OneToMany(
-    () => JobCardVersion,
-    (version) => version.jobCard,
-  )
   versions: JobCardVersion[];
 
-  @OneToMany(
-    () => JobCardAttachment,
-    (attachment) => attachment.jobCard,
-  )
   attachments: JobCardAttachment[];
 
-  @ManyToOne(() => Company, { onDelete: "CASCADE", nullable: true })
-  @JoinColumn({ name: "unified_company_id" })
   unifiedCompany?: Company | null;
 
-  @Column({ name: "unified_company_id", nullable: true })
   unifiedCompanyId?: number | null;
 
-  @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 }

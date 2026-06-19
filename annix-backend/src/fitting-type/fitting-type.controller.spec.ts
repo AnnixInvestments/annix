@@ -1,7 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { FittingType } from "./entities/fitting-type.entity";
 import { FittingTypeController } from "./fitting-type.controller";
+import { FittingTypeRepository } from "./fitting-type.repository";
 import { FittingTypeService } from "./fitting-type.service";
 
 describe("FittingTypeController", () => {
@@ -11,8 +10,9 @@ describe("FittingTypeController", () => {
   const mockFittingTypeRepo = {
     create: jest.fn(),
     save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
+    findAll: jest.fn(),
+    findById: jest.fn(),
+    findOneWhere: jest.fn(),
     remove: jest.fn(),
   };
 
@@ -30,7 +30,7 @@ describe("FittingTypeController", () => {
       providers: [
         { provide: FittingTypeService, useValue: mockFittingTypeService },
         {
-          provide: getRepositoryToken(FittingType),
+          provide: FittingTypeRepository,
           useValue: mockFittingTypeRepo,
         },
       ],

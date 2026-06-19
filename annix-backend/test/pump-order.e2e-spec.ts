@@ -1,18 +1,12 @@
 import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import request from "supertest";
 import { now } from "../src/lib/datetime";
-import {
-  PumpOrder,
-  PumpOrderStatus,
-  PumpOrderType,
-} from "../src/pump-order/entities/pump-order.entity";
-import {
-  PumpOrderItem,
-  PumpOrderItemType,
-} from "../src/pump-order/entities/pump-order-item.entity";
+import { PumpOrderStatus, PumpOrderType } from "../src/pump-order/entities/pump-order.entity";
+import { PumpOrderItemType } from "../src/pump-order/entities/pump-order-item.entity";
 import { PumpOrderModule } from "../src/pump-order/pump-order.module";
+import { PumpOrderRepository } from "../src/pump-order/pump-order.repository";
+import { PumpOrderItemRepository } from "../src/pump-order/pump-order-item.repository";
 
 describe("PumpOrderController (e2e)", () => {
   let app: INestApplication;
@@ -88,9 +82,9 @@ describe("PumpOrderController (e2e)", () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [PumpOrderModule],
     })
-      .overrideProvider(getRepositoryToken(PumpOrder))
+      .overrideProvider(PumpOrderRepository)
       .useValue(mockOrderRepository)
-      .overrideProvider(getRepositoryToken(PumpOrderItem))
+      .overrideProvider(PumpOrderItemRepository)
       .useValue(mockOrderItemRepository)
       .compile();
 
