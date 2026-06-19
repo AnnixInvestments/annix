@@ -576,9 +576,21 @@ export class SageJcDumpService {
   }
 
   private parseExcelPages(buffer: Buffer): ParsedPage[] {
-    const workbook = XLSX.read(buffer, { type: "buffer" });
+    let workbook: ReturnType<typeof XLSX.read>;
+    try {
+      workbook = XLSX.read(buffer, { type: "buffer" });
+    } catch {
+      throw new BadRequestException(
+        "Could not read the uploaded file. Please ensure it is a valid Excel (.xlsx) file exported from Sage.",
+      );
+    }
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
+    if (!sheet) {
+      throw new BadRequestException(
+        "The uploaded file contains no sheets. Please ensure it is a valid Sage JC dump export.",
+      );
+    }
     const grid: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
 
     const pageBoundaries: number[] = [];
@@ -847,7 +859,8 @@ export class SageJcDumpService {
     }, []);
   }
 
-  private extractJcNumber(cpoNumber: string): string | null {
+  private extractJcNumber(cpoNumber: string | null | undefined): string | null {
+    if (!cpoNumber) return null;
     const match = cpoNumber.match(/-(JC\d+)$/i);
     return match ? match[1] : null;
   }
