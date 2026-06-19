@@ -234,7 +234,8 @@ jobs:
         env:
           PROMOTE_ENV: ${{ matrix.environment }}
           CLAIM_PR: ${{ needs.plan.outputs.claim_pr }}
-        run: echo "::warning title=Staging smoke-test skipped::Promoted to ${PROMOTE_ENV} without a staging smoke-test because PR #${CLAIM_PR} holds the on-staging claim."
+        run: |
+          echo "::warning title=Staging smoke-test skipped::Promoted to ${PROMOTE_ENV} without a staging smoke-test because PR #${CLAIM_PR} holds the on-staging claim."
 
       - name: Checkout code
         uses: actions/checkout@v6
