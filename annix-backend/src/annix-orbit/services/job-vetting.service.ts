@@ -1,4 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { AiApp } from "../../ai-usage/entities/ai-usage-log.entity";
+import { now } from "../../lib/datetime";
 import { parseJsonFromAi } from "../../lib/json-from-ai";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
@@ -20,6 +22,18 @@ interface AiVettingResponse {
   restrictions: string[];
   explanation: string;
 }
+
+// Cheap model for the simple residency-eligibility decision. Override via env.
+const VETTING_MODEL = process.env.ORBIT_CLASSIFIER_MODEL || "gemini-2.5-flash-lite";
+
+// Residency/eligibility keywords sit near the top of a listing — a short prefix
+// is enough to decide and keeps input tokens down.
+const MAX_DESCRIPTION_CHARS = 1500;
+
+// Daily ceiling on Gemini vetting calls so a runaway backfill/ingestion surge
+// can't spike spend. Mirrors JobCategorizationService's dailyAnalysisCap.
+// Override via env.
+const DEFAULT_JOB_VETTING_DAILY_CAP = 3000;
 
 const SYSTEM_PROMPT = `You are vetting remote job listings for a South African job board.
 
@@ -49,10 +63,32 @@ Return STRICT JSON, no prose, no markdown fences:
 export class JobVettingService {
   private readonly logger = new Logger(JobVettingService.name);
 
+  private aiCallsToday = 0;
+  private aiCallsDate = "";
+  private readonly dailyVettingCap = (() => {
+    const raw = Number(process.env.ORBIT_JOB_VETTING_DAILY_CAP);
+    return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_JOB_VETTING_DAILY_CAP;
+  })();
+
   constructor(
     private readonly aiChatService: AiChatService,
     private readonly extractionMetricService: ExtractionMetricService,
   ) {}
+
+  // Reserves one slot against the daily vetting cap (reset each day). Returns
+  // false once the cap is reached so callers skip the Gemini call.
+  private consumeDailyVettingBudget(): boolean {
+    const today = now().toISODate() ?? "";
+    if (today !== this.aiCallsDate) {
+      this.aiCallsDate = today;
+      this.aiCallsToday = 0;
+    }
+    if (this.aiCallsToday >= this.dailyVettingCap) {
+      return false;
+    }
+    this.aiCallsToday += 1;
+    return true;
+  }
 
   async vet(input: JobVettingInput): Promise<JobVettingResult> {
     return this.extractionMetricService.time("orbit-job-vetting", "single-job", async () =>
@@ -61,6 +97,13 @@ export class JobVettingService {
   }
 
   private async runVet(input: JobVettingInput): Promise<JobVettingResult> {
+    if (!this.consumeDailyVettingBudget()) {
+      this.logger.warn(
+        `Daily job-vetting cap (${this.dailyVettingCap}) reached — skipping AI vetting for "${input.title}"`,
+      );
+      return { acceptsZa: null, notes: "" };
+    }
+
     const userMessage = this.buildPrompt(input);
 
     try {
@@ -68,7 +111,14 @@ export class JobVettingService {
         [{ role: "user", content: userMessage }],
         SYSTEM_PROMPT,
         undefined,
-        { temperature: 0, responseFormat: "json" },
+        {
+          temperature: 0,
+          responseFormat: "json",
+          thinkingBudget: 0,
+          maxOutputTokens: 256,
+          model: VETTING_MODEL,
+        },
+        { app: AiApp.ANNIX_ORBIT, actionType: "orbit-job-vetting" },
       );
 
       const parsed = parseJsonFromAi<AiVettingResponse>(response.content);
@@ -85,13 +135,14 @@ export class JobVettingService {
   }
 
   private buildPrompt(input: JobVettingInput): string {
+    const description = (input.description ?? "").slice(0, MAX_DESCRIPTION_CHARS);
     const lines = [
       `Title: ${input.title}`,
       `Company: ${input.company ?? "(not provided)"}`,
       `Location field: ${input.locationRaw ?? "(not provided)"}`,
       "",
       "Description:",
-      input.description ?? "(no description)",
+      description.length > 0 ? description : "(no description)",
     ];
     return lines.join("\n");
   }

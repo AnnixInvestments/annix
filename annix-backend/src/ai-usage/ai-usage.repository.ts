@@ -32,6 +32,10 @@ export interface AiUsageGroupRow {
 
 export abstract class AiUsageLogRepository extends CrudRepository<AiUsageLog> {
   abstract aggregateDailyUsageByModel(model: string, since: Date): Promise<AiUsageDailySummary>;
+  abstract aggregateDailyUsageByActionType(
+    actionType: string,
+    since: Date,
+  ): Promise<AiUsageDailySummary>;
   abstract dailySeries(since: Date): Promise<AiUsageDailyPoint[]>;
   abstract queryGroupedUsage(
     app: string | null,

@@ -12,6 +12,12 @@ export interface CandidateEmbeddingCoverageRow {
   embedded: number;
 }
 
+export interface ActiveCandidateTargetRow {
+  matchTier: string;
+  targetCategories: string[];
+  targetCountries: string[];
+}
+
 export abstract class CandidateRepository extends CrudRepository<Candidate> {
   abstract findByJobPosting(jobPostingId: number, status?: string): Promise<Candidate[]>;
   abstract findByIdWithJobAndReferences(id: number): Promise<Candidate | null>;
@@ -25,6 +31,7 @@ export abstract class CandidateRepository extends CrudRepository<Candidate> {
   abstract candidatesForCompany(companyId: number): Promise<Candidate[]>;
   abstract candidatesMissingEmbedding(): Promise<Candidate[]>;
   abstract embeddingCoverage(): Promise<CandidateEmbeddingCoverageRow>;
+  abstract activeTargetRows(): Promise<ActiveCandidateTargetRow[]>;
   abstract listNonFixture(params: {
     search: string | null;
     skip: number;
@@ -38,7 +45,7 @@ export abstract class CandidateRepository extends CrudRepository<Candidate> {
   abstract markRejectionSent(id: number, rejectionSentAt: Date): Promise<void>;
   abstract markAcceptanceSent(id: number, acceptanceSentAt: Date): Promise<void>;
   abstract deleteTestFixturesForJob(jobPostingId: number): Promise<number>;
-  abstract setEmbeddingVector(id: number, values: number[]): Promise<void>;
+  abstract setEmbeddingVector(id: number, values: number[], textHash: string): Promise<void>;
   abstract clearEmbedding(id: number): Promise<void>;
   abstract updateWorkProfile(id: number, workProfile: unknown): Promise<void>;
   abstract updateTargetCategories(id: number, targetCategories: string[]): Promise<void>;

@@ -118,6 +118,9 @@ export class ExternalJob {
   @Column({ type: "varchar", nullable: true })
   embedding: Buffer | null;
 
+  @Column({ name: "embedding_text_hash", type: "varchar", length: 64, nullable: true })
+  embeddingTextHash: string | null;
+
   @Column({ type: "boolean", default: false })
   delisted: boolean;
 

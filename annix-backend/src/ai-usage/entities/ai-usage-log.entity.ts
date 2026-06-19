@@ -41,6 +41,9 @@ export class AiUsageLog {
   @Column({ name: "output_tokens", type: "int", nullable: true })
   outputTokens: number | null;
 
+  @Column({ name: "cached_input_tokens", type: "int", nullable: true })
+  cachedInputTokens: number | null;
+
   @Column({ name: "cost_usd", type: "double precision", nullable: true })
   costUsd: number | null;
 

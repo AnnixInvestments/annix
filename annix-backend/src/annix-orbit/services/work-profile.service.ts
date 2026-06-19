@@ -13,6 +13,7 @@ import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { Candidate } from "../entities/candidate.entity";
 import { SEEKER_EVENTS } from "../lib/seeker-testing.constants";
 import { CandidateRepository } from "../repositories/candidate.repository";
+import { EmbeddingService } from "./embedding.service";
 import { SeekerTelemetryService } from "./seeker-telemetry.service";
 
 @Injectable()
@@ -24,7 +25,22 @@ export class WorkProfileService {
     private readonly aiChatService: AiChatService,
     private readonly extractionMetricService: ExtractionMetricService,
     private readonly seekerTelemetry: SeekerTelemetryService,
+    private readonly embeddingService: EmbeddingService,
   ) {}
+
+  // A seeker changing their target categories may demand a category whose backlog
+  // of jobs was never embedded (C1). Invalidate the demand cache and lazily embed
+  // that backlog so their next match run sees the full pool. Fire-and-forget so
+  // the profile save returns promptly; bounded + idempotent inside the service.
+  private triggerDemandBackfill(): void {
+    void this.embeddingService.backfillForActiveDemand().catch((err) => {
+      this.logger.warn(
+        `Demand-driven embedding backfill failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    });
+  }
 
   async forSeeker(email: string | null): Promise<{
     profile: WorkProfile;
@@ -70,6 +86,7 @@ export class WorkProfileService {
           this.candidateRepo.updateTargetCategories(c.id, normalised.shared.fields),
         ),
       );
+      this.triggerDemandBackfill();
     }
     const cid = candidates[0] ? candidates[0].id : null;
     await this.seekerTelemetry.record(cid, SEEKER_EVENTS.profileUpdated);
@@ -127,6 +144,7 @@ export class WorkProfileService {
           this.candidateRepo.updateTargetCategories(c.id, normalised.shared.fields),
         ),
       );
+      this.triggerDemandBackfill();
     }
 
     return {

@@ -33,6 +33,23 @@ export class PostgresAiUsageLogRepository
     };
   }
 
+  async aggregateDailyUsageByActionType(
+    actionType: string,
+    since: Date,
+  ): Promise<AiUsageDailySummary> {
+    const row = await this.repository
+      .createQueryBuilder("log")
+      .select("COUNT(*)::int", "calls")
+      .addSelect("COALESCE(SUM(log.tokens_used), 0)::bigint", "tokens")
+      .where("log.action_type = :actionType", { actionType })
+      .andWhere("log.createdAt >= :since", { since })
+      .getRawOne<{ calls: number; tokens: string | number }>();
+    return {
+      calls: Number(row?.calls ?? 0),
+      tokens: Number(row?.tokens ?? 0),
+    };
+  }
+
   async dailySeries(since: Date): Promise<AiUsageDailyPoint[]> {
     const rows = await this.repository
       .createQueryBuilder("log")

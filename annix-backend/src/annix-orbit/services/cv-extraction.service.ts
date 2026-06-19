@@ -1,4 +1,6 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
+import { PDFDocument } from "pdf-lib";
+import sharp from "sharp";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import {
@@ -22,6 +24,17 @@ type VisionMediaType = "application/pdf" | "image/jpeg" | "image/png" | "image/w
 
 const CV_OCR_PROMPT =
   "Transcribe ALL readable text from this CV/résumé document verbatim, preserving the natural reading order (headings, sections, bullet points, dates). The document may be written in English, Afrikaans, isiZulu, or another South African language. Output plain text only — no commentary, no markdown.";
+
+// CVs are front-loaded: name, contact, summary, skills and recent roles sit in
+// the first few pages, while pages 5+ are usually references, portfolios or
+// publication lists. Vision OCR bills input tokens per page, so cap the pages
+// sent to Gemini rather than transcribing an entire 30-page portfolio.
+const MAX_OCR_PAGES = 5;
+
+// Vision needs legible glyphs, not print resolution. Phone/scanner CV images
+// arrive at 3000-4000px; downscaling the long edge to ~1500px keeps text sharp
+// while cutting the base64 payload (and the vision input-token bill) sharply.
+const MAX_OCR_IMAGE_DIMENSION = 1500;
 
 function detectCvFormat(filePath: string): SupportedCvFormat {
   const lower = filePath.toLowerCase();
@@ -132,12 +145,74 @@ export class CvExtractionService {
     return { text, data };
   }
 
+  private async capPdfPages(buffer: Buffer): Promise<Buffer> {
+    try {
+      const source = await PDFDocument.load(buffer);
+      const totalPages = source.getPageCount();
+      if (totalPages <= MAX_OCR_PAGES) {
+        return buffer;
+      }
+      const capped = await PDFDocument.create();
+      const indices = Array.from({ length: MAX_OCR_PAGES }, (_, i) => i);
+      const copied = await capped.copyPages(source, indices);
+      copied.forEach((page) => capped.addPage(page));
+      const cappedBytes = await capped.save();
+      this.logger.warn(
+        `Capping CV vision OCR to first ${MAX_OCR_PAGES} of ${totalPages} pages to limit input tokens.`,
+      );
+      return Buffer.from(cappedBytes);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Could not cap CV PDF pages, sending full document: ${msg}`);
+      return buffer;
+    }
+  }
+
+  private async downscaleImage(buffer: Buffer, mediaType: VisionMediaType): Promise<Buffer> {
+    try {
+      const image = sharp(buffer);
+      const metadata = await image.metadata();
+      const longestEdge = Math.max(metadata.width ?? 0, metadata.height ?? 0);
+      if (longestEdge <= MAX_OCR_IMAGE_DIMENSION) {
+        return buffer;
+      }
+      const resized = image.resize(MAX_OCR_IMAGE_DIMENSION, MAX_OCR_IMAGE_DIMENSION, {
+        fit: "inside",
+        withoutEnlargement: true,
+      });
+      const encoded =
+        mediaType === "image/png"
+          ? await resized.png({ compressionLevel: 9 }).toBuffer()
+          : mediaType === "image/webp"
+            ? await resized.webp({ quality: 85 }).toBuffer()
+            : await resized.jpeg({ quality: 85, progressive: true }).toBuffer();
+      this.logger.warn(
+        `Downscaling CV vision image from ${longestEdge}px to ${MAX_OCR_IMAGE_DIMENSION}px to limit input tokens.`,
+      );
+      return encoded;
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Could not downscale CV image, sending original: ${msg}`);
+      return buffer;
+    }
+  }
+
+  private async reduceVisionInput(buffer: Buffer, mediaType: VisionMediaType): Promise<Buffer> {
+    if (mediaType === "application/pdf") {
+      return this.capPdfPages(buffer);
+    }
+    return this.downscaleImage(buffer, mediaType);
+  }
+
   private async ocrViaVision(buffer: Buffer, mediaType: VisionMediaType): Promise<string> {
     try {
+      const visionBuffer = await this.reduceVisionInput(buffer, mediaType);
       const { content, providerUsed, tokensUsed } = await this.aiChatService.chatWithImage(
-        buffer.toString("base64"),
+        visionBuffer.toString("base64"),
         mediaType,
         CV_OCR_PROMPT,
+        undefined,
+        { model: "gemini-2.5-flash" },
       );
 
       this.aiUsageService.log({
@@ -162,6 +237,7 @@ export class CvExtractionService {
         [{ role: "user", content: cvExtractionPrompt(cvText) }],
         CV_EXTRACTION_SYSTEM_PROMPT,
         "gemini",
+        { model: "gemini-2.5-flash" },
       );
 
       this.aiUsageService.log({

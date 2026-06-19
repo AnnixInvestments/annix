@@ -1,9 +1,21 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { PDFDocument } from "pdf-lib";
+import sharp from "sharp";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { LibreOfficeConversionService } from "../../lib/libreoffice-conversion.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { CvExtractionService } from "./cv-extraction.service";
+
+async function buildPdfBuffer(pageCount: number): Promise<Buffer> {
+  const pdf = await PDFDocument.create();
+  Array.from({ length: pageCount }).forEach(() => pdf.addPage([200, 200]));
+  return Buffer.from(await pdf.save());
+}
+
+async function pdfPageCount(buffer: Buffer): Promise<number> {
+  return (await PDFDocument.load(buffer)).getPageCount();
+}
 
 describe("CvExtractionService", () => {
   let service: CvExtractionService;
@@ -79,6 +91,8 @@ describe("CvExtractionService", () => {
         pdfBuffer.toString("base64"),
         "application/pdf",
         expect.any(String),
+        undefined,
+        { model: "gemini-2.5-flash" },
       );
       expect(text).toBe("John Doe\nSoftware Engineer");
     });
@@ -111,6 +125,8 @@ describe("CvExtractionService", () => {
         pdfBuffer.toString("base64"),
         "application/pdf",
         expect.any(String),
+        undefined,
+        { model: "gemini-2.5-flash" },
       );
       expect(text).toBe("Converted CV text");
     });
@@ -130,8 +146,66 @@ describe("CvExtractionService", () => {
         imageBuffer.toString("base64"),
         "image/jpeg",
         expect.any(String),
+        undefined,
+        { model: "gemini-2.5-flash" },
       );
       expect(text).toBe("Photo CV text");
+    });
+
+    it("caps a long image-only PDF to the first 5 pages before paying for vision OCR", async () => {
+      const pdfBuffer = await buildPdfBuffer(12);
+      (mockStorageService.download as jest.Mock).mockResolvedValue(pdfBuffer);
+      (mockAiChatService.chatWithImage as jest.Mock).mockResolvedValue({
+        content: "Capped CV text",
+        providerUsed: "gemini",
+        tokensUsed: 60,
+      });
+
+      const text = await service.extractTextFromCv("cv-assistant/individuals/8/cv/long.pdf");
+
+      const sentBase64 = (mockAiChatService.chatWithImage as jest.Mock).mock.calls[0][0];
+      const sentBuffer = Buffer.from(sentBase64, "base64");
+      expect(await pdfPageCount(sentBuffer)).toBe(5);
+      expect(sentBuffer.length).toBeLessThan(pdfBuffer.length);
+      expect(text).toBe("Capped CV text");
+    });
+
+    it("leaves a short image-only PDF untouched (no needless re-save)", async () => {
+      const pdfBuffer = await buildPdfBuffer(3);
+      (mockStorageService.download as jest.Mock).mockResolvedValue(pdfBuffer);
+      (mockAiChatService.chatWithImage as jest.Mock).mockResolvedValue({
+        content: "Short CV text",
+        providerUsed: "gemini",
+        tokensUsed: 20,
+      });
+
+      await service.extractTextFromCv("cv-assistant/individuals/8/cv/short.pdf");
+
+      const sentBase64 = (mockAiChatService.chatWithImage as jest.Mock).mock.calls[0][0];
+      const sentBuffer = Buffer.from(sentBase64, "base64");
+      expect(await pdfPageCount(sentBuffer)).toBe(3);
+    });
+
+    it("downscales a large image CV before sending it to vision OCR", async () => {
+      const largeImage = await sharp({
+        create: { width: 4000, height: 3000, channels: 3, background: "#ffffff" },
+      })
+        .jpeg()
+        .toBuffer();
+      (mockStorageService.download as jest.Mock).mockResolvedValue(largeImage);
+      (mockAiChatService.chatWithImage as jest.Mock).mockResolvedValue({
+        content: "Scaled CV text",
+        providerUsed: "gemini",
+        tokensUsed: 35,
+      });
+
+      await service.extractTextFromCv("cv-assistant/individuals/8/cv/big.jpg");
+
+      const sentBase64 = (mockAiChatService.chatWithImage as jest.Mock).mock.calls[0][0];
+      const sentBuffer = Buffer.from(sentBase64, "base64");
+      const meta = await sharp(sentBuffer).metadata();
+      expect(Math.max(meta.width ?? 0, meta.height ?? 0)).toBeLessThanOrEqual(1500);
+      expect(sentBuffer.length).toBeLessThan(largeImage.length);
     });
 
     it("throws for unsupported formats before any download", async () => {

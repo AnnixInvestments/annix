@@ -270,6 +270,11 @@ export class IndividualProfileService {
     try {
       const embedded = await this.embeddingService.embedCandidate(saved.id);
       if (embedded) {
+        // A newly-active candidate (or a new category they target) may have a
+        // backlog of jobs that were never embedded because nobody targeted them
+        // (C1). Lazily embed that backlog so this seeker's pool populates before
+        // we match; this is bounded and idempotent.
+        await this.embeddingService.backfillForActiveDemand();
         await this.candidateJobMatchingService.matchCandidateToJobs(saved.id);
       }
     } catch (err) {

@@ -273,6 +273,18 @@ export class JobIngestionService {
 
   private async enrichSavedJob(saved: ExternalJob): Promise<void> {
     try {
+      // C1 demand gate: only embed (and thus match + skills-analyse) a freshly
+      // ingested job when SOME active candidate targets its category+country. If
+      // no one targets it, defer — the job stays without an embedding sibling
+      // (its "pending" state) and is excluded from matching until a candidate for
+      // that category+country appears, at which point the lazy backfill embeds it.
+      const inDemand = await this.embeddingService.jobIsInActiveDemand(
+        saved.canonicalCategory,
+        saved.country,
+      );
+      if (!inDemand) {
+        return;
+      }
       const embedded = await this.embeddingService.embedExternalJob(saved.id);
       const matches = embedded
         ? await this.candidateJobMatchingService.matchJobToCandidates(saved.id)

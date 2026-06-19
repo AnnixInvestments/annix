@@ -3,6 +3,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { CandidateRepository } from "../repositories/candidate.repository";
+import { EmbeddingService } from "./embedding.service";
 import { SeekerTelemetryService } from "./seeker-telemetry.service";
 import { WorkProfileService } from "./work-profile.service";
 
@@ -26,6 +27,7 @@ describe("WorkProfileService", () => {
       time: jest.fn((_category: string, _operation: string, fn: () => unknown) => fn()),
     };
     const seekerTelemetry = { record: jest.fn().mockResolvedValue(undefined) };
+    const embeddingService = { backfillForActiveDemand: jest.fn().mockResolvedValue(undefined) };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WorkProfileService,
@@ -33,6 +35,7 @@ describe("WorkProfileService", () => {
         { provide: AiChatService, useValue: aiChat },
         { provide: ExtractionMetricService, useValue: extractionMetricService },
         { provide: SeekerTelemetryService, useValue: seekerTelemetry },
+        { provide: EmbeddingService, useValue: embeddingService },
       ],
     }).compile();
     service = module.get(WorkProfileService);

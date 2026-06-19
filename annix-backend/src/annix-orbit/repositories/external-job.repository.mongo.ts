@@ -15,8 +15,10 @@ import {
   DelistReportRow,
   DuplicateJobPair,
   EmbeddingCoverageRow,
+  EmbeddingState,
   ExternalJobListOptions,
   ExternalJobRepository,
+  JobEmbeddingDemandClause,
   MarketCategoryRow,
   MarketLocationRow,
   MarketSalaryRow,
@@ -265,19 +267,42 @@ export class MongoExternalJobRepository
     return this.toDomainList(docs);
   }
 
-  async jobsMissingEmbedding(limit: number): Promise<ExternalJob[]> {
+  async jobsMissingEmbedding(
+    limit: number,
+    demand: JobEmbeddingDemandClause[] | null = null,
+  ): Promise<ExternalJob[]> {
+    // Demand-aware (C1): an empty clause list means NO active candidate targets
+    // anything, so nothing needs embedding — never embed the whole pool. A null
+    // demand (legacy/bulk callers) keeps the original "embed everything missing"
+    // behaviour. Otherwise restrict to jobs whose category+country matches the
+    // matcher's eligibility granularity.
+    if (demand !== null && demand.length === 0) {
+      return [];
+    }
     const embeddedIds = await this.embeddedJobIds();
-    const docs = await this.documents
-      .find({ _id: { $nin: embeddedIds } })
-      .limit(limit)
-      .lean()
-      .exec();
+    const filter: Record<string, unknown> = { _id: { $nin: embeddedIds } };
+    if (demand !== null) {
+      filter.$or = demandClauses(demand);
+    }
+    const docs = await this.documents.find(filter).limit(limit).lean().exec();
     return this.toDomainList(docs);
   }
 
   async jobEmbedding(id: number): Promise<Buffer | null> {
     const doc = await this.embeddingDocuments.findById(id).select({ embedding: 1 }).lean().exec();
     return doc?.embedding ?? null;
+  }
+
+  async jobEmbeddingState(id: number): Promise<EmbeddingState> {
+    const doc = await this.embeddingDocuments
+      .findById(id)
+      .select({ embedding: 1, embeddingTextHash: 1 })
+      .lean()
+      .exec();
+    return {
+      hasEmbedding: doc?.embedding != null,
+      textHash: doc?.embeddingTextHash ?? null,
+    };
   }
 
   async jobEmbeddings(ids: number[]): Promise<Map<number, Buffer>> {
@@ -324,11 +349,17 @@ export class MongoExternalJobRepository
       .exec();
   }
 
-  async setEmbeddingVector(id: number, values: number[]): Promise<void> {
+  async setEmbeddingVector(id: number, values: number[], textHash: string): Promise<void> {
     await this.embeddingDocuments
       .updateOne(
         { _id: id },
-        { $set: { embedding: encodeEmbedding(values), updatedAt: now().toJSDate() } },
+        {
+          $set: {
+            embedding: encodeEmbedding(values),
+            embeddingTextHash: textHash,
+            updatedAt: now().toJSDate(),
+          },
+        },
         { upsert: true },
       )
       .exec();
@@ -909,6 +940,20 @@ export class MongoExternalJobRepository
   countPendingDelistReports(): Promise<number> {
     return this.documents.countDocuments({ delistReview: "pending" }).exec();
   }
+}
+
+// Each clause → a Mongo sub-filter; the caller ORs them. A null `categories`
+// clause is a wildcard over every category in those countries (soft-tier
+// seekers); otherwise it gates canonicalCategory ∈ categories AND country ∈
+// countries — the exact granularity of embeddingFilter used by the matcher.
+function demandClauses(demand: JobEmbeddingDemandClause[]): Array<Record<string, unknown>> {
+  return demand.map((clause) => {
+    const sub: Record<string, unknown> = { country: { $in: clause.countries } };
+    if (clause.categories !== null) {
+      sub.canonicalCategory = { $in: clause.categories };
+    }
+    return sub;
+  });
 }
 
 export function normaliseTitleKey(title: string | null | undefined): string {

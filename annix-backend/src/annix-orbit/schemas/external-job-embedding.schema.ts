@@ -13,6 +13,9 @@ export class ExternalJobEmbedding {
 
   @Prop({ type: Buffer, required: false })
   embedding: Buffer;
+
+  @Prop({ type: String, required: false })
+  embeddingTextHash: string;
 }
 
 export const ExternalJobEmbeddingSchema = SchemaFactory.createForClass(ExternalJobEmbedding);

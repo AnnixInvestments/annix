@@ -10,8 +10,10 @@ import {
   DelistReportRow,
   DuplicateJobPair,
   EmbeddingCoverageRow,
+  EmbeddingState,
   ExternalJobListOptions,
   ExternalJobRepository,
+  JobEmbeddingDemandClause,
   MarketCategoryRow,
   MarketLocationRow,
   MarketSalaryRow,
@@ -177,12 +179,27 @@ export class PostgresExternalJobRepository
     });
   }
 
-  jobsMissingEmbedding(limit: number): Promise<ExternalJob[]> {
-    return this.repository
-      .createQueryBuilder("j")
-      .where("j.embedding IS NULL")
-      .take(limit)
-      .getMany();
+  jobsMissingEmbedding(
+    limit: number,
+    demand: JobEmbeddingDemandClause[] | null = null,
+  ): Promise<ExternalJob[]> {
+    if (demand !== null && demand.length === 0) {
+      return Promise.resolve([]);
+    }
+    const query = this.repository.createQueryBuilder("j").where("j.embedding IS NULL");
+    if (demand !== null) {
+      const clauses = demand.map((clause, index) => {
+        if (clause.categories !== null) {
+          query.setParameter(`demandCats${index}`, clause.categories);
+          query.setParameter(`demandCountries${index}`, clause.countries);
+          return `(j.canonical_category IN (:...demandCats${index}) AND j.country IN (:...demandCountries${index}))`;
+        }
+        query.setParameter(`demandCountries${index}`, clause.countries);
+        return `(j.country IN (:...demandCountries${index}))`;
+      });
+      query.andWhere(`(${clauses.join(" OR ")})`);
+    }
+    return query.take(limit).getMany();
   }
 
   async jobEmbedding(id: number): Promise<Buffer | null> {
@@ -192,6 +209,19 @@ export class PostgresExternalJobRepository
       .where("j.id = :id", { id })
       .getRawOne<{ embedding: Buffer | null }>();
     return row?.embedding ?? null;
+  }
+
+  async jobEmbeddingState(id: number): Promise<EmbeddingState> {
+    const row = await this.repository
+      .createQueryBuilder("j")
+      .select("j.embedding", "embedding")
+      .addSelect("j.embeddingTextHash", "embeddingTextHash")
+      .where("j.id = :id", { id })
+      .getRawOne<{ embedding: Buffer | null; embeddingTextHash: string | null }>();
+    return {
+      hasEmbedding: row?.embedding != null,
+      textHash: row?.embeddingTextHash ?? null,
+    };
   }
 
   async jobEmbeddings(ids: number[]): Promise<Map<number, Buffer>> {
@@ -242,12 +272,15 @@ export class PostgresExternalJobRepository
       .getCount();
   }
 
-  async setEmbeddingVector(id: number, values: number[]): Promise<void> {
+  async setEmbeddingVector(id: number, values: number[], textHash: string): Promise<void> {
     const embeddingLiteral = values.join(",");
     await this.repository
       .createQueryBuilder()
       .update(ExternalJob)
-      .set({ embedding: () => `'[${embeddingLiteral}]'::vector` } as never)
+      .set({
+        embedding: () => `'[${embeddingLiteral}]'::vector`,
+        embeddingTextHash: textHash,
+      } as never)
       .where("id = :id", { id })
       .execute();
   }

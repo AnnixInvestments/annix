@@ -38,6 +38,28 @@ export class MongoAiUsageLogRepository
     };
   }
 
+  async aggregateDailyUsageByActionType(
+    actionType: string,
+    since: Date,
+  ): Promise<AiUsageDailySummary> {
+    const pipeline: PipelineStage[] = [
+      { $match: { actionType, createdAt: { $gte: since } } },
+      {
+        $group: {
+          _id: null,
+          calls: { $sum: 1 },
+          tokens: { $sum: { $ifNull: ["$tokensUsed", 0] } },
+        },
+      },
+    ];
+    const results = await this.documents.aggregate(pipeline).exec();
+    const row = results[0] as { calls: number; tokens: number } | undefined;
+    return {
+      calls: Number(row?.calls ?? 0),
+      tokens: Number(row?.tokens ?? 0),
+    };
+  }
+
   async dailySeries(since: Date): Promise<AiUsageDailyPoint[]> {
     const pipeline: PipelineStage[] = [
       { $match: { createdAt: { $gte: since } } },

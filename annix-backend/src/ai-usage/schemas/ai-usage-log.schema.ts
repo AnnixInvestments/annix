@@ -35,6 +35,9 @@ export class AiUsageLog {
   outputTokens: number;
 
   @Prop({ type: Number, required: false })
+  cachedInputTokens: number;
+
+  @Prop({ type: Number, required: false })
   costUsd: number;
 
   @Prop({ type: Number, required: false })

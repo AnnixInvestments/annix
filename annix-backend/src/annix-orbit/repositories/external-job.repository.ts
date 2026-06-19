@@ -54,6 +54,22 @@ export interface EmbeddingCoverageRow {
   embedded: number;
 }
 
+export interface EmbeddingState {
+  hasEmbedding: boolean;
+  textHash: string | null;
+}
+
+// A single demand clause from the active-candidate set (C1). `categories: null`
+// is a wildcard ("any category" — soft-tier seekers with no category narrowing);
+// otherwise jobs are in demand only when their canonicalCategory is in the list.
+// A job is in demand when it satisfies ANY clause. Mirrors the matcher's
+// embeddingFilter granularity exactly (canonicalCategory ∈ pool, country ∈
+// targetCountries) so the gate and the matcher never disagree.
+export interface JobEmbeddingDemandClause {
+  categories: string[] | null;
+  countries: string[];
+}
+
 export interface DelistReportRow {
   id: number;
   title: string;
@@ -115,15 +131,19 @@ export abstract class ExternalJobRepository extends CrudRepository<ExternalJob> 
   abstract findPendingVetting(limit: number): Promise<ExternalJob[]>;
   abstract updateVetting(id: number, update: VettingUpdate): Promise<void>;
   abstract findByExternalIds(externalIds: string[], sourceId: number): Promise<ExternalJob[]>;
-  abstract jobsMissingEmbedding(limit: number): Promise<ExternalJob[]>;
+  abstract jobsMissingEmbedding(
+    limit: number,
+    demand?: JobEmbeddingDemandClause[] | null,
+  ): Promise<ExternalJob[]>;
   abstract jobEmbedding(id: number): Promise<Buffer | null>;
+  abstract jobEmbeddingState(id: number): Promise<EmbeddingState>;
   abstract jobEmbeddings(ids: number[]): Promise<Map<number, Buffer>>;
   abstract embeddingCoverage(): Promise<EmbeddingCoverageRow>;
   abstract canonicalCategoryCoverage(): Promise<{ total: number; classified: number }>;
   abstract countForSourceSince(sourceId: number, since: Date): Promise<number>;
   abstract countForSources(sourceIds: number[]): Promise<number>;
   abstract countForSourcesSince(sourceIds: number[], since: Date): Promise<number>;
-  abstract setEmbeddingVector(id: number, values: number[]): Promise<void>;
+  abstract setEmbeddingVector(id: number, values: number[], textHash: string): Promise<void>;
   abstract updateLocation(id: number, lat: number, lon: number): Promise<void>;
   abstract findDuplicateCanonicalJob(
     title: string,

@@ -7,6 +7,7 @@ import { Candidate, CandidateStatus } from "../entities/candidate.entity";
 import { encodeEmbedding } from "../lib/embedding-codec";
 import type { EmbeddingSimilarityBatch } from "../lib/embedding-similarity";
 import {
+  ActiveCandidateTargetRow,
   CandidateAllForCompanyFilters,
   CandidateEmbeddingCoverageRow,
   CandidateRepository,
@@ -124,6 +125,36 @@ export class MongoCandidateRepository
     return { total, embedded };
   }
 
+  // The active-demand set for lazy job embedding (C1): one aggregation over every
+  // candidate that can actually receive matches (i.e. has an embedding — the same
+  // notion of "active seeker" the job→candidate matcher uses via
+  // candidateEmbeddingBatches). Returns the raw targets per active candidate so
+  // EmbeddingService can mirror the matcher's tier→category-pool + adjacency +
+  // country granularity exactly.
+  async activeTargetRows(): Promise<ActiveCandidateTargetRow[]> {
+    const rows = await this.documents
+      .aggregate<{
+        _id: { matchTier: string; targetCategories: string[]; targetCountries: string[] };
+      }>([
+        { $match: { embedding: { $ne: null } } },
+        {
+          $group: {
+            _id: {
+              matchTier: { $ifNull: ["$matchTier", "soft"] },
+              targetCategories: { $ifNull: ["$targetCategories", []] },
+              targetCountries: { $ifNull: ["$targetCountries", []] },
+            },
+          },
+        },
+      ])
+      .exec();
+    return rows.map((row) => ({
+      matchTier: String(row._id.matchTier ?? "soft"),
+      targetCategories: Array.isArray(row._id.targetCategories) ? row._id.targetCategories : [],
+      targetCountries: Array.isArray(row._id.targetCountries) ? row._id.targetCountries : [],
+    }));
+  }
+
   async listNonFixture(params: {
     search: string | null;
     skip: number;
@@ -204,8 +235,10 @@ export class MongoCandidateRepository
     return result.deletedCount ?? 0;
   }
 
-  async setEmbeddingVector(id: number, values: number[]): Promise<void> {
-    await this.documents.findByIdAndUpdate(id, { embedding: encodeEmbedding(values) }).exec();
+  async setEmbeddingVector(id: number, values: number[], textHash: string): Promise<void> {
+    await this.documents
+      .findByIdAndUpdate(id, { embedding: encodeEmbedding(values), embeddingTextHash: textHash })
+      .exec();
   }
 
   async clearEmbedding(id: number): Promise<void> {

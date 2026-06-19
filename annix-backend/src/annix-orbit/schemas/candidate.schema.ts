@@ -80,6 +80,9 @@ export class Candidate {
   embedding: Buffer;
 
   @Prop({ type: String, required: false })
+  embeddingTextHash: string;
+
+  @Prop({ type: String, required: false })
   matchTier: string;
 
   @Prop({ type: [String], required: false })

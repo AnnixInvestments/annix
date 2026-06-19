@@ -78,8 +78,9 @@ export class WorkflowAutomationService {
 
         this.embeddingService
           .embedCandidate(candidateId)
-          .then((embedded) => {
+          .then(async (embedded) => {
             if (embedded) {
+              await this.embeddingService.backfillForActiveDemand();
               return this.candidateJobMatchingService.matchCandidateToJobs(candidateId);
             }
             return null;

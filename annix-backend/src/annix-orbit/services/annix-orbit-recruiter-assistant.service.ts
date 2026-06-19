@@ -13,6 +13,7 @@ import { computeSiteReady, type SiteReadyStatus } from "./site-ready";
 const METRIC_CATEGORY = "orbit-recruiter-assist";
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 50;
+const MAX_OUTPUT_TOKENS = 512;
 
 function credentialLabel(code: string): string {
   const label = CREDENTIAL_LABELS[code as CredentialType];
@@ -159,6 +160,7 @@ export class AnnixOrbitRecruiterAssistantService {
         [{ role: "user", content: prompt }],
         system,
         "gemini",
+        { maxOutputTokens: MAX_OUTPUT_TOKENS, thinkingBudget: 0 },
       );
       const parsed = parseNixJson<{ summary?: string; suggestions?: string[] }>(content);
       const summary =
@@ -337,6 +339,7 @@ export class AnnixOrbitRecruiterAssistantService {
         [{ role: "user", content: prompt }],
         system,
         "gemini",
+        { maxOutputTokens: MAX_OUTPUT_TOKENS, thinkingBudget: 0 },
       );
       const parsed = parseNixJson<Partial<RecruiterSearchCriteria>>(content);
       return this.normaliseCriteria(parsed);

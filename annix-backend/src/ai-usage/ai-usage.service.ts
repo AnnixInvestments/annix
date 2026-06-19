@@ -12,6 +12,7 @@ export interface LogAiUsageDto {
   tokensUsed?: number;
   inputTokens?: number;
   outputTokens?: number;
+  cachedInputTokens?: number;
   pageCount?: number;
   processingTimeMs?: number;
   contextInfo?: Record<string, unknown>;
@@ -83,6 +84,7 @@ export class AiUsageService {
         tokensUsed,
         inputTokens,
         outputTokens,
+        cachedInputTokens: dto.cachedInputTokens ?? null,
         costUsd,
         pageCount: dto.pageCount ?? null,
         processingTimeMs: dto.processingTimeMs ?? null,
@@ -98,6 +100,13 @@ export class AiUsageService {
     since: Date,
   ): Promise<{ calls: number; tokens: number }> {
     return this.repo.aggregateDailyUsageByModel(model, since);
+  }
+
+  async aggregateDailyUsageByActionType(
+    actionType: string,
+    since: Date,
+  ): Promise<{ calls: number; tokens: number }> {
+    return this.repo.aggregateDailyUsageByActionType(actionType, since);
   }
 
   async dailySeries(days: number): Promise<AiUsageDailySeriesResponse> {

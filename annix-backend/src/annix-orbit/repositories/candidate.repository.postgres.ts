@@ -5,6 +5,7 @@ import { TypeOrmCrudRepository } from "../../lib/persistence/typeorm-crud-reposi
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
 import type { EmbeddingSimilarityBatch } from "../lib/embedding-similarity";
 import {
+  ActiveCandidateTargetRow,
   CandidateAllForCompanyFilters,
   CandidateEmbeddingCoverageRow,
   CandidateRepository,
@@ -114,6 +115,25 @@ export class PostgresCandidateRepository
     return { total: Number(row.total), embedded: Number(row.embedded) };
   }
 
+  async activeTargetRows(): Promise<ActiveCandidateTargetRow[]> {
+    const rows = await this.repository
+      .createQueryBuilder("c")
+      .select("c.match_tier", "matchTier")
+      .addSelect("c.target_categories", "targetCategories")
+      .addSelect("c.target_countries", "targetCountries")
+      .where("c.embedding IS NOT NULL")
+      .getRawMany<{
+        matchTier: string | null;
+        targetCategories: string[] | null;
+        targetCountries: string[] | null;
+      }>();
+    return rows.map((row) => ({
+      matchTier: row.matchTier ?? "soft",
+      targetCategories: Array.isArray(row.targetCategories) ? row.targetCategories : [],
+      targetCountries: Array.isArray(row.targetCountries) ? row.targetCountries : [],
+    }));
+  }
+
   listNonFixture(params: {
     search: string | null;
     skip: number;
@@ -179,12 +199,15 @@ export class PostgresCandidateRepository
     return result.affected ?? 0;
   }
 
-  async setEmbeddingVector(id: number, values: number[]): Promise<void> {
+  async setEmbeddingVector(id: number, values: number[], textHash: string): Promise<void> {
     const embeddingLiteral = values.join(",");
     await this.repository
       .createQueryBuilder()
       .update(Candidate)
-      .set({ embedding: () => `'[${embeddingLiteral}]'::vector` } as never)
+      .set({
+        embedding: () => `'[${embeddingLiteral}]'::vector`,
+        embeddingTextHash: textHash,
+      } as never)
       .where("id = :id", { id })
       .execute();
   }

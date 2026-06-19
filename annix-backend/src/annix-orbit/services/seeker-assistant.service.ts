@@ -7,7 +7,12 @@ import {
 } from "../prompts/seeker-assistant.prompt";
 
 const METRIC_CATEGORY = "orbit-seeker-assist";
-const MAX_HISTORY = 12;
+// Replayed every turn, so input grows linearly with conversation length.
+// Bound to the most-recent 6 turns (user + assistant = 12 messages) — enough
+// for coherence without unbounded token cost.
+const MAX_HISTORY_TURNS = 6;
+const MAX_HISTORY_MESSAGES = MAX_HISTORY_TURNS * 2;
+const MAX_OUTPUT_TOKENS = 1024;
 
 const ACTION_TYPES = new Set(["navigate", "highlight", "navigate-and-highlight", "walkthrough"]);
 
@@ -108,7 +113,9 @@ export class SeekerAssistantService {
     const systemPrompt = buildSeekerAssistantSystemPrompt(input.context);
 
     const { content } = await this.metrics.time(METRIC_CATEGORY, "chat", () =>
-      this.aiChatService.chat(messages, systemPrompt, "gemini"),
+      this.aiChatService.chat(messages, systemPrompt, "gemini", {
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
+      }),
     );
 
     this.logger.log(`Seeker assistant replied to seeker ${seekerId}`);
@@ -210,7 +217,7 @@ export class SeekerAssistantService {
     }
     return history
       .filter((turn) => typeof turn.content === "string" && turn.content.trim() !== "")
-      .slice(-MAX_HISTORY)
+      .slice(-MAX_HISTORY_MESSAGES)
       .map((turn) => ({
         role: turn.role === "assistant" ? "assistant" : "user",
         content: turn.content as string,

@@ -9,6 +9,7 @@ export interface CompanyResearchResult {
 
 const FETCH_TIMEOUT_MS = 8000;
 const MAX_SITE_CHARS = 15_000;
+const MAX_OUTPUT_TOKENS = 512;
 
 function stripHtml(html: string): string {
   return html
@@ -61,6 +62,7 @@ export class SeekerCompanyResearchService {
         [{ role: "user", content: buildResearchPrompt(siteText, roleTitle, roleOutline) }],
         researchSystemPrompt(),
         "gemini",
+        { maxOutputTokens: MAX_OUTPUT_TOKENS, thinkingBudget: 0 },
       );
       const match = content.match(/\{[\s\S]*\}/);
       if (!match) return null;

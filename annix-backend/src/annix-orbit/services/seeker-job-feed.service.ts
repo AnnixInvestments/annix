@@ -50,6 +50,7 @@ import {
   type RecommendedJobFilters,
 } from "./candidate-job-matching.service";
 import { CvNotificationService } from "./cv-notification.service";
+import { EmbeddingService } from "./embedding.service";
 import { JobMarketCountriesService } from "./job-market-countries.service";
 import { SeekerTelemetryService } from "./seeker-telemetry.service";
 
@@ -282,6 +283,7 @@ export class SeekerJobFeedService {
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly pendingTierRepo: PendingSeekerTierRepository,
+    private readonly embeddingService: EmbeddingService,
   ) {}
 
   // Union of the seeker's candidates' target countries; defaults to South Africa.
@@ -653,6 +655,16 @@ export class SeekerJobFeedService {
       candidates.map((c) => this.candidateRepo.updateTargetCountries(c.id, effective)),
     );
     this.invalidateFacetCache();
+    // A new target country may demand jobs whose backlog was never embedded (C1):
+    // invalidate the demand cache and lazily embed that backlog. Fire-and-forget
+    // so the country change returns promptly; bounded + idempotent.
+    void this.embeddingService.backfillForActiveDemand().catch((err) => {
+      this.logger.warn(
+        `Demand-driven embedding backfill failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    });
     return { targetCountries: effective };
   }
 

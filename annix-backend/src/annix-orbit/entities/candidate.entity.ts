@@ -155,6 +155,9 @@ export class Candidate {
   @Column({ type: "varchar", nullable: true })
   embedding: Buffer | null;
 
+  @Column({ name: "embedding_text_hash", type: "varchar", length: 64, nullable: true })
+  embeddingTextHash: string | null;
+
   @Column({ name: "target_categories", type: "jsonb", nullable: true })
   targetCategories: string[] | null;
 
