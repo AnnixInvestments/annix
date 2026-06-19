@@ -320,25 +320,17 @@ export class PaintPriceListExtractionService {
     };
   }
 
-  async lookupSpecs(
+  private async lookupSpecsBatch(
     products: { productName: string; supplierName: string }[],
-  ): Promise<Map<string, ProductSpec>> {
-    if (products.length === 0) {
-      return new Map();
-    }
+  ): Promise<ProductSpec[]> {
     const list = products
       .map((p, index) => `${index + 1}. ${p.supplierName} — ${p.productName}`)
       .join("\n");
-    const { content, providerUsed, tokensUsed } = await this.extractionMetricService.time(
-      "stock-control-paint-pricing",
-      "enrich",
-      () =>
-        this.aiChatService.chat(
-          [{ role: "user", content: `Provide published data-sheet specs for:\n\n${list}` }],
-          SPEC_LOOKUP_SYSTEM_PROMPT,
-          undefined,
-          { responseFormat: "json", maxOutputTokens: 16384 },
-        ),
+    const { content, providerUsed, tokensUsed } = await this.aiChatService.chat(
+      [{ role: "user", content: `Provide published data-sheet specs for:\n\n${list}` }],
+      SPEC_LOOKUP_SYSTEM_PROMPT,
+      undefined,
+      { responseFormat: "json", maxOutputTokens: 16384 },
     );
     this.logUsage(providerUsed, tokensUsed);
 
@@ -348,21 +340,43 @@ export class PaintPriceListExtractionService {
       .trim();
     const match = cleaned.match(/\{[\s\S]*\}/);
     if (!match) {
-      this.logger.warn(`Spec lookup returned no JSON object (length ${content.length})`);
-      return new Map();
+      this.logger.warn(`Spec lookup batch returned no JSON object (length ${content.length})`);
+      return [];
     }
     try {
       const parsed = JSON.parse(match[0]) as { specs?: ProductSpec[] };
-      const specs = parsed.specs ?? [];
-      return new Map(
-        specs
-          .filter((spec) => spec.productName)
-          .map((spec) => [spec.productName.trim().toLowerCase(), spec]),
-      );
+      return parsed.specs ?? [];
     } catch (error) {
-      this.logger.error(`Spec lookup JSON parse failed: ${(error as Error).message}`);
+      this.logger.error(`Spec lookup batch parse failed: ${(error as Error).message}`);
+      return [];
+    }
+  }
+
+  async lookupSpecs(
+    products: { productName: string; supplierName: string }[],
+  ): Promise<Map<string, ProductSpec>> {
+    if (products.length === 0) {
       return new Map();
     }
+    const batchSize = 15;
+    const batchCount = Math.ceil(products.length / batchSize);
+    const batches = Array.from({ length: batchCount }, (_, index) =>
+      products.slice(index * batchSize, index * batchSize + batchSize),
+    );
+    const results = await this.extractionMetricService.time(
+      "stock-control-paint-pricing",
+      "enrich",
+      () => Promise.all(batches.map((batch) => this.lookupSpecsBatch(batch))),
+    );
+    const specs = results.flat();
+    this.logger.log(
+      `Spec lookup: ${specs.length} spec(s) returned for ${products.length} product(s) in ${batches.length} batch(es)`,
+    );
+    return new Map(
+      specs
+        .filter((spec) => spec.productName)
+        .map((spec) => [spec.productName.trim().toLowerCase(), spec]),
+    );
   }
 
   async extractPriceList(file: Express.Multer.File): Promise<PaintPriceListImportPreview> {
