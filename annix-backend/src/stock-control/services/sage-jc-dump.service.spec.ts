@@ -150,6 +150,26 @@ describe("SageJcDumpService", () => {
       );
     });
 
+    it("throws BadRequestException when file is not a valid Excel file", async () => {
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(makeCpo());
+      const buffer = Buffer.from("This is not an Excel file");
+
+      await expect(service.parseSageJcDump(buffer, COMPANY_ID, 1)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it("handles CPO with null cpoNumber gracefully (no JC filter applied)", async () => {
+      const cpo = makeCpo({ cpoNumber: null as unknown as string });
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(cpo);
+      const rows = [...baseSageRows(), ["PIPE-001", "6in CS pipe", "", "", "001", 10, "JT001", ""]];
+      const buffer = buildSageExcel(rows);
+
+      const result = await service.parseSageJcDump(buffer, COMPANY_ID, 1);
+
+      expect(Object.keys(result.jtGroups)).toHaveLength(1);
+    });
+
     it("parses basic line items with JT numbers", async () => {
       cpoRepo.findOneForCompanyWithItems.mockResolvedValue(makeCpo());
       const rows = [
