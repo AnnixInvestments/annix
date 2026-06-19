@@ -18,6 +18,9 @@ import {
   BulkUpliftDto,
   CommitPaintPriceListImportDto,
   CreatePaintPriceListItemDto,
+  MultiCoatQuoteDto,
+  PackOptionsDto,
+  PaintQuoteDto,
   UpdatePaintPriceListItemDto,
   UpdatePaintPricingConfigDto,
 } from "../dto/paint-pricing.dto";
@@ -67,6 +70,38 @@ export class PaintPricingController {
         )
       : await this.paintPriceListService.addMany(req.user.companyId, dto.rows);
     return { imported };
+  }
+
+  @Get("preferred")
+  @ApiOperation({
+    summary: "Preferred paints for coating-spec assignment, grouped client-side by coat type",
+  })
+  async preferred(@Req() req: any) {
+    return this.paintPriceListService.preferredForAssignment(req.user.companyId);
+  }
+
+  @Post("pack-options")
+  @ApiOperation({ summary: "Cheapest pack combination + per-pack totals for required litres" })
+  async packOptions(@Req() req: any, @Body() dto: PackOptionsDto) {
+    return this.paintPriceListService.packOptions(req.user.companyId, dto.items);
+  }
+
+  @Get("quote/catalog")
+  @ApiOperation({ summary: "Customer-safe paint catalogue (sell prices only) for self-quote" })
+  async quoteCatalog(@Req() req: any) {
+    return this.paintPriceListService.quoteCatalog(req.user.companyId);
+  }
+
+  @Post("quote")
+  @ApiOperation({ summary: "Quote a paint: sell price per m² and total for an area" })
+  async quote(@Req() req: any, @Body() dto: PaintQuoteDto) {
+    return this.paintPriceListService.quote(req.user.companyId, dto);
+  }
+
+  @Post("quote/multi-coat")
+  @ApiOperation({ summary: "Quote a multi-coat system + blasting: per-coat prices and total" })
+  async multiCoatQuote(@Req() req: any, @Body() dto: MultiCoatQuoteDto) {
+    return this.paintPriceListService.multiCoatQuote(req.user.companyId, dto);
   }
 
   @Post("enrich")

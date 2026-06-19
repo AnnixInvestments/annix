@@ -43,23 +43,70 @@ export interface ProductSpec {
   productName: string;
   coatType?: string | null;
   paintType?: string | null;
+  genericType?: string | null;
+  finishType?: string | null;
+  zincRich?: boolean | null;
+  mioPigment?: boolean | null;
+  surfaceTolerant?: boolean | null;
+  heatResistanceC?: number | null;
   volumeSolidsPercent?: number | null;
   recommendedMicrons?: number | null;
   thinnerName?: string | null;
   maxThinningPercent?: number | null;
 }
 
+export const PAINT_GENERIC_TYPES = [
+  "zinc-rich-epoxy",
+  "zinc-silicate",
+  "epoxy",
+  "epoxy-mio",
+  "epoxy-mastic",
+  "epoxy-phenolic",
+  "epoxy-glass-flake",
+  "coal-tar-epoxy",
+  "polyurethane",
+  "polysiloxane",
+  "polyurea",
+  "acrylic",
+  "alkyd",
+  "vinyl",
+  "high-temp-silicone",
+  "intumescent",
+  "fbe",
+  "3lpe",
+] as const;
+
+export const PAINT_FINISH_TYPES = [
+  "aliphatic-pu",
+  "aromatic-pu",
+  "acrylic-pu",
+  "acrylic",
+  "alkyd",
+  "epoxy",
+  "phenolic",
+  "vinyl",
+  "silicone",
+] as const;
+
 const SPEC_LOOKUP_SYSTEM_PROMPT = `You are a protective-coatings data-sheet expert. For each numbered "Supplier — Product" line, return the MANUFACTURER'S PUBLISHED technical-data-sheet values.
 
 Return ONLY a JSON object with a "specs" array, one object per product, echoing the productName exactly as given:
-{ "specs": [{ "productName": string, "coatType": "primer" | "intermediate" | "final" | null, "paintType": string | null, "volumeSolidsPercent": number | null, "recommendedMicrons": number | null, "thinnerName": string | null, "maxThinningPercent": number | null }] }
+{ "specs": [{ "productName": string, "coatType": "primer" | "intermediate" | "final" | null, "paintType": string | null, "genericType": string | null, "finishType": string | null, "zincRich": boolean, "mioPigment": boolean, "surfaceTolerant": boolean, "heatResistanceC": number | null, "volumeSolidsPercent": number | null, "recommendedMicrons": number | null, "thinnerName": string | null, "maxThinningPercent": number | null }] }
 
 Rules:
 - coatType: the product's typical role in a coating system — "primer", "intermediate" or "final" — or null if genuinely unclear.
-- paintType: the generic chemistry (e.g. "Epoxy", "Polyurethane", "Alkyd", "Acrylic", "Bituminous", "Inorganic Zinc").
+- paintType: the broad chemistry as a friendly label (e.g. "Epoxy", "Polyurethane", "Alkyd", "Acrylic", "Inorganic Zinc", "Bituminous").
+- genericType: the PRECISE binder/technology, EXACTLY one of: ${PAINT_GENERIC_TYPES.join(", ")}. Pick the most specific that fits — e.g. a zinc-rich epoxy primer is "zinc-rich-epoxy" (NOT "epoxy"); an MIO-pigmented epoxy is "epoxy-mio"; a surface-tolerant high-build epoxy mastic is "epoxy-mastic"; an aliphatic polyurethane topcoat is "polyurethane"; an inorganic zinc silicate is "zinc-silicate". Use null only if genuinely unclassifiable.
+- finishType: for topcoats/finishes, the finish chemistry, one of: ${PAINT_FINISH_TYPES.join(", ")} (e.g. a UV/colour-stable PU topcoat is "aliphatic-pu"); null for primers/intermediates or when unclear.
+- zincRich: true if the product is a zinc-rich primer (zinc-rich epoxy or zinc silicate). mioPigment: true if pigmented with micaceous iron oxide (MIO). surfaceTolerant: true if the TDS describes it as surface-tolerant / a mastic. Default each to false when not applicable.
+- heatResistanceC: the maximum continuous dry-heat service temperature in °C if the product is a heat-resistant coating; null otherwise.
 - volumeSolidsPercent: the published volume solids %. recommendedMicrons: the recommended dry film thickness per coat (µm).
-- thinnerName: the manufacturer's recommended thinner for that product. maxThinningPercent: the maximum recommended thinning rate (% by volume).
-- Use null for ANY value you are not confident is the manufacturer's published figure. NEVER guess a number — a wrong solids/DFT produces a wrong sale price. coatType and paintType may be inferred from the product family.`;
+- thinnerName: the manufacturer's recommended thinner. maxThinningPercent: the maximum recommended thinning rate (% by volume).
+- Use null for ANY number you are not confident is the manufacturer's published figure. NEVER guess a number — a wrong solids/DFT produces a wrong sale price. coatType, paintType, genericType and finishType may be inferred from the product family.`;
+
+const COMPONENT_COUNT_PROMPT = `You are a protective-coatings data-sheet expert. For each numbered product, state how many separately-packed components it ships as: 1 for a single-pack product, 2 for a two-pack (Part A + Part B), 3 for a three-pack (A + B + C). Use your knowledge of the product's published data sheet.
+
+Echo productName EXACTLY as given. Return ONLY: { "counts": [{ "productName": string, "componentCount": number }] }`;
 
 const COLUMN_GUIDE = `The product table columns may include: PRODUCT, STATUS (e.g. MTO/Tint), % SBV (solids by volume %), THEOR COVER (m²/L), D.F.T µm, SELLING PRICE, PKG (e.g. "5 litre", "10 litre kit"), COST PER m², THINNER TYPE, THINNER MAX %. Products are grouped under category headings (ACRYLICS, ALKYDS, EPOXIES, POLYURETHANES, PHENOLINES, HIGH TEMPERATURE, ZINCS, VINYLS, BITUMINOUS ALUMINIUM). A THINNERS section lists thinner products with their own price and pack.`;
 
@@ -104,9 +151,9 @@ ${JSON_SHAPE}
 Rules:
 - supplierName: the paint MANUFACTURER/brand (e.g. "Jotun", "StonCor Africa"), inferred from the product names — NEVER the customer/recipient named at the top of the sheet.
 - costPerLitre: the buyer's NET price PER LITRE. When several price columns exist, pick the current-year agreed/net "price list" column (the discounted price the buyer actually pays), NOT the master/list/RRP column and NOT a prior-year column. If the sheet only gives a per-pack price, put it in packPrice and set packSizeLitres instead.
-- packSizeLitres: from a pack-size column or the size embedded in the description ("7.5L" -> 7.5, "16L" -> 16).
-- productName: the base coating product name only — strip pack size, colour words, "COMP A"/"COMP B", "COLOUR GROUP X", "RT", "GF", and RAL codes (e.g. "JOTAMASTIC 90 ALU RT A 3.55L" -> "Jotamastic 90"; "BARRIER 80 S GREY A 7.5L" -> "Barrier 80"; "PENGUARD EXPRESS MIO GRE A 4L" -> "Penguard Express MIO").
-- Collapse rows that are the same product at the same per-litre price (different colour groups / pack sizes) into ONE product entry.
+- packSizeLitres: ALWAYS populate this from the pack-size column or the size embedded in the description ("7.5L" -> 7.5, "16L" -> 16, "4.17L" -> 4.17). Never leave it null when the sheet shows a size.
+- productName: the base coating product, KEEPING meaningful grade words (MIO, ZP, GF, HB) but STRIPPING colour, pack size, component, region and cure markers — remove "COMP A"/"COMP B", "COLOUR GROUP X", RAL codes, colour words (GREY, RED, WHITE, BLACK, BUFF, "DK GRN", and aluminium in any form: ALU / AL / ALUMINIUM), region/market codes (e.g. "ZA", "SA"), the trailing component "A"/"B" letter, and the "RT" cure suffix. Two rows that are the same product differing only by these markers MUST normalise to the SAME productName. Examples: "JOTAMASTIC 80 AL COMP A 16L", "JOTAMASTIC 80 AL RT A 4L" and "JOTAMASTIC 80 GREY A 16L" ALL -> "Jotamastic 80"; "JOTAMASTIC 90 ALU RT A 3.55L" -> "Jotamastic 90"; "JOTAMASTIC 90 GF COLOUR GROUP A" -> "Jotamastic 90 GF"; "PENGUARD EXPRESS MIO GRE A 4L" -> "Penguard Express MIO"; "BARRIER 80 S DK GRN ZA A 7.5L" and "BARRIER 80 S GREY A 7.5L" -> "Barrier 80 S".
+- Keep each distinct PACK SIZE as its own row (so a product with separate parts/sizes gives one row per pack size). You MAY merge rows that are the same product, SAME pack size, and SAME per-litre price differing only by colour, into one entry — but NEVER merge across different pack sizes. (Components A/B/C are combined later, downstream.)
 - volumeSolidsPercent, recommendedMicrons, thinnerCode, maxThinningPercent: include ONLY if the sheet actually contains them; otherwise null. NEVER guess these from product knowledge — they are enriched downstream.
 - Exclude thinners, degreasers and cleaners from products; list thinner products under thinners[] with pricePerLitre (price ÷ pack litres).`;
 
@@ -375,17 +422,137 @@ export class PaintPriceListExtractionService {
     return new Map(
       specs
         .filter((spec) => spec.productName)
-        .map((spec) => [spec.productName.trim().toLowerCase(), spec]),
+        .map((spec) => [this.productKey(spec.productName), spec]),
     );
+  }
+
+  productKey(name: string): string {
+    const withoutSupplier = name.replace(/^[^—]*—\s*/, "");
+    return withoutSupplier.trim().toLowerCase();
+  }
+
+  private async lookupComponentCountsBatch(
+    names: string[],
+  ): Promise<{ productName: string; componentCount: number }[]> {
+    const list = names.map((name, index) => `${index + 1}. ${name}`).join("\n");
+    const { content, providerUsed, tokensUsed } = await this.aiChatService.chat(
+      [
+        {
+          role: "user",
+          content: `How many packed components does each product ship as?\n\n${list}`,
+        },
+      ],
+      COMPONENT_COUNT_PROMPT,
+      undefined,
+      { responseFormat: "json", maxOutputTokens: 8192 },
+    );
+    this.logUsage(providerUsed, tokensUsed);
+    const cleaned = content
+      .replace(/```json/gi, "")
+      .replace(/```/g, "")
+      .trim();
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (!match) {
+      return [];
+    }
+    try {
+      const parsed = JSON.parse(match[0]) as {
+        counts?: { productName: string; componentCount: number }[];
+      };
+      return parsed.counts ?? [];
+    } catch (error) {
+      this.logger.error(`Component-count parse failed: ${(error as Error).message}`);
+      return [];
+    }
+  }
+
+  private async lookupComponentCounts(names: string[]): Promise<Map<string, number>> {
+    if (names.length === 0) {
+      return new Map();
+    }
+    const batchSize = 20;
+    const batchCount = Math.ceil(names.length / batchSize);
+    const batches = Array.from({ length: batchCount }, (_, index) =>
+      names.slice(index * batchSize, index * batchSize + batchSize),
+    );
+    const results = await this.extractionMetricService.time(
+      "stock-control-paint-pricing",
+      "component-count",
+      () => Promise.all(batches.map((batch) => this.lookupComponentCountsBatch(batch))),
+    );
+    return new Map(
+      results
+        .flat()
+        .filter((entry) => entry.productName && typeof entry.componentCount === "number")
+        .map((entry) => [this.productKey(entry.productName), entry.componentCount]),
+    );
+  }
+
+  private normalizeProductName(name: string): string {
+    return name
+      .replace(/\b(aluminium|alu|al|za|sa|rt)\b/gi, " ")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+  }
+
+  private async combineKits(products: ExtractedProduct[]): Promise<ExtractedProduct[]> {
+    const named = products
+      .filter((product) => product.productName?.trim())
+      .map((product) => ({
+        ...product,
+        productName: this.normalizeProductName(product.productName ?? ""),
+      }))
+      .filter((product) => product.productName.length > 0);
+    if (named.length === 0) {
+      return products;
+    }
+    const distinctNames = Array.from(
+      new Set(named.map((product) => product.productName?.trim() ?? "")),
+    );
+    const counts = await this.lookupComponentCounts(distinctNames);
+
+    const groups = new Map<string, ExtractedProduct[]>();
+    named.forEach((product) => {
+      const price = product.costPerLitre ?? product.packPrice ?? 0;
+      const key = `${(product.productName ?? "").trim().toLowerCase()}||${price}`;
+      const existing = groups.get(key) ?? [];
+      existing.push(product);
+      groups.set(key, existing);
+    });
+
+    const combined = Array.from(groups.values()).map((group) => {
+      const first = group[0];
+      const name = (first.productName ?? "").trim();
+      const componentCount = counts.get(this.productKey(name)) ?? 1;
+      const packs = Array.from(
+        new Set(
+          group
+            .map((product) => product.packSizeLitres)
+            .filter((value): value is number => typeof value === "number" && value > 0),
+        ),
+      ).sort((a, b) => b - a);
+      const summed =
+        componentCount >= 2 && packs.length >= 2
+          ? packs.slice(0, componentCount).reduce((total, value) => total + value, 0)
+          : (packs[0] ?? first.packSizeLitres ?? null);
+      const kit = summed === null ? null : Math.round(summed * 100) / 100;
+      return { ...first, packSizeLitres: kit };
+    });
+
+    this.logger.log(`Combined ${named.length} line(s) into ${combined.length} kit row(s)`);
+    return combined;
   }
 
   async extractPriceList(file: Express.Multer.File): Promise<PaintPriceListImportPreview> {
     if (!file || !file.buffer) {
       throw new BadRequestException("No file provided");
     }
-    const parsed = this.isSpreadsheet(file)
-      ? await this.extractFromSpreadsheet(file)
-      : await this.extractFromVision(file);
+    if (this.isSpreadsheet(file)) {
+      const parsed = await this.extractFromSpreadsheet(file);
+      parsed.products = await this.combineKits(parsed.products ?? []);
+      return this.buildRows(parsed);
+    }
+    const parsed = await this.extractFromVision(file);
     return this.buildRows(parsed);
   }
 }

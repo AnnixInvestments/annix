@@ -205,5 +205,10 @@ export const stockControlKeys = {
   paintPricing: {
     all: ["stock-control", "paint-pricing"] as const,
     list: () => [...stockControlKeys.paintPricing.all, "list"] as const,
+    preferred: () => [...stockControlKeys.paintPricing.all, "preferred"] as const,
+  },
+  paintQuote: {
+    all: ["stock-control", "paint-quote"] as const,
+    catalog: () => [...stockControlKeys.paintQuote.all, "catalog"] as const,
   },
 };

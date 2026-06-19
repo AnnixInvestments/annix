@@ -2,8 +2,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   CommitPaintPriceListImportInput,
   CreatePaintPriceListItemInput,
+  MultiCoatQuoteInput,
+  MultiCoatQuoteResult,
+  PackOptionRequestItem,
+  PackOptionResult,
   PaintPricingConfig,
   PaintPricingResponse,
+  PaintQuoteInput,
+  PaintQuoteResult,
+  PreferredPaintOption,
+  QuoteCatalogItem,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { stockControlKeys } from "../../keys/stockControlKeys";
@@ -12,6 +20,38 @@ export function usePaintPricing() {
   return useQuery<PaintPricingResponse>({
     queryKey: stockControlKeys.paintPricing.list(),
     queryFn: () => stockControlApiClient.paintPricing(),
+  });
+}
+
+export function usePreferredPaints() {
+  return useQuery<PreferredPaintOption[]>({
+    queryKey: stockControlKeys.paintPricing.preferred(),
+    queryFn: () => stockControlApiClient.preferredPaints(),
+  });
+}
+
+export function usePaintQuoteCatalog() {
+  return useQuery<QuoteCatalogItem[]>({
+    queryKey: stockControlKeys.paintQuote.catalog(),
+    queryFn: () => stockControlApiClient.paintQuoteCatalog(),
+  });
+}
+
+export function useCreatePaintQuote() {
+  return useMutation<PaintQuoteResult, Error, PaintQuoteInput>({
+    mutationFn: (input: PaintQuoteInput) => stockControlApiClient.paintQuote(input),
+  });
+}
+
+export function useCreateMultiCoatQuote() {
+  return useMutation<MultiCoatQuoteResult, Error, MultiCoatQuoteInput>({
+    mutationFn: (input: MultiCoatQuoteInput) => stockControlApiClient.paintMultiCoatQuote(input),
+  });
+}
+
+export function useCreatePaintPackOptions() {
+  return useMutation<PackOptionResult[], Error, PackOptionRequestItem[]>({
+    mutationFn: (items: PackOptionRequestItem[]) => stockControlApiClient.paintPackOptions(items),
   });
 }
 

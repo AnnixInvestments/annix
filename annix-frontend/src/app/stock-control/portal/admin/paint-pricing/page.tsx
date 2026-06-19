@@ -1,14 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { FormModal } from "@/app/components/modals/FormModal";
 import { useToast } from "@/app/components/Toast";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import type {
   CreatePaintPriceListItemInput,
+  PaintBlastGrade,
   PaintCoatRole,
   PaintDiscountTier,
+  PaintPackVariant,
   PaintPriceListImportPreview,
   PaintPriceListRow,
   PaintPricingConfig,
@@ -34,6 +36,50 @@ const COAT_TYPES: { value: PaintCoatRole; label: string }[] = [
   { value: "final", label: "Final" },
 ];
 
+const GENERIC_TYPES = [
+  "zinc-rich-epoxy",
+  "zinc-silicate",
+  "epoxy",
+  "epoxy-mio",
+  "epoxy-mastic",
+  "epoxy-phenolic",
+  "epoxy-glass-flake",
+  "coal-tar-epoxy",
+  "polyurethane",
+  "polysiloxane",
+  "polyurea",
+  "acrylic",
+  "alkyd",
+  "vinyl",
+  "high-temp-silicone",
+  "intumescent",
+  "fbe",
+  "3lpe",
+];
+
+const DEFAULT_BLAST_GRADES = ["SA3", "SA2.5", "SA2", "Flash blast"];
+
+function seedBlastGrades(
+  existing: PaintBlastGrade[] | undefined | null,
+  tierNames: string[],
+): PaintBlastGrade[] {
+  const base =
+    existing && existing.length > 0
+      ? existing.map((grade) => ({
+          grade: grade.grade,
+          pricePerM2: grade.pricePerM2,
+          tierPrices: grade.tierPrices.map((tier) => ({ ...tier })),
+        }))
+      : DEFAULT_BLAST_GRADES.map((grade) => ({ grade, pricePerM2: 0, tierPrices: [] }));
+  return base.map((grade) => {
+    const tierPrices = tierNames.map((name) => {
+      const match = grade.tierPrices.find((tier) => tier.name === name);
+      return match ? { name, pricePerM2: match.pricePerM2 } : { name, pricePerM2: 0 };
+    });
+    return { grade: grade.grade, pricePerM2: grade.pricePerM2, tierPrices };
+  });
+}
+
 type EditableField = keyof CreatePaintPriceListItemInput;
 
 interface RowDraft {
@@ -51,6 +97,7 @@ interface RowDraft {
   thinnerName: string;
   thinnerPricePerLitre: string;
   maxThinningPercent: string;
+  preferred: boolean;
 }
 
 const EMPTY_DRAFT: RowDraft = {
@@ -68,6 +115,7 @@ const EMPTY_DRAFT: RowDraft = {
   thinnerName: "",
   thinnerPricePerLitre: "",
   maxThinningPercent: "",
+  preferred: false,
 };
 
 function numberOrNull(value: string): number | null {
@@ -108,6 +156,7 @@ function draftFromRow(row: PaintPriceListRow): RowDraft {
     thinnerPricePerLitre:
       item.thinnerPricePerLitre === null ? "" : String(item.thinnerPricePerLitre),
     maxThinningPercent: item.maxThinningPercent === null ? "" : String(item.maxThinningPercent),
+    preferred: item.preferred === true,
   };
 }
 
@@ -129,6 +178,7 @@ function draftToInput(draft: RowDraft): CreatePaintPriceListItemInput {
     thinnerName: textOrNull(draft.thinnerName),
     thinnerPricePerLitre: numberOrNull(draft.thinnerPricePerLitre),
     maxThinningPercent: numberOrNull(draft.maxThinningPercent),
+    preferred: draft.preferred,
   };
 }
 
@@ -211,6 +261,7 @@ export default function PaintPricingPage() {
   const [supplierFilter, setSupplierFilter] = useState("all");
   const [coatFilter, setCoatFilter] = useState("all");
   const [paintTypeFilter, setPaintTypeFilter] = useState("all");
+  const [expandedRowIds, setExpandedRowIds] = useState<Set<number>>(new Set());
 
   const data = query.data;
   const config = data ? data.config : null;
@@ -229,7 +280,12 @@ export default function PaintPricingPage() {
     new Set(rows.map((row) => row.item.paintType).filter((type): type is string => type !== null)),
   ).sort((a, b) => a.localeCompare(b));
 
-  const filteredRows = rows.filter((row) => {
+  const pricingRows = rows.filter((row) => {
+    const isPricingVariant = row.isPricingVariant;
+    return isPricingVariant;
+  });
+
+  const filteredRows = pricingRows.filter((row) => {
     const item = row.item;
     const supplierMatch = supplierFilter === "all" || item.supplierName === supplierFilter;
     const coatMatch = coatFilter === "all" || item.coatType === coatFilter;
@@ -237,16 +293,34 @@ export default function PaintPricingPage() {
     return supplierMatch && coatMatch && paintTypeMatch;
   });
 
+  const totalProducts = pricingRows.length;
+  const pricingRowsShown = filteredRows.length;
+
   const filtersActive =
     supplierFilter !== "all" || coatFilter !== "all" || paintTypeFilter !== "all";
 
+  const toggleExpanded = useCallback((id: number) => {
+    setExpandedRowIds((prev) => {
+      const next = new Set(prev);
+      const isOpen = next.has(id);
+      if (isOpen) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
     if (config) {
+      const tierNames = config.discountTiers.map((tier) => tier.name);
       setConfigDraft({
         applicationCostPerM2: config.applicationCostPerM2,
         markupFactor: config.markupFactor,
         lossPct: config.lossPct,
         discountTiers: config.discountTiers.map((tier) => ({ ...tier })),
+        blastGrades: seedBlastGrades(config.blastGrades, tierNames),
       });
     }
   }, [config]);
@@ -275,6 +349,48 @@ export default function PaintPricingPage() {
       }
       updateItem.mutate(
         { id: item.id, input: { [field]: nextValue } },
+        { onError: () => showToast("Could not save the change — please try again.", "error") },
+      );
+    },
+    [updateItem, showToast],
+  );
+
+  const handleInlineCoatSave = useCallback(
+    (item: PaintPriceListRow["item"], value: string) => {
+      const nextValue = coatOrNull(value);
+      if (nextValue === item.coatType) {
+        return;
+      }
+      updateItem.mutate(
+        { id: item.id, input: { coatType: nextValue } },
+        { onError: () => showToast("Could not save the change — please try again.", "error") },
+      );
+    },
+    [updateItem, showToast],
+  );
+
+  const handleInlineGenericTypeSave = useCallback(
+    (item: PaintPriceListRow["item"], value: string) => {
+      const nextValue = value === "" ? null : value;
+      const currentValue = item.genericType;
+      if (nextValue === currentValue) {
+        return;
+      }
+      updateItem.mutate(
+        { id: item.id, input: { genericType: nextValue } },
+        { onError: () => showToast("Could not save the change — please try again.", "error") },
+      );
+    },
+    [updateItem, showToast],
+  );
+
+  const handleTogglePreferred = useCallback(
+    (item: PaintPriceListRow["item"], next: boolean) => {
+      if (next === item.preferred) {
+        return;
+      }
+      updateItem.mutate(
+        { id: item.id, input: { preferred: next } },
         { onError: () => showToast("Could not save the change — please try again.", "error") },
       );
     },
@@ -328,6 +444,25 @@ export default function PaintPricingPage() {
       deleteItem.mutate(row.item.id, {
         onSuccess: () => showToast("Paint deleted.", "success"),
         onError: () => showToast("Could not delete paint — please try again.", "error"),
+      });
+    },
+    [confirm, deleteItem, showToast],
+  );
+
+  const handleDeletePack = useCallback(
+    async (productName: string, variant: PaintPackVariant) => {
+      const packSize = variant.packSizeLitres;
+      const packLabel = packSize === null ? "this pack" : `the ${packSize}L pack`;
+      const confirmed = await confirm({
+        title: "Delete pack",
+        message: `Remove ${packLabel} of "${productName}" from the price list? This cannot be undone.`,
+        confirmLabel: "Delete",
+        variant: "danger",
+      });
+      if (!confirmed) return;
+      deleteItem.mutate(variant.id, {
+        onSuccess: () => showToast("Pack deleted.", "success"),
+        onError: () => showToast("Could not delete pack — please try again.", "error"),
       });
     },
     [confirm, deleteItem, showToast],
@@ -394,10 +529,16 @@ export default function PaintPricingPage() {
       });
       const result = await enrichSpecs.mutateAsync();
       const enriched = result.enriched;
+      const checked = result.checked;
       if (enriched > 0) {
         showToast(
-          `Filled missing specs on ${enriched} paint${enriched === 1 ? "" : "s"}.`,
+          `Filled missing specs on ${enriched} of ${checked} paint${checked === 1 ? "" : "s"}.`,
           "success",
+        );
+      } else if (checked > 0) {
+        showToast(
+          `${checked} paint${checked === 1 ? "" : "s"} are missing specs but none could be filled — please try again.`,
+          "warning",
         );
       } else {
         showToast("No missing specs were found to fill.", "info");
@@ -425,11 +566,13 @@ export default function PaintPricingPage() {
   }, [importPreview, replaceSupplier, commitImport, showToast]);
 
   const handleBulkUplift = useCallback(async () => {
-    const parsed = numberOrNull(bulkUpliftValue);
-    if (parsed === null) {
-      showToast("Enter an uplift percentage to apply.", "warning");
+    const trimmed = bulkUpliftValue.trim();
+    const parsedValue = trimmed === "" ? 0 : numberOrNull(bulkUpliftValue);
+    if (parsedValue === null || parsedValue < 0) {
+      showToast("Enter a valid uplift percentage (0 or more) to apply.", "warning");
       return;
     }
+    const parsed = parsedValue;
     const confirmed = await confirm({
       title: "Apply bulk uplift",
       message: `Set the uplift to ${parsed}% on every paint in the list? This overwrites the uplift on all rows.`,
@@ -464,9 +607,12 @@ export default function PaintPricingPage() {
   const addTier = useCallback(() => {
     setConfigDraft((prev) => {
       if (!prev) return prev;
+      const nextTiers = [...prev.discountTiers, { name: "", discountPercent: 0 }];
+      const nextTierNames = nextTiers.map((tier) => tier.name);
       return {
         ...prev,
-        discountTiers: [...prev.discountTiers, { name: "", discountPercent: 0 }],
+        discountTiers: nextTiers,
+        blastGrades: seedBlastGrades(prev.blastGrades, nextTierNames),
       };
     });
   }, []);
@@ -474,9 +620,12 @@ export default function PaintPricingPage() {
   const removeTier = useCallback((index: number) => {
     setConfigDraft((prev) => {
       if (!prev) return prev;
+      const nextTiers = prev.discountTiers.filter((_, idx) => idx !== index);
+      const nextTierNames = nextTiers.map((tier) => tier.name);
       return {
         ...prev,
-        discountTiers: prev.discountTiers.filter((_, idx) => idx !== index),
+        discountTiers: nextTiers,
+        blastGrades: seedBlastGrades(prev.blastGrades, nextTierNames),
       };
     });
   }, []);
@@ -484,15 +633,62 @@ export default function PaintPricingPage() {
   const updateTier = useCallback((index: number, field: keyof PaintDiscountTier, value: string) => {
     setConfigDraft((prev) => {
       if (!prev) return prev;
+      const previousTier = prev.discountTiers[index];
+      const previousName = previousTier ? previousTier.name : "";
       const nextTiers = prev.discountTiers.map((tier, idx) => {
         if (idx !== index) return tier;
         if (field === "name") return { ...tier, name: value };
         const parsedDiscount = numberOrNull(value);
         return { ...tier, discountPercent: parsedDiscount ?? 0 };
       });
-      return { ...prev, discountTiers: nextTiers };
+      if (field !== "name") {
+        return { ...prev, discountTiers: nextTiers };
+      }
+      const renamedGrades = prev.blastGrades.map((grade) => ({
+        grade: grade.grade,
+        pricePerM2: grade.pricePerM2,
+        tierPrices: grade.tierPrices.map((tier) =>
+          tier.name === previousName ? { name: value, pricePerM2: tier.pricePerM2 } : tier,
+        ),
+      }));
+      const nextTierNames = nextTiers.map((tier) => tier.name);
+      return {
+        ...prev,
+        discountTiers: nextTiers,
+        blastGrades: seedBlastGrades(renamedGrades, nextTierNames),
+      };
     });
   }, []);
+
+  const updateBlastGradePrice = useCallback((gradeIndex: number, value: string) => {
+    const parsed = numberOrNull(value);
+    setConfigDraft((prev) => {
+      if (!prev) return prev;
+      const nextGrades = prev.blastGrades.map((grade, idx) => {
+        if (idx !== gradeIndex) return grade;
+        return { ...grade, pricePerM2: parsed ?? 0 };
+      });
+      return { ...prev, blastGrades: nextGrades };
+    });
+  }, []);
+
+  const updateBlastTierPrice = useCallback(
+    (gradeIndex: number, tierName: string, value: string) => {
+      const parsed = numberOrNull(value);
+      setConfigDraft((prev) => {
+        if (!prev) return prev;
+        const nextGrades = prev.blastGrades.map((grade, idx) => {
+          if (idx !== gradeIndex) return grade;
+          const nextTierPrices = grade.tierPrices.map((tier) =>
+            tier.name === tierName ? { name: tier.name, pricePerM2: parsed ?? 0 } : tier,
+          );
+          return { ...grade, tierPrices: nextTierPrices };
+        });
+        return { ...prev, blastGrades: nextGrades };
+      });
+    },
+    [],
+  );
 
   const setRowField = useCallback((field: EditableField, value: string) => {
     setRowDraft((prev) => ({ ...prev, [field]: value }));
@@ -500,6 +696,14 @@ export default function PaintPricingPage() {
 
   const setNewField = useCallback((field: EditableField, value: string) => {
     setNewDraft((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
+  const setRowPreferred = useCallback((value: boolean) => {
+    setRowDraft((prev) => ({ ...prev, preferred: value }));
+  }, []);
+
+  const setNewPreferred = useCallback((value: boolean) => {
+    setNewDraft((prev) => ({ ...prev, preferred: value }));
   }, []);
 
   const queryIsLoading = query.isLoading;
@@ -622,6 +826,64 @@ export default function PaintPricingPage() {
             </div>
           )}
         </div>
+
+        <div className="space-y-2 border-t border-gray-100 pt-4">
+          <span className="text-sm font-medium text-gray-700">Blasting prices (R/m²)</span>
+          <div className="overflow-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead>
+                <tr>
+                  <th className={TH_CLASS}>Grade</th>
+                  <th className={TH_CLASS}>Standard R/m²</th>
+                  {configDraft.discountTiers.map((tier, index) => (
+                    <th key={index} className={TH_CLASS}>
+                      {tier.name ? tier.name : `Tier ${index + 1}`} R/m²
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {configDraft.blastGrades.map((grade, gradeIndex) => (
+                  <tr key={grade.grade}>
+                    <td className={`${TD_CLASS} font-medium text-gray-900`}>{grade.grade}</td>
+                    <td className={TD_CLASS}>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={grade.pricePerM2}
+                        onChange={(e) => updateBlastGradePrice(gradeIndex, e.target.value)}
+                        aria-label={`${grade.grade} standard price per square metre`}
+                        className={`${INPUT_CLASS} w-28`}
+                      />
+                    </td>
+                    {configDraft.discountTiers.map((tier, tierIndex) => {
+                      const tierName = tier.name;
+                      const tierPrice = grade.tierPrices.find((entry) => entry.name === tierName);
+                      const priceValue = tierPrice ? tierPrice.pricePerM2 : 0;
+                      return (
+                        <td key={tierIndex} className={TD_CLASS}>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={priceValue}
+                            onChange={(e) =>
+                              updateBlastTierPrice(gradeIndex, tierName, e.target.value)
+                            }
+                            aria-label={`${grade.grade} ${tierName || `tier ${tierIndex + 1}`} price per square metre`}
+                            className={`${INPUT_CLASS} w-28`}
+                          />
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-gray-400">
+            Blank or zero tier prices fall back to the standard rate when quoting.
+          </p>
+        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -630,10 +892,12 @@ export default function PaintPricingPage() {
             <h2 className="text-lg font-semibold text-gray-900">Paint price list</h2>
             <p className="text-sm text-gray-500 mt-1">
               {filtersActive
-                ? `Showing ${filteredRows.length} of ${rows.length} paints`
-                : `${rows.length} paint${rows.length === 1 ? "" : "s"}`}
-              . Computed coverage and pricing columns are read-only. Upload a supplier price list
-              (PDF or Excel) to populate it.
+                ? `Showing ${pricingRowsShown} of ${totalProducts} products`
+                : `${totalProducts} product${totalProducts === 1 ? "" : "s"}`}
+              . Products sold in several pack sizes show once at the higher per-litre price; expand
+              a row to see all packs (purchasing picks the best pack per job). Computed coverage and
+              pricing columns are read-only. Upload a supplier price list (PDF or Excel) to populate
+              it.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -743,7 +1007,9 @@ export default function PaintPricingPage() {
               <tr>
                 <th className={FROZEN_TH_FIRST}>Supplier</th>
                 <th className={FROZEN_TH_SECOND}>Product</th>
+                <th className={STICKY_TH}>Preferred</th>
                 <th className={STICKY_TH}>Paint type</th>
+                <th className={STICKY_TH}>Technology</th>
                 <th className={STICKY_TH}>Coat type</th>
                 <th className={STICKY_TH}>Pack (L)</th>
                 <th className={STICKY_TH}>Vol solids %</th>
@@ -773,6 +1039,7 @@ export default function PaintPricingPage() {
                 const isEditing = editingId === row.item.id;
                 const item = row.item;
                 const pricing = row.pricing;
+                const editGenericType = item.genericType;
                 if (isEditing) {
                   return (
                     <tr key={item.id} className="bg-teal-50/40">
@@ -792,6 +1059,15 @@ export default function PaintPricingPage() {
                           className={INPUT_CLASS}
                         />
                       </td>
+                      <td className={`${TD_CLASS} text-center`}>
+                        <input
+                          type="checkbox"
+                          checked={rowDraft.preferred}
+                          onChange={(e) => setRowPreferred(e.target.checked)}
+                          aria-label="Preferred"
+                          className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                        />
+                      </td>
                       <td className={TD_CLASS}>
                         <input
                           type="text"
@@ -799,6 +1075,22 @@ export default function PaintPricingPage() {
                           onChange={(e) => setRowField("paintType", e.target.value)}
                           className={INPUT_CLASS}
                         />
+                      </td>
+                      <td className={TD_CLASS}>
+                        <select
+                          defaultValue={editGenericType ?? ""}
+                          key={`generic-${item.id}-${editGenericType ?? ""}`}
+                          onChange={(e) => handleInlineGenericTypeSave(item, e.target.value)}
+                          aria-label="Technology"
+                          className={`${INPUT_CLASS} w-40`}
+                        >
+                          <option value="">—</option>
+                          {GENERIC_TYPES.map((value) => (
+                            <option key={value} value={value}>
+                              {value}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                       <td className={TD_CLASS}>
                         <select
@@ -941,14 +1233,15 @@ export default function PaintPricingPage() {
                 }
                 const paintTypeValue = item.paintType;
                 const paintTypeDisplay = paintTypeValue ?? "—";
+                const rawGenericType = item.genericType;
                 const rawCoatType = item.coatType;
-                const coatMatch = rawCoatType
-                  ? COAT_TYPES.find((coat) => coat.value === rawCoatType)
-                  : null;
-                const coatLabelValue = coatMatch ? coatMatch.label : null;
-                const coatLabel = coatLabelValue ?? "—";
                 const packValue = item.packSizeLitres;
                 const packDisplay = packValue ?? "—";
+                const packVariants = row.packVariants;
+                const packCount = packVariants.length;
+                const hasMultiplePacks = packCount > 1;
+                const isExpanded = expandedRowIds.has(item.id);
+                const totalColumns = 22 + tierNames.length;
                 const recMicronsValue = item.recommendedMicrons;
                 const recMicronsDisplay = recMicronsValue ?? "—";
                 const micronsOverrideValue = item.micronsOverride;
@@ -957,77 +1250,188 @@ export default function PaintPricingPage() {
                 const maxThinValue = item.maxThinningPercent;
                 const maxThinDisplay = maxThinValue ?? "—";
                 return (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className={FROZEN_TD_FIRST}>{item.supplierName}</td>
-                    <td className={FROZEN_TD_SECOND}>{item.productName}</td>
-                    <td className={TD_CLASS}>{paintTypeDisplay}</td>
-                    <td className={TD_CLASS}>{coatLabel}</td>
-                    <td className={TD_CLASS}>{packDisplay}</td>
-                    <td className={TD_CLASS}>{item.volumeSolidsPercent}</td>
-                    <td className={TD_CLASS}>{money(item.costPerLitre)}</td>
-                    <td className={TD_CLASS}>
-                      {item.costPerKit === null ? "—" : money(item.costPerKit)}
-                    </td>
-                    <td className={TD_CLASS}>
-                      <input
-                        type="number"
-                        step="0.1"
-                        defaultValue={item.upliftPercent}
-                        key={`uplift-${item.id}-${item.upliftPercent}`}
-                        onBlur={(e) => handleInlineSave(item, "upliftPercent", e.target.value)}
-                        aria-label="Uplift percent"
-                        className={`${INPUT_CLASS} w-20`}
-                      />
-                    </td>
-                    <td className={TD_CLASS}>{recMicronsDisplay}</td>
-                    <td className={TD_CLASS}>
-                      <input
-                        type="number"
-                        step="1"
-                        defaultValue={micronsOverrideValue ?? ""}
-                        key={`mo-${item.id}-${micronsOverrideValue ?? ""}`}
-                        onBlur={(e) => handleInlineSave(item, "micronsOverride", e.target.value)}
-                        aria-label="Microns override"
-                        className={`${INPUT_CLASS} w-20`}
-                      />
-                    </td>
-                    <td className={TD_CLASS}>{thinnerNameDisplay}</td>
-                    <td className={TD_CLASS}>
-                      {item.thinnerPricePerLitre === null ? "—" : money(item.thinnerPricePerLitre)}
-                    </td>
-                    <td className={TD_CLASS}>{maxThinDisplay}</td>
-                    <td className={TD_CLASS}>{decimal(pricing.flatPlateCoverageM2PerLitre, 2)}</td>
-                    <td className={TD_CLASS}>{decimal(pricing.coverageAfterLossM2PerLitre, 2)}</td>
-                    <td className={TD_CLASS}>{money(pricing.thinnerCostPerM2)}</td>
-                    <td className={TD_CLASS}>{money(pricing.costPerM2)}</td>
-                    <td className={`${TD_CLASS} font-semibold text-gray-900`}>
-                      {money(pricing.salePerM2)}
-                    </td>
-                    {pricing.tierPrices.map((tier) => (
-                      <td key={tier.name} className={TD_CLASS}>
-                        {money(tier.pricePerM2)}
+                  <Fragment key={item.id}>
+                    <tr className="hover:bg-gray-50">
+                      <td className={FROZEN_TD_FIRST}>{item.supplierName}</td>
+                      <td className={FROZEN_TD_SECOND}>{item.productName}</td>
+                      <td className={`${TD_CLASS} text-center`}>
+                        <input
+                          type="checkbox"
+                          checked={item.preferred === true}
+                          onChange={(e) => handleTogglePreferred(item, e.target.checked)}
+                          aria-label="Preferred"
+                          className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                        />
                       </td>
-                    ))}
-                    <td className={TD_CLASS}>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => startEdit(row)}
-                          className="text-sm font-medium text-teal-600 hover:text-teal-700"
+                      <td className={TD_CLASS}>{paintTypeDisplay}</td>
+                      <td className={TD_CLASS}>
+                        <select
+                          defaultValue={rawGenericType ?? ""}
+                          key={`generic-${item.id}-${rawGenericType ?? ""}`}
+                          onChange={(e) => handleInlineGenericTypeSave(item, e.target.value)}
+                          aria-label="Technology"
+                          className={`${INPUT_CLASS} w-40`}
                         >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(row)}
-                          disabled={deleteItem.isPending}
-                          className="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+                          <option value="">—</option>
+                          {GENERIC_TYPES.map((value) => (
+                            <option key={value} value={value}>
+                              {value}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className={TD_CLASS}>
+                        <select
+                          defaultValue={rawCoatType ?? ""}
+                          key={`coat-${item.id}-${rawCoatType ?? ""}`}
+                          onChange={(e) => handleInlineCoatSave(item, e.target.value)}
+                          aria-label="Coat type"
+                          className={`${INPUT_CLASS} w-32`}
                         >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                          <option value="">—</option>
+                          {COAT_TYPES.map((coat) => (
+                            <option key={coat.value} value={coat.value}>
+                              {coat.label}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className={TD_CLASS}>
+                        <div className="flex items-center gap-2">
+                          <span>{packDisplay}</span>
+                          {hasMultiplePacks ? (
+                            <button
+                              type="button"
+                              onClick={() => toggleExpanded(item.id)}
+                              aria-label={`${isExpanded ? "Hide" : "Show"} all ${packCount} packs`}
+                              className="inline-flex items-center gap-0.5 rounded-full border border-teal-200 bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700 hover:bg-teal-100"
+                            >
+                              <span>{isExpanded ? "▴" : "▾"}</span>
+                              <span>{packCount} packs</span>
+                            </button>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className={TD_CLASS}>{item.volumeSolidsPercent}</td>
+                      <td className={TD_CLASS}>{money(item.costPerLitre)}</td>
+                      <td className={TD_CLASS}>
+                        {item.costPerKit === null ? "—" : money(item.costPerKit)}
+                      </td>
+                      <td className={TD_CLASS}>
+                        <input
+                          type="number"
+                          step="0.1"
+                          defaultValue={item.upliftPercent}
+                          key={`uplift-${item.id}-${item.upliftPercent}`}
+                          onBlur={(e) => handleInlineSave(item, "upliftPercent", e.target.value)}
+                          aria-label="Uplift percent"
+                          className={`${INPUT_CLASS} w-20`}
+                        />
+                      </td>
+                      <td className={TD_CLASS}>{recMicronsDisplay}</td>
+                      <td className={TD_CLASS}>
+                        <input
+                          type="number"
+                          step="1"
+                          defaultValue={micronsOverrideValue ?? ""}
+                          key={`mo-${item.id}-${micronsOverrideValue ?? ""}`}
+                          onBlur={(e) => handleInlineSave(item, "micronsOverride", e.target.value)}
+                          aria-label="Microns override"
+                          className={`${INPUT_CLASS} w-20`}
+                        />
+                      </td>
+                      <td className={TD_CLASS}>{thinnerNameDisplay}</td>
+                      <td className={TD_CLASS}>
+                        {item.thinnerPricePerLitre === null
+                          ? "—"
+                          : money(item.thinnerPricePerLitre)}
+                      </td>
+                      <td className={TD_CLASS}>{maxThinDisplay}</td>
+                      <td className={TD_CLASS}>
+                        {decimal(pricing.flatPlateCoverageM2PerLitre, 2)}
+                      </td>
+                      <td className={TD_CLASS}>
+                        {decimal(pricing.coverageAfterLossM2PerLitre, 2)}
+                      </td>
+                      <td className={TD_CLASS}>{money(pricing.thinnerCostPerM2)}</td>
+                      <td className={TD_CLASS}>{money(pricing.costPerM2)}</td>
+                      <td className={`${TD_CLASS} font-semibold text-gray-900`}>
+                        {money(pricing.salePerM2)}
+                      </td>
+                      {pricing.tierPrices.map((tier) => (
+                        <td key={tier.name} className={TD_CLASS}>
+                          {money(tier.pricePerM2)}
+                        </td>
+                      ))}
+                      <td className={TD_CLASS}>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => startEdit(row)}
+                            className="text-sm font-medium text-teal-600 hover:text-teal-700"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(row)}
+                            disabled={deleteItem.isPending}
+                            className="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {hasMultiplePacks && isExpanded ? (
+                      <tr className="bg-gray-50">
+                        <td
+                          className={`${TD_CLASS} sticky left-0 z-10 bg-gray-50`}
+                          colSpan={totalColumns}
+                        >
+                          <div className="space-y-1.5 py-1">
+                            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                              All packs for {item.productName}
+                            </div>
+                            {packVariants.map((variant) => {
+                              const variantPack = variant.packSizeLitres;
+                              const variantPackDisplay =
+                                variantPack === null ? "—" : `${variantPack} L`;
+                              const variantKit = variant.costPerKit;
+                              const variantKitDisplay =
+                                variantKit === null ? "—" : money(variantKit);
+                              const isPricingPack = variant.id === item.id;
+                              return (
+                                <div
+                                  key={variant.id}
+                                  className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-gray-700"
+                                >
+                                  <span className="w-20 font-medium text-gray-900">
+                                    {variantPackDisplay}
+                                  </span>
+                                  <span className="w-32">{money(variant.costPerLitre)} / L</span>
+                                  <span className="w-32">Kit {variantKitDisplay}</span>
+                                  {isPricingPack ? (
+                                    <span className="rounded-full bg-teal-100 px-2 py-0.5 text-xs font-medium text-teal-700">
+                                      pricing
+                                    </span>
+                                  ) : null}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeletePack(item.productName, variant)}
+                                    disabled={deleteItem.isPending}
+                                    className="text-xs font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
                 );
               })}
 
@@ -1050,6 +1454,15 @@ export default function PaintPricingPage() {
                     className={INPUT_CLASS}
                   />
                 </td>
+                <td className={`${TD_CLASS} text-center`}>
+                  <input
+                    type="checkbox"
+                    checked={newDraft.preferred}
+                    onChange={(e) => setNewPreferred(e.target.checked)}
+                    aria-label="Preferred"
+                    className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                  />
+                </td>
                 <td className={TD_CLASS}>
                   <input
                     type="text"
@@ -1058,6 +1471,9 @@ export default function PaintPricingPage() {
                     onChange={(e) => setNewField("paintType", e.target.value)}
                     className={INPUT_CLASS}
                   />
+                </td>
+                <td className={TD_CLASS}>
+                  <span className="text-xs text-gray-400">Set after saving</span>
                 </td>
                 <td className={TD_CLASS}>
                   <select

@@ -822,6 +822,23 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     ),
   },
   {
+    key: "paint-quote",
+    href: "/stock-control/portal/quote",
+    label: "Paint Quote",
+    defaultRoles: ["manager", "admin"],
+    group: "Resources",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M9 7h6m-6 4h6m-6 4h6M7 3h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z"
+        />
+      </svg>
+    ),
+  },
+  {
     key: "reports",
     href: "/stock-control/portal/reports",
     label: "Reports",

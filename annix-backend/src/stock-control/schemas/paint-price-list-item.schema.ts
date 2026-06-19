@@ -28,6 +28,24 @@ export class PaintPriceListItem {
   @Prop({ type: String, required: false })
   paintType: string;
 
+  @Prop({ type: String, required: false })
+  genericType: string;
+
+  @Prop({ type: String, required: false })
+  finishType: string;
+
+  @Prop({ type: Boolean, required: true, default: false })
+  zincRich: boolean;
+
+  @Prop({ type: Boolean, required: true, default: false })
+  mioPigment: boolean;
+
+  @Prop({ type: Boolean, required: true, default: false })
+  surfaceTolerant: boolean;
+
+  @Prop({ type: Number, required: false })
+  heatResistanceC: number;
+
   @Prop({ type: Number, required: false })
   packSizeLitres: number;
 
@@ -60,6 +78,9 @@ export class PaintPriceListItem {
 
   @Prop({ type: Boolean, required: true, default: true })
   active: boolean;
+
+  @Prop({ type: Boolean, required: true, default: false })
+  preferred: boolean;
 
   @Prop({ type: Date, required: false })
   createdAt: Date;

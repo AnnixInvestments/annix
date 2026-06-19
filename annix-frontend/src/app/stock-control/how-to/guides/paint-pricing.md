@@ -5,10 +5,10 @@ category: Admin
 roles: [admin, manager]
 order: 6
 tags: [paint, pricing, coating, quoting, discounts]
-lastUpdated: 2026-06-19
-summary: Maintain the paint price list and the markup, application cost and discount tiers used to quote coating work per square metre.
+lastUpdated: 2026-06-20
+summary: Maintain the paint price list and the markup, application cost, discount tiers and blasting prices used to quote coating work per square metre.
 readingMinutes: 4
-relatedPaths: [annix-frontend/src/app/stock-control/portal/admin/paint-pricing/page.tsx, annix-frontend/src/app/lib/query/hooks/stock-control/usePaintPricing.ts, annix-frontend/src/app/lib/api/stock-control-api/paintPricingMethods.ts]
+relatedPaths: [annix-frontend/src/app/stock-control/portal/admin/paint-pricing/page.tsx, annix-frontend/src/app/lib/query/hooks/stock-control/usePaintPricing.ts, annix-frontend/src/app/lib/api/stock-control-api/paintPricingMethods.ts, annix-frontend/src/app/stock-control/portal/job-cards/[id]/components/CoatingAnalysisTab.tsx]
 ---
 
 ## What it does
@@ -31,14 +31,41 @@ Click **Save settings** after any change.
 
 Discount tiers are named price levels (for example a key-account tier) shown as extra columns in the price list. Use **+ Add tier** to create one, give it a name and a discount percentage, and **Remove** to delete it. Each tier produces its own per-square-metre price for every paint.
 
+### Blasting prices (R/m²)
+
+Below the discount tiers, the **Blasting prices (R/m²)** panel sets the surface-preparation rate charged per square metre for each blast grade — SA3, SA2.5, SA2 and Flash blast. For every grade you set a **Standard R/m²** rate, and one rate per discount tier, so a tiered customer can have their own blasting price (for example a different SA3 rate). Leave a tier price at zero to fall back to the standard rate. These rates feed the **Blasting** line on the Paint Quote page. Click **Save settings** to store them along with the rest of the pricing settings.
+
 ## The paint price list
 
-Each row is one paint. You can edit the editable columns:
+Each row is one product. When a product is sold in several pack sizes, the list shows it **once** at the higher per-litre price (the conservative cost), so its sale prices never undercharge. A small **▾ N packs** button next to the Pack (L) cell expands the row to reveal every pack — pack size, cost per litre and cost per kit — with the dearer per-litre pack marked **pricing** (it's the one driving the sale price). Purchasing then picks the best pack for each job. You can **Delete** any individual pack from the expanded list; if you delete the pricing pack, the next-dearest pack automatically becomes the pricing row.
 
-- Supplier, Product, Paint type (the chemistry, e.g. Epoxy or Polyurethane), Coat type (primer / intermediate / final), Pack size (L)
+You can edit the editable columns:
+
+- Supplier, Product, **Preferred**, Paint type (the chemistry, e.g. Epoxy or Polyurethane), **Technology**, Coat type (primer / intermediate / final), Pack size (L)
 - Vol solids %, Cost/L, Cost/kit, Uplift %
 - Recommended µm and a µm override
 - Thinner, Thinner R/L and Max thin %
+
+The **Technology** column is an inline dropdown that classifies the paint's precise coating technology (zinc-rich-epoxy, epoxy-mio, polyurethane, polysiloxane, and so on). It is normally filled in automatically by **Find missing specs (Nix)**, but you can correct a paint's classification here at any time — pick the right technology from the dropdown and the change saves immediately, or pick **—** to clear it. The technology drives the like-for-like matching on the Paint Quote page's supplier comparison, so getting it right means a zinc-rich-epoxy primer is only ever compared against another zinc-rich-epoxy primer.
+
+The **Preferred** checkbox marks a paint as the default choice for its coat type. When you open the **Paint Quote** page, each coat slot (primer / intermediate / final) is pre-selected with the preferred paint whose coat type matches that slot, so quoting a standard system is a single click. Tick or untick it directly in the row — the change saves immediately.
+
+Preferred paints also drive the **Assign paint** control on a job card's coating specification (see below).
+
+## Assigning a preferred paint to a job-card coat
+
+On a job card's **Coating Analysis** tab, admins can override the paint Nix extracted for any coat. Next to each coat row an **Assign preferred paint…** dropdown lists the company's preferred paints, with the ones whose coat type matches that coat's role (primer / intermediate / final) shown first and the rest under an **Other preferred paints…** group. Picking one assigns its product name, chemistry and volume solids to the coat, and — when the preferred paint carries a recommended film thickness — sets the coat's DFT to that value. A coat keeps its existing DFT when the chosen paint has no recommended microns. The dropdown only appears for admins, and shows **No preferred paints set** if none have been marked preferred on the price list.
+
+## Pack options (buyer helper on a job card)
+
+On a job card's **Coating Analysis** tab, once Nix has worked out how many litres of each paint the job needs, click **Pack options** in the **Stock Assessment** header to see the cheapest way to actually buy those litres. For each paint it shows:
+
+- **Recommended (cheapest)** — the cheapest combination of whole packs covering the required litres (for example 7 L → 2 × 5 L, or 18 L → 1 × 20 L), each line as "`qty × pack size @ pack cost = line total`", with the **total cost** in bold and the total litres bought.
+- **Alternatives** — the all-one-pack-size options (for example all 5 L vs all 20 L), so you can compare against the recommended mix.
+
+Because paint only comes in whole packs, the cheapest option often covers slightly more litres than the job needs — that overage is normal and is called out under the recommendation.
+
+You can also **order extra for stock**: change the **Litres** for any paint in the panel and click **Recalculate** to re-run the pack options for the new quantity and see both the pack breakdown and the totals update. The panel is a buyer aid only — it does not change the stock decision or the requisition you submit. It appears for the same managers/admins who can edit the assessment, and a paint that isn't on the paint price list shows **Not in paint price list**.
 
 The remaining columns are calculated automatically and cannot be edited: flat-plate coverage (m²/L), coverage after loss, thinner cost/m², cost/m², **sale/m²**, and one column per discount tier.
 
@@ -52,7 +79,7 @@ Above the table, three dropdowns narrow down which paints are shown:
 - **Coat type** — show only primer, intermediate or final coats, or all coat types.
 - **Paint type** — show only one chemistry (e.g. Epoxy), or all paint types.
 
-Combine them to drill in (for example, one supplier's epoxy primers). When any filter is active the heading reads **Showing N of M paints**. The blank add-paint row at the bottom stays visible no matter what is filtered, so you can always add a new paint.
+Combine them to drill in (for example, one supplier's epoxy primers). When any filter is active the heading reads **Showing N of M products**. The blank add-paint row at the bottom stays visible no matter what is filtered, so you can always add a new paint.
 
 ### Bulk uplift %
 
@@ -71,7 +98,9 @@ Some price lists (like StonCor's) already include volume solids, film thickness 
 
 ## Filling in missing specs
 
-When a price list only carries prices (no volume solids, film thickness, coat type or chemistry), those paints import with blank spec columns and can't show a sale price yet. Click **Find missing specs (Nix)** to fill only the blank fields — coat type (primer / intermediate / final), paint type (chemistry), volume solids, recommended microns, thinner and max thinning %. It checks the system's built-in coating reference first and uses Nix's knowledge of the published data sheets for anything the reference doesn't cover, leaving values it isn't sure of blank and never overwriting values you already have. This is a separate step from the upload so importing prices stays fast.
+When a price list only carries prices (no volume solids, film thickness, coat type or chemistry), those paints import with blank spec columns and can't show a sale price yet. Click **Find missing specs (Nix)** to fill the blank fields — coat type (primer / intermediate / final), paint type (chemistry), volume solids, recommended microns, thinner and max thinning %. It checks the system's built-in coating reference first and uses Nix's knowledge of the published data sheets for anything the reference doesn't cover, leaving values it isn't sure of blank. This is a separate step from the upload so importing prices stays fast.
+
+Running it also **re-checks the Technology (coating type) of every paint against the built-in reference and corrects it** if it differs — so a known product that was classified wrongly (for example a zinc-rich epoxy primer tagged as plain epoxy) is put right on the next run, across all paints, not just the blank ones. Nix's own data-sheet guesses never overwrite a value you already have; only the curated reference corrects a known product. For products the reference doesn't know, fix the Technology by hand in its dropdown.
 
 Because some of these values come from Nix's knowledge rather than the exact current data sheet, spot-check the filled coat type and any filled volume solids / microns against the supplier's TDS before relying on the sale prices.
 

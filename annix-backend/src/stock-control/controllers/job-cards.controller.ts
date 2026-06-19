@@ -371,12 +371,19 @@ export class JobCardsController {
 
   @StockControlRoles("admin")
   @Patch(":id/coating-analysis/coats/:index")
-  @ApiOperation({ summary: "Update a coat line DFT values" })
+  @ApiOperation({ summary: "Update a coat line: DFT values and/or assigned product" })
   async updateCoat(
     @Req() req: any,
     @Param("id") id: number,
     @Param("index") index: number,
-    @Body() body: { minDftUm?: number; maxDftUm?: number },
+    @Body()
+    body: {
+      minDftUm?: number;
+      maxDftUm?: number;
+      product?: string;
+      genericType?: string | null;
+      solidsByVolumePercent?: number;
+    },
   ) {
     return this.coatingAnalysisService.updateCoat(req.user.companyId, id, Number(index), body);
   }

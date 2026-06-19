@@ -359,7 +359,13 @@ export class CoatingAnalysisService {
     companyId: number,
     jobCardId: number,
     coatIndex: number,
-    updates: { minDftUm?: number; maxDftUm?: number },
+    updates: {
+      minDftUm?: number;
+      maxDftUm?: number;
+      product?: string;
+      genericType?: string | null;
+      solidsByVolumePercent?: number;
+    },
   ): Promise<JobCardCoatingAnalysis> {
     const analysis = await this.analysisRepo.findOneForJobCard(companyId, jobCardId);
 
@@ -373,6 +379,11 @@ export class CoatingAnalysisService {
     }
 
     const coat = coats[coatIndex];
+    if (updates.product !== undefined) coat.product = updates.product;
+    if (updates.genericType !== undefined) coat.genericType = updates.genericType;
+    if (updates.solidsByVolumePercent !== undefined) {
+      coat.solidsByVolumePercent = updates.solidsByVolumePercent;
+    }
     if (updates.minDftUm !== undefined) coat.minDftUm = updates.minDftUm;
     if (updates.maxDftUm !== undefined) coat.maxDftUm = updates.maxDftUm;
 

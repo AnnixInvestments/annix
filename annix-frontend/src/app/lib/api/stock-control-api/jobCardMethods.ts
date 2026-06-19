@@ -183,7 +183,13 @@ declare module "./base" {
     updateCoatingCoat(
       jobCardId: number,
       coatIndex: number,
-      updates: { minDftUm?: number; maxDftUm?: number },
+      updates: {
+        minDftUm?: number;
+        maxDftUm?: number;
+        product?: string;
+        genericType?: string | null;
+        solidsByVolumePercent?: number;
+      },
     ): Promise<CoatingAnalysis>;
     removeCoatingCoat(jobCardId: number, coatIndex: number): Promise<CoatingAnalysis>;
     deleteLineItem(jobCardId: number, lineItemId: number): Promise<void>;

@@ -2,15 +2,28 @@ import { StockControlApiClient } from "./base";
 import type {
   CommitPaintPriceListImportInput,
   CreatePaintPriceListItemInput,
+  MultiCoatQuoteInput,
+  MultiCoatQuoteResult,
+  PackOptionRequestItem,
+  PackOptionResult,
   PaintPriceListImportPreview,
   PaintPriceListItem,
   PaintPricingConfig,
   PaintPricingResponse,
+  PaintQuoteInput,
+  PaintQuoteResult,
+  PreferredPaintOption,
+  QuoteCatalogItem,
 } from "./types";
 
 declare module "./base" {
   interface StockControlApiClient {
     paintPricing(): Promise<PaintPricingResponse>;
+    preferredPaints(): Promise<PreferredPaintOption[]>;
+    paintQuoteCatalog(): Promise<QuoteCatalogItem[]>;
+    paintQuote(input: PaintQuoteInput): Promise<PaintQuoteResult>;
+    paintMultiCoatQuote(input: MultiCoatQuoteInput): Promise<MultiCoatQuoteResult>;
+    paintPackOptions(items: PackOptionRequestItem[]): Promise<PackOptionResult[]>;
     createPaintPriceItem(input: CreatePaintPriceListItemInput): Promise<PaintPriceListItem>;
     updatePaintPriceItem(
       id: number,
@@ -31,6 +44,35 @@ const proto = StockControlApiClient.prototype;
 
 proto.paintPricing = async function () {
   return this.request("/stock-control/paint-pricing");
+};
+
+proto.preferredPaints = async function () {
+  return this.request("/stock-control/paint-pricing/preferred");
+};
+
+proto.paintQuoteCatalog = async function () {
+  return this.request("/stock-control/paint-pricing/quote/catalog");
+};
+
+proto.paintQuote = async function (input) {
+  return this.request("/stock-control/paint-pricing/quote", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+};
+
+proto.paintMultiCoatQuote = async function (input) {
+  return this.request("/stock-control/paint-pricing/quote/multi-coat", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+};
+
+proto.paintPackOptions = async function (items) {
+  return this.request("/stock-control/paint-pricing/pack-options", {
+    method: "POST",
+    body: JSON.stringify({ items }),
+  });
 };
 
 proto.createPaintPriceItem = async function (input) {

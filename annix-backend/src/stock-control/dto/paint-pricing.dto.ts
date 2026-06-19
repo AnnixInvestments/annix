@@ -11,6 +11,11 @@ import {
   ValidateNested,
 } from "class-validator";
 
+import {
+  PAINT_FINISH_TYPES,
+  PAINT_GENERIC_TYPES,
+} from "../services/paint-price-list-extraction.service";
+
 const COAT_TYPES = ["primer", "intermediate", "final"] as const;
 
 @ApiSchema({ name: "StockControlCreatePaintPriceListItemDto" })
@@ -28,6 +33,31 @@ export class CreatePaintPriceListItemDto {
   @IsOptional()
   @IsString()
   paintType?: string | null;
+
+  @IsOptional()
+  @IsIn(PAINT_GENERIC_TYPES)
+  genericType?: string | null;
+
+  @IsOptional()
+  @IsIn(PAINT_FINISH_TYPES)
+  finishType?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  zincRich?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  mioPigment?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  surfaceTolerant?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  heatResistanceC?: number | null;
 
   @IsOptional()
   @IsNumber()
@@ -79,6 +109,10 @@ export class CreatePaintPriceListItemDto {
   @IsOptional()
   @IsBoolean()
   active?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  preferred?: boolean;
 }
 
 @ApiSchema({ name: "StockControlUpdatePaintPriceListItemDto" })
@@ -98,6 +132,31 @@ export class UpdatePaintPriceListItemDto {
   @IsOptional()
   @IsString()
   paintType?: string | null;
+
+  @IsOptional()
+  @IsIn(PAINT_GENERIC_TYPES)
+  genericType?: string | null;
+
+  @IsOptional()
+  @IsIn(PAINT_FINISH_TYPES)
+  finishType?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  zincRich?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  mioPigment?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  surfaceTolerant?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  heatResistanceC?: number | null;
 
   @IsOptional()
   @IsNumber()
@@ -151,6 +210,10 @@ export class UpdatePaintPriceListItemDto {
   @IsOptional()
   @IsBoolean()
   active?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  preferred?: boolean;
 }
 
 @ApiSchema({ name: "StockControlPaintDiscountTierDto" })
@@ -161,6 +224,31 @@ export class PaintDiscountTierDto {
   @IsNumber()
   @Min(0)
   discountPercent: number;
+}
+
+@ApiSchema({ name: "StockControlPaintBlastTierPriceDto" })
+export class PaintBlastTierPriceDto {
+  @IsString()
+  name: string;
+
+  @IsNumber()
+  @Min(0)
+  pricePerM2: number;
+}
+
+@ApiSchema({ name: "StockControlPaintBlastGradeDto" })
+export class PaintBlastGradeDto {
+  @IsString()
+  grade: string;
+
+  @IsNumber()
+  @Min(0)
+  pricePerM2: number;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PaintBlastTierPriceDto)
+  tierPrices: PaintBlastTierPriceDto[];
 }
 
 @ApiSchema({ name: "StockControlUpdatePaintPricingConfigDto" })
@@ -181,6 +269,79 @@ export class UpdatePaintPricingConfigDto {
   @ValidateNested({ each: true })
   @Type(() => PaintDiscountTierDto)
   discountTiers: PaintDiscountTierDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PaintBlastGradeDto)
+  blastGrades: PaintBlastGradeDto[];
+}
+
+@ApiSchema({ name: "StockControlPackOptionRequestItemDto" })
+export class PackOptionRequestItemDto {
+  @IsString()
+  product: string;
+
+  @IsNumber()
+  @Min(0)
+  litres: number;
+}
+
+@ApiSchema({ name: "StockControlPackOptionsDto" })
+export class PackOptionsDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PackOptionRequestItemDto)
+  items: PackOptionRequestItemDto[];
+}
+
+@ApiSchema({ name: "StockControlMultiCoatQuoteCoatDto" })
+export class MultiCoatQuoteCoatDto {
+  @IsNumber()
+  itemId: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  micronsOverride?: number | null;
+}
+
+@ApiSchema({ name: "StockControlMultiCoatQuoteDto" })
+export class MultiCoatQuoteDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => MultiCoatQuoteCoatDto)
+  coats: MultiCoatQuoteCoatDto[];
+
+  @IsOptional()
+  @IsString()
+  blastGrade?: string | null;
+
+  @IsNumber()
+  @Min(0)
+  areaM2: number;
+
+  @IsOptional()
+  @IsString()
+  tierName?: string | null;
+}
+
+@ApiSchema({ name: "StockControlPaintQuoteDto" })
+export class PaintQuoteDto {
+  @IsNumber()
+  itemId: number;
+
+  @IsNumber()
+  @Min(0)
+  areaM2: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  micronsOverride?: number | null;
+
+  @IsOptional()
+  @IsString()
+  tierName?: string | null;
 }
 
 @ApiSchema({ name: "StockControlBulkUpliftDto" })

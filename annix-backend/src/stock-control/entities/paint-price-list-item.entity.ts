@@ -1,5 +1,36 @@
 export type PaintCoatRole = "primer" | "intermediate" | "final";
 
+export type PaintGenericType =
+  | "zinc-rich-epoxy"
+  | "zinc-silicate"
+  | "epoxy"
+  | "epoxy-mio"
+  | "epoxy-mastic"
+  | "epoxy-phenolic"
+  | "epoxy-glass-flake"
+  | "coal-tar-epoxy"
+  | "polyurethane"
+  | "polysiloxane"
+  | "polyurea"
+  | "acrylic"
+  | "alkyd"
+  | "vinyl"
+  | "high-temp-silicone"
+  | "intumescent"
+  | "fbe"
+  | "3lpe";
+
+export type PaintFinishType =
+  | "aliphatic-pu"
+  | "aromatic-pu"
+  | "acrylic-pu"
+  | "acrylic"
+  | "alkyd"
+  | "epoxy"
+  | "phenolic"
+  | "vinyl"
+  | "silicone";
+
 export class PaintPriceListItem {
   id: number;
 
@@ -12,6 +43,18 @@ export class PaintPriceListItem {
   productName: string;
 
   paintType: string | null;
+
+  genericType: PaintGenericType | null;
+
+  finishType: PaintFinishType | null;
+
+  zincRich: boolean;
+
+  mioPigment: boolean;
+
+  surfaceTolerant: boolean;
+
+  heatResistanceC: number | null;
 
   packSizeLitres: number | null;
 
@@ -34,6 +77,8 @@ export class PaintPriceListItem {
   maxThinningPercent: number | null;
 
   active: boolean;
+
+  preferred: boolean;
 
   createdAt: Date;
 

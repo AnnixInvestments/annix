@@ -7,6 +7,12 @@ export interface PaintPriceListItem {
   coatType: PaintCoatRole | null;
   productName: string;
   paintType: string | null;
+  genericType: string | null;
+  finishType: string | null;
+  zincRich: boolean;
+  mioPigment: boolean;
+  surfaceTolerant: boolean;
+  heatResistanceC: number | null;
   packSizeLitres: number | null;
   volumeSolidsPercent: number;
   costPerLitre: number;
@@ -17,9 +23,20 @@ export interface PaintPriceListItem {
   thinnerName: string | null;
   thinnerPricePerLitre: number | null;
   maxThinningPercent: number | null;
+  preferred: boolean;
   active: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PreferredPaintOption {
+  id: number;
+  productName: string;
+  supplierName: string;
+  coatType: PaintCoatRole | null;
+  paintType: string | null;
+  recommendedMicrons: number | null;
+  volumeSolidsPercent: number;
 }
 
 export interface PaintPricingTierPrice {
@@ -41,9 +58,42 @@ export interface PaintPricingResult {
   tierPrices: PaintPricingTierPrice[];
 }
 
+export interface PaintPackVariant {
+  id: number;
+  packSizeLitres: number | null;
+  costPerLitre: number;
+  costPerKit: number | null;
+}
+
 export interface PaintPriceListRow {
   item: PaintPriceListItem;
   pricing: PaintPricingResult;
+  isPricingVariant: boolean;
+  packVariants: PaintPackVariant[];
+}
+
+export interface PackOptionLine {
+  packSizeLitres: number;
+  qty: number;
+  packCost: number;
+  lineTotal: number;
+  totalLitres: number;
+}
+
+export interface PackOptionRequestItem {
+  product: string;
+  litres: number;
+}
+
+export interface PackOptionResult {
+  product: string;
+  matched: boolean;
+  litres: number;
+  packs: PaintPackVariant[];
+  singlePackOptions: PackOptionLine[];
+  best: PackOptionLine[] | null;
+  bestTotalCost: number | null;
+  bestTotalLitres: number | null;
 }
 
 export interface PaintDiscountTier {
@@ -51,11 +101,23 @@ export interface PaintDiscountTier {
   discountPercent: number;
 }
 
+export interface PaintBlastTierPrice {
+  name: string;
+  pricePerM2: number;
+}
+
+export interface PaintBlastGrade {
+  grade: string;
+  pricePerM2: number;
+  tierPrices: PaintBlastTierPrice[];
+}
+
 export interface PaintPricingConfig {
   applicationCostPerM2: number;
   markupFactor: number;
   lossPct: number;
   discountTiers: PaintDiscountTier[];
+  blastGrades: PaintBlastGrade[];
 }
 
 export interface PaintPricingResponse {
@@ -69,6 +131,12 @@ export interface CreatePaintPriceListItemInput {
   coatType?: PaintCoatRole | null;
   productName: string;
   paintType?: string | null;
+  genericType?: string | null;
+  finishType?: string | null;
+  zincRich?: boolean;
+  mioPigment?: boolean;
+  surfaceTolerant?: boolean;
+  heatResistanceC?: number | null;
   packSizeLitres?: number | null;
   volumeSolidsPercent: number;
   costPerLitre: number;
@@ -79,7 +147,86 @@ export interface CreatePaintPriceListItemInput {
   thinnerName?: string | null;
   thinnerPricePerLitre?: number | null;
   maxThinningPercent?: number | null;
+  preferred?: boolean;
   active?: boolean;
+}
+
+export interface QuoteTierPrice {
+  name: string;
+  discountPercent: number;
+  pricePerM2: number;
+}
+
+export interface QuoteCatalogItem {
+  id: number;
+  supplierName: string;
+  productName: string;
+  paintType: string | null;
+  coatType: string | null;
+  genericType: string | null;
+  finishType: string | null;
+  zincRich: boolean;
+  mioPigment: boolean;
+  recommendedMicrons: number | null;
+  salePerM2: number;
+  preferred: boolean;
+  tiers: QuoteTierPrice[];
+}
+
+export interface PaintQuoteInput {
+  itemId: number;
+  areaM2: number;
+  micronsOverride?: number | null;
+  tierName?: string | null;
+}
+
+export interface PaintQuoteResult {
+  productName: string;
+  supplierName: string;
+  microns: number;
+  areaM2: number;
+  tierName: string | null;
+  pricePerM2: number;
+  total: number;
+}
+
+export interface MultiCoatQuoteCoatInput {
+  itemId: number;
+  micronsOverride?: number | null;
+}
+
+export interface MultiCoatQuoteInput {
+  coats: MultiCoatQuoteCoatInput[];
+  blastGrade?: string | null;
+  areaM2: number;
+  tierName?: string | null;
+}
+
+export interface MultiCoatQuoteLine {
+  itemId: number;
+  productName: string;
+  supplierName: string;
+  coatType: string | null;
+  microns: number;
+  pricePerM2: number;
+  lineTotal: number;
+}
+
+export interface MultiCoatBlastLine {
+  grade: string;
+  pricePerM2: number;
+  lineTotal: number;
+}
+
+export interface MultiCoatQuoteResult {
+  coats: MultiCoatQuoteLine[];
+  blast: MultiCoatBlastLine | null;
+  areaM2: number;
+  tierName: string | null;
+  paintPricePerM2: number;
+  paintTotal: number;
+  blastTotal: number;
+  total: number;
 }
 
 export interface PaintPriceListImportPreview {

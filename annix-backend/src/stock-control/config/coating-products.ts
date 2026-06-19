@@ -88,8 +88,8 @@ const COATING_PRODUCTS: CoatingProductSpec[] = [
   },
   {
     name: "Barrier 80",
-    aliases: ["barrier80"],
-    genericType: "epoxy",
+    aliases: ["barrier80", "barrier 80 s", "barrier80s"],
+    genericType: "zinc_rich",
     volumeSolidsPercent: 69,
   },
   {

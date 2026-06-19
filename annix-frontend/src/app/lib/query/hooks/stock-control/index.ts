@@ -33,11 +33,16 @@ export {
 export {
   useBulkUpliftPaintPrices,
   useCommitPaintPriceListImport,
+  useCreateMultiCoatQuote,
+  useCreatePaintPackOptions,
   useCreatePaintPriceItem,
+  useCreatePaintQuote,
   useDeletePaintPriceItem,
   useEnrichPaintPriceSpecs,
   useImportPaintPriceList,
   usePaintPricing,
+  usePaintQuoteCatalog,
+  usePreferredPaints,
   useUpdatePaintPriceItem,
   useUpdatePaintPricingConfig,
 } from "./usePaintPricing";

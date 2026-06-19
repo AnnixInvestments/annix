@@ -2,14 +2,21 @@
 
 import { keys } from "es-toolkit/compat";
 import { useState } from "react";
+import { useToast } from "@/app/components/Toast";
 import type {
   CoatingAnalysis,
   JobCardLineItem,
+  PackOptionResult,
   UnverifiedProduct,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useCreatePaintPackOptions, usePreferredPaints } from "@/app/lib/query/hooks";
 import { HelpTooltip } from "../../../../components/HelpTooltip";
+
+function money(value: number): string {
+  return value.toLocaleString("en-ZA", { style: "currency", currency: "ZAR" });
+}
 
 function isBandingProduct(product: string, rawNotes: string | null, isBanding?: boolean): boolean {
   if (isBanding === true) return true;
@@ -178,6 +185,16 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
   const [dftMax, setDftMax] = useState("");
   const [savingDft, setSavingDft] = useState(false);
   const [removingCoat, setRemovingCoat] = useState<number | null>(null);
+  const [assigningPaint, setAssigningPaint] = useState<number | null>(null);
+  const { showToast } = useToast();
+  const preferredPaintsQuery = usePreferredPaints();
+  const preferredPaintsData = preferredPaintsQuery.data;
+  const preferredPaints = preferredPaintsData || [];
+  const packOptionsMutation = useCreatePaintPackOptions();
+  const [showPackOptions, setShowPackOptions] = useState(false);
+  const [packOptions, setPackOptions] = useState<PackOptionResult[]>([]);
+  const [packLitres, setPackLitres] = useState<Record<string, number>>({});
+  const packOptionsPending = packOptionsMutation.isPending;
 
   const loadCorrections = async () => {
     try {
@@ -228,6 +245,35 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
       setEditingDft(null);
     } finally {
       setSavingDft(false);
+    }
+  };
+
+  const handleAssignPaint = async (idx: number, paintId: number, coatRoleLabel: string) => {
+    const paint = preferredPaints.find((p) => p.id === paintId);
+    if (!paint) return;
+    const recommendedMicrons = paint.recommendedMicrons;
+    const paintType = paint.paintType;
+    const productName = paint.productName;
+    const volumeSolids = paint.volumeSolidsPercent;
+    try {
+      setAssigningPaint(idx);
+      const baseUpdates = {
+        product: productName,
+        genericType: paintType !== null ? paintType : null,
+        solidsByVolumePercent: volumeSolids,
+      };
+      const updates =
+        recommendedMicrons !== null
+          ? { ...baseUpdates, minDftUm: recommendedMicrons, maxDftUm: recommendedMicrons }
+          : baseUpdates;
+      const updated = await stockControlApiClient.updateCoatingCoat(jobId, idx, updates);
+      onCoatingAnalysisChange(updated);
+      showToast(`Assigned ${productName} to ${coatRoleLabel} coat`, "success");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to assign paint";
+      showToast(message, "error");
+    } finally {
+      setAssigningPaint(null);
     }
   };
 
@@ -486,43 +532,111 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                   return acc;
                 }, []);
               const totalLitres = uniqueCoats.reduce((sum, c) => sum + c.litersRequired, 0);
+              const allCoats = coatingAnalysis.coats;
               return (
                 <div className="space-y-3">
-                  {uniqueCoats.map((coat, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between text-sm border-b border-gray-100 pb-2"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-500 capitalize">
-                          {coat.area === "external" ? "Ext" : "Int"}
-                        </span>
-                        <span className="font-medium text-gray-900">{coat.product}</span>
-                        {coat.verified === true && (
-                          <span className="inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-green-100 text-green-700">
-                            verified
+                  {uniqueCoats.map((coat, idx) => {
+                    const coatRole = coat.coatRole;
+                    const coatRoleLabel = coatRole || "selected";
+                    const coatProduct = coat.product;
+                    const coatArea = coat.area;
+                    const realIndex = allCoats.findIndex(
+                      (c) => c.product === coatProduct && c.area === coatArea,
+                    );
+                    const roleMatched = coatRole
+                      ? preferredPaints.filter((p) => p.coatType === coatRole)
+                      : [];
+                    const otherPaints = coatRole
+                      ? preferredPaints.filter((p) => p.coatType !== coatRole)
+                      : preferredPaints;
+                    const isAssigning = assigningPaint === realIndex;
+                    return (
+                      <div
+                        key={idx}
+                        className="flex flex-col gap-2 text-sm border-b border-gray-100 pb-2 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 capitalize">
+                            {coatArea === "external" ? "Ext" : "Int"}
                           </span>
-                        )}
-                        {coat.verified === false && (
-                          <span className="inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-700">
-                            unverified
+                          <span className="font-medium text-gray-900">{coatProduct}</span>
+                          {coat.verified === true && (
+                            <span className="inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-green-100 text-green-700">
+                              verified
+                            </span>
+                          )}
+                          {coat.verified === false && (
+                            <span className="inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-700">
+                              unverified
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-4 text-sm">
+                          <span className="text-gray-500">
+                            DFT:{" "}
+                            {coat.minDftUm === coat.maxDftUm
+                              ? coat.minDftUm
+                              : `${coat.minDftUm}-${coat.maxDftUm}`}{" "}
+                            µm
                           </span>
-                        )}
+                          <span className="text-gray-500">
+                            Coverage: {coat.coverageM2PerLiter} m²/L
+                          </span>
+                          {isAdmin &&
+                            realIndex >= 0 &&
+                            (preferredPaints.length === 0 ? (
+                              <span className="text-xs text-gray-400 italic">
+                                No preferred paints set
+                              </span>
+                            ) : (
+                              <select
+                                value=""
+                                disabled={isAssigning}
+                                onChange={(e) => {
+                                  const selected = e.target.value;
+                                  if (!selected) return;
+                                  handleAssignPaint(
+                                    realIndex,
+                                    Number.parseInt(selected, 10),
+                                    coatRoleLabel,
+                                  );
+                                }}
+                                className="text-xs border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-teal-500 disabled:bg-gray-100"
+                                title="Assign a preferred paint to this coat"
+                              >
+                                <option value="" disabled>
+                                  {isAssigning ? "Assigning..." : "Assign preferred paint…"}
+                                </option>
+                                {roleMatched.length > 0 && (
+                                  <optgroup label={`Preferred for ${coatRoleLabel} coat`}>
+                                    {roleMatched.map((paint) => (
+                                      <option key={paint.id} value={paint.id}>
+                                        {paint.productName}
+                                        {paint.recommendedMicrons !== null
+                                          ? ` (${paint.recommendedMicrons}µm)`
+                                          : ""}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                )}
+                                {otherPaints.length > 0 && (
+                                  <optgroup label="Other preferred paints…">
+                                    {otherPaints.map((paint) => (
+                                      <option key={paint.id} value={paint.id}>
+                                        {paint.productName}
+                                        {paint.recommendedMicrons !== null
+                                          ? ` (${paint.recommendedMicrons}µm)`
+                                          : ""}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                )}
+                              </select>
+                            ))}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-4 text-sm">
-                        <span className="text-gray-500">
-                          DFT:{" "}
-                          {coat.minDftUm === coat.maxDftUm
-                            ? coat.minDftUm
-                            : `${coat.minDftUm}-${coat.maxDftUm}`}{" "}
-                          µm
-                        </span>
-                        <span className="text-gray-500">
-                          Coverage: {coat.coverageM2PerLiter} m²/L
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   <div className="flex items-center justify-between pt-1">
                     <span className="text-sm font-medium text-gray-600">Total Litres Required</span>
                     <span className="text-lg font-bold text-teal-800">
@@ -590,6 +704,36 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                   }
                 };
 
+                const effectiveLitres = (product: string, required: number) => {
+                  const edited = pmEdits[product];
+                  return edited !== undefined ? edited : required;
+                };
+
+                const runPackOptions = async (litresByProduct: Record<string, number>) => {
+                  try {
+                    const items = deduped.map((item) => ({
+                      product: item.product,
+                      litres: effectiveLitres(item.product, item.required),
+                    }));
+                    const overrideItems = items.map((entry) => {
+                      const override = litresByProduct[entry.product];
+                      return override !== undefined ? { ...entry, litres: override } : entry;
+                    });
+                    const result = await packOptionsMutation.mutateAsync(overrideItems);
+                    setPackOptions(result);
+                    const seeded = overrideItems.reduce<Record<string, number>>((acc, entry) => {
+                      acc[entry.product] = entry.litres;
+                      return acc;
+                    }, {});
+                    setPackLitres(seeded);
+                    setShowPackOptions(true);
+                  } catch (err) {
+                    const message =
+                      err instanceof Error ? err.message : "Failed to load pack options";
+                    showToast(message, "error");
+                  }
+                };
+
                 return (
                   <div className="mt-4 pt-3 border-t border-gray-100">
                     <div className="flex items-center justify-between mb-2">
@@ -603,15 +747,27 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                           </span>
                         )}
                       </div>
-                      {isPmEditable && hasPmEdits && (
-                        <button
-                          onClick={handleSavePmEdits}
-                          disabled={isSavingPmEdits}
-                          className="px-3 py-1 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                        >
-                          {isSavingPmEdits ? "Saving..." : "Save Changes"}
-                        </button>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {isPmEditable && (
+                          <button
+                            onClick={() => runPackOptions({})}
+                            disabled={packOptionsPending}
+                            className="px-3 py-1 text-xs font-medium rounded-md border border-teal-300 text-teal-700 hover:bg-teal-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            title="Show the cheapest pack combinations to buy for each paint"
+                          >
+                            {packOptionsPending ? "Loading..." : "Pack options"}
+                          </button>
+                        )}
+                        {isPmEditable && hasPmEdits && (
+                          <button
+                            onClick={handleSavePmEdits}
+                            disabled={isSavingPmEdits}
+                            className="px-3 py-1 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                          >
+                            {isSavingPmEdits ? "Saving..." : "Save Changes"}
+                          </button>
+                        )}
+                      </div>
                     </div>
                     {pmEditError && <p className="text-xs text-red-600 mb-2">{pmEditError}</p>}
                     <div className="space-y-1">
@@ -675,6 +831,156 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                         </div>
                       ))}
                     </div>
+                    {showPackOptions &&
+                      (() => {
+                        const matchedOptions = packOptions.filter((opt) => opt.matched);
+                        const unmatchedOptions = packOptions.filter((opt) => !opt.matched);
+                        return (
+                          <div className="mt-4 pt-3 border-t border-gray-100" id="pack-options">
+                            <div className="flex items-center justify-between mb-1">
+                              <h5 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Pack options
+                              </h5>
+                              <button
+                                onClick={() => setShowPackOptions(false)}
+                                className="text-xs text-gray-400 hover:text-gray-600"
+                              >
+                                Hide
+                              </button>
+                            </div>
+                            <p className="text-[11px] text-gray-400 italic mb-2">
+                              Cheapest whole-pack combination to buy for each paint. Adjust the
+                              litres to order extra for stock.
+                            </p>
+                            <div className="space-y-3">
+                              {matchedOptions.map((opt) => {
+                                const product = opt.product;
+                                const best = opt.best;
+                                const bestTotalCost = opt.bestTotalCost;
+                                const bestTotalLitres = opt.bestTotalLitres;
+                                const singlePackOptions = opt.singlePackOptions;
+                                const litresValue = packLitres[product];
+                                const litresInput =
+                                  litresValue !== undefined ? litresValue : opt.litres;
+                                const overage =
+                                  bestTotalLitres !== null && bestTotalLitres > opt.litres;
+                                return (
+                                  <div
+                                    key={product}
+                                    className="rounded-md border border-gray-100 bg-gray-50 p-3 text-sm"
+                                  >
+                                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                                      <span className="font-medium text-gray-900">{product}</span>
+                                      <div className="flex items-center gap-2">
+                                        <label className="text-xs text-gray-500">Litres</label>
+                                        <input
+                                          type="number"
+                                          step="0.1"
+                                          min="0"
+                                          value={litresInput}
+                                          onChange={(e) => {
+                                            const parsed = Number.parseFloat(e.target.value) || 0;
+                                            setPackLitres((prev) => ({
+                                              ...prev,
+                                              [product]: parsed,
+                                            }));
+                                          }}
+                                          className="w-20 px-1 py-0.5 text-xs text-right border border-gray-300 rounded focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                                        />
+                                        <button
+                                          onClick={() => runPackOptions(packLitres)}
+                                          disabled={packOptionsPending}
+                                          className="px-2 py-0.5 text-xs font-medium rounded border border-teal-300 text-teal-700 hover:bg-teal-50 disabled:opacity-50"
+                                        >
+                                          {packOptionsPending ? "..." : "Recalculate"}
+                                        </button>
+                                      </div>
+                                    </div>
+                                    {best !== null && best.length > 0 ? (
+                                      <div className="mb-2">
+                                        <p className="text-xs font-semibold text-teal-700 mb-1">
+                                          Recommended (cheapest)
+                                        </p>
+                                        <ul className="space-y-0.5">
+                                          {best.map((line, lineIdx) => {
+                                            const qty = line.qty;
+                                            const packSizeLitres = line.packSizeLitres;
+                                            const packCost = line.packCost;
+                                            const lineTotal = line.lineTotal;
+                                            return (
+                                              <li key={lineIdx} className="text-xs text-gray-700">
+                                                {qty} × {packSizeLitres} L @ {money(packCost)} ={" "}
+                                                {money(lineTotal)}
+                                              </li>
+                                            );
+                                          })}
+                                        </ul>
+                                        {bestTotalCost !== null && (
+                                          <p className="mt-1 text-xs text-gray-700">
+                                            Total:{" "}
+                                            <span className="font-bold text-teal-800">
+                                              {money(bestTotalCost)}
+                                            </span>
+                                            {bestTotalLitres !== null && (
+                                              <span className="text-gray-500">
+                                                {" "}
+                                                ({bestTotalLitres} L)
+                                              </span>
+                                            )}
+                                          </p>
+                                        )}
+                                        {overage && (
+                                          <p className="mt-0.5 text-[11px] text-gray-400 italic">
+                                            Covers more than needed — whole packs only, the overage
+                                            is normal.
+                                          </p>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <p className="mb-2 text-xs text-gray-400 italic">
+                                        No pack combination available.
+                                      </p>
+                                    )}
+                                    {singlePackOptions.length > 0 && (
+                                      <div>
+                                        <p className="text-xs font-semibold text-gray-500 mb-1">
+                                          Alternatives
+                                        </p>
+                                        <ul className="space-y-0.5">
+                                          {singlePackOptions.map((line, lineIdx) => {
+                                            const qty = line.qty;
+                                            const packSizeLitres = line.packSizeLitres;
+                                            const packCost = line.packCost;
+                                            const lineTotal = line.lineTotal;
+                                            return (
+                                              <li key={lineIdx} className="text-xs text-gray-600">
+                                                {qty} × {packSizeLitres} L @ {money(packCost)} ={" "}
+                                                {money(lineTotal)}
+                                              </li>
+                                            );
+                                          })}
+                                        </ul>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                              {unmatchedOptions.map((opt) => {
+                                const product = opt.product;
+                                return (
+                                  <div
+                                    key={product}
+                                    className="flex items-center justify-between text-xs text-gray-400 italic"
+                                  >
+                                    <span>{product}</span>
+                                    <span>Not in paint price list</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     {props.showStockDecision &&
                       (() => {
                         const isProcessingDecision = props.isProcessingDecision;
