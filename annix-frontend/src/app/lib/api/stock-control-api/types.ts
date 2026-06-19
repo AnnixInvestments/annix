@@ -1,3 +1,98 @@
+export type PaintCoatRole = "primer" | "intermediate" | "final";
+
+export interface PaintPriceListItem {
+  id: number;
+  companyId: number;
+  supplierName: string;
+  coatType: PaintCoatRole | null;
+  productName: string;
+  paintType: string | null;
+  packSizeLitres: number | null;
+  volumeSolidsPercent: number;
+  costPerLitre: number;
+  costPerKit: number | null;
+  upliftPercent: number;
+  recommendedMicrons: number | null;
+  micronsOverride: number | null;
+  thinnerName: string | null;
+  thinnerPricePerLitre: number | null;
+  maxThinningPercent: number | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaintPricingTierPrice {
+  name: string;
+  discountPercent: number;
+  pricePerM2: number;
+}
+
+export interface PaintPricingResult {
+  microns: number;
+  flatPlateCoverageM2PerLitre: number;
+  coverageAfterLossM2PerLitre: number;
+  effectiveCostPerLitre: number;
+  paintCostPerLitre: number;
+  thinnerCostPerLitre: number;
+  thinnerCostPerM2: number;
+  costPerM2: number;
+  salePerM2: number;
+  tierPrices: PaintPricingTierPrice[];
+}
+
+export interface PaintPriceListRow {
+  item: PaintPriceListItem;
+  pricing: PaintPricingResult;
+}
+
+export interface PaintDiscountTier {
+  name: string;
+  discountPercent: number;
+}
+
+export interface PaintPricingConfig {
+  applicationCostPerM2: number;
+  markupFactor: number;
+  lossPct: number;
+  discountTiers: PaintDiscountTier[];
+}
+
+export interface PaintPricingResponse {
+  config: PaintPricingConfig;
+  lossPct: number;
+  rows: PaintPriceListRow[];
+}
+
+export interface CreatePaintPriceListItemInput {
+  supplierName: string;
+  coatType?: PaintCoatRole | null;
+  productName: string;
+  paintType?: string | null;
+  packSizeLitres?: number | null;
+  volumeSolidsPercent: number;
+  costPerLitre: number;
+  costPerKit?: number | null;
+  upliftPercent?: number | null;
+  recommendedMicrons?: number | null;
+  micronsOverride?: number | null;
+  thinnerName?: string | null;
+  thinnerPricePerLitre?: number | null;
+  maxThinningPercent?: number | null;
+  active?: boolean;
+}
+
+export interface PaintPriceListImportPreview {
+  supplierName: string;
+  rows: CreatePaintPriceListItemInput[];
+}
+
+export interface CommitPaintPriceListImportInput {
+  supplierName: string;
+  replaceSupplier: boolean;
+  rows: CreatePaintPriceListItemInput[];
+}
+
 export interface StockControlLoginDto {
   email: string;
   password: string;

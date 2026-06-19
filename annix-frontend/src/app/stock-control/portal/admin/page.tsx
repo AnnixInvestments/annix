@@ -5,6 +5,7 @@ import { useVisibleNavItems } from "../../hooks/useVisibleNavItems";
 
 const DESCRIPTIONS: Record<string, string> = {
   "inbound-emails": "Monitor and manage documents received via email",
+  "paint-pricing": "Manage paint cost inputs and sell-price-per-m² calculations",
   reports: "View stock, delivery, and financial reports",
   glossary: "Browse coating, lining, and industry term definitions",
 };

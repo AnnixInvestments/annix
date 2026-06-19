@@ -293,6 +293,7 @@ describe("StockControlAuthService", () => {
       pipingLossFactorPct: 45,
       flatPlateLossFactorPct: 20,
       structuralSteelLossFactorPct: 30,
+      paintPricingConfig: null,
       qcEnabled: false,
       messagingEnabled: false,
       staffLeaveEnabled: false,

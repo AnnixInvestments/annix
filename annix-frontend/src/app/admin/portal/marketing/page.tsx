@@ -65,7 +65,31 @@ function Text(props: {
   );
 }
 
-function Section(props: { title: string; children: React.ReactNode }) {
+const MARKETING_TABS = [
+  { key: "brand", label: "Brand & colours" },
+  { key: "hero", label: "Hero" },
+  { key: "ecosystem", label: "Ecosystem" },
+  { key: "industries", label: "Industries" },
+  { key: "partners", label: "Trusted partners" },
+  { key: "presence", label: "Global presence" },
+  { key: "cta", label: "Call to action" },
+  { key: "about", label: "About" },
+  { key: "resources", label: "Resources" },
+  { key: "footer", label: "Footer" },
+  { key: "legal", label: "Legal" },
+] as const;
+
+type MarketingTabKey = (typeof MARKETING_TABS)[number]["key"];
+
+function Section(props: {
+  title: string;
+  tabKey: MarketingTabKey;
+  activeTab: MarketingTabKey;
+  children: React.ReactNode;
+}) {
+  if (props.tabKey !== props.activeTab) {
+    return null;
+  }
   return (
     <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <h2 className="mb-4 text-lg font-semibold text-gray-900">{props.title}</h2>
@@ -714,6 +738,7 @@ export default function MarketingCmsPage() {
 
   const [content, setContent] = useState<MarketingSiteContent | null>(null);
   const [mode, setMode] = useState<"edit" | "preview">("edit");
+  const [activeTab, setActiveTab] = useState<MarketingTabKey>("hero");
   const [translating, setTranslating] = useState(false);
   const [socialOpen, setSocialOpen] = useState(false);
   const [socialResource, setSocialResource] = useState<MarketingResource | null>(null);
@@ -971,7 +996,25 @@ export default function MarketingCmsPage() {
         </div>
       ) : (
         <>
-          <Section title="Brand & colours">
+          <div className="sticky top-[57px] z-[5] -mx-6 overflow-x-auto border-b border-gray-200 bg-gray-50 px-6 py-2">
+            <div className="flex gap-1">
+              {MARKETING_TABS.map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveTab(tab.key)}
+                  className={
+                    activeTab === tab.key
+                      ? "whitespace-nowrap rounded-lg bg-[#323288] px-3 py-1.5 text-sm font-semibold text-white"
+                      : "whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-200"
+                  }
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <Section title="Brand & colours" tabKey="brand" activeTab={activeTab}>
             <Text
               label="Company wordmark text"
               value={site.wordmark}
@@ -1011,7 +1054,7 @@ export default function MarketingCmsPage() {
             </div>
           </Section>
 
-          <Section title="Hero">
+          <Section title="Hero" tabKey="hero" activeTab={activeTab}>
             <Text
               label="Eyebrow"
               value={hero.eyebrow}
@@ -1353,7 +1396,7 @@ export default function MarketingCmsPage() {
             </div>
           </Section>
 
-          <Section title="Ecosystem">
+          <Section title="Ecosystem" tabKey="ecosystem" activeTab={activeTab}>
             <Text
               label="Eyebrow"
               value={ecosystem.eyebrow}
@@ -1444,7 +1487,7 @@ export default function MarketingCmsPage() {
             </div>
           </Section>
 
-          <Section title="Industries">
+          <Section title="Industries" tabKey="industries" activeTab={activeTab}>
             <Text
               label="Eyebrow"
               value={industries.eyebrow}
@@ -1586,7 +1629,7 @@ export default function MarketingCmsPage() {
             </div>
           </Section>
 
-          <Section title="Trusted partners">
+          <Section title="Trusted partners" tabKey="partners" activeTab={activeTab}>
             <Text
               label="Heading"
               value={partners.heading}
@@ -1679,7 +1722,7 @@ export default function MarketingCmsPage() {
             </div>
           </Section>
 
-          <Section title="Global presence">
+          <Section title="Global presence" tabKey="presence" activeTab={activeTab}>
             <Text
               label="Heading"
               value={globalPresence.heading}
@@ -1766,7 +1809,7 @@ export default function MarketingCmsPage() {
             </div>
           </Section>
 
-          <Section title="Call to action">
+          <Section title="Call to action" tabKey="cta" activeTab={activeTab}>
             <Text
               label="Headline"
               value={ctaBand.headline}
@@ -1826,7 +1869,7 @@ export default function MarketingCmsPage() {
             </div>
           </Section>
 
-          <Section title="About">
+          <Section title="About" tabKey="about" activeTab={activeTab}>
             <Text
               label="Heading"
               value={about.heading}
@@ -1989,7 +2032,7 @@ export default function MarketingCmsPage() {
             </div>
           </Section>
 
-          <Section title="Resources">
+          <Section title="Resources" tabKey="resources" activeTab={activeTab}>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Text
                 label="Heading"
@@ -2053,7 +2096,7 @@ export default function MarketingCmsPage() {
             </div>
           </Section>
 
-          <Section title="Footer">
+          <Section title="Footer" tabKey="footer" activeTab={activeTab}>
             <Text
               label="Tagline"
               value={footer.tagline}
@@ -2259,7 +2302,7 @@ export default function MarketingCmsPage() {
             </div>
           </Section>
 
-          <Section title="Legal (Privacy, Terms & Cookies)">
+          <Section title="Legal (Privacy, Terms & Cookies)" tabKey="legal" activeTab={activeTab}>
             <p className="text-xs text-gray-500">
               These render at the footer's Privacy Policy, Terms of Use and Cookie Policy links. Use
               a blank line between paragraphs; start a line with "## " for a section heading and "-

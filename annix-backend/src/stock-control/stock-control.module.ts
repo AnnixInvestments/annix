@@ -50,6 +50,7 @@ import { InvoicesController } from "./controllers/invoices.controller";
 import { JobCardImportController } from "./controllers/job-card-import.controller";
 import { JobCardsController } from "./controllers/job-cards.controller";
 import { MovementsController } from "./controllers/movements.controller";
+import { PaintPricingController } from "./controllers/paint-pricing.controller";
 import { PublicBrandingController } from "./controllers/public-branding.controller";
 import { QrCodeController } from "./controllers/qr-code.controller";
 import { ReconciliationController } from "./controllers/reconciliation.controller";
@@ -166,6 +167,8 @@ import { JobCardLineItemRepository } from "./repositories/job-card-line-item.rep
 import { MongoJobCardLineItemRepository } from "./repositories/job-card-line-item.repository.mongo";
 import { JobCardVersionRepository } from "./repositories/job-card-version.repository";
 import { MongoJobCardVersionRepository } from "./repositories/job-card-version.repository.mongo";
+import { PaintPriceListItemRepository } from "./repositories/paint-price-list-item.repository";
+import { MongoPaintPriceListItemRepository } from "./repositories/paint-price-list-item.repository.mongo";
 import { PushSubscriptionRepository } from "./repositories/push-subscription.repository";
 import { MongoPushSubscriptionRepository } from "./repositories/push-subscription.repository.mongo";
 import { QaReviewDecisionRepository } from "./repositories/qa-review-decision.repository";
@@ -273,6 +276,7 @@ import { JobCardImportMappingSchema } from "./schemas/job-card-import-mapping.sc
 import { JobCardJobFileSchema } from "./schemas/job-card-job-file.schema";
 import { JobCardLineItemSchema } from "./schemas/job-card-line-item.schema";
 import { JobCardVersionSchema } from "./schemas/job-card-version.schema";
+import { PaintPriceListItemSchema } from "./schemas/paint-price-list-item.schema";
 import { PushSubscriptionSchema } from "./schemas/push-subscription.schema";
 import { QaReviewDecisionSchema } from "./schemas/qa-review-decision.schema";
 import { ReconciliationDocumentSchema } from "./schemas/reconciliation-document.schema";
@@ -350,6 +354,9 @@ import { JobFileService } from "./services/job-file.service";
 import { LookupService } from "./services/lookup.service";
 import { M2CalculationService } from "./services/m2-calculation.service";
 import { MovementService } from "./services/movement.service";
+import { PaintPriceListService } from "./services/paint-price-list.service";
+import { PaintPriceListExtractionService } from "./services/paint-price-list-extraction.service";
+import { PaintPricingService } from "./services/paint-pricing.service";
 import { PriceHistoryService } from "./services/price-history.service";
 import { PublicBrandingService } from "./services/public-branding.service";
 import { QaProcessService } from "./services/qa-process.service";
@@ -385,6 +392,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       },
       { name: "ChatMessage", schema: ChatMessageSchema },
       { name: "JobCardCoatingAnalysis", schema: JobCardCoatingAnalysisSchema },
+      { name: "PaintPriceListItem", schema: PaintPriceListItemSchema },
       { name: "CpoCalloffRecord", schema: CpoCalloffRecordSchema },
       {
         name: "CustomerPurchaseOrderItem",
@@ -545,6 +553,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     WorkflowController,
     SignatureController,
     InvoicesController,
+    PaintPricingController,
     SupplierController,
     CpoController,
     GlossaryController,
@@ -576,6 +585,9 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     JobCardImportJobService,
     M2CalculationService,
     CoatingAnalysisService,
+    PaintPricingService,
+    PaintPriceListService,
+    PaintPriceListExtractionService,
     CompanyEmailService,
     DashboardService,
     QrCodeService,
@@ -631,6 +643,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     ),
     repositoryProvider(ChatMessageRepository, MongoChatMessageRepository),
     repositoryProvider(JobCardCoatingAnalysisRepository, MongoJobCardCoatingAnalysisRepository),
+    repositoryProvider(PaintPriceListItemRepository, MongoPaintPriceListItemRepository),
     repositoryProvider(CpoCalloffRecordRepository, MongoCpoCalloffRecordRepository),
     repositoryProvider(
       CustomerPurchaseOrderItemRepository,

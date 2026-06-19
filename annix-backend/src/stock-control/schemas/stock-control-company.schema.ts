@@ -91,6 +91,9 @@ export class StockControlCompany {
   @Prop({ type: Number, required: true })
   structuralSteelLossFactorPct: number;
 
+  @Prop({ type: Object, required: false })
+  paintPricingConfig: Record<string, unknown>;
+
   @Prop({ type: Boolean, required: true })
   qcEnabled: boolean;
 

@@ -239,7 +239,7 @@ export class AiChatService implements OnModuleInit {
     const provider = providerName.startsWith("gemini") ? AiProvider.GEMINI : AiProvider.CLAUDE;
     const model =
       provider === AiProvider.GEMINI
-        ? (modelOverride ?? process.env.GEMINI_CHAT_MODEL ?? "gemini-2.0-flash")
+        ? (modelOverride ?? process.env.GEMINI_CHAT_MODEL ?? "gemini-2.5-flash")
         : (process.env.ANTHROPIC_MODEL ?? null);
     this.aiUsageService.log({
       app: usageLog.app,

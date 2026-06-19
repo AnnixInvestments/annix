@@ -1,3 +1,5 @@
+import { PaintPricingConfig } from "./paint-pricing-config";
+
 export enum BrandingType {
   ANNIX = "annix",
   CUSTOM = "custom",
@@ -57,6 +59,8 @@ export class StockControlCompany {
   flatPlateLossFactorPct: number;
 
   structuralSteelLossFactorPct: number;
+
+  paintPricingConfig: PaintPricingConfig | null;
 
   qcEnabled: boolean;
 

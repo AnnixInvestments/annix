@@ -202,4 +202,8 @@ export const stockControlKeys = {
     loadPhotos: (jobCardId: number) =>
       [...stockControlKeys.dispatch.all, "load-photos", jobCardId] as const,
   },
+  paintPricing: {
+    all: ["stock-control", "paint-pricing"] as const,
+    list: () => [...stockControlKeys.paintPricing.all, "list"] as const,
+  },
 };
