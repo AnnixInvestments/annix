@@ -50,10 +50,17 @@ export class WhatsAppConversationService {
     private readonly cloudApi: WhatsAppCloudApiService,
   ) {}
 
-  status(): { configured: boolean; phoneNumberId: string | null } {
+  status(): {
+    configured: boolean;
+    phoneNumberId: string | null;
+    broadcastTemplateName: string;
+    broadcastTemplateLanguage: string;
+  } {
     return {
       configured: this.cloudApi.isConfigured(),
       phoneNumberId: this.cloudApi.configuredPhoneNumberId(),
+      broadcastTemplateName: this.cloudApi.broadcastTemplateName(),
+      broadcastTemplateLanguage: this.cloudApi.broadcastTemplateLanguage(),
     };
   }
 

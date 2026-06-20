@@ -824,11 +824,16 @@ export class JobIngestionService {
     const staleDeleteDays = 30;
     const cutoff = now().minus({ days: staleDeleteDays }).toJSDate();
     const staleIds = await this.externalJobRepo.idsLastSeenBefore(cutoff);
-    if (staleIds.length === 0) return { pruned: 0 };
-    const { deleted } = await this.deleteExternalJobs(staleIds);
-    this.logger.log(
-      `Stale-job prune: deleted ${deleted} listing(s) unseen for ${staleDeleteDays}+ days`,
-    );
+    let deleted = 0;
+    if (staleIds.length > 0) {
+      deleted = (await this.deleteExternalJobs(staleIds)).deleted;
+      this.logger.log(
+        `Stale-job prune: deleted ${deleted} listing(s) unseen for ${staleDeleteDays}+ days`,
+      );
+    }
+    await this.candidateJobMatchingService.pruneMatchStorage().catch((error) => {
+      this.logger.warn(`Match storage prune failed: ${error.message}`);
+    });
     return { pruned: deleted };
   }
 

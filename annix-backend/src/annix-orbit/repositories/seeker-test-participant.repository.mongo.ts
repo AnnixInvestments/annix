@@ -25,6 +25,11 @@ export class MongoSeekerTestParticipantRepository
     return this.toDomain(doc);
   }
 
+  async findByCandidate(candidateId: number): Promise<SeekerTestParticipant[]> {
+    const docs = await this.documents.find({ candidateId }).sort({ joinedAt: 1 }).lean().exec();
+    return this.toDomainList(docs);
+  }
+
   async listByPhase(phaseId: string): Promise<SeekerTestParticipant[]> {
     const docs = await this.documents.find({ phaseId }).lean().exec();
     return this.toDomainList(docs);

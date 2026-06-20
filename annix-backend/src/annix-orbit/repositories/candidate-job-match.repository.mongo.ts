@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
+import { chunk } from "es-toolkit/compat";
 import type { Model } from "mongoose";
 import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
@@ -230,6 +231,62 @@ export class MongoCandidateJobMatchRepository
     if (candidateIds.length === 0) return 0;
     const result = await this.documents.deleteMany({ candidateId: { $in: candidateIds } }).exec();
     return result.deletedCount ?? 0;
+  }
+
+  async pruneCandidateToTopMatches(candidateId: number, keep: number): Promise<number> {
+    if (keep <= 0) return 0;
+    const overflow = await this.documents
+      .find({ candidateId })
+      .sort({ overallScore: -1, _id: 1 })
+      .skip(keep)
+      .select({ _id: 1 })
+      .lean()
+      .exec();
+    if (overflow.length === 0) return 0;
+    const ids = overflow.map((doc) => doc._id as number);
+    return chunk(ids, 5000).reduce(async (prev, batch) => {
+      const acc = await prev;
+      const result = await this.documents.deleteMany({ _id: { $in: batch } }).exec();
+      return acc + (result.deletedCount ?? 0);
+    }, Promise.resolve(0));
+  }
+
+  async deleteOrphanMatches(): Promise<number> {
+    const orphans = await this.documents
+      .aggregate<{ _id: number }>([
+        { $group: { _id: "$externalJobId" } },
+        {
+          $lookup: {
+            from: "cv_assistant_external_jobs",
+            localField: "_id",
+            foreignField: "_id",
+            as: "job",
+          },
+        },
+        { $match: { "job.0": { $exists: false } } },
+        { $project: { _id: 1 } },
+      ])
+      .allowDiskUse(true)
+      .exec();
+    const jobIds = orphans.map((row) => row._id);
+    if (jobIds.length === 0) return 0;
+    return chunk(jobIds, 5000).reduce(async (prev, batch) => {
+      const acc = await prev;
+      const result = await this.documents.deleteMany({ externalJobId: { $in: batch } }).exec();
+      return acc + (result.deletedCount ?? 0);
+    }, Promise.resolve(0));
+  }
+
+  async candidateIdsExceeding(matchCount: number): Promise<number[]> {
+    const rows = await this.documents
+      .aggregate<{ _id: number }>([
+        { $group: { _id: "$candidateId", total: { $sum: 1 } } },
+        { $match: { total: { $gt: matchCount } } },
+        { $project: { _id: 1 } },
+      ])
+      .allowDiskUse(true)
+      .exec();
+    return rows.map((row) => row._id);
   }
 
   countActiveForCandidates(candidateIds: number[]): Promise<number> {

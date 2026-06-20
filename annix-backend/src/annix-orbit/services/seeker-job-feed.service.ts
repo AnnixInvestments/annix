@@ -686,6 +686,10 @@ export class SeekerJobFeedService {
     );
     const seekers = rows.map((row) => {
       const whatsapp = row.email ? (whatsappByEmail.get(row.email.toLowerCase()) ?? null) : null;
+      // Fall back to the CV-extracted contact number so the admin can reach
+      // seekers who registered a phone on their CV but never set a profile one.
+      const profilePhone = whatsapp ? whatsapp.contactPhone : null;
+      const cvPhone = row.extractedData ? row.extractedData.phone : null;
       return {
         id: row.id,
         name: row.name,
@@ -699,7 +703,7 @@ export class SeekerJobFeedService {
         whatsappOptIn: whatsapp ? whatsapp.whatsappOptIn : false,
         whatsappConsentRequestedAt: whatsapp ? whatsapp.whatsappConsentRequestedAt : null,
         whatsappPhone: whatsapp ? whatsapp.whatsappPhone : null,
-        contactPhone: whatsapp ? whatsapp.contactPhone : null,
+        contactPhone: profilePhone ?? cvPhone,
       };
     });
     return { seekers, total };

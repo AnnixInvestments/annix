@@ -113,9 +113,20 @@ export class SeekerWorkflowProgressService {
     candidateId: number,
     phaseId: string,
   ): Promise<SeekerTestParticipant> {
-    const existing = await this.participants.findByCandidateAndPhase(candidateId, phaseId);
-    if (existing) {
-      return existing;
+    const inPhase = await this.participants.findByCandidateAndPhase(candidateId, phaseId);
+    if (inPhase) {
+      return inPhase;
+    }
+    // reconcile is the only creator of participants and assigns each candidate
+    // to whatever phase is active at run time. A candidate must therefore have
+    // at most one participant overall — when the active phase changes, migrate
+    // their existing participant onto the new phase instead of creating a
+    // second one, which would fan out into a duplicate workflow-progress row.
+    const candidateParticipants = await this.participants.findByCandidate(candidateId);
+    const incumbent = candidateParticipants.length > 0 ? candidateParticipants[0] : null;
+    if (incumbent) {
+      incumbent.phaseId = phaseId;
+      return this.participants.save(incumbent);
     }
     return this.participants.create({
       candidateId,

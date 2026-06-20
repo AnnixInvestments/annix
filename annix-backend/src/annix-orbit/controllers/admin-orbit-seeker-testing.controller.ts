@@ -121,6 +121,18 @@ export class AdminOrbitSeekerTestingController {
     return candidate.email;
   }
 
+  private isRicherProgressRow(
+    candidate: { completedSteps: number; lastActiveAt: Date | string | null },
+    incumbent: { completedSteps: number; lastActiveAt: Date | string | null },
+  ): boolean {
+    if (candidate.completedSteps !== incumbent.completedSteps) {
+      return candidate.completedSteps > incumbent.completedSteps;
+    }
+    const candidateActive = candidate.lastActiveAt ? new Date(candidate.lastActiveAt).getTime() : 0;
+    const incumbentActive = incumbent.lastActiveAt ? new Date(incumbent.lastActiveAt).getTime() : 0;
+    return candidateActive > incumbentActive;
+  }
+
   @Get("users")
   async users() {
     const rows = await this.progress.listProgress();
@@ -131,6 +143,17 @@ export class AdminOrbitSeekerTestingController {
       ...row,
       label: this.candidateLabel(candidateById.get(row.candidateId) ?? null),
     }));
+    const dedupedProgressRows = Array.from(
+      progressRows
+        .reduce((acc, row) => {
+          const existing = acc.get(row.candidateId);
+          if (!existing || this.isRicherProgressRow(row, existing)) {
+            acc.set(row.candidateId, row);
+          }
+          return acc;
+        }, new Map<number, (typeof progressRows)[number]>())
+        .values(),
+    );
     const prospects = (await this.userService.seekerProspects()).filter(
       (prospect) => !prospect.hasCandidate,
     );
@@ -148,7 +171,7 @@ export class AdminOrbitSeekerTestingController {
       lastActiveAt: prospect.lastLoginAt,
       status: prospect.isRegistered || prospect.hasLoggedIn ? "registered" : "invited",
     }));
-    return [...progressRows, ...prospectRows];
+    return [...dedupedProgressRows, ...prospectRows];
   }
 
   @Get("readiness")

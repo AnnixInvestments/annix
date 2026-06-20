@@ -1691,6 +1691,8 @@ class AdminApiClient {
 export interface WhatsAppStatus {
   configured: boolean;
   phoneNumberId: string | null;
+  broadcastTemplateName: string;
+  broadcastTemplateLanguage: string;
 }
 
 export interface WhatsAppConversation {

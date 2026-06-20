@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { isEmpty } from "es-toolkit/compat";
 
 const GRAPH_VERSION = "v21.0";
 const RE_ENGAGEMENT_ERROR_CODE = 131047;
@@ -28,12 +29,18 @@ export class WhatsAppCloudApiService {
   private readonly accessToken: string | null;
   private readonly phoneNumberId: string | null;
   private readonly webhookVerifyToken: string | null;
+  private readonly broadcastTemplate: string;
+  private readonly broadcastTemplateLang: string;
 
   constructor(private readonly configService: ConfigService) {
     this.accessToken = this.configService.get<string>("WHATSAPP_ACCESS_TOKEN") ?? null;
     this.phoneNumberId = this.configService.get<string>("WHATSAPP_PHONE_NUMBER_ID") ?? null;
     this.webhookVerifyToken =
       this.configService.get<string>("WHATSAPP_WEBHOOK_VERIFY_TOKEN") ?? null;
+    const templateName = this.configService.get<string>("WHATSAPP_BROADCAST_TEMPLATE_NAME");
+    const templateLang = this.configService.get<string>("WHATSAPP_BROADCAST_TEMPLATE_LANGUAGE");
+    this.broadcastTemplate = isEmpty(templateName) ? "broadcast_update" : (templateName as string);
+    this.broadcastTemplateLang = isEmpty(templateLang) ? "en" : (templateLang as string);
   }
 
   isConfigured(): boolean {
@@ -46,6 +53,14 @@ export class WhatsAppCloudApiService {
 
   configuredPhoneNumberId(): string | null {
     return this.phoneNumberId;
+  }
+
+  broadcastTemplateName(): string {
+    return this.broadcastTemplate;
+  }
+
+  broadcastTemplateLanguage(): string {
+    return this.broadcastTemplateLang;
   }
 
   async sendText(toWaId: string, body: string): Promise<CloudApiSendResult> {

@@ -29,6 +29,8 @@ interface BroadcastComposerProps {
   isOpen: boolean;
   onClose: () => void;
   configured: boolean;
+  defaultTemplateName?: string;
+  defaultLanguageCode?: string;
 }
 
 interface AppOption {
@@ -57,6 +59,10 @@ export function BroadcastComposer(props: BroadcastComposerProps) {
   const isOpen = props.isOpen;
   const onClose = props.onClose;
   const configured = props.configured;
+  const propTemplateName = props.defaultTemplateName;
+  const propLanguageCode = props.defaultLanguageCode;
+  const defaultTemplateName = propTemplateName || DEFAULT_TEMPLATE_NAME;
+  const defaultLanguageCode = propLanguageCode || DEFAULT_LANGUAGE_CODE;
 
   const { showToast } = useToast();
   const { runBulk } = useAdaptiveExtractionProgress();
@@ -74,7 +80,7 @@ export function BroadcastComposer(props: BroadcastComposerProps) {
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [message, setMessage] = useState("");
   const [mode, setMode] = useState<WhatsAppBroadcastMode>("freeform");
-  const [templateName, setTemplateName] = useState(DEFAULT_TEMPLATE_NAME);
+  const [templateName, setTemplateName] = useState(defaultTemplateName);
   const [summary, setSummary] = useState<{
     sent: number;
     failed: number;
@@ -131,7 +137,7 @@ export function BroadcastComposer(props: BroadcastComposerProps) {
     setMessage("");
     setRepoWide(false);
     setMode("freeform");
-    setTemplateName(DEFAULT_TEMPLATE_NAME);
+    setTemplateName(defaultTemplateName);
   };
 
   const handleClose = () => {
@@ -183,7 +189,7 @@ export function BroadcastComposer(props: BroadcastComposerProps) {
           message: trimmedMessage,
           mode,
           templateName: mode === "template" ? trimmedTemplate : undefined,
-          languageCode: mode === "template" ? DEFAULT_LANGUAGE_CODE : undefined,
+          languageCode: mode === "template" ? defaultLanguageCode : undefined,
         });
         if (response.status === "failed") {
           const reason = response.error;
@@ -410,7 +416,7 @@ export function BroadcastComposer(props: BroadcastComposerProps) {
                       type="text"
                       value={templateName}
                       onChange={(e) => setTemplateName(e.target.value)}
-                      placeholder={DEFAULT_TEMPLATE_NAME}
+                      placeholder={defaultTemplateName}
                       className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-[var(--brand-navbar,#323288)] focus:border-transparent"
                     />
                   </div>

@@ -6,6 +6,7 @@ export abstract class SeekerTestParticipantRepository extends CrudRepository<See
     candidateId: number,
     phaseId: string,
   ): Promise<SeekerTestParticipant | null>;
+  abstract findByCandidate(candidateId: number): Promise<SeekerTestParticipant[]>;
   abstract listByPhase(phaseId: string): Promise<SeekerTestParticipant[]>;
   abstract countByPhase(phaseId: string): Promise<number>;
 }

@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { isEmpty } from "es-toolkit/compat";
 import { AnnixOrbitProfileRepository } from "../../annix-orbit/repositories/annix-orbit-profile.repository";
+import { CandidateRepository } from "../../annix-orbit/repositories/candidate.repository";
 import { now } from "../../lib/datetime";
 import { RbacService } from "../../rbac/rbac.service";
 import { UserRepository } from "../../user/user.repository";
@@ -27,6 +28,7 @@ export class WhatsAppConsentSenderService {
     private readonly rbacService: RbacService,
     private readonly userRepo: UserRepository,
     private readonly orbitProfileRepo: AnnixOrbitProfileRepository,
+    private readonly candidateRepo: CandidateRepository,
     private readonly cloudApi: WhatsAppCloudApiService,
     private readonly conversations: WhatsAppConversationService,
   ) {}
@@ -48,7 +50,11 @@ export class WhatsAppConsentSenderService {
       throw new NotFoundException("User not found");
     }
 
-    const waId = await this.resolveWhatsAppNumber(user.id, user.whatsappPhone ?? null);
+    const waId = await this.resolveWhatsAppNumber(
+      user.id,
+      user.whatsappPhone ?? null,
+      user.email ?? null,
+    );
     if (!waId) {
       throw new BadRequestException("No WhatsApp number on file for this user.");
     }
@@ -82,11 +88,25 @@ export class WhatsAppConsentSenderService {
   private async resolveWhatsAppNumber(
     userId: number,
     storedPhone: string | null,
+    email: string | null,
   ): Promise<string | null> {
     if (!isEmpty(storedPhone)) {
       return storedPhone as string;
     }
     const profile = await this.orbitProfileRepo.findByUserId(userId);
-    return normalizeWaId(profile?.phone ?? null);
+    const profilePhone = normalizeWaId(profile?.phone ?? null);
+    if (profilePhone) {
+      return profilePhone;
+    }
+    // Last resort: the contact number Nix extracted from their CV. Lets the admin
+    // request consent from seekers who never set a profile phone.
+    if (isEmpty(email)) {
+      return null;
+    }
+    const candidates = await this.candidateRepo.findByEmail(email as string);
+    const cvPhone = candidates
+      .map((candidate) => (candidate.extractedData ? candidate.extractedData.phone : null))
+      .find((phone) => !isEmpty(phone));
+    return normalizeWaId(cvPhone ?? null);
   }
 }

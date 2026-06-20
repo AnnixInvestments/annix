@@ -42,6 +42,8 @@ export default function AdminWhatsAppPage() {
 
   const status = statusQuery.data;
   const configured = status ? status.configured : true;
+  const broadcastTemplateName = status ? status.broadcastTemplateName : "broadcast_update";
+  const broadcastTemplateLanguage = status ? status.broadcastTemplateLanguage : "en";
   const conversationData = conversationsQuery.data;
   const conversations = conversationData ? conversationData.items : [];
   const total = conversationData ? conversationData.total : 0;
@@ -113,6 +115,8 @@ export default function AdminWhatsAppPage() {
         isOpen={broadcastOpen}
         onClose={() => setBroadcastOpen(false)}
         configured={configured}
+        defaultTemplateName={broadcastTemplateName}
+        defaultLanguageCode={broadcastTemplateLanguage}
       />
 
       {!configured && (

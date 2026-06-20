@@ -4,7 +4,10 @@ import { MongooseModule } from "@nestjs/mongoose";
 import { AdminModule } from "../admin/admin.module";
 import { AnnixOrbitProfileRepository } from "../annix-orbit/repositories/annix-orbit-profile.repository";
 import { MongoAnnixOrbitProfileRepository } from "../annix-orbit/repositories/annix-orbit-profile.repository.mongo";
+import { CandidateRepository } from "../annix-orbit/repositories/candidate.repository";
+import { MongoCandidateRepository } from "../annix-orbit/repositories/candidate.repository.mongo";
 import { AnnixOrbitProfileSchema } from "../annix-orbit/schemas/annix-orbit-profile.schema";
+import { CandidateSchema } from "../annix-orbit/schemas/candidate.schema";
 import { ORBIT_CONNECTION } from "../lib/persistence/mongo-connections";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
 import { MetricsModule } from "../metrics/metrics.module";
@@ -42,7 +45,10 @@ import { WhatsAppConversationService } from "./services/whatsapp-conversation.se
       { name: "Company", schema: CompanySchema },
     ]),
     MongooseModule.forFeature(
-      [{ name: "AnnixOrbitProfile", schema: AnnixOrbitProfileSchema }],
+      [
+        { name: "AnnixOrbitProfile", schema: AnnixOrbitProfileSchema },
+        { name: "Candidate", schema: CandidateSchema },
+      ],
       ORBIT_CONNECTION,
     ),
   ],
@@ -62,6 +68,7 @@ import { WhatsAppConversationService } from "./services/whatsapp-conversation.se
     repositoryProvider(WhatsAppMessageRepository, MongoWhatsAppMessageRepository),
     repositoryProvider(UserRepository, MongoUserRepository),
     repositoryProvider(AnnixOrbitProfileRepository, MongoAnnixOrbitProfileRepository),
+    repositoryProvider(CandidateRepository, MongoCandidateRepository),
   ],
   exports: [WhatsAppCloudApiService, WhatsAppConversationService],
 })

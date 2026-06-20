@@ -60,6 +60,9 @@ export abstract class CandidateJobMatchRepository extends CrudRepository<Candida
   abstract setDismissed(matchId: number, dismissed: boolean, reason?: string | null): Promise<void>;
   abstract findDismissedForCandidate(candidateId: number): Promise<CandidateJobMatch[]>;
   abstract deleteForCandidates(candidateIds: number[]): Promise<number>;
+  abstract pruneCandidateToTopMatches(candidateId: number, keep: number): Promise<number>;
+  abstract deleteOrphanMatches(): Promise<number>;
+  abstract candidateIdsExceeding(matchCount: number): Promise<number[]>;
   abstract countActiveForCandidates(candidateIds: number[]): Promise<number>;
   abstract countRecommendedForCandidates(
     candidateIds: number[],

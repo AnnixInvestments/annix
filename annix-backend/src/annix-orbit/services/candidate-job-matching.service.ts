@@ -338,6 +338,15 @@ export class CandidateJobMatchingService {
         }
       }
 
+      // Cap stored matches to the tier's storage ceiling. Re-runs upsert fresh
+      // top matches but never delete the previous run's, and the per-job
+      // ingestion path adds more over time — so without this a candidate's
+      // stored set grows to the cumulative union of every job ever scored
+      // against them, not the live pool. Prune to the top tierStorageLimit by
+      // overallScore. Uses tierStorageLimit (not the per-run matchLimit) so a
+      // narrow manual rematch never shrinks the full stored set.
+      await this.matchRepo.pruneCandidateToTopMatches(candidateId, tierStorageLimit);
+
       this.logger.log(`Matched candidate ${candidateId} to ${matches.length} jobs`);
 
       this.notificationService
@@ -353,6 +362,34 @@ export class CandidateJobMatchingService {
 
       return matches;
     }
+  }
+
+  // Daily safety net for the match collection: drop matches whose external job
+  // has since been pruned (orphans the per-job cascade missed or that predate
+  // it), and backstop every candidate to the unlimited-tier storage ceiling so
+  // none can grow without bound via the per-job ingestion path. Per-tier capping
+  // already happens on each candidate-side run; this catches the rest.
+  async pruneMatchStorage(): Promise<{
+    orphansDeleted: number;
+    trimmedCandidates: number;
+    matchesTrimmed: number;
+  }> {
+    const orphansDeleted = await this.matchRepo.deleteOrphanMatches();
+    const overflowing = await this.matchRepo.candidateIdsExceeding(UNLIMITED_STORAGE_CEILING);
+    const matchesTrimmed = await overflowing.reduce(async (prev, candidateId) => {
+      const acc = await prev;
+      const trimmed = await this.matchRepo.pruneCandidateToTopMatches(
+        candidateId,
+        UNLIMITED_STORAGE_CEILING,
+      );
+      return acc + trimmed;
+    }, Promise.resolve(0));
+    if (orphansDeleted > 0 || matchesTrimmed > 0) {
+      this.logger.log(
+        `Match storage prune: removed ${orphansDeleted} orphan match(es), trimmed ${matchesTrimmed} match(es) across ${overflowing.length} candidate(s)`,
+      );
+    }
+    return { orphansDeleted, trimmedCandidates: overflowing.length, matchesTrimmed };
   }
 
   async matchJobToCandidates(externalJobId: number): Promise<CandidateJobMatch[]> {

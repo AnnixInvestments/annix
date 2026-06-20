@@ -10,7 +10,6 @@ import { WhatsAppCloudApiService } from "./whatsapp-cloud-api.service";
 import { WhatsAppConversationService } from "./whatsapp-conversation.service";
 
 const BROADCAST_APP_CONTEXT = "admin-broadcast";
-const DEFAULT_TEMPLATE_LANGUAGE = "en";
 const METRIC_CATEGORY = "whatsapp";
 const METRIC_OPERATION = "broadcast-send";
 
@@ -162,16 +161,14 @@ export class WhatsAppBroadcastService {
     firstName: string | null,
   ): Promise<BroadcastSendResult> {
     if (input.mode === "template") {
-      if (isEmpty(input.templateName)) {
-        throw new BadRequestException("A template name is required for template sends.");
-      }
-      const languageCode = input.languageCode ?? DEFAULT_TEMPLATE_LANGUAGE;
-      const result = await this.cloudApi.sendTemplate(
-        phone,
-        input.templateName as string,
-        languageCode,
-        [firstName ?? "there", input.message],
-      );
+      const templateName = isEmpty(input.templateName)
+        ? this.cloudApi.broadcastTemplateName()
+        : (input.templateName as string);
+      const languageCode = input.languageCode ?? this.cloudApi.broadcastTemplateLanguage();
+      const result = await this.cloudApi.sendTemplate(phone, templateName, languageCode, [
+        firstName ?? "there",
+        input.message,
+      ]);
       await this.conversations.recordOutbound(phone, {
         body: input.message,
         waMessageId: result.waMessageId,
