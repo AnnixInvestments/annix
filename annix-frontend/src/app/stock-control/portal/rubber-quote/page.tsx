@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type {
+  RubberCureType,
   RubberPriceFamily,
   RubberQuoteCatalogItem,
   RubberQuoteResult,
@@ -23,6 +24,17 @@ const BONDING_OPTIONS = [
   "EPDM",
   "Cured",
 ];
+
+const CURE_OPTIONS: { value: RubberCureType; label: string }[] = [
+  { value: "steam", label: "Steam" },
+  { value: "precured", label: "Pre-cured" },
+  { value: "chemical", label: "Chemical" },
+];
+
+function cureLabel(value: RubberCureType | null): string {
+  const option = CURE_OPTIONS.find((entry) => entry.value === value);
+  return option ? option.label : "Unspecified";
+}
 
 const PIPE_NB_SIZES = [
   "50NB",
@@ -65,7 +77,8 @@ export default function RubberQuotePage() {
 
   const mutateAsync = createQuote.mutateAsync;
 
-  const [itemId, setItemId] = useState<number | null>(null);
+  const [compoundKey, setCompoundKey] = useState("");
+  const [cureChoice, setCureChoice] = useState("");
   const [supplierFilter, setSupplierFilter] = useState("all");
   const [thickness, setThickness] = useState("");
   const [nb, setNb] = useState("");
@@ -93,10 +106,41 @@ export default function RubberQuotePage() {
     [catalog, supplierFilter],
   );
 
+  const compoundOptions = useMemo(() => {
+    const byKey = filteredCatalog.reduce<Map<string, RubberQuoteCatalogItem>>(
+      (accumulator, item) => {
+        const key = `${item.supplier}::${item.productCode}`;
+        const current = accumulator.get(key);
+        if (!current || (item.preferred && !current.preferred)) {
+          accumulator.set(key, item);
+        }
+        return accumulator;
+      },
+      new Map(),
+    );
+    return Array.from(byKey.entries())
+      .map(([key, item]) => ({ key, item }))
+      .sort((a, b) => a.item.supplier.localeCompare(b.item.supplier));
+  }, [filteredCatalog]);
+
+  const cureVariants = useMemo(
+    () => filteredCatalog.filter((item) => `${item.supplier}::${item.productCode}` === compoundKey),
+    [filteredCatalog, compoundKey],
+  );
+
   const selectedItem = useMemo(() => {
-    const match = catalog.find((item) => item.id === itemId);
-    return match || null;
-  }, [catalog, itemId]);
+    if (cureVariants.length === 0) {
+      return null;
+    }
+    const byCure = cureVariants.find((item) => {
+      const cure = item.cureType;
+      return (cure ?? "") === cureChoice;
+    });
+    const preferred = cureVariants.find((item) => item.preferred === true);
+    return byCure ?? preferred ?? cureVariants[0];
+  }, [cureVariants, cureChoice]);
+
+  const itemId = selectedItem ? selectedItem.id : null;
 
   const thicknessOptions = useMemo(() => {
     if (!selectedItem) {
@@ -116,17 +160,36 @@ export default function RubberQuotePage() {
   }, [selectedItem]);
 
   useEffect(() => {
-    setItemId(null);
     setResult(null);
   }, [family]);
 
   useEffect(() => {
-    const stillVisible = filteredCatalog.some((item) => item.id === itemId);
-    if (!stillVisible) {
-      setItemId(null);
+    const stillVisible = compoundOptions.some((option) => option.key === compoundKey);
+    if (compoundKey !== "" && !stillVisible) {
+      setCompoundKey("");
+      setCureChoice("");
       setResult(null);
     }
-  }, [filteredCatalog, itemId]);
+  }, [compoundOptions, compoundKey]);
+
+  useEffect(() => {
+    if (cureVariants.length === 0) {
+      if (cureChoice !== "") {
+        setCureChoice("");
+      }
+      return;
+    }
+    const hasChoice = cureVariants.some((item) => {
+      const cure = item.cureType;
+      return (cure ?? "") === cureChoice;
+    });
+    if (!hasChoice) {
+      const preferred = cureVariants.find((item) => item.preferred === true);
+      const fallback = preferred ?? cureVariants[0];
+      const fallbackCure = fallback.cureType;
+      setCureChoice(fallbackCure ?? "");
+    }
+  }, [cureVariants, cureChoice]);
 
   useEffect(() => {
     const options = thicknessOptions;
@@ -161,10 +224,12 @@ export default function RubberQuotePage() {
     let cancelled = false;
     const id = itemId;
     const selectedBonding = bonding === "" ? null : bonding;
+    const selectedCure = selectedItem ? selectedItem.cureType : null;
     const timer = setTimeout(() => {
       mutateAsync({
         itemId: id,
         family,
+        cureType: selectedCure,
         thicknessMm: thicknessNumber,
         nb: isPipe ? nb : null,
         areaOrLength: areaNumber,
@@ -185,7 +250,18 @@ export default function RubberQuotePage() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [canQuote, itemId, family, thicknessNumber, nb, areaNumber, isPipe, bonding, mutateAsync]);
+  }, [
+    canQuote,
+    itemId,
+    family,
+    selectedItem,
+    thicknessNumber,
+    nb,
+    areaNumber,
+    isPipe,
+    bonding,
+    mutateAsync,
+  ]);
 
   const catalogLoading = catalogQuery.isLoading;
   const catalogError = catalogQuery.isError;
@@ -196,6 +272,8 @@ export default function RubberQuotePage() {
     const suffix = name ? ` (${name})` : "";
     return `${item.supplier} — ${item.productCode}${suffix}`;
   };
+
+  const hasCureChoice = cureVariants.length > 1;
 
   const resultSalePerUnit = result ? (isPipe ? result.salePerMetre : result.salePerM2) : null;
   const resultMpsPerUnit = result ? (isPipe ? result.mpsPerMetre : result.mpsPerM2) : null;
@@ -281,44 +359,78 @@ export default function RubberQuotePage() {
               </label>
               <select
                 id="rubber-quote-product"
-                value={itemId != null ? String(itemId) : ""}
-                onChange={(e) => setItemId(e.target.value ? Number(e.target.value) : null)}
+                value={compoundKey}
+                onChange={(e) => {
+                  setCompoundKey(e.target.value);
+                  setCureChoice("");
+                }}
                 className={INPUT_CLASS}
               >
                 <option value="">Select a rubber…</option>
-                {filteredCatalog.map((item) => (
-                  <option key={item.id} value={String(item.id)}>
-                    {optionLabel(item)}
+                {compoundOptions.map((option) => (
+                  <option key={option.key} value={option.key}>
+                    {optionLabel(option.item)}
                   </option>
                 ))}
               </select>
             </div>
           </div>
 
-          <div>
-            <label
-              htmlFor="rubber-quote-bonding"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Bonding system
-            </label>
-            <select
-              id="rubber-quote-bonding"
-              value={bonding}
-              onChange={(e) => setBonding(e.target.value)}
-              disabled={itemId == null}
-              className={`${INPUT_CLASS} disabled:bg-gray-50 disabled:text-gray-400`}
-            >
-              <option value="">Default</option>
-              {BONDING_OPTIONS.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-gray-400 mt-1">
-              Price the same compound under a different bonding system (e.g. precured).
-            </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label
+                htmlFor="rubber-quote-cure"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Cure type
+              </label>
+              <select
+                id="rubber-quote-cure"
+                value={cureChoice}
+                onChange={(e) => setCureChoice(e.target.value)}
+                disabled={compoundKey === "" || !hasCureChoice}
+                className={`${INPUT_CLASS} disabled:bg-gray-50 disabled:text-gray-400`}
+              >
+                {cureVariants.map((item) => {
+                  const cure = item.cureType;
+                  const value = cure ?? "";
+                  return (
+                    <option key={item.id} value={value}>
+                      {cureLabel(cure)}
+                    </option>
+                  );
+                })}
+              </select>
+              <p className="text-xs text-gray-400 mt-1">
+                Steam, pre-cured or chemical cure variant of this compound.
+              </p>
+            </div>
+
+            <div>
+              <label
+                htmlFor="rubber-quote-bonding"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Bonding system
+              </label>
+              <select
+                id="rubber-quote-bonding"
+                value={bonding}
+                onChange={(e) => setBonding(e.target.value)}
+                disabled={itemId == null}
+                className={`${INPUT_CLASS} disabled:bg-gray-50 disabled:text-gray-400`}
+              >
+                <option value="">Default</option>
+                {BONDING_OPTIONS.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-400 mt-1">
+                Price the same compound under a different bonding system.
+              </p>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

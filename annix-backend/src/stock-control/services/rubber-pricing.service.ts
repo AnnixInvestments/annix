@@ -151,26 +151,36 @@ export class RubberPricingService {
     item: RubberPriceListItem,
     config: RubberPricingConfig,
     thicknessMm: number,
-    options?: { bondingType?: string | null; agents?: RubberBondingAgentSalePrice[] | null },
+    options: {
+      family: RubberPriceFamily;
+      bondingType?: string | null;
+      agents?: RubberBondingAgentSalePrice[] | null;
+    },
   ): number {
-    const familyConfig = config[item.family];
+    const family = options.family;
+    const familyConfig = config[family];
     const material = this.materialPerM2(item, familyConfig, thicknessMm);
-    const bondingType = options?.bondingType ?? item.bondingType;
+    const bondingType = options.bondingType ?? item.bondingType;
     return (
       material * familyConfig.markupFactor +
-      this.cwPerM2(config, item.family, bondingType, options?.agents)
+      this.cwPerM2(config, family, bondingType, options.agents)
     );
   }
 
   computePricing(
     item: RubberPriceListItem,
     config: RubberPricingConfig,
-    options?: { bondingType?: string | null; agents?: RubberBondingAgentSalePrice[] | null },
+    options: {
+      family: RubberPriceFamily;
+      bondingType?: string | null;
+      agents?: RubberBondingAgentSalePrice[] | null;
+    },
   ): RubberPricingResult {
-    const familyConfig = config[item.family];
-    const labourStack = this.labourStack(config, item.family);
-    const bondingType = options?.bondingType ?? item.bondingType;
-    const cw = this.cwPerM2(config, item.family, bondingType, options?.agents);
+    const family = options.family;
+    const familyConfig = config[family];
+    const labourStack = this.labourStack(config, family);
+    const bondingType = options.bondingType ?? item.bondingType;
+    const cw = this.cwPerM2(config, family, bondingType, options.agents);
     const thicknesses = familyConfig.thicknessesMm.map((thicknessMm) => {
       const material = this.materialPerM2(item, familyConfig, thicknessMm);
       const sale = material * familyConfig.markupFactor + cw;
@@ -183,7 +193,7 @@ export class RubberPricingService {
     });
 
     const runningMetres =
-      item.family === "pipe"
+      family === "pipe"
         ? config.pipe.nbFactors.map((nbFactor) => {
             const factor = nbFactor.pie + nbFactor.additional;
             const referenceSale = thicknesses.length
@@ -199,12 +209,23 @@ export class RubberPricingService {
         : null;
 
     return {
-      family: item.family,
+      family,
       costWithWastePerKg: round2(this.costWithWastePerKg(item, familyConfig)),
       cwPerM2: round2(cw),
       labourStack,
       thicknesses,
       runningMetres,
+    };
+  }
+
+  computeBothFamilies(
+    item: RubberPriceListItem,
+    config: RubberPricingConfig,
+    options?: { bondingType?: string | null; agents?: RubberBondingAgentSalePrice[] | null },
+  ): { plate: RubberPricingResult; pipe: RubberPricingResult } {
+    return {
+      plate: this.computePricing(item, config, { ...options, family: "plate" }),
+      pipe: this.computePricing(item, config, { ...options, family: "pipe" }),
     };
   }
 
@@ -215,15 +236,12 @@ export class RubberPricingService {
     nb: string,
     options?: { bondingType?: string | null; agents?: RubberBondingAgentSalePrice[] | null },
   ): RubberRunningMetrePrice | null {
-    if (item.family !== "pipe") {
-      return null;
-    }
     const nbFactor = config.pipe.nbFactors.find((entry) => entry.nb === nb);
     if (!nbFactor) {
       return null;
     }
     const factor = nbFactor.pie + nbFactor.additional;
-    const sale = this.salePerM2(item, config, thicknessMm, options);
+    const sale = this.salePerM2(item, config, thicknessMm, { ...options, family: "pipe" });
     return {
       nb,
       factor: round4(factor),

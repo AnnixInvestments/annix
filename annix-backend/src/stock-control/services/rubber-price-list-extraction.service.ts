@@ -54,10 +54,10 @@ export type RubberSgSource = "extracted" | "datasheet" | "default";
 export type RubberCostSource = "extracted" | "derived-from-roll" | "missing";
 
 export interface RubberPriceListRowPreview {
-  family: "plate" | "pipe";
   supplier: string;
   productCode: string;
   productName: string | null;
+  cureType: RubberCureType | null;
   bondingType: string | null;
   colour: string | null;
   shoreHardness: number | null;
@@ -115,7 +115,7 @@ Field rules:
 - productCode: the supplier's product code verbatim (e.g. "SG-A38P", "SC1078", "SC40A", "1084").
 - productName: the descriptive label/name if any (e.g. "40 Shore Black Steam Cured"); null if none.
 - cureType: "steam" | "chemical" | "precured", inferred from the section header OR the code prefix (SC -> steam, CC/CO -> chemical, CR -> precured); null if genuinely unknown.
-- compoundType: the rubber chemistry split OUT of any combined colour+type cell — one of "Natural", "Premium Natural", "Chemical", "Chlorobutyl", "Bromobutyl", "Butyl", "Nitrile", "Neoprene", "EPDM", "Ebonite"; null if unclear.
+- compoundType: the rubber chemistry split OUT of any combined colour+type cell — one of "Natural", "Premium Natural", "Chlorobutyl", "Bromobutyl", "Butyl", "Nitrile", "Neoprene", "EPDM", "Ebonite"; null if unclear. Chlorobutyl/Bromobutyl are BUTYL-family compounds, not a separate "Chemical" chemistry.
 - colour: the rubber colour only (e.g. "Black", "Red", "Pink", "Yellow", "Green"); null if absent.
 - shoreHardness: the Shore A hardness as a number; for a range take the LOWER bound; null if absent.
 - specificGravity: the specific gravity / S.G. / density as a number; null if the layout does not show it (Layout B never does).
@@ -172,14 +172,14 @@ const round2 = (value: number): number => Math.round(value * 100) / 100;
 const BONDING_TYPE_BY_COMPOUND: Record<string, string> = {
   natural: "Natural",
   "premium natural": "Premium Natural",
+  chlorobutyl: "Butyl",
+  chrolobutyl: "Butyl",
+  bromobutyl: "Butyl",
+  butyl: "Butyl",
   nitrile: "Nitrile",
   neoprene: "Neoprene",
   epdm: "EPDM",
-  chlorobutyl: "Chemical",
-  bromobutyl: "Chemical",
-  butyl: "Chemical",
-  chemical: "Chemical",
-  ebonite: "Chemical",
+  ebonite: "Natural",
 };
 
 function bondingTypeFromCompound(
@@ -196,11 +196,40 @@ function bondingTypeFromCompound(
   return fallback?.trim() || null;
 }
 
+const CURE_TYPE_BY_TOKEN: Record<string, RubberCureType> = {
+  "steam cured": "steam",
+  "steam cure": "steam",
+  steam: "steam",
+  sc: "steam",
+  "pre cured": "precured",
+  "pre-cured": "precured",
+  precured: "precured",
+  cured: "precured",
+  cr: "precured",
+  "chemical cure": "chemical",
+  "chemical cured": "chemical",
+  chemical: "chemical",
+  co: "chemical",
+  cc: "chemical",
+};
+
+function cureTypeFrom(
+  cureType: RubberCureType | null | undefined,
+  productCode: string,
+): RubberCureType | null {
+  if (cureType) {
+    return cureType;
+  }
+  const code = productCode.trim().toUpperCase();
+  const prefix = code.slice(0, 2);
+  return CURE_TYPE_BY_TOKEN[prefix.toLowerCase()] ?? null;
+}
+
 export interface RubberRowFallbackInput {
-  family: "plate" | "pipe";
   supplier: string;
   productCode: string;
   productName?: string | null;
+  cureType?: RubberCureType | null;
   compoundType?: string | null;
   bondingType?: string | null;
   colour?: string | null;
@@ -217,6 +246,7 @@ export interface RubberRowFallbackInput {
 export function applyRubberRowFallbacks(row: RubberRowFallbackInput): RubberPriceListRowPreview {
   const compoundType = row.compoundType?.trim() || row.bondingType?.trim() || null;
   const bondingType = bondingTypeFromCompound(row.compoundType, row.bondingType);
+  const cureType = cureTypeFrom(row.cureType, row.productCode);
 
   const extractedSg = row.specificGravity;
   const datasheetSg = extractedSg == null ? lookupRubberSgByCode(row.productCode) : null;
@@ -241,10 +271,10 @@ export function applyRubberRowFallbacks(row: RubberRowFallbackInput): RubberPric
     extractedCost != null ? "extracted" : derivedCost != null ? "derived-from-roll" : "missing";
 
   return {
-    family: row.family,
     supplier: row.supplier,
     productCode: row.productCode,
     productName: row.productName?.trim() || null,
+    cureType,
     bondingType,
     colour: row.colour?.trim() || null,
     shoreHardness: row.shoreHardness ?? null,
@@ -367,10 +397,6 @@ export class RubberPriceListExtractionService {
     return this.parseJson<T>(content);
   }
 
-  private normalizeFamily(value: string | null | undefined): "plate" | "pipe" {
-    return value === "pipe" ? "pipe" : "plate";
-  }
-
   private buildPriceListPreview(parsed: ExtractedRubberPriceList): RubberPriceListImportPreview {
     const supplier = parsed.supplier?.trim() || "Unknown Supplier";
     const products = parsed.products ?? [];
@@ -383,7 +409,6 @@ export class RubberPriceListExtractionService {
         return applyRubberRowFallbacks({
           ...product,
           productCode,
-          family: this.normalizeFamily(product.family),
           supplier: product.supplier?.trim() || supplier,
         });
       })

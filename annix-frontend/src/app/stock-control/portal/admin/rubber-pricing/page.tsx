@@ -8,6 +8,7 @@ import { useToast } from "@/app/components/Toast";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import type {
   CreateRubberPriceListItemInput,
+  RubberCureType,
   RubberFamilyPricingConfig,
   RubberPriceFamily,
   RubberPriceListImportPreview,
@@ -47,10 +48,27 @@ const BONDING_OPTIONS = [
   "Cured",
 ];
 
+const CURE_OPTIONS: { value: RubberCureType; label: string }[] = [
+  { value: "steam", label: "Steam" },
+  { value: "precured", label: "Pre-cured" },
+  { value: "chemical", label: "Chemical" },
+];
+
+function cureTypeOrNull(value: string): RubberCureType | null {
+  const match = CURE_OPTIONS.find((entry) => entry.value === value);
+  return match ? match.value : null;
+}
+
+function cureLabel(value: RubberCureType | null): string {
+  const option = CURE_OPTIONS.find((entry) => entry.value === value);
+  return option ? option.label : "—";
+}
+
 interface RowDraft {
   supplier: string;
   productCode: string;
   productName: string;
+  cureType: string;
   bondingType: string;
   colour: string;
   shoreHardness: string;
@@ -64,6 +82,7 @@ const EMPTY_DRAFT: RowDraft = {
   supplier: "",
   productCode: "",
   productName: "",
+  cureType: "",
   bondingType: "",
   colour: "",
   shoreHardness: "",
@@ -107,10 +126,12 @@ function draftFromRow(row: RubberPriceListRow): RowDraft {
   const productName = item.productName;
   const shoreHardness = item.shoreHardness;
   const costPerKg = item.costPerKg;
+  const cureType = item.cureType;
   return {
     supplier: item.supplier,
     productCode: item.productCode,
     productName: productName ?? "",
+    cureType: cureType ?? "",
     bondingType: bondingType ?? "",
     colour: colour ?? "",
     shoreHardness: shoreHardness === null ? "" : String(shoreHardness),
@@ -121,13 +142,13 @@ function draftFromRow(row: RubberPriceListRow): RowDraft {
   };
 }
 
-function draftToInput(draft: RowDraft, family: RubberPriceFamily): CreateRubberPriceListItemInput {
+function draftToInput(draft: RowDraft): CreateRubberPriceListItemInput {
   const specificGravity = numberOrNull(draft.specificGravity);
   return {
-    family,
     supplier: draft.supplier.trim(),
     productCode: draft.productCode.trim(),
     productName: textOrNull(draft.productName),
+    cureType: cureTypeOrNull(draft.cureType),
     bondingType: textOrNull(draft.bondingType),
     colour: textOrNull(draft.colour),
     shoreHardness: numberOrNull(draft.shoreHardness),
@@ -201,12 +222,11 @@ export default function RubberPricingAdminPage() {
     }
   }, [config]);
 
-  const familyRows = rows.filter((row) => row.item.family === family);
   const supplierOptions = Array.from(
-    new Set(familyRows.map((row) => row.item.supplier).filter((name) => name !== "")),
+    new Set(rows.map((row) => row.item.supplier).filter((name) => name !== "")),
   ).sort((a, b) => a.localeCompare(b));
 
-  const filteredRows = familyRows.filter((row) => {
+  const filteredRows = rows.filter((row) => {
     const supplier = row.item.supplier;
     return supplierFilter === "all" || supplier === supplierFilter;
   });
@@ -259,6 +279,20 @@ export default function RubberPricingAdminPage() {
     [updateItem, showToast],
   );
 
+  const handleCureChange = useCallback(
+    (item: RubberPriceListRow["item"], raw: string) => {
+      const next = cureTypeOrNull(raw);
+      if (next === item.cureType) {
+        return;
+      }
+      updateItem.mutate(
+        { id: item.id, input: { cureType: next } },
+        { onError: () => showToast("Could not save the change — please try again.", "error") },
+      );
+    },
+    [updateItem, showToast],
+  );
+
   const handleSaveEdit = useCallback(
     (id: number) => {
       if (!draftIsValid(rowDraft)) {
@@ -266,7 +300,7 @@ export default function RubberPricingAdminPage() {
         return;
       }
       updateItem.mutate(
-        { id, input: draftToInput(rowDraft, family) },
+        { id, input: draftToInput(rowDraft) },
         {
           onSuccess: () => {
             showToast("Rubber updated.", "success");
@@ -277,7 +311,7 @@ export default function RubberPricingAdminPage() {
         },
       );
     },
-    [rowDraft, updateItem, showToast, family],
+    [rowDraft, updateItem, showToast],
   );
 
   const handleAdd = useCallback(() => {
@@ -285,14 +319,14 @@ export default function RubberPricingAdminPage() {
       showToast("Supplier, product code and specific gravity are required.", "warning");
       return;
     }
-    createItem.mutate(draftToInput(newDraft, family), {
+    createItem.mutate(draftToInput(newDraft), {
       onSuccess: () => {
         showToast("Rubber added.", "success");
         setNewDraft(EMPTY_DRAFT);
       },
       onError: () => showToast("Could not add rubber — please try again.", "error"),
     });
-  }, [newDraft, createItem, showToast, family]);
+  }, [newDraft, createItem, showToast]);
 
   const handleDelete = useCallback(
     async (row: RubberPriceListRow) => {
@@ -387,9 +421,9 @@ export default function RubberPricingAdminPage() {
     const rowsInput = preview.rows.map((row): CreateRubberPriceListItemInput => {
       const sg = row.specificGravity;
       return {
-        family: row.family,
         supplier: row.supplier,
         productCode: row.productCode,
+        cureType: row.cureType,
         bondingType: row.bondingType,
         colour: row.colour,
         shoreHardness: row.shoreHardness,
@@ -853,6 +887,7 @@ export default function RubberPricingAdminPage() {
                 <th className={TH_CLASS}>Supplier</th>
                 <th className={TH_CLASS}>Code</th>
                 <th className={TH_CLASS}>Name</th>
+                <th className={TH_CLASS}>Cure</th>
                 <th className={TH_CLASS}>Bonding</th>
                 <th className={TH_CLASS}>Colour</th>
                 <th className={TH_CLASS}>Shore A</th>
@@ -867,9 +902,9 @@ export default function RubberPricingAdminPage() {
             <tbody className="divide-y divide-gray-100">
               {filteredRows.map((row) => {
                 const item = row.item;
-                const pricing = row.pricing;
+                const pricing = family === "pipe" ? row.pipe : row.plate;
                 const isEditing = editingId === item.id;
-                const refThickness = referenceThickness(configDraft[item.family]);
+                const refThickness = referenceThickness(configDraft[family]);
                 const refPriceEntry =
                   refThickness === null
                     ? null
@@ -903,6 +938,21 @@ export default function RubberPricingAdminPage() {
                           onChange={(e) => setRowField("productName", e.target.value)}
                           className={INPUT_CLASS}
                         />
+                      </td>
+                      <td className={TD_CLASS}>
+                        <select
+                          value={rowDraft.cureType}
+                          onChange={(e) => setRowField("cureType", e.target.value)}
+                          aria-label="Cure type"
+                          className={`${INPUT_CLASS} w-32`}
+                        >
+                          <option value="">—</option>
+                          {CURE_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                       <td className={TD_CLASS}>
                         <select
@@ -999,6 +1049,8 @@ export default function RubberPricingAdminPage() {
                 const bonding = item.bondingType;
                 const colour = item.colour;
                 const productName = item.productName;
+                const cureType = item.cureType;
+                const cureValue = cureType ?? "";
                 const bondingDisplay = bonding ?? "—";
                 const colourDisplay = colour ?? "—";
                 const productNameDisplay = productName ?? "—";
@@ -1009,6 +1061,21 @@ export default function RubberPricingAdminPage() {
                     <td className={`${TD_CLASS} font-medium text-gray-900`}>{item.supplier}</td>
                     <td className={TD_CLASS}>{item.productCode}</td>
                     <td className={TD_CLASS}>{productNameDisplay}</td>
+                    <td className={TD_CLASS}>
+                      <select
+                        value={cureValue}
+                        onChange={(e) => handleCureChange(item, e.target.value)}
+                        aria-label="Cure type"
+                        className={`${INPUT_CLASS} w-32`}
+                      >
+                        <option value="">—</option>
+                        {CURE_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
                     <td className={TD_CLASS}>{bondingDisplay}</td>
                     <td className={TD_CLASS}>{colourDisplay}</td>
                     <td className={TD_CLASS}>{shoreDisplay}</td>
@@ -1096,6 +1163,21 @@ export default function RubberPricingAdminPage() {
                     onChange={(e) => setNewField("productName", e.target.value)}
                     className={INPUT_CLASS}
                   />
+                </td>
+                <td className={TD_CLASS}>
+                  <select
+                    value={newDraft.cureType}
+                    onChange={(e) => setNewField("cureType", e.target.value)}
+                    aria-label="Cure type"
+                    className={`${INPUT_CLASS} w-32`}
+                  >
+                    <option value="">—</option>
+                    {CURE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </td>
                 <td className={TD_CLASS}>
                   <select
@@ -1249,9 +1331,9 @@ function ImportPreviewModal(props: ImportPreviewModalProps) {
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className={TH_CLASS}>Family</th>
                 <th className={TH_CLASS}>Supplier</th>
                 <th className={TH_CLASS}>Code</th>
+                <th className={TH_CLASS}>Cure</th>
                 <th className={TH_CLASS}>Bonding</th>
                 <th className={TH_CLASS}>Colour</th>
                 <th className={TH_CLASS}>Shore A</th>
@@ -1266,11 +1348,13 @@ function ImportPreviewModal(props: ImportPreviewModalProps) {
                 const shore = row.shoreHardness;
                 const bonding = row.bondingType;
                 const colour = row.colour;
+                const cureType = row.cureType;
+                const cureDisplay = cureLabel(cureType);
                 return (
                   <tr key={`${row.productCode}-${index}`}>
-                    <td className={TD_CLASS}>{row.family}</td>
                     <td className={TD_CLASS}>{row.supplier}</td>
                     <td className={TD_CLASS}>{row.productCode}</td>
+                    <td className={TD_CLASS}>{cureDisplay}</td>
                     <td className={TD_CLASS}>{bonding ?? "—"}</td>
                     <td className={TD_CLASS}>{colour ?? "—"}</td>
                     <td className={TD_CLASS}>{shore === null ? "—" : shore}</td>

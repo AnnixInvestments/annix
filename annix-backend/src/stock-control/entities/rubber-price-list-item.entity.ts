@@ -1,17 +1,17 @@
-import { RubberPriceFamily } from "./rubber-pricing-config";
+export type RubberCureType = "steam" | "precured" | "chemical";
 
 export class RubberPriceListItem {
   id: number;
 
   companyId: number;
 
-  family: RubberPriceFamily;
-
   supplier: string;
 
   productCode: string;
 
   productName: string | null;
+
+  cureType: RubberCureType | null;
 
   bondingType: string | null;
 

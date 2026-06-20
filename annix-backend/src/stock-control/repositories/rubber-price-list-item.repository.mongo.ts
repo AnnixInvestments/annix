@@ -20,7 +20,7 @@ export class MongoRubberPriceListItemRepository
   async findAllForCompany(companyId: number): Promise<RubberPriceListItem[]> {
     const docs = await this.documents
       .find({ companyId })
-      .sort({ family: 1, supplier: 1, productCode: 1 })
+      .sort({ supplier: 1, productCode: 1, cureType: 1 })
       .lean()
       .exec();
     return this.toDomainList(docs);

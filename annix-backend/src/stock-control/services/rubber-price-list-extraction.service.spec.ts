@@ -3,7 +3,6 @@ import { applyRubberRowFallbacks } from "./rubber-price-list-extraction.service"
 describe("applyRubberRowFallbacks", () => {
   it("passes an AU-style row (sg + pricePerKg) through unchanged", () => {
     const row = applyRubberRowFallbacks({
-      family: "plate",
       supplier: "AU",
       productCode: "A38P-BSC",
       compoundType: "Natural",
@@ -22,7 +21,6 @@ describe("applyRubberRowFallbacks", () => {
 
   it("derives sg from datasheet then costPerKg from roll for a Rema-style row", () => {
     const row = applyRubberRowFallbacks({
-      family: "plate",
       supplier: "Rema",
       productCode: "1078",
       compoundType: "Natural",
@@ -40,7 +38,6 @@ describe("applyRubberRowFallbacks", () => {
 
   it("derives costPerKg (~77.2) for an Impilo-style row with sg + rollPrice but no pricePerKg", () => {
     const row = applyRubberRowFallbacks({
-      family: "plate",
       supplier: "Impilo",
       productCode: "SC40A",
       compoundType: "Natural",
@@ -58,7 +55,6 @@ describe("applyRubberRowFallbacks", () => {
 
   it("falls back to a type-based default sg and reports missing cost when nothing resolves", () => {
     const row = applyRubberRowFallbacks({
-      family: "plate",
       supplier: "Unknown",
       productCode: "ZZ9999",
       compoundType: "Nitrile",
@@ -74,22 +70,54 @@ describe("applyRubberRowFallbacks", () => {
     expect(row.costPerKg).toBeNull();
   });
 
-  it("maps chemistry compound types to the engine bonding type", () => {
+  it("maps Chlorobutyl and Bromobutyl to Butyl (AU has no Chemical bonding)", () => {
     const chloro = applyRubberRowFallbacks({
-      family: "plate",
-      supplier: "Rema",
-      productCode: "CO15",
+      supplier: "AU",
+      productCode: "SC-C60CB",
       compoundType: "Chlorobutyl",
       colour: "Black",
     });
-    expect(chloro.bondingType).toBe("Chemical");
+    expect(chloro.bondingType).toBe("Butyl");
+    expect(chloro.cureType).toBe("steam");
+
+    const bromo = applyRubberRowFallbacks({
+      supplier: "AU",
+      productCode: "CR-C50BB",
+      compoundType: "Bromobutyl",
+      colour: "Black",
+    });
+    expect(bromo.bondingType).toBe("Butyl");
+    expect(bromo.cureType).toBe("precured");
+  });
+
+  it("maps Ebonite to Natural (hard natural)", () => {
     const ebonite = applyRubberRowFallbacks({
-      family: "plate",
       supplier: "Rema",
       productCode: "CR1078",
       compoundType: "Ebonite",
       colour: "Black",
     });
-    expect(ebonite.bondingType).toBe("Chemical");
+    expect(ebonite.bondingType).toBe("Natural");
+    expect(ebonite.cureType).toBe("precured");
+  });
+
+  it("captures cureType from the code prefix and the explicit field", () => {
+    const steam = applyRubberRowFallbacks({
+      supplier: "AU",
+      productCode: "SC40A",
+      compoundType: "Natural",
+      colour: "Black",
+    });
+    expect(steam.cureType).toBe("steam");
+
+    const chemical = applyRubberRowFallbacks({
+      supplier: "Rema",
+      productCode: "CO15",
+      compoundType: "Chlorobutyl",
+      colour: "Black",
+      cureType: "chemical",
+    });
+    expect(chemical.cureType).toBe("chemical");
+    expect(chemical.bondingType).toBe("Butyl");
   });
 });

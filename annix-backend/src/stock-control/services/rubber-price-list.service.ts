@@ -1,6 +1,6 @@
 import { RUBBER_PRICE_PRODUCTS, type RubberPriceProductSeed } from "@annix/product-data/rubber";
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { RubberPriceListItem } from "../entities/rubber-price-list-item.entity";
+import { RubberCureType, RubberPriceListItem } from "../entities/rubber-price-list-item.entity";
 import {
   DEFAULT_RUBBER_PRICING_CONFIG,
   RubberPriceFamily,
@@ -17,10 +17,10 @@ import {
 } from "./rubber-pricing.service";
 
 export interface RubberPriceListItemInput {
-  family: string;
   supplier: string;
   productCode: string;
   productName?: string | null;
+  cureType?: string | null;
   bondingType?: string | null;
   colour?: string | null;
   shoreHardness?: number | null;
@@ -33,7 +33,8 @@ export interface RubberPriceListItemInput {
 
 export interface RubberPriceListRow {
   item: RubberPriceListItem;
-  pricing: RubberPricingResult;
+  plate: RubberPricingResult;
+  pipe: RubberPricingResult;
 }
 
 export interface RubberPriceListResponse {
@@ -53,6 +54,7 @@ export interface RubberQuoteCatalogItem {
   supplier: string;
   productCode: string;
   productName: string | null;
+  cureType: string | null;
   bondingType: string | null;
   colour: string | null;
   shoreHardness: number | null;
@@ -63,6 +65,7 @@ export interface RubberQuoteCatalogItem {
 export interface RubberQuoteInput {
   itemId?: number | null;
   family?: string | null;
+  cureType?: string | null;
   thicknessMm: number;
   nb?: string | null;
   areaOrLength: number;
@@ -132,10 +135,10 @@ export class RubberPriceListService {
       this.configForCompany(companyId),
     ]);
     const agents = await this.bondingAgentSalePrices(companyId, config);
-    const rows = items.map((item) => ({
-      item,
-      pricing: this.pricingService.computePricing(item, config, { agents }),
-    }));
+    const rows = items.map((item) => {
+      const both = this.pricingService.computeBothFamilies(item, config, { agents });
+      return { item, plate: both.plate, pipe: both.pipe };
+    });
     return { config, items: rows };
   }
 
@@ -145,20 +148,20 @@ export class RubberPriceListService {
       this.configForCompany(companyId),
     ]);
     const agents = await this.bondingAgentSalePrices(companyId, config);
-    const wanted = family ? this.normalizeFamily(family) : null;
+    const wanted = this.normalizeFamily(family ?? "plate");
     return items
       .filter((item) => item.active !== false && item.costPerKg != null)
-      .filter((item) => (wanted ? item.family === wanted : true))
       .map((item) => ({
         item,
-        pricing: this.pricingService.computePricing(item, config, { agents }),
+        pricing: this.pricingService.computePricing(item, config, { family: wanted, agents }),
       }))
       .map((row) => ({
         id: row.item.id,
-        family: row.item.family,
+        family: wanted,
         supplier: row.item.supplier,
         productCode: row.item.productCode,
         productName: row.item.productName ?? null,
+        cureType: row.item.cureType ?? null,
         bondingType: row.item.bondingType ?? null,
         colour: row.item.colour ?? null,
         shoreHardness: row.item.shoreHardness ?? null,
@@ -186,18 +189,17 @@ export class RubberPriceListService {
       }
       return item;
     }
-    if (!input.family) {
-      throw new BadRequestException("Either itemId or family is required to quote");
-    }
-    const family = this.normalizeFamily(input.family);
     const items = await this.itemRepo.findAllForCompany(companyId);
     const candidates = items.filter(
-      (item) => item.family === family && item.active !== false && item.costPerKg != null,
+      (item) =>
+        item.active !== false &&
+        item.costPerKg != null &&
+        (input.cureType ? item.cureType === input.cureType : true),
     );
     const preferred = candidates.find((item) => item.preferred === true);
     const chosen = preferred ?? candidates[0];
     if (!chosen) {
-      throw new NotFoundException(`No active priced rubber found for family ${family}`);
+      throw new NotFoundException("No active priced rubber found to quote");
     }
     return chosen;
   }
@@ -206,10 +208,11 @@ export class RubberPriceListService {
     const config = await this.configForCompany(companyId);
     const item = await this.resolveQuoteItem(companyId, input);
     const agents = await this.bondingAgentSalePrices(companyId, config);
-    const pricingOptions = { bondingType: input.bondingType ?? item.bondingType, agents };
+    const family = this.normalizeFamily(input.family ?? "plate");
+    const pricingOptions = { family, bondingType: input.bondingType ?? item.bondingType, agents };
     const areaOrLength = input.areaOrLength > 0 ? input.areaOrLength : 0;
 
-    if (item.family === "pipe" && input.nb) {
+    if (family === "pipe" && input.nb) {
       const running = this.pricingService.runningMetrePrice(
         item,
         config,
@@ -222,7 +225,7 @@ export class RubberPriceListService {
       }
       return {
         itemId: item.id,
-        family: item.family,
+        family,
         supplier: item.supplier,
         productCode: item.productCode,
         thicknessMm: input.thicknessMm,
@@ -243,10 +246,10 @@ export class RubberPriceListService {
       input.thicknessMm,
       pricingOptions,
     );
-    const mpsPerM2 = salePerM2 * config[item.family].mpsFactor;
+    const mpsPerM2 = salePerM2 * config[family].mpsFactor;
     return {
       itemId: item.id,
-      family: item.family,
+      family,
       supplier: item.supplier,
       productCode: item.productCode,
       thicknessMm: input.thicknessMm,
@@ -264,10 +267,10 @@ export class RubberPriceListService {
   private toCreatePayload(companyId: number, input: RubberPriceListItemInput) {
     return {
       companyId,
-      family: this.normalizeFamily(input.family),
       supplier: input.supplier,
       productCode: input.productCode,
       productName: input.productName ?? null,
+      cureType: (input.cureType ?? null) as RubberCureType | null,
       bondingType: input.bondingType ?? null,
       colour: input.colour ?? null,
       shoreHardness: input.shoreHardness ?? null,
@@ -297,7 +300,6 @@ export class RubberPriceListService {
       ...input,
       id: existing.id,
       companyId,
-      family: input.family ? this.normalizeFamily(input.family) : existing.family,
     } as RubberPriceListItem;
     return this.itemRepo.save(merged);
   }
@@ -348,10 +350,10 @@ export class RubberPriceListService {
   private seedToInput(seed: RubberPriceProductSeed): RubberPriceListItemInput {
     const hasCost = seed.costPerKg != null;
     return {
-      family: seed.family,
       supplier: seed.supplier ?? "Unknown Supplier",
       productCode: seed.code,
       productName: null,
+      cureType: "steam",
       bondingType: seed.bondingType ?? null,
       colour: seed.colour ?? null,
       shoreHardness: seed.shoreHardness ?? null,
@@ -363,6 +365,31 @@ export class RubberPriceListService {
     };
   }
 
+  private dedupeSeeds(seeds: RubberPriceProductSeed[]): RubberPriceProductSeed[] {
+    const cureType = "steam";
+    const keyFor = (seed: RubberPriceProductSeed): string =>
+      `${seed.code}::${cureType}::${seed.supplier ?? "Unknown Supplier"}`;
+    const isRicher = (
+      candidate: RubberPriceProductSeed,
+      current: RubberPriceProductSeed,
+    ): boolean => {
+      const candidateScore =
+        (candidate.costPerKg != null ? 1 : 0) + (candidate.specificGravity != null ? 1 : 0);
+      const currentScore =
+        (current.costPerKg != null ? 1 : 0) + (current.specificGravity != null ? 1 : 0);
+      return candidateScore > currentScore;
+    };
+    const byKey = seeds.reduce<Map<string, RubberPriceProductSeed>>((accumulator, seed) => {
+      const key = keyFor(seed);
+      const current = accumulator.get(key);
+      if (!current || isRicher(seed, current)) {
+        accumulator.set(key, seed);
+      }
+      return accumulator;
+    }, new Map());
+    return [...byKey.values()];
+  }
+
   async seedFromProductData(companyId: number): Promise<{ seeded: number }> {
     const existing = await this.itemRepo.findAllForCompany(companyId);
     if (existing.length > 0) {
@@ -370,7 +397,7 @@ export class RubberPriceListService {
     }
     const created = await this.createSequentially(
       companyId,
-      RUBBER_PRICE_PRODUCTS.map((seed) => this.seedToInput(seed)),
+      this.dedupeSeeds(RUBBER_PRICE_PRODUCTS).map((seed) => this.seedToInput(seed)),
     );
     this.logger.log(`Seeded ${created.length} rubber price list item(s) from product data`);
     return { seeded: created.length };

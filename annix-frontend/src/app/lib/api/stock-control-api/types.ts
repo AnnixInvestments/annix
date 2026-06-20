@@ -257,13 +257,15 @@ export interface CommitPaintPriceListImportInput {
 
 export type RubberPriceFamily = "plate" | "pipe";
 
+export type RubberCureType = "steam" | "precured" | "chemical";
+
 export interface RubberPriceListItem {
   id: number;
   firebaseUid: string;
-  family: RubberPriceFamily;
   supplier: string;
   productCode: string;
   productName: string | null;
+  cureType: RubberCureType | null;
   bondingType: string | null;
   colour: string | null;
   shoreHardness: number | null;
@@ -311,7 +313,8 @@ export interface RubberPricingResult {
 
 export interface RubberPriceListRow {
   item: RubberPriceListItem;
-  pricing: RubberPricingResult;
+  plate: RubberPricingResult;
+  pipe: RubberPricingResult;
 }
 
 export interface RubberNbFactorConfig {
@@ -383,6 +386,7 @@ export interface RubberQuoteCatalogItem {
   supplier: string;
   productCode: string;
   productName: string | null;
+  cureType: RubberCureType | null;
   bondingType: string | null;
   colour: string | null;
   shoreHardness: number | null;
@@ -393,6 +397,7 @@ export interface RubberQuoteCatalogItem {
 export interface RubberQuoteInput {
   itemId?: number | null;
   family?: RubberPriceFamily | null;
+  cureType?: RubberCureType | null;
   thicknessMm: number;
   nb?: string | null;
   areaOrLength: number;
@@ -416,10 +421,10 @@ export interface RubberQuoteResult {
 }
 
 export interface CreateRubberPriceListItemInput {
-  family: RubberPriceFamily;
   supplier: string;
   productCode: string;
   productName?: string | null;
+  cureType?: RubberCureType | null;
   bondingType?: string | null;
   colour?: string | null;
   shoreHardness?: number | null;
@@ -433,9 +438,9 @@ export interface CreateRubberPriceListItemInput {
 export type UpdateRubberPriceListItemInput = Partial<CreateRubberPriceListItemInput>;
 
 export interface RubberPriceListRowPreview {
-  family: RubberPriceFamily;
   supplier: string;
   productCode: string;
+  cureType: RubberCureType | null;
   bondingType: string | null;
   colour: string | null;
   shoreHardness: number | null;

@@ -130,16 +130,37 @@ function bestOf(items: QuoteCatalogItem[]): QuoteCatalogItem | null {
   return best || null;
 }
 
+function bestOfForSlot(items: QuoteCatalogItem[], slot: CoatSlot): QuoteCatalogItem | null {
+  const ranked = [...items].sort((a, b) => {
+    const preferredA = a.preferred === true ? 0 : 1;
+    const preferredB = b.preferred === true ? 0 : 1;
+    if (preferredA !== preferredB) {
+      return preferredA - preferredB;
+    }
+    const slotA = a.coatType === slot ? 0 : 1;
+    const slotB = b.coatType === slot ? 0 : 1;
+    if (slotA !== slotB) {
+      return slotA - slotB;
+    }
+    const deepA = isDeepShade(a) ? 0 : 1;
+    const deepB = isDeepShade(b) ? 0 : 1;
+    if (deepA !== deepB) {
+      return deepA - deepB;
+    }
+    return a.salePerM2 - b.salePerM2;
+  });
+  const best = ranked[0];
+  return best || null;
+}
+
 function resolveSupplierCoat(
   catalog: QuoteCatalogItem[],
   supplierName: string,
   slot: CoatSlot,
   reference: QuoteCatalogItem | null,
 ): QuoteCatalogItem | null {
-  const supplierMatches = catalog.filter(
-    (item) => item.supplierName === supplierName && item.coatType === slot,
-  );
-  if (supplierMatches.length === 0) {
+  const supplierItems = catalog.filter((item) => item.supplierName === supplierName);
+  if (supplierItems.length === 0) {
     return null;
   }
 
@@ -148,7 +169,7 @@ function resolveSupplierCoat(
   const referencePaintType = reference ? reference.paintType : null;
 
   if (referenceGenericType != null) {
-    const exactGeneric = supplierMatches.filter((item) => {
+    const exactGeneric = supplierItems.filter((item) => {
       const itemGenericType = item.genericType;
       return itemGenericType != null && itemGenericType === referenceGenericType;
     });
@@ -159,38 +180,41 @@ function resolveSupplierCoat(
           return itemFinishType != null && itemFinishType === referenceFinishType;
         });
         if (sameFinish.length > 0) {
-          return bestOf(sameFinish);
+          return bestOfForSlot(sameFinish, slot);
         }
       }
-      return bestOf(exactGeneric);
+      return bestOfForSlot(exactGeneric, slot);
     }
 
     const referenceFamily = familyOf(referenceGenericType);
     if (referenceFamily != null) {
-      const sameFamily = supplierMatches.filter((item) => {
+      const sameFamily = supplierItems.filter((item) => {
         const itemFamily = familyOf(item.genericType);
         return itemFamily != null && itemFamily === referenceFamily;
       });
       if (sameFamily.length > 0) {
-        return bestOf(sameFamily);
+        return bestOfForSlot(sameFamily, slot);
       }
     }
+  }
 
-    return bestOf(supplierMatches);
+  const slotMatches = supplierItems.filter((item) => item.coatType === slot);
+  if (slotMatches.length === 0) {
+    return null;
   }
 
   const chemistry = referencePaintType ? referencePaintType.trim().toLowerCase() : null;
   if (chemistry != null) {
-    const sameChemistry = supplierMatches.filter((item) => {
+    const sameChemistry = slotMatches.filter((item) => {
       const itemPaintType = item.paintType;
       return itemPaintType != null && itemPaintType.trim().toLowerCase() === chemistry;
     });
     if (sameChemistry.length > 0) {
-      return bestOf(sameChemistry);
+      return bestOfForSlot(sameChemistry, slot);
     }
   }
 
-  return bestOf(supplierMatches);
+  return bestOfForSlot(slotMatches, slot);
 }
 
 function resolveCoatByGeneric(
@@ -199,29 +223,32 @@ function resolveCoatByGeneric(
   genericType: string | null,
   supplierName: string | null,
 ): QuoteCatalogItem | null {
-  const slotMatches = catalog.filter((item) => item.coatType === slot);
-  if (slotMatches.length === 0) {
+  const supplierScoped =
+    supplierName != null ? catalog.filter((item) => item.supplierName === supplierName) : [];
+  const pool = supplierScoped.length > 0 ? supplierScoped : catalog;
+  if (pool.length === 0) {
     return null;
   }
-  const supplierPool =
-    supplierName != null ? slotMatches.filter((item) => item.supplierName === supplierName) : [];
-  const pool = supplierPool.length > 0 ? supplierPool : slotMatches;
 
   if (genericType != null) {
     const exact = pool.filter((item) => item.genericType === genericType);
     if (exact.length > 0) {
-      return bestOf(exact);
+      return bestOfForSlot(exact, slot);
     }
     const targetFamily = familyOf(genericType);
     if (targetFamily != null) {
       const sameFamily = pool.filter((item) => familyOf(item.genericType) === targetFamily);
       if (sameFamily.length > 0) {
-        return bestOf(sameFamily);
+        return bestOfForSlot(sameFamily, slot);
       }
     }
   }
 
-  return bestOf(pool);
+  const slotMatches = pool.filter((item) => item.coatType === slot);
+  if (slotMatches.length > 0) {
+    return bestOfForSlot(slotMatches, slot);
+  }
+  return null;
 }
 
 function micronsString(value: number | null): string {

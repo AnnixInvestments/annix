@@ -17,9 +17,6 @@ export class RubberPriceListItem {
   companyId: number;
 
   @Prop({ type: String, required: true })
-  family: string;
-
-  @Prop({ type: String, required: true })
   supplier: string;
 
   @Prop({ type: String, required: true })
@@ -27,6 +24,9 @@ export class RubberPriceListItem {
 
   @Prop({ type: String, required: false, default: null })
   productName: string | null;
+
+  @Prop({ type: String, required: false, default: null })
+  cureType: string | null;
 
   @Prop({ type: String, required: false, default: null })
   bondingType: string | null;
@@ -61,4 +61,4 @@ export class RubberPriceListItem {
 
 export const RubberPriceListItemSchema = SchemaFactory.createForClass(RubberPriceListItem);
 
-RubberPriceListItemSchema.index({ companyId: 1, family: 1, supplier: 1, productCode: 1 });
+RubberPriceListItemSchema.index({ companyId: 1, supplier: 1, productCode: 1, cureType: 1 });

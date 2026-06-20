@@ -1,18 +1,15 @@
 import { RubberPriceListItem } from "../entities/rubber-price-list-item.entity";
-import {
-  DEFAULT_RUBBER_PRICING_CONFIG,
-  RubberPriceFamily,
-} from "../entities/rubber-pricing-config";
+import { DEFAULT_RUBBER_PRICING_CONFIG } from "../entities/rubber-pricing-config";
 import { RubberPricingService } from "./rubber-pricing.service";
 
 function item(overrides: Partial<RubberPriceListItem>): RubberPriceListItem {
   return {
     id: 1,
     companyId: 1,
-    family: "plate" as RubberPriceFamily,
     supplier: "Rema",
     productCode: "1078",
     productName: null,
+    cureType: "steam",
     bondingType: "Natural",
     colour: "Black",
     shoreHardness: 40,
@@ -73,7 +70,7 @@ describe("RubberPricingService", () => {
   });
 
   it("matches the plate Rema-Natural sale + MPS price at 3mm (workbook B36 / B57)", () => {
-    const result = service.computePricing(item({ family: "plate" }), config);
+    const result = service.computePricing(item({}), config, { family: "plate" });
     const at3mm = result.thicknesses.find((row) => row.thicknessMm === 3);
     expect(at3mm?.materialPerM2).toBeCloseTo(375.02, 1);
     expect(at3mm?.salePerM2).toBeCloseTo(1307.41, 0);
@@ -81,16 +78,29 @@ describe("RubberPricingService", () => {
   });
 
   it("matches the pipe Rema-Natural sale + MPS price at 3mm (workbook B24 / B34)", () => {
-    const result = service.computePricing(item({ family: "pipe", costPerKg: 114.59 }), config);
+    const result = service.computePricing(item({ costPerKg: 114.59 }), config, { family: "pipe" });
     const at3mm = result.thicknesses.find((row) => row.thicknessMm === 3);
     expect(at3mm?.materialPerM2).toBeCloseTo(364.57, 0);
     expect(at3mm?.salePerM2).toBeCloseTo(1060.77, 0);
     expect(at3mm?.mpsPerM2).toBeCloseTo(848.62, 0);
   });
 
+  it("computeBothFamilies returns plate and pipe results from one family-agnostic item", () => {
+    const both = service.computeBothFamilies(item({ costPerKg: 114.59 }), config);
+    const plate3mm = both.plate.thicknesses.find((row) => row.thicknessMm === 3);
+    const pipe3mm = both.pipe.thicknesses.find((row) => row.thicknessMm === 3);
+    expect(both.plate.family).toBe("plate");
+    expect(both.pipe.family).toBe("pipe");
+    expect(both.plate.runningMetres).toBeNull();
+    expect(both.pipe.runningMetres).not.toBeNull();
+    expect(pipe3mm?.salePerM2).toBeCloseTo(1060.77, 0);
+    expect(pipe3mm?.mpsPerM2).toBeCloseTo(848.62, 0);
+    expect(plate3mm?.salePerM2).not.toBeNull();
+  });
+
   it("converts pipe sale per m² to a running-metre price via the NB circumference factor", () => {
-    const pipeItem = item({ family: "pipe", costPerKg: 114.59 });
-    const sale3mm = service.salePerM2(pipeItem, config, 3);
+    const pipeItem = item({ costPerKg: 114.59 });
+    const sale3mm = service.salePerM2(pipeItem, config, 3, { family: "pipe" });
     const rm = service.runningMetrePrice(pipeItem, config, 3, "50NB");
     expect(rm).not.toBeNull();
     expect(rm?.factor).toBeCloseTo(0.2025, 4);
@@ -98,13 +108,13 @@ describe("RubberPricingService", () => {
   });
 
   it("applies the uplift % on top of the waste factor", () => {
-    const base = service.salePerM2(item({}), config, 5);
-    const uplifted = service.salePerM2(item({ upliftPercent: 10 }), config, 5);
+    const base = service.salePerM2(item({}), config, 5, { family: "plate" });
+    const uplifted = service.salePerM2(item({ upliftPercent: 10 }), config, 5, { family: "plate" });
     expect(uplifted).toBeGreaterThan(base);
   });
 
   it("returns no running-metre prices for plate", () => {
-    const result = service.computePricing(item({ family: "plate" }), config);
+    const result = service.computePricing(item({}), config, { family: "plate" });
     expect(result.runningMetres).toBeNull();
   });
 });

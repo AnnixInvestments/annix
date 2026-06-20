@@ -12,12 +12,10 @@ import {
 } from "class-validator";
 
 const FAMILIES = ["plate", "pipe"] as const;
+const CURE_TYPES = ["steam", "precured", "chemical"] as const;
 
 @ApiSchema({ name: "StockControlRubberCreatePriceListItemDto" })
 export class CreateRubberPriceListItemDto {
-  @IsIn(FAMILIES)
-  family: string;
-
   @IsString()
   supplier: string;
 
@@ -27,6 +25,10 @@ export class CreateRubberPriceListItemDto {
   @IsOptional()
   @IsString()
   productName?: string | null;
+
+  @IsOptional()
+  @IsIn(CURE_TYPES)
+  cureType?: string | null;
 
   @IsOptional()
   @IsString()
@@ -67,10 +69,6 @@ export class CreateRubberPriceListItemDto {
 @ApiSchema({ name: "StockControlRubberUpdatePriceListItemDto" })
 export class UpdateRubberPriceListItemDto {
   @IsOptional()
-  @IsIn(FAMILIES)
-  family?: string;
-
-  @IsOptional()
   @IsString()
   supplier?: string;
 
@@ -81,6 +79,10 @@ export class UpdateRubberPriceListItemDto {
   @IsOptional()
   @IsString()
   productName?: string | null;
+
+  @IsOptional()
+  @IsIn(CURE_TYPES)
+  cureType?: string | null;
 
   @IsOptional()
   @IsString()
@@ -269,6 +271,10 @@ export class RubberQuoteDto {
   @IsOptional()
   @IsIn(FAMILIES)
   family?: string | null;
+
+  @IsOptional()
+  @IsIn(CURE_TYPES)
+  cureType?: string | null;
 
   @IsNumber()
   @Min(0)
