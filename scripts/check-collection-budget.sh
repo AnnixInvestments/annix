@@ -36,11 +36,27 @@ if ! git rev-parse origin/main >/dev/null 2>&1; then
   LOG_RANGE="HEAD"
 fi
 
-current_count=$(git grep -hoE 'SchemaFactory\.createForClass\([A-Za-z0-9_]+' HEAD -- "$SCHEMA_PATH" 2>/dev/null \
+# The 500-collection M0 cap applies to LIVE collections in the Atlas main DB,
+# not to @Schema classes in the source. With autoCreate:false + the empty-
+# collection sweep, a defined schema only becomes a collection on its first
+# write, and embedded sub-document schemas are never collections at all — so a
+# static count of SchemaFactory.createForClass over-estimates the real number
+# (it ran ~160 ahead of reality). Gate on the live count the admin dashboard
+# reports; fall back to the static estimate only when Atlas is unreachable.
+defined_count=$(git grep -hoE 'SchemaFactory\.createForClass\([A-Za-z0-9_]+' HEAD -- "$SCHEMA_PATH" 2>/dev/null \
   | sort -u | grep -c . || true)
 
+live_count=$(node "$ROOT_DIR/scripts/count-live-collections.mjs" 2>/dev/null || true)
+if printf '%s' "$live_count" | grep -qE '^[0-9]+$'; then
+  current_count=$live_count
+  source="live Atlas main DB"
+else
+  current_count=$defined_count
+  source="defined schema classes (offline estimate — live count is lower)"
+fi
+
 headroom=$((M0_COLLECTION_CAP - current_count))
-echo "Schema/collection definitions: ${current_count} / ${M0_COLLECTION_CAP} (M0 cap) — ${headroom} headroom"
+echo "Collections (${source}): ${current_count} / ${M0_COLLECTION_CAP} (M0 cap) — ${headroom} headroom"
 
 added=$(git diff "$DIFF_RANGE" -- "$SCHEMA_PATH" 2>/dev/null \
   | grep -E '^\+' \
@@ -57,8 +73,18 @@ new_count=$(printf "%s\n" "$added" | grep -c .)
 echo -e "${YELLOW}This push adds ${new_count} new collection definition(s):${NC}"
 printf "%s\n" "$added" | sed 's/^/    + /'
 
-if [ "$current_count" -lt "$BLOCK_THRESHOLD" ]; then
-  echo -e "${GREEN}Within budget (${current_count}/${M0_COLLECTION_CAP}, ${headroom} headroom) — allowed.${NC}"
+# A newly-defined schema becomes a live collection on first write. With the live
+# count we project forward by what this push introduces; the static estimate
+# already includes them (it greps HEAD), so only project in live mode.
+if [ "$source" = "live Atlas main DB" ]; then
+  projected=$((current_count + new_count))
+else
+  projected=$current_count
+fi
+projected_headroom=$((M0_COLLECTION_CAP - projected))
+
+if [ "$projected" -lt "$BLOCK_THRESHOLD" ]; then
+  echo -e "${GREEN}Within budget (${projected}/${M0_COLLECTION_CAP} projected, ${projected_headroom} headroom) — allowed.${NC}"
   exit 0
 fi
 
@@ -76,7 +102,7 @@ if [ "$acknowledged" = "1" ]; then
 fi
 
 echo ""
-echo -e "${RED}Blocked:${NC} only ${headroom} collection(s) of headroom left before the ${M0_COLLECTION_CAP} M0 cap, and we are staying on M0."
+echo -e "${RED}Blocked:${NC} only ${projected_headroom} collection(s) of headroom left before the ${M0_COLLECTION_CAP} M0 cap, and we are staying on M0."
 echo "This close to the cap, every new collection must be deliberate. First consider"
 echo "whether the data belongs as an embedded sub-document on an existing schema —"
 echo "counters, config, and single-row settings usually do."
