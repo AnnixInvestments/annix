@@ -5,9 +5,9 @@ category: Admin
 roles: [admin, manager]
 order: 9
 tags: [rubber, lining, quoting, plate, pipe, pricing]
-lastUpdated: 2026-06-20
-summary: Quote rubber lining work fast — pick a rubber, cure type, bonding system, thickness and area (plate) or length and NB size (pipe), and read off the live sale and MPS price plus the line total. The Plate / Pipe toggle selects the pricing formula, not the rubber.
-readingMinutes: 2
+lastUpdated: 2026-06-21
+summary: Quote rubber lining work fast — pick a rubber, cure type, bonding system, thickness and area (plate) or length and NB size (pipe), and read off the live sale and MPS price plus the line total. Switch to Compare suppliers to price the same spec across AU, Rema, Truco and Impilo side by side. The Plate / Pipe toggle selects the pricing formula, not the rubber.
+readingMinutes: 3
 relatedPaths: [annix-frontend/src/app/stock-control/portal/rubber-quote/page.tsx, annix-frontend/src/app/stock-control/portal/admin/rubber-pricing/page.tsx, annix-frontend/src/app/lib/query/hooks/stock-control/useRubberPricing.ts, annix-frontend/src/app/lib/api/stock-control-api/rubberPricingMethods.ts]
 ---
 
@@ -16,6 +16,8 @@ relatedPaths: [annix-frontend/src/app/stock-control/portal/rubber-quote/page.tsx
 Rubber Quote turns the price list maintained in **Rubber Pricing** into a quick sell-price calculation. Choose a rubber, a thickness and the quantity, and it shows the live **sale price** and **MPS (minimum permissible sale) price** plus the **line total** — using only sale prices, never your cost or markup. Prices update **live** as you change anything.
 
 Open it at **Resources → Rubber Quote**.
+
+At the top of the card a **Single quote / Compare suppliers** switch picks the view, sitting next to the Plate / Running-metre Pipe toggle that both views share.
 
 ## Plate vs pipe
 
@@ -48,3 +50,17 @@ Once the quote is valid the card shows:
 - **Line total** — the large, brand-accented sale total across the quantity.
 
 If the page shows "No priced rubber available — add some in Rubber Lining Pricing", add or import rubbers on the **Rubber Pricing** page first, then come back to quote them.
+
+## Comparing suppliers
+
+Switch to **Compare suppliers** to price the *same* rubber spec across all four suppliers — **AU, Rema, Truco and Impilo** — in parallel columns.
+
+1. Pick the spec that identifies the compound: **Rubber type** (required), and optionally **Shore A**, **Colour** and **Cure type**. Only values that exist in the loaded catalogue for the chosen rubber type appear, so you can't build a spec that nothing matches.
+2. Choose the **Thickness (mm)**, the **NB size** (pipe only) and the **Area (m²)** (plate) or **Length (m)** (pipe).
+
+Once the spec, thickness, quantity (and NB for pipe) are set, each supplier is priced automatically. Every column shows the matched **product code**, the **Sale** and **MPS** per unit (per m² for plate, per metre for pipe) and the **line total** across the quantity. When several of a supplier's products match the spec, the one flagged **Preferred** is used, otherwise the first match.
+
+- A supplier with no product matching the spec shows **Not stocked**.
+- The cheapest line total is ringed and tagged **Best**.
+
+Sale prices are shown for comparison only; supplier costs always stay internal.

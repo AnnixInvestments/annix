@@ -1322,6 +1322,7 @@ export {
   useCertificateSuppliers,
   useCertificates,
   useCheckPositectorConnection,
+  useClearRubberPriceList,
   useCommitPaintPriceListImport,
   useCommitRubberBondingAgentImport,
   useCommitRubberPriceListImport,

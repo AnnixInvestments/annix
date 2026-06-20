@@ -30,4 +30,9 @@ export class MongoRubberPriceListItemRepository
     const doc = await this.documents.findOne({ _id: id, companyId }).lean().exec();
     return this.toDomain(doc);
   }
+
+  async deleteAllForCompany(companyId: number): Promise<number> {
+    const result = await this.documents.deleteMany({ companyId }).exec();
+    return result.deletedCount ?? 0;
+  }
 }

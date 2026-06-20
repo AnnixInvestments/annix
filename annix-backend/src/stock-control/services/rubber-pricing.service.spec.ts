@@ -52,21 +52,30 @@ describe("RubberPricingService", () => {
     expect(service.cwPerM2(config, "pipe", "Natural")).toBeCloseTo(441.01, 0);
   });
 
-  it("uses summed live agent sale prices when the whole recipe resolves", () => {
+  it("gives a different C&W per bonding-agent supplier", () => {
+    const impilo = service.cwPerM2(config, "plate", "Natural", null, "Impilo");
+    const tyPly = service.cwPerM2(config, "plate", "Natural", null, "Ty-Ply");
+    const rema = service.cwPerM2(config, "plate", "Natural", null, "Rema");
+    const labour = service.labourStack(config, "plate").totalPerM2;
+    expect(impilo).toBeCloseTo(labour + 179.4691, 2);
+    expect(tyPly).toBeCloseTo(labour + 321.0416, 2);
+    expect(rema).toBeCloseTo(labour + 194.2544, 2);
+    expect(impilo).not.toBeCloseTo(tyPly, 1);
+  });
+
+  it("defaults to Impilo for plate when no bonding-agent supplier is given", () => {
+    expect(service.cwPerM2(config, "plate", "Natural")).toBeCloseTo(
+      service.cwPerM2(config, "plate", "Natural", null, "Impilo"),
+      6,
+    );
+  });
+
+  it("uses summed live agent sale prices when the supplier has no baseline", () => {
     const recipe = config.plate.cwRecipes?.Natural ?? [];
     const agentSale = 12.5;
     const agents = recipe.map((name) => ({ name, salePerM2: agentSale }));
     const expected = service.labourStack(config, "plate").totalPerM2 + agentSale * recipe.length;
-    expect(service.cwPerM2(config, "plate", "Natural", agents)).toBeCloseTo(expected, 6);
-  });
-
-  it("falls back to the baseline when an agent in the recipe is missing", () => {
-    const recipe = config.plate.cwRecipes?.Natural ?? [];
-    const partialAgents = recipe.slice(1).map((name) => ({ name, salePerM2: 12.5 }));
-    expect(service.cwPerM2(config, "plate", "Natural", partialAgents)).toBeCloseTo(
-      service.cwPerM2(config, "plate", "Natural"),
-      6,
-    );
+    expect(service.cwPerM2(config, "plate", "Natural", agents, "Megum")).toBeCloseTo(expected, 6);
   });
 
   it("matches the plate Rema-Natural sale + MPS price at 3mm (workbook B36 / B57)", () => {

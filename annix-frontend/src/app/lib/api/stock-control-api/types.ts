@@ -402,6 +402,7 @@ export interface RubberQuoteInput {
   nb?: string | null;
   areaOrLength: number;
   bondingType?: string | null;
+  bondingAgentSupplier?: string | null;
 }
 
 export interface RubberQuoteResult {

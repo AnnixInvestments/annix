@@ -104,9 +104,19 @@ export class RubberPricingService {
     familyConfig: RubberFamilyPricingConfig,
     bondingType: string | null,
     agents?: RubberBondingAgentSalePrice[] | null,
+    bondingAgentSupplier?: string | null,
   ): number {
     const baseline = bondingType ? (familyConfig.cwAgentBaselinePerM2[bondingType] ?? 0) : 0;
-    if (!bondingType || !agents || agents.length === 0) {
+    if (!bondingType) {
+      return 0;
+    }
+    const supplier = bondingAgentSupplier ?? familyConfig.defaultBondingAgentSupplier;
+    const supplierBaselines = familyConfig.cwAgentSupplierBaselines[supplier];
+    const supplierBaseline = supplierBaselines ? supplierBaselines[bondingType] : undefined;
+    if (supplierBaseline != null) {
+      return supplierBaseline;
+    }
+    if (!agents || agents.length === 0) {
       return baseline;
     }
     const recipe = familyConfig.cwRecipes?.[bondingType];
@@ -122,14 +132,24 @@ export class RubberPricingService {
     return resolved.reduce<number>((total, sale) => total + (sale ?? 0), 0);
   }
 
+  bondingAgentSuppliers(config: RubberPricingConfig, family: RubberPriceFamily): string[] {
+    return Object.keys(config[family].cwAgentSupplierBaselines);
+  }
+
   cwPerM2(
     config: RubberPricingConfig,
     family: RubberPriceFamily,
     bondingType: string | null,
     agents?: RubberBondingAgentSalePrice[] | null,
+    bondingAgentSupplier?: string | null,
   ): number {
     const familyConfig = config[family];
-    const agentPortion = this.agentPortionPerM2(familyConfig, bondingType, agents);
+    const agentPortion = this.agentPortionPerM2(
+      familyConfig,
+      bondingType,
+      agents,
+      bondingAgentSupplier,
+    );
     return this.labourStack(config, family).totalPerM2 + agentPortion;
   }
 
@@ -155,6 +175,7 @@ export class RubberPricingService {
       family: RubberPriceFamily;
       bondingType?: string | null;
       agents?: RubberBondingAgentSalePrice[] | null;
+      bondingAgentSupplier?: string | null;
     },
   ): number {
     const family = options.family;
@@ -163,7 +184,7 @@ export class RubberPricingService {
     const bondingType = options.bondingType ?? item.bondingType;
     return (
       material * familyConfig.markupFactor +
-      this.cwPerM2(config, family, bondingType, options.agents)
+      this.cwPerM2(config, family, bondingType, options.agents, options.bondingAgentSupplier)
     );
   }
 
@@ -174,13 +195,20 @@ export class RubberPricingService {
       family: RubberPriceFamily;
       bondingType?: string | null;
       agents?: RubberBondingAgentSalePrice[] | null;
+      bondingAgentSupplier?: string | null;
     },
   ): RubberPricingResult {
     const family = options.family;
     const familyConfig = config[family];
     const labourStack = this.labourStack(config, family);
     const bondingType = options.bondingType ?? item.bondingType;
-    const cw = this.cwPerM2(config, family, bondingType, options.agents);
+    const cw = this.cwPerM2(
+      config,
+      family,
+      bondingType,
+      options.agents,
+      options.bondingAgentSupplier,
+    );
     const thicknesses = familyConfig.thicknessesMm.map((thicknessMm) => {
       const material = this.materialPerM2(item, familyConfig, thicknessMm);
       const sale = material * familyConfig.markupFactor + cw;
@@ -221,7 +249,11 @@ export class RubberPricingService {
   computeBothFamilies(
     item: RubberPriceListItem,
     config: RubberPricingConfig,
-    options?: { bondingType?: string | null; agents?: RubberBondingAgentSalePrice[] | null },
+    options?: {
+      bondingType?: string | null;
+      agents?: RubberBondingAgentSalePrice[] | null;
+      bondingAgentSupplier?: string | null;
+    },
   ): { plate: RubberPricingResult; pipe: RubberPricingResult } {
     return {
       plate: this.computePricing(item, config, { ...options, family: "plate" }),
@@ -234,7 +266,11 @@ export class RubberPricingService {
     config: RubberPricingConfig,
     thicknessMm: number,
     nb: string,
-    options?: { bondingType?: string | null; agents?: RubberBondingAgentSalePrice[] | null },
+    options?: {
+      bondingType?: string | null;
+      agents?: RubberBondingAgentSalePrice[] | null;
+      bondingAgentSupplier?: string | null;
+    },
   ): RubberRunningMetrePrice | null {
     const nbFactor = config.pipe.nbFactors.find((entry) => entry.nb === nb);
     if (!nbFactor) {

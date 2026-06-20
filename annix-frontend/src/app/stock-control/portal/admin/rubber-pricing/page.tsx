@@ -9,7 +9,7 @@ import { metricsApi } from "@/app/lib/api/metricsApi";
 import type {
   CreateRubberPriceListItemInput,
   RubberCureType,
-  RubberFamilyPricingConfig,
+  RubberNbFactorConfig,
   RubberPriceFamily,
   RubberPriceListImportPreview,
   RubberPriceListRow,
@@ -19,6 +19,7 @@ import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useBranding,
   useBulkUpliftRubberPrices,
+  useClearRubberPriceList,
   useCommitRubberPriceListImport,
   useCreateRubberPriceItem,
   useDeleteRubberPriceItem,
@@ -166,12 +167,57 @@ function draftIsValid(draft: RowDraft): boolean {
   return hasSupplier && hasCode && hasSg;
 }
 
-function referenceThickness(family: RubberFamilyPricingConfig): number | null {
-  const thicknesses = family.thicknessesMm;
-  if (thicknesses.length === 0) {
+const DEFAULT_REF_THICKNESS_MM = 6;
+const DEFAULT_REF_NB = "150NB";
+
+function closestThickness(options: number[], desired: number): number | null {
+  if (options.length === 0) {
     return null;
   }
-  return thicknesses[thicknesses.length - 1];
+  const exact = options.find((value) => value === desired);
+  if (exact !== undefined) {
+    return exact;
+  }
+  return options.reduce((best, current) =>
+    Math.abs(current - desired) < Math.abs(best - desired) ? current : best,
+  );
+}
+
+function plateRefSale(row: RubberPriceListRow, thicknessMm: number | null): number | null {
+  if (thicknessMm === null) {
+    return null;
+  }
+  const plate = row.plate;
+  const thicknesses = plate.thicknesses;
+  const entry = thicknesses.find((thickness) => thickness.thicknessMm === thicknessMm);
+  if (!entry) {
+    return null;
+  }
+  return entry.salePerM2;
+}
+
+function pipeRefRunningMetre(
+  row: RubberPriceListRow,
+  thicknessMm: number | null,
+  nb: string | null,
+  nbFactors: RubberNbFactorConfig[],
+): number | null {
+  if (thicknessMm === null || nb === null) {
+    return null;
+  }
+  const pipe = row.pipe;
+  const thicknesses = pipe.thicknesses;
+  const entry = thicknesses.find((thickness) => thickness.thicknessMm === thicknessMm);
+  if (!entry) {
+    return null;
+  }
+  const perM2 = entry.salePerM2;
+  const factorEntry = nbFactors.find((factor) => factor.nb === nb);
+  if (!factorEntry) {
+    return null;
+  }
+  const factor = factorEntry.pie + factorEntry.additional;
+  return perM2 * factor;
 }
 
 const INPUT_CLASS =
@@ -192,6 +238,7 @@ export default function RubberPricingAdminPage() {
   const commitImport = useCommitRubberPriceListImport();
   const bulkUplift = useBulkUpliftRubberPrices();
   const seedList = useSeedRubberPriceList();
+  const clearList = useClearRubberPriceList();
   const brandingQuery = useBranding("stock-control");
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
@@ -199,6 +246,8 @@ export default function RubberPricingAdminPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [family, setFamily] = useState<RubberPriceFamily>("plate");
+  const [refThicknessMm, setRefThicknessMm] = useState<number>(DEFAULT_REF_THICKNESS_MM);
+  const [refNb, setRefNb] = useState<string>(DEFAULT_REF_NB);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [rowDraft, setRowDraft] = useState<RowDraft>(EMPTY_DRAFT);
   const [newDraft, setNewDraft] = useState<RowDraft>(EMPTY_DRAFT);
@@ -207,6 +256,10 @@ export default function RubberPricingAdminPage() {
   const [replaceSupplier, setReplaceSupplier] = useState(true);
   const [bulkUpliftValue, setBulkUpliftValue] = useState("");
   const [supplierFilter, setSupplierFilter] = useState("all");
+  const [colourFilter, setColourFilter] = useState("all");
+  const [bondingFilter, setBondingFilter] = useState("all");
+  const [shoreFilter, setShoreFilter] = useState("all");
+  const [cureFilter, setCureFilter] = useState("all");
 
   const data = query.data;
   const config = data ? data.config : null;
@@ -222,19 +275,63 @@ export default function RubberPricingAdminPage() {
     }
   }, [config]);
 
+  const familyThicknesses = config ? config[family].thicknessesMm : [];
+  const pipeNbFactors = config ? config.pipe.nbFactors : [];
+
+  useEffect(() => {
+    const resolved = closestThickness(familyThicknesses, refThicknessMm);
+    if (resolved !== null && resolved !== refThicknessMm) {
+      setRefThicknessMm(resolved);
+    }
+  }, [familyThicknesses, refThicknessMm]);
+
+  useEffect(() => {
+    const nbValues = pipeNbFactors.map((factor) => factor.nb);
+    const inList = nbValues.find((value) => value === refNb);
+    const fallback = nbValues[0];
+    if (inList === undefined && fallback !== undefined) {
+      setRefNb(fallback);
+    }
+  }, [pipeNbFactors, refNb]);
+
   const supplierOptions = Array.from(
     new Set(rows.map((row) => row.item.supplier).filter((name) => name !== "")),
   ).sort((a, b) => a.localeCompare(b));
 
+  const colourOptions = Array.from(
+    new Set(rows.map((row) => row.item.colour).filter((value): value is string => !!value)),
+  ).sort((a, b) => a.localeCompare(b));
+
+  const bondingOptions = Array.from(
+    new Set(rows.map((row) => row.item.bondingType).filter((value): value is string => !!value)),
+  ).sort((a, b) => a.localeCompare(b));
+
+  const shoreOptions = Array.from(
+    new Set(
+      rows.map((row) => row.item.shoreHardness).filter((value): value is number => value != null),
+    ),
+  ).sort((a, b) => a - b);
+
   const filteredRows = rows.filter((row) => {
-    const supplier = row.item.supplier;
-    return supplierFilter === "all" || supplier === supplierFilter;
+    const item = row.item;
+    const supplier = item.supplier;
+    const colour = item.colour;
+    const bonding = item.bondingType;
+    const shore = item.shoreHardness;
+    const cure = item.cureType;
+    const matchesSupplier = supplierFilter === "all" || supplier === supplierFilter;
+    const matchesColour = colourFilter === "all" || colour === colourFilter;
+    const matchesBonding = bondingFilter === "all" || bonding === bondingFilter;
+    const matchesShore = shoreFilter === "all" || String(shore) === shoreFilter;
+    const matchesCure = cureFilter === "all" || (cure ?? "") === cureFilter;
+    return matchesSupplier && matchesColour && matchesBonding && matchesShore && matchesCure;
   });
 
   const hasRows = rows.length > 0;
   const bulkUpliftPending = bulkUplift.isPending;
   const importPending = importPriceList.isPending;
   const seedPending = seedList.isPending;
+  const clearPending = clearList.isPending;
 
   const startEdit = useCallback((row: RubberPriceListRow) => {
     setEditingId(row.item.id);
@@ -287,6 +384,20 @@ export default function RubberPricingAdminPage() {
       }
       updateItem.mutate(
         { id: item.id, input: { cureType: next } },
+        { onError: () => showToast("Could not save the change — please try again.", "error") },
+      );
+    },
+    [updateItem, showToast],
+  );
+
+  const handleBondingChange = useCallback(
+    (item: RubberPriceListRow["item"], raw: string) => {
+      const next = raw === "" ? null : raw;
+      if (next === item.bondingType) {
+        return;
+      }
+      updateItem.mutate(
+        { id: item.id, input: { bondingType: next } },
         { onError: () => showToast("Could not save the change — please try again.", "error") },
       );
     },
@@ -375,6 +486,24 @@ export default function RubberPricingAdminPage() {
       onError: () => showToast("Could not seed the price list — please try again.", "error"),
     });
   }, [confirm, seedList, showToast]);
+
+  const handleClearAll = useCallback(async () => {
+    const confirmed = await confirm({
+      title: "Clear price list",
+      message:
+        "Delete every rubber price list item? This cannot be undone — you can re-seed or re-import afterwards.",
+      confirmLabel: "Clear all",
+      variant: "danger",
+    });
+    if (!confirmed) return;
+    clearList.mutate(undefined, {
+      onSuccess: (result) => {
+        const cleared = result.cleared;
+        showToast(`Cleared ${cleared} rubber product${cleared === 1 ? "" : "s"}.`, "success");
+      },
+      onError: () => showToast("Could not clear the price list — please try again.", "error"),
+    });
+  }, [confirm, clearList, showToast]);
 
   const handleImportFile = useCallback(
     async (file: File) => {
@@ -549,6 +678,20 @@ export default function RubberPricingAdminPage() {
   const paraffin = configDraft.paraffin;
   const previewSupplier = importPreview ? importPreview.supplier : "";
   const previewRows = importPreview ? importPreview.rows : [];
+
+  const activeFamilyConfig = configDraft[family];
+  const thicknessOptions = activeFamilyConfig.thicknessesMm;
+  const pipeConfig = configDraft.pipe;
+  const nbFactors = pipeConfig.nbFactors;
+  const resolvedRefThickness = closestThickness(thicknessOptions, refThicknessMm);
+  const nbValues = nbFactors.map((factor) => factor.nb);
+  const refNbInList = nbValues.find((value) => value === refNb);
+  const resolvedRefNbCandidate = refNbInList ?? nbValues[0];
+  const resolvedRefNb = resolvedRefNbCandidate ?? null;
+  const refColumnHeader =
+    family === "pipe"
+      ? `Sale R/m @ ${resolvedRefNb ?? "—"} · ${resolvedRefThickness ?? "—"}mm`
+      : `Sale R/m² @ ${resolvedRefThickness ?? "—"}mm`;
 
   return (
     <div className="space-y-6">
@@ -786,9 +929,9 @@ export default function RubberPricingAdminPage() {
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Rubber price list</h2>
             <p className="text-sm text-gray-500 mt-1">
-              Edit cost/kg and uplift inline. Computed sale price is shown at the family's reference
-              thickness and is read-only. Upload a supplier price list (PDF or Excel) to populate
-              it.
+              Cost/kg is the input; the sale price shown is read-only at the selected reference
+              thickness (plate: per m²; pipe: per running metre at the selected NB). Upload a
+              supplier price list (PDF or Excel) to populate it.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -833,6 +976,14 @@ export default function RubberPricingAdminPage() {
             </button>
             <button
               type="button"
+              onClick={handleClearAll}
+              disabled={clearPending || !hasRows}
+              className="inline-flex items-center justify-center rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+            >
+              {clearPending ? "Clearing…" : "Clear all"}
+            </button>
+            <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={importPending}
               className="inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-teal-50 disabled:opacity-50"
@@ -863,6 +1014,38 @@ export default function RubberPricingAdminPage() {
             })}
           </div>
           <label className="flex items-center gap-2 text-sm text-gray-600">
+            <span className="font-medium whitespace-nowrap">Reference thickness</span>
+            <select
+              value={resolvedRefThickness === null ? "" : String(resolvedRefThickness)}
+              onChange={(e) => setRefThicknessMm(Number(e.target.value))}
+              aria-label="Reference thickness in millimetres"
+              className={`${INPUT_CLASS} w-32`}
+            >
+              {thicknessOptions.map((value) => (
+                <option key={value} value={value}>
+                  {value} mm
+                </option>
+              ))}
+            </select>
+          </label>
+          {family === "pipe" && (
+            <label className="flex items-center gap-2 text-sm text-gray-600">
+              <span className="font-medium whitespace-nowrap">Reference NB</span>
+              <select
+                value={resolvedRefNb ?? ""}
+                onChange={(e) => setRefNb(e.target.value)}
+                aria-label="Reference nominal bore"
+                className={`${INPUT_CLASS} w-32`}
+              >
+                {nbFactors.map((factor) => (
+                  <option key={factor.nb} value={factor.nb}>
+                    {factor.nb}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <label className="flex items-center gap-2 text-sm text-gray-600">
             <span className="font-medium whitespace-nowrap">Supplier</span>
             <select
               value={supplierFilter}
@@ -874,6 +1057,70 @@ export default function RubberPricingAdminPage() {
               {supplierOptions.map((name) => (
                 <option key={name} value={name}>
                   {name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            <span className="font-medium whitespace-nowrap">Rubber type</span>
+            <select
+              value={bondingFilter}
+              onChange={(e) => setBondingFilter(e.target.value)}
+              aria-label="Filter by rubber type"
+              className={`${INPUT_CLASS} w-40`}
+            >
+              <option value="all">All types</option>
+              {bondingOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            <span className="font-medium whitespace-nowrap">Colour</span>
+            <select
+              value={colourFilter}
+              onChange={(e) => setColourFilter(e.target.value)}
+              aria-label="Filter by colour"
+              className={`${INPUT_CLASS} w-36`}
+            >
+              <option value="all">All colours</option>
+              {colourOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            <span className="font-medium whitespace-nowrap">Shore A</span>
+            <select
+              value={shoreFilter}
+              onChange={(e) => setShoreFilter(e.target.value)}
+              aria-label="Filter by shore hardness"
+              className={`${INPUT_CLASS} w-28`}
+            >
+              <option value="all">All</option>
+              {shoreOptions.map((value) => (
+                <option key={value} value={String(value)}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            <span className="font-medium whitespace-nowrap">Cure</span>
+            <select
+              value={cureFilter}
+              onChange={(e) => setCureFilter(e.target.value)}
+              aria-label="Filter by cure type"
+              className={`${INPUT_CLASS} w-36`}
+            >
+              <option value="all">All cures</option>
+              {CURE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
                 </option>
               ))}
             </select>
@@ -895,23 +1142,18 @@ export default function RubberPricingAdminPage() {
                 <th className={TH_CLASS}>Cost/kg</th>
                 <th className={TH_CLASS}>Uplift %</th>
                 <th className={TH_CLASS}>Preferred</th>
-                <th className={TH_CLASS}>Sale/m² (ref)</th>
+                <th className={TH_CLASS}>{refColumnHeader}</th>
                 <th className={TH_CLASS}>Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredRows.map((row) => {
                 const item = row.item;
-                const pricing = family === "pipe" ? row.pipe : row.plate;
                 const isEditing = editingId === item.id;
-                const refThickness = referenceThickness(configDraft[family]);
-                const refPriceEntry =
-                  refThickness === null
-                    ? null
-                    : pricing.thicknesses.find(
-                        (thickness) => thickness.thicknessMm === refThickness,
-                      );
-                const refSale = refPriceEntry ? refPriceEntry.salePerM2 : null;
+                const refSale =
+                  family === "pipe"
+                    ? pipeRefRunningMetre(row, resolvedRefThickness, resolvedRefNb, nbFactors)
+                    : plateRefSale(row, resolvedRefThickness);
                 if (isEditing) {
                   return (
                     <tr key={item.id} className="bg-teal-50/40">
@@ -1051,7 +1293,6 @@ export default function RubberPricingAdminPage() {
                 const productName = item.productName;
                 const cureType = item.cureType;
                 const cureValue = cureType ?? "";
-                const bondingDisplay = bonding ?? "—";
                 const colourDisplay = colour ?? "—";
                 const productNameDisplay = productName ?? "—";
                 const shoreDisplay = item.shoreHardness === null ? "—" : item.shoreHardness;
@@ -1076,7 +1317,21 @@ export default function RubberPricingAdminPage() {
                         ))}
                       </select>
                     </td>
-                    <td className={TD_CLASS}>{bondingDisplay}</td>
+                    <td className={TD_CLASS}>
+                      <select
+                        value={bonding ?? ""}
+                        onChange={(e) => handleBondingChange(item, e.target.value)}
+                        aria-label="Rubber type"
+                        className={`${INPUT_CLASS} w-36`}
+                      >
+                        <option value="">—</option>
+                        {BONDING_OPTIONS.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
                     <td className={TD_CLASS}>{colourDisplay}</td>
                     <td className={TD_CLASS}>{shoreDisplay}</td>
                     <td className={TD_CLASS}>{decimal(item.specificGravity, 2)}</td>

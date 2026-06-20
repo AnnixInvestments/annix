@@ -181,6 +181,11 @@ export class RubberFamilyPricingConfigDto {
 
   @IsOptional()
   cwRecipes?: Record<string, string[]>;
+
+  @IsString()
+  defaultBondingAgentSupplier: string;
+
+  cwAgentSupplierBaselines: Record<string, Record<string, number>>;
 }
 
 @ApiSchema({ name: "StockControlRubberPipePricingConfigDto" })
@@ -291,6 +296,10 @@ export class RubberQuoteDto {
   @IsOptional()
   @IsString()
   bondingType?: string | null;
+
+  @IsOptional()
+  @IsString()
+  bondingAgentSupplier?: string | null;
 }
 
 @ApiSchema({ name: "StockControlRubberBulkUpliftDto" })

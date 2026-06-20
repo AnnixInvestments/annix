@@ -58,6 +58,7 @@ export {
 } from "./useRubberBondingAgents";
 export {
   useBulkUpliftRubberPrices,
+  useClearRubberPriceList,
   useCommitRubberPriceListImport,
   useCreateRubberPriceItem,
   useCreateRubberQuote,

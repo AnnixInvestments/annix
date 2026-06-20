@@ -216,13 +216,14 @@ const CURE_TYPE_BY_TOKEN: Record<string, RubberCureType> = {
 function cureTypeFrom(
   cureType: RubberCureType | null | undefined,
   productCode: string,
-): RubberCureType | null {
+): RubberCureType {
   if (cureType) {
     return cureType;
   }
   const code = productCode.trim().toUpperCase();
   const prefix = code.slice(0, 2);
-  return CURE_TYPE_BY_TOKEN[prefix.toLowerCase()] ?? null;
+  const fromPrefix = CURE_TYPE_BY_TOKEN[prefix.toLowerCase()];
+  return fromPrefix ?? "steam";
 }
 
 export interface RubberRowFallbackInput {
@@ -245,8 +246,10 @@ export interface RubberRowFallbackInput {
 
 export function applyRubberRowFallbacks(row: RubberRowFallbackInput): RubberPriceListRowPreview {
   const compoundType = row.compoundType?.trim() || row.bondingType?.trim() || null;
-  const bondingType = bondingTypeFromCompound(row.compoundType, row.bondingType);
   const cureType = cureTypeFrom(row.cureType, row.productCode);
+  const compoundBonding = bondingTypeFromCompound(row.compoundType, row.bondingType);
+  const bondingType =
+    cureType === "chemical" ? "Chemical" : cureType === "precured" ? "Cured" : compoundBonding;
 
   const extractedSg = row.specificGravity;
   const datasheetSg = extractedSg == null ? lookupRubberSgByCode(row.productCode) : null;

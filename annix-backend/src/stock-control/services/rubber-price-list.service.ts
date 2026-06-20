@@ -70,6 +70,7 @@ export interface RubberQuoteInput {
   nb?: string | null;
   areaOrLength: number;
   bondingType?: string | null;
+  bondingAgentSupplier?: string | null;
 }
 
 export interface RubberQuoteResult {
@@ -209,7 +210,12 @@ export class RubberPriceListService {
     const item = await this.resolveQuoteItem(companyId, input);
     const agents = await this.bondingAgentSalePrices(companyId, config);
     const family = this.normalizeFamily(input.family ?? "plate");
-    const pricingOptions = { family, bondingType: input.bondingType ?? item.bondingType, agents };
+    const pricingOptions = {
+      family,
+      bondingType: input.bondingType ?? item.bondingType,
+      agents,
+      bondingAgentSupplier: input.bondingAgentSupplier ?? null,
+    };
     const areaOrLength = input.areaOrLength > 0 ? input.areaOrLength : 0;
 
     if (family === "pipe" && input.nb) {
@@ -310,6 +316,11 @@ export class RubberPriceListService {
       throw new NotFoundException(`Rubber price list item ${id} not found`);
     }
     await this.itemRepo.remove(existing);
+  }
+
+  async clearAll(companyId: number): Promise<{ cleared: number }> {
+    const cleared = await this.itemRepo.deleteAllForCompany(companyId);
+    return { cleared };
   }
 
   async setUpliftForAll(companyId: number, upliftPercent: number): Promise<{ updated: number }> {

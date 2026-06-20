@@ -27,6 +27,7 @@ declare module "./base" {
     updateRubberPricingConfig(config: RubberPricingConfig): Promise<RubberPricingConfig>;
     bulkUpliftRubberPrices(upliftPercent: number): Promise<{ updated: number }>;
     seedRubberPriceList(): Promise<{ seeded: number }>;
+    clearRubberPriceList(): Promise<{ cleared: number }>;
     importRubberPriceList(file: File): Promise<RubberPriceListImportPreview>;
     commitRubberPriceListImport(
       input: CommitRubberPriceListImportInput,
@@ -82,6 +83,10 @@ proto.bulkUpliftRubberPrices = async function (upliftPercent) {
     method: "POST",
     body: JSON.stringify({ upliftPercent }),
   });
+};
+
+proto.clearRubberPriceList = async function () {
+  return this.request("/stock-control/rubber-pricing/clear", { method: "POST" });
 };
 
 proto.seedRubberPriceList = async function () {

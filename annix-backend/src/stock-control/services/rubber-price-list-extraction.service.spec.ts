@@ -82,23 +82,44 @@ describe("applyRubberRowFallbacks", () => {
 
     const bromo = applyRubberRowFallbacks({
       supplier: "AU",
-      productCode: "CR-C50BB",
+      productCode: "SC-C50BB",
       compoundType: "Bromobutyl",
       colour: "Black",
     });
     expect(bromo.bondingType).toBe("Butyl");
-    expect(bromo.cureType).toBe("precured");
+    expect(bromo.cureType).toBe("steam");
   });
 
-  it("maps Ebonite to Natural (hard natural)", () => {
+  it("maps a steam-cured Ebonite to Natural (hard natural)", () => {
     const ebonite = applyRubberRowFallbacks({
       supplier: "Rema",
-      productCode: "CR1078",
+      productCode: "SC295",
       compoundType: "Ebonite",
       colour: "Black",
     });
     expect(ebonite.bondingType).toBe("Natural");
-    expect(ebonite.cureType).toBe("precured");
+    expect(ebonite.cureType).toBe("steam");
+  });
+
+  it("derives bonding from cure: chemical -> Chemical, pre-cured -> Cured", () => {
+    const chemical = applyRubberRowFallbacks({
+      supplier: "Impilo",
+      productCode: "CC40A",
+      compoundType: "Natural",
+      colour: "Black",
+      cureType: "chemical",
+    });
+    expect(chemical.cureType).toBe("chemical");
+    expect(chemical.bondingType).toBe("Chemical");
+
+    const precured = applyRubberRowFallbacks({
+      supplier: "Rema",
+      productCode: "CR1078",
+      compoundType: "Natural",
+      colour: "Black",
+    });
+    expect(precured.cureType).toBe("precured");
+    expect(precured.bondingType).toBe("Cured");
   });
 
   it("captures cureType from the code prefix and the explicit field", () => {
@@ -109,15 +130,6 @@ describe("applyRubberRowFallbacks", () => {
       colour: "Black",
     });
     expect(steam.cureType).toBe("steam");
-
-    const chemical = applyRubberRowFallbacks({
-      supplier: "Rema",
-      productCode: "CO15",
-      compoundType: "Chlorobutyl",
-      colour: "Black",
-      cureType: "chemical",
-    });
-    expect(chemical.cureType).toBe("chemical");
-    expect(chemical.bondingType).toBe("Butyl");
+    expect(steam.bondingType).toBe("Natural");
   });
 });

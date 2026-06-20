@@ -97,6 +97,16 @@ export function useSeedRubberPriceList() {
   });
 }
 
+export function useClearRubberPriceList() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => stockControlApiClient.clearRubberPriceList(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: stockControlKeys.rubberPricing.all });
+    },
+  });
+}
+
 export function useImportRubberPriceList() {
   return useMutation({
     mutationFn: (file: File) => stockControlApiClient.importRubberPriceList(file),

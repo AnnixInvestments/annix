@@ -24,6 +24,8 @@ export interface RubberFamilyPricingConfig {
   solution: RubberLabourComponentConfig;
   cwAgentBaselinePerM2: Record<string, number>;
   cwRecipes?: Record<string, string[]>;
+  defaultBondingAgentSupplier: string;
+  cwAgentSupplierBaselines: Record<string, Record<string, number>>;
 }
 
 export interface RubberPipePricingConfig extends RubberFamilyPricingConfig {
@@ -108,6 +110,38 @@ export const DEFAULT_RUBBER_PRICING_CONFIG: RubberPricingConfig = {
       EPDM: ["Toluene", "Hero Line 105", "Herobond 400 Red"],
       Cured: ["Toluene", "Hero Line 105", "Herobond 400 Red"],
     },
+    defaultBondingAgentSupplier: "Impilo",
+    cwAgentSupplierBaselines: {
+      "Ty-Ply": {
+        Natural: 321.0416,
+        "Premium Natural": 321.0416,
+        Butyl: 315.3806,
+        Nitrile: 215.8371,
+        Chemical: 413.8412,
+        Cured: 258.8913,
+      },
+      Rema: {
+        Natural: 194.2544,
+        "Premium Natural": 194.2544,
+        Butyl: 188.5934,
+        Chemical: 292.715,
+        Neoprene: 215.8371,
+        EPDM: 215.8371,
+      },
+      Impilo: {
+        Natural: 179.4691,
+        "Premium Natural": 179.4691,
+        Butyl: 98.8738,
+        Nitrile: 98.8738,
+        Neoprene: 98.8738,
+        Chemical: 277.9297,
+        Cured: 179.0556,
+        EPDM: 179.0556,
+      },
+      Megum: {
+        Nitrile: 405.6666,
+      },
+    },
   },
   pipe: {
     wastePct: RUBBER_PRICING_DEFAULTS.pipe.wastePct,
@@ -131,6 +165,32 @@ export const DEFAULT_RUBBER_PRICING_CONFIG: RubberPricingConfig = {
       Butyl: ["VS86", "VS05", "VS20", "Toluene"],
       Nitrile: ["VS05", "Ty-Ply 2033A", "Toluene"],
       EPDM: ["VS05", "VS54"],
+    },
+    defaultBondingAgentSupplier: "Ty-Ply",
+    cwAgentSupplierBaselines: {
+      "Ty-Ply": {
+        Natural: 200.0437,
+        "Premium Natural": 200.0437,
+        Butyl: 200.0437,
+        Nitrile: 182.7937,
+        EPDM: 197.5021,
+      },
+      Rema: {
+        Natural: 75.0672,
+        "Premium Natural": 75.0672,
+        Butyl: 75.0672,
+      },
+      Impilo: {
+        Natural: 77.4288,
+        "Premium Natural": 77.4288,
+        Butyl: 98.8738,
+        Nitrile: 98.8738,
+        Neoprene: 98.8738,
+        EPDM: 179.0556,
+      },
+      Megum: {
+        Nitrile: 411.3276,
+      },
     },
     nbFactors: RUBBER_PRICING_DEFAULTS.pipe.nbFactors.map((factor) => ({
       nb: factor.nb,

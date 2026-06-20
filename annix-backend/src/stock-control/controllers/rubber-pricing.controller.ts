@@ -101,6 +101,12 @@ export class RubberPricingController {
     return this.priceListService.seedFromProductData(req.user.companyId);
   }
 
+  @Post("clear")
+  @ApiOperation({ summary: "Delete every rubber price list item for the company" })
+  async clear(@Req() req: any) {
+    return this.priceListService.clearAll(req.user.companyId);
+  }
+
   @Patch(":id")
   @ApiOperation({ summary: "Update a rubber price list item" })
   async update(
