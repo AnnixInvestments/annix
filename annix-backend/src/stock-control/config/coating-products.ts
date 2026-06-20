@@ -275,6 +275,32 @@ const COATING_PRODUCTS: CoatingProductSpec[] = [
     genericType: "polyurethane",
     volumeSolidsPercent: 65,
   },
+  {
+    name: "Carbothane 137",
+    aliases: ["carbothane137", "carbothane 137 hs", "carbothane137hs", "carbothane 137 lg"],
+    genericType: "polyurethane",
+    volumeSolidsPercent: 65,
+  },
+  {
+    name: "Carboguard 880",
+    aliases: ["carboguard880", "carboguard 880 mio", "880 mio", "multi mio hb epoxy"],
+    genericType: "epoxy_mio",
+    volumeSolidsPercent: 72,
+    defaultDftUm: 125,
+  },
+  {
+    name: "Carboguard 193",
+    aliases: ["carboguard193", "carboguard 193 buff mio", "193 mio"],
+    genericType: "epoxy_mio",
+    volumeSolidsPercent: 50,
+    defaultDftUm: 75,
+  },
+  {
+    name: "Penguard Express MIO",
+    aliases: ["penguard express mio", "penguardexpressmio", "penguard exp mio"],
+    genericType: "epoxy_mio",
+    volumeSolidsPercent: 72,
+  },
 
   // ── Sherwin-Williams ───────────────────────────────────
   {

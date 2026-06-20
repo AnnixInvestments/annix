@@ -207,6 +207,7 @@ export class PaintPriceListService {
   private mapReferenceGenericType(coarse: string): PaintGenericType | null {
     const map: Record<string, PaintGenericType> = {
       epoxy: "epoxy",
+      epoxy_mio: "epoxy-mio",
       epoxy_mastic: "epoxy-mastic",
       polyurethane: "polyurethane",
       polysiloxane: "polysiloxane",
@@ -377,7 +378,11 @@ export class PaintPriceListService {
     return { item: next, changed };
   }
 
-  async enrichMissingSpecs(companyId: number): Promise<{ enriched: number; checked: number }> {
+  async enrichMissingSpecs(companyId: number): Promise<{
+    enriched: number;
+    checked: number;
+    unfilled: { productName: string; supplierName: string; missing: string[] }[];
+  }> {
     const items = await this.itemRepo.findAllForCompany(companyId);
     const needing = items.filter(
       (item) => this.itemNeedsSpecs(item) || this.referenceGenericMismatch(item),
@@ -387,7 +392,7 @@ export class PaintPriceListService {
       `Enrich: ${needing.length}/${items.length} rows need specs (coatType null on ${missingCoat})`,
     );
     if (needing.length === 0) {
-      return { enriched: 0, checked: 0 };
+      return { enriched: 0, checked: 0, unfilled: [] };
     }
 
     const afterReference = needing.map((item) => this.fillFromReference(item));
@@ -406,7 +411,7 @@ export class PaintPriceListService {
       ? await this.extractionService.lookupSpecs(Array.from(distinct.values()))
       : new Map();
 
-    const updated = await Promise.all(
+    const outcomes = await Promise.all(
       afterReference.map(async (entry) => {
         let current = entry.item;
         let changed = entry.changed;
@@ -416,15 +421,43 @@ export class PaintPriceListService {
           current = applied.item;
           changed = changed || applied.changed;
         }
-        if (!changed) {
-          return false;
+        if (changed) {
+          await this.itemRepo.save(current);
         }
-        await this.itemRepo.save(current);
-        return true;
+        return { item: current, changed };
       }),
     );
 
-    return { enriched: updated.filter(Boolean).length, checked: needing.length };
+    const unfilled = outcomes
+      .filter((outcome) => this.itemNeedsSpecs(outcome.item))
+      .map((outcome) => ({
+        productName: outcome.item.productName,
+        supplierName: outcome.item.supplierName,
+        missing: this.missingSpecFields(outcome.item),
+      }));
+    unfilled.forEach((entry) =>
+      this.logger.warn(
+        `Enrich: "${entry.supplierName} — ${entry.productName}" still missing: ${entry.missing.join(", ")}`,
+      ),
+    );
+
+    return {
+      enriched: outcomes.filter((outcome) => outcome.changed).length,
+      checked: needing.length,
+      unfilled,
+    };
+  }
+
+  private missingSpecFields(item: PaintPriceListItem): string[] {
+    const missing: string[] = [];
+    if (item.coatType == null) missing.push("coat type");
+    if (item.paintType == null) missing.push("paint type");
+    if (item.genericType == null) missing.push("technology");
+    if (!item.volumeSolidsPercent || item.volumeSolidsPercent <= 0) missing.push("vol solids");
+    if (item.recommendedMicrons == null) missing.push("microns");
+    if (item.thinnerName == null) missing.push("thinner");
+    if (item.maxThinningPercent == null) missing.push("max thinning %");
+    return missing;
   }
 
   async configForCompany(companyId: number): Promise<PaintPricingConfig> {

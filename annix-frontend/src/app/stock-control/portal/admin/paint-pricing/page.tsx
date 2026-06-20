@@ -530,14 +530,23 @@ export default function PaintPricingPage() {
       const result = await enrichSpecs.mutateAsync();
       const enriched = result.enriched;
       const checked = result.checked;
-      if (enriched > 0) {
+      const unfilled = result.unfilled;
+      const unfilledSummary = unfilled
+        .map((entry) => {
+          const missingList = entry.missing.join(", ");
+          return `${entry.productName} (${missingList})`;
+        })
+        .join("; ");
+      if (enriched > 0 && unfilled.length === 0) {
+        showToast(`Filled specs on ${enriched} of ${checked} paints.`, "success");
+      } else if (enriched > 0 && unfilled.length > 0) {
         showToast(
-          `Filled missing specs on ${enriched} of ${checked} paint${checked === 1 ? "" : "s"}.`,
-          "success",
+          `Filled ${enriched}; still missing on ${unfilled.length}: ${unfilledSummary}. Set these by hand.`,
+          "warning",
         );
-      } else if (checked > 0) {
+      } else if (unfilled.length > 0) {
         showToast(
-          `${checked} paint${checked === 1 ? "" : "s"} are missing specs but none could be filled — please try again.`,
+          `Could not fill ${unfilled.length} paint${unfilled.length === 1 ? "" : "s"}: ${unfilledSummary}. Set these by hand.`,
           "warning",
         );
       } else {

@@ -105,18 +105,26 @@ function familyOf(genericType: string | null): string | null {
   return family ?? null;
 }
 
-function cheapestOf(items: QuoteCatalogItem[]): QuoteCatalogItem | null {
-  const sorted = [...items].sort((a, b) => a.salePerM2 - b.salePerM2);
-  const cheapest = sorted[0];
-  return cheapest || null;
+function isDeepShade(item: QuoteCatalogItem): boolean {
+  return /deep shade/i.test(item.productName);
 }
 
 function bestOf(items: QuoteCatalogItem[]): QuoteCatalogItem | null {
-  const preferredItems = items.filter((item) => item.preferred === true);
-  if (preferredItems.length > 0) {
-    return cheapestOf(preferredItems);
-  }
-  return cheapestOf(items);
+  const ranked = [...items].sort((a, b) => {
+    const preferredA = a.preferred === true ? 0 : 1;
+    const preferredB = b.preferred === true ? 0 : 1;
+    if (preferredA !== preferredB) {
+      return preferredA - preferredB;
+    }
+    const deepA = isDeepShade(a) ? 0 : 1;
+    const deepB = isDeepShade(b) ? 0 : 1;
+    if (deepA !== deepB) {
+      return deepA - deepB;
+    }
+    return a.salePerM2 - b.salePerM2;
+  });
+  const best = ranked[0];
+  return best || null;
 }
 
 function resolveSupplierCoat(

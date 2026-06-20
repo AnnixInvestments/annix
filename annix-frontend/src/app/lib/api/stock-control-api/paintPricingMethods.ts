@@ -35,7 +35,11 @@ declare module "./base" {
     commitPaintPriceListImport(
       input: CommitPaintPriceListImportInput,
     ): Promise<{ imported: number }>;
-    enrichPaintPriceSpecs(): Promise<{ enriched: number; checked: number }>;
+    enrichPaintPriceSpecs(): Promise<{
+      enriched: number;
+      checked: number;
+      unfilled: { productName: string; supplierName: string; missing: string[] }[];
+    }>;
     bulkUpliftPaintPrices(upliftPercent: number): Promise<{ updated: number }>;
   }
 }
