@@ -55,6 +55,7 @@ const GENERIC_TYPES = [
   "intumescent",
   "fbe",
   "3lpe",
+  "bitumen",
 ];
 
 const DEFAULT_BLAST_GRADES = ["SA3", "SA2.5", "SA2", "Flash blast"];
@@ -530,7 +531,8 @@ export default function PaintPricingPage() {
       const result = await enrichSpecs.mutateAsync();
       const enriched = result.enriched;
       const checked = result.checked;
-      const unfilled = result.unfilled;
+      const rawUnfilled = result.unfilled;
+      const unfilled = rawUnfilled ?? [];
       const unfilledSummary = unfilled
         .map((entry) => {
           const missingList = entry.missing.join(", ");

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  CoatingSystemOption,
   CommitPaintPriceListImportInput,
   CreatePaintPriceListItemInput,
   MultiCoatQuoteInput,
@@ -34,6 +35,13 @@ export function usePaintQuoteCatalog() {
   return useQuery<QuoteCatalogItem[]>({
     queryKey: stockControlKeys.paintQuote.catalog(),
     queryFn: () => stockControlApiClient.paintQuoteCatalog(),
+  });
+}
+
+export function usePaintCoatingSystems() {
+  return useQuery<CoatingSystemOption[]>({
+    queryKey: stockControlKeys.paintQuote.coatingSystems(),
+    queryFn: () => stockControlApiClient.paintCoatingSystems(),
   });
 }
 

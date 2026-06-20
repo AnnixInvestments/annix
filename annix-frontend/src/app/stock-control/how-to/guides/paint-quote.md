@@ -17,6 +17,12 @@ Paint Quote turns the price list maintained in **Paint Pricing** into a quick se
 
 Open it at **Resources → Paint Quote**.
 
+## Start from a paint system (ISO 12944)
+
+At the top of the page is a **Paint system (ISO 12944)** dropdown. Pick a corrosivity category — **C1** to **C5**, **CX**, etc. (each shown with a short description like "C5 — Very high corrosivity") — and the page auto-fills the three coats below from that category's **recommended** coating system: the primer, intermediate and final each get an appropriate paint and a film thickness drawn from the system specification. A muted line under the dropdown shows the chosen system (its code, the binder make-up and the total µm). The categories and their systems come from the same ISO 12944 surface-protection reference used by the RFQ module.
+
+Because ISO 12944 lists a *family* of acceptable binders per coat, the page picks a sensible representative chemistry for each coat (for C5, for example, an epoxy/zinc primer, an epoxy intermediate and a polyurethane topcoat) and then chooses each supplier's matching **preferred** paint for it — exactly the same matching used by **Compare other suppliers**. Everything stays **editable**: after the system fills the coats you can change any paint, film thickness, blast grade or tier by hand. Leave the dropdown on **— Select a system —** to build a spec from scratch.
+
 ## Quoting a system
 
 The **Your coating spec** card has three coat rows — **Primer**, **Intermediate** and **Final**. Each one has a paint dropdown and a film thickness, and shows that coat's live price per square metre under the film-thickness field.

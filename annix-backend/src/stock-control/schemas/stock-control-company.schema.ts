@@ -94,6 +94,9 @@ export class StockControlCompany {
   @Prop({ type: Object, required: false })
   paintPricingConfig: Record<string, unknown>;
 
+  @Prop({ type: Object, required: false })
+  rubberPricingConfig: Record<string, unknown>;
+
   @Prop({ type: Boolean, required: true })
   qcEnabled: boolean;
 

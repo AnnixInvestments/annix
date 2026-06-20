@@ -1,5 +1,6 @@
 import { StockControlApiClient } from "./base";
 import type {
+  CoatingSystemOption,
   CommitPaintPriceListImportInput,
   CreatePaintPriceListItemInput,
   MultiCoatQuoteInput,
@@ -21,6 +22,7 @@ declare module "./base" {
     paintPricing(): Promise<PaintPricingResponse>;
     preferredPaints(): Promise<PreferredPaintOption[]>;
     paintQuoteCatalog(): Promise<QuoteCatalogItem[]>;
+    paintCoatingSystems(): Promise<CoatingSystemOption[]>;
     paintQuote(input: PaintQuoteInput): Promise<PaintQuoteResult>;
     paintMultiCoatQuote(input: MultiCoatQuoteInput): Promise<MultiCoatQuoteResult>;
     paintPackOptions(items: PackOptionRequestItem[]): Promise<PackOptionResult[]>;
@@ -56,6 +58,10 @@ proto.preferredPaints = async function () {
 
 proto.paintQuoteCatalog = async function () {
   return this.request("/stock-control/paint-pricing/quote/catalog");
+};
+
+proto.paintCoatingSystems = async function () {
+  return this.request("/stock-control/paint-pricing/coating-systems");
 };
 
 proto.paintQuote = async function (input) {

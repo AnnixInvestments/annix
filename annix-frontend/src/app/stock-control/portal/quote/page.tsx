@@ -6,6 +6,7 @@ import {
   type SearchableSelectOption,
 } from "@/app/components/ui/SearchableSelect";
 import type {
+  CoatingSystemOption,
   MultiCoatQuoteInput,
   MultiCoatQuoteResult,
   PreferredPaintOption,
@@ -14,6 +15,7 @@ import type {
 import {
   useBranding,
   useCreateMultiCoatQuote,
+  usePaintCoatingSystems,
   usePaintPricing,
   usePaintQuoteCatalog,
   usePreferredPaints,
@@ -94,6 +96,7 @@ const CHEMISTRY_FAMILY: Record<string, string> = {
   intumescent: "intumescent",
   fbe: "fbe",
   "3lpe": "3lpe",
+  bitumen: "bitumen",
 };
 
 function familyOf(genericType: string | null): string | null {
@@ -190,8 +193,45 @@ function resolveSupplierCoat(
   return bestOf(supplierMatches);
 }
 
+function resolveCoatByGeneric(
+  catalog: QuoteCatalogItem[],
+  slot: CoatSlot,
+  genericType: string | null,
+  supplierName: string | null,
+): QuoteCatalogItem | null {
+  const slotMatches = catalog.filter((item) => item.coatType === slot);
+  if (slotMatches.length === 0) {
+    return null;
+  }
+  const supplierPool =
+    supplierName != null ? slotMatches.filter((item) => item.supplierName === supplierName) : [];
+  const pool = supplierPool.length > 0 ? supplierPool : slotMatches;
+
+  if (genericType != null) {
+    const exact = pool.filter((item) => item.genericType === genericType);
+    if (exact.length > 0) {
+      return bestOf(exact);
+    }
+    const targetFamily = familyOf(genericType);
+    if (targetFamily != null) {
+      const sameFamily = pool.filter((item) => familyOf(item.genericType) === targetFamily);
+      if (sameFamily.length > 0) {
+        return bestOf(sameFamily);
+      }
+    }
+  }
+
+  return bestOf(pool);
+}
+
 function micronsString(value: number | null): string {
   return value != null ? String(value) : "";
+}
+
+function buildCoatRow(item: QuoteCatalogItem, specMicrons: number | null): CoatRowState {
+  const recommended = item.recommendedMicrons;
+  const microns = specMicrons != null ? specMicrons : recommended;
+  return { itemId: item.id, microns: micronsString(microns) };
 }
 
 function validMicronsOverride(microns: string): number | null {
@@ -209,6 +249,7 @@ export default function PaintQuotePage() {
   const catalogQuery = usePaintQuoteCatalog();
   const pricingQuery = usePaintPricing();
   const preferredQuery = usePreferredPaints();
+  const systemsQuery = usePaintCoatingSystems();
   const createQuote = useCreateMultiCoatQuote();
   const brandingQuery = useBranding("stock-control");
 
@@ -224,6 +265,7 @@ export default function PaintQuotePage() {
   const [result, setResult] = useState<MultiCoatQuoteResult | null>(null);
   const [comparisons, setComparisons] = useState<ComparisonBlock[]>([]);
   const [prefilled, setPrefilled] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState("");
 
   const liveSeqRef = useRef(0);
 
@@ -231,6 +273,8 @@ export default function PaintQuotePage() {
   const catalog = useMemo(() => catalogData || [], [catalogData]);
   const preferredData = preferredQuery.data;
   const preferredPaints = useMemo(() => preferredData || [], [preferredData]);
+  const systemsData = systemsQuery.data;
+  const coatingSystems = useMemo(() => systemsData || [], [systemsData]);
 
   const coatOptions = useMemo<SearchableSelectOption[]>(() => {
     const paintOptions = catalog.map((item) => ({
@@ -324,6 +368,63 @@ export default function PaintQuotePage() {
 
   const handleMicronsChange = (slot: CoatSlot, value: string) => {
     setCoats((prev) => ({ ...prev, [slot]: { ...prev[slot], microns: value } }));
+  };
+
+  const applyCoatingSystem = (option: CoatingSystemOption) => {
+    const optionCoats = option.coats;
+    const primerSpecRaw = optionCoats.find((coat) => coat.role === "primer");
+    const primerSpec = primerSpecRaw ? primerSpecRaw : null;
+    const intermediateSpecRaw = optionCoats.find((coat) => coat.role === "intermediate");
+    const intermediateSpec = intermediateSpecRaw ? intermediateSpecRaw : null;
+    const finalSpecRaw = optionCoats.find((coat) => coat.role === "final");
+    const finalSpec = finalSpecRaw ? finalSpecRaw : null;
+
+    const next: Record<CoatSlot, CoatRowState> = {
+      primer: EMPTY_COAT,
+      intermediate: EMPTY_COAT,
+      final: EMPTY_COAT,
+    };
+
+    let supplier: string | null = null;
+    if (primerSpec) {
+      const primerItem = resolveCoatByGeneric(catalog, "primer", primerSpec.genericType, null);
+      if (primerItem) {
+        supplier = primerItem.supplierName;
+        next.primer = buildCoatRow(primerItem, primerSpec.microns);
+      }
+    }
+    if (intermediateSpec) {
+      const item = resolveCoatByGeneric(
+        catalog,
+        "intermediate",
+        intermediateSpec.genericType,
+        supplier,
+      );
+      if (item) {
+        next.intermediate = buildCoatRow(item, intermediateSpec.microns);
+      }
+    }
+    if (finalSpec) {
+      const item = resolveCoatByGeneric(catalog, "final", finalSpec.genericType, supplier);
+      if (item) {
+        next.final = buildCoatRow(item, finalSpec.microns);
+      }
+    }
+
+    setCoats(next);
+    setPrefilled(true);
+  };
+
+  const handleSelectSystem = (value: string) => {
+    setSelectedCategory(value);
+    if (!value) {
+      return;
+    }
+    const optionRaw = coatingSystems.find((system) => system.category === value);
+    const option = optionRaw ? optionRaw : null;
+    if (option) {
+      applyCoatingSystem(option);
+    }
   };
 
   const coatsKey = useMemo(() => {
@@ -476,6 +577,17 @@ export default function PaintQuotePage() {
   const isError = catalogError || pricingError;
   const isEmpty = !isLoading && !isError && catalog.length === 0;
 
+  const selectedSystemRaw = coatingSystems.find((system) => system.category === selectedCategory);
+  const selectedSystem = selectedSystemRaw ? selectedSystemRaw : null;
+  let selectedSystemLabel: string | null = null;
+  if (selectedSystem) {
+    const systemCode = selectedSystem.systemCode;
+    const totalDft = selectedSystem.totalDftUm;
+    const codePart = systemCode ? `${systemCode} · ` : "";
+    const totalPart = totalDft != null ? ` · ${totalDft} µm total` : "";
+    selectedSystemLabel = `${codePart}${selectedSystem.systemLabel}${totalPart}`;
+  }
+
   const resultTierName = result?.tierName;
   const resultTierLabel = resultTierName || "Standard";
   const resultBlast = result ? result.blast : null;
@@ -527,6 +639,35 @@ export default function PaintQuotePage() {
       {isEmpty && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center text-sm text-gray-500">
           No paints available — add some in Paint Pricing.
+        </div>
+      )}
+
+      {!isLoading && !isError && !isEmpty && coatingSystems.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+          <label htmlFor="paint-system" className="block text-sm font-medium text-gray-700 mb-1">
+            Paint system (ISO 12944)
+          </label>
+          <p className="text-xs text-gray-500 mb-2">
+            Pick a corrosivity category to auto-fill the coats below from its recommended system —
+            each supplier's matching paint and the film thicknesses are filled in for you. You can
+            fine-tune any coat afterwards.
+          </p>
+          <select
+            id="paint-system"
+            value={selectedCategory}
+            onChange={(e) => handleSelectSystem(e.target.value)}
+            className={INPUT_CLASS}
+          >
+            <option value="">— Select a system —</option>
+            {coatingSystems.map((system) => (
+              <option key={system.category} value={system.category}>
+                {system.category} — {system.description}
+              </option>
+            ))}
+          </select>
+          {selectedSystemLabel && (
+            <p className="mt-2 text-xs text-gray-400">{selectedSystemLabel}</p>
+          )}
         </div>
       )}
 

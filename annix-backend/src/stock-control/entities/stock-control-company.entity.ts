@@ -1,4 +1,5 @@
 import { PaintPricingConfig } from "./paint-pricing-config";
+import { RubberPricingConfig } from "./rubber-pricing-config";
 
 export enum BrandingType {
   ANNIX = "annix",
@@ -61,6 +62,8 @@ export class StockControlCompany {
   structuralSteelLossFactorPct: number;
 
   paintPricingConfig: PaintPricingConfig | null;
+
+  rubberPricingConfig: RubberPricingConfig | null;
 
   qcEnabled: boolean;
 

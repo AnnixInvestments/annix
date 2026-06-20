@@ -215,6 +215,7 @@ export class PaintPriceListService {
       acrylic: "acrylic",
       zinc_rich: "zinc-rich-epoxy",
       inorganic_zinc: "zinc-silicate",
+      bitumen: "bitumen",
     };
     return map[coarse] ?? null;
   }
@@ -537,27 +538,66 @@ export class PaintPriceListService {
     return Array.from(groups.values()).map((variants) => this.pricingVariant(variants));
   }
 
+  private mergedGroupSpec(variants: PaintPriceListItem[]): {
+    paintType: string | null;
+    coatType: string | null;
+    genericType: string | null;
+    finishType: string | null;
+    zincRich: boolean;
+    mioPigment: boolean;
+    preferred: boolean;
+    recommendedMicrons: number | null;
+  } {
+    const firstString = (
+      pick: (v: PaintPriceListItem) => string | null | undefined,
+    ): string | null => {
+      const match = variants.find((variant) => pick(variant) != null);
+      return match ? (pick(match) ?? null) : null;
+    };
+    const firstNumber = (
+      pick: (v: PaintPriceListItem) => number | null | undefined,
+    ): number | null => {
+      const match = variants.find((variant) => pick(variant) != null);
+      return match ? (pick(match) ?? null) : null;
+    };
+    return {
+      paintType: firstString((variant) => variant.paintType),
+      coatType: firstString((variant) => variant.coatType),
+      genericType: firstString((variant) => variant.genericType),
+      finishType: firstString((variant) => variant.finishType),
+      zincRich: variants.some((variant) => variant.zincRich === true),
+      mioPigment: variants.some((variant) => variant.mioPigment === true),
+      preferred: variants.some((variant) => variant.preferred === true),
+      recommendedMicrons: firstNumber((variant) => variant.recommendedMicrons),
+    };
+  }
+
   async quoteCatalog(companyId: number): Promise<QuoteCatalogItem[]> {
     const [items, config] = await Promise.all([
       this.itemRepo.findAllForCompany(companyId),
       this.configForCompany(companyId),
     ]);
     const activeItems = items.filter((item) => item.active !== false);
-    return this.pricingVariantItems(activeItems)
-      .map((item) => ({ item, pricing: this.pricingService.computePricing(item, config) }))
+    const groups = this.groupVariants(activeItems);
+    return Array.from(groups.values())
+      .map((variants) => {
+        const primary = this.pricingVariant(variants);
+        const spec = this.mergedGroupSpec(variants);
+        return { primary, spec, pricing: this.pricingService.computePricing(primary, config) };
+      })
       .filter((row) => row.pricing.salePerM2 > 0)
       .map((row) => ({
-        id: row.item.id,
-        supplierName: row.item.supplierName,
-        productName: row.item.productName,
-        paintType: row.item.paintType ?? null,
-        coatType: row.item.coatType ?? null,
-        genericType: row.item.genericType ?? null,
-        finishType: row.item.finishType ?? null,
-        zincRich: row.item.zincRich === true,
-        mioPigment: row.item.mioPigment === true,
-        recommendedMicrons: row.item.recommendedMicrons ?? null,
-        preferred: row.item.preferred === true,
+        id: row.primary.id,
+        supplierName: row.primary.supplierName,
+        productName: row.primary.productName,
+        paintType: row.spec.paintType,
+        coatType: row.spec.coatType,
+        genericType: row.spec.genericType,
+        finishType: row.spec.finishType,
+        zincRich: row.spec.zincRich,
+        mioPigment: row.spec.mioPigment,
+        recommendedMicrons: row.spec.recommendedMicrons,
+        preferred: row.spec.preferred,
         salePerM2: row.pricing.salePerM2,
         tiers: row.pricing.tierPrices,
       }))

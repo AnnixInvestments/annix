@@ -11,6 +11,8 @@ import "./dashboardMethods";
 import "./workflowMethods";
 import "./invoiceMethods";
 import "./paintPricingMethods";
+import "./rubberPricingMethods";
+import "./rubberBondingAgentMethods";
 
 import "./chatMethods";
 import "./certificateMethods";

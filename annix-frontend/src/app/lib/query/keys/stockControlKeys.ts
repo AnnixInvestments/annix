@@ -210,5 +210,19 @@ export const stockControlKeys = {
   paintQuote: {
     all: ["stock-control", "paint-quote"] as const,
     catalog: () => [...stockControlKeys.paintQuote.all, "catalog"] as const,
+    coatingSystems: () => [...stockControlKeys.paintQuote.all, "coating-systems"] as const,
+  },
+  rubberPricing: {
+    all: ["stock-control", "rubber-pricing"] as const,
+    list: () => [...stockControlKeys.rubberPricing.all, "list"] as const,
+  },
+  rubberQuote: {
+    all: ["stock-control", "rubber-quote"] as const,
+    catalog: (family: "plate" | "pipe" | null) =>
+      [...stockControlKeys.rubberQuote.all, "catalog", family ?? null] as const,
+  },
+  rubberBondingAgents: {
+    all: ["stock-control", "rubber-bonding-agents"] as const,
+    list: () => [...stockControlKeys.rubberBondingAgents.all, "list"] as const,
   },
 };

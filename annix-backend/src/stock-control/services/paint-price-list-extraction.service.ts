@@ -74,6 +74,7 @@ export const PAINT_GENERIC_TYPES = [
   "intumescent",
   "fbe",
   "3lpe",
+  "bitumen",
 ] as const;
 
 export const PAINT_FINISH_TYPES = [
@@ -96,7 +97,7 @@ Return ONLY a JSON object with a "specs" array, one object per product, echoing 
 Rules:
 - coatType: the product's typical role in a coating system — "primer", "intermediate" or "final" — or null if genuinely unclear.
 - paintType: the broad chemistry as a friendly label (e.g. "Epoxy", "Polyurethane", "Alkyd", "Acrylic", "Inorganic Zinc", "Bituminous").
-- genericType: the PRECISE binder/technology, EXACTLY one of: ${PAINT_GENERIC_TYPES.join(", ")}. Pick the most specific that fits — e.g. a zinc-rich epoxy primer is "zinc-rich-epoxy" (NOT "epoxy"); an MIO-pigmented epoxy is "epoxy-mio"; a surface-tolerant high-build epoxy mastic is "epoxy-mastic"; an aliphatic polyurethane topcoat is "polyurethane"; an inorganic zinc silicate is "zinc-silicate". Use null only if genuinely unclassifiable.
+- genericType: the PRECISE binder/technology, EXACTLY one of: ${PAINT_GENERIC_TYPES.join(", ")}. Pick the most specific that fits — e.g. a zinc-rich epoxy primer is "zinc-rich-epoxy" (NOT "epoxy"); an MIO-pigmented epoxy is "epoxy-mio"; a surface-tolerant high-build epoxy mastic is "epoxy-mastic"; an aliphatic polyurethane topcoat is "polyurethane"; an inorganic zinc silicate is "zinc-silicate"; a bituminous or bitumen aluminium coating is "bitumen". Use null only if genuinely unclassifiable.
 - finishType: for topcoats/finishes, the finish chemistry, one of: ${PAINT_FINISH_TYPES.join(", ")} (e.g. a UV/colour-stable PU topcoat is "aliphatic-pu"); null for primers/intermediates or when unclear.
 - zincRich: true if the product is a zinc-rich primer (zinc-rich epoxy or zinc silicate). mioPigment: true if pigmented with micaceous iron oxide (MIO). surfaceTolerant: true if the TDS describes it as surface-tolerant / a mastic. Default each to false when not applicable.
 - heatResistanceC: the maximum continuous dry-heat service temperature in °C if the product is a heat-resistant coating; null otherwise.

@@ -173,6 +173,21 @@ export interface QuoteCatalogItem {
   tiers: QuoteTierPrice[];
 }
 
+export interface CoatingSystemCoat {
+  role: "primer" | "intermediate" | "final";
+  genericType: string | null;
+  microns: number | null;
+}
+
+export interface CoatingSystemOption {
+  category: string;
+  description: string;
+  systemCode: string | null;
+  systemLabel: string;
+  totalDftUm: number | null;
+  coats: CoatingSystemCoat[];
+}
+
 export interface PaintQuoteInput {
   itemId: number;
   areaM2: number;
@@ -238,6 +253,263 @@ export interface CommitPaintPriceListImportInput {
   supplierName: string;
   replaceSupplier: boolean;
   rows: CreatePaintPriceListItemInput[];
+}
+
+export type RubberPriceFamily = "plate" | "pipe";
+
+export interface RubberPriceListItem {
+  id: number;
+  firebaseUid: string;
+  family: RubberPriceFamily;
+  supplier: string;
+  productCode: string;
+  productName: string | null;
+  bondingType: string | null;
+  colour: string | null;
+  shoreHardness: number | null;
+  specificGravity: number;
+  costPerKg: number | null;
+  upliftPercent: number;
+  active: boolean;
+  preferred: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RubberLabourStack {
+  blastingPerM2: number;
+  curingPerM2: number;
+  rubberLiningPerM2: number;
+  handlingPerM2: number;
+  finishingPerM2: number;
+  solutionPerM2: number;
+  totalPerM2: number;
+}
+
+export interface RubberThicknessPrice {
+  thicknessMm: number;
+  materialPerM2: number;
+  salePerM2: number;
+  mpsPerM2: number;
+}
+
+export interface RubberRunningMetrePrice {
+  nb: string;
+  factor: number;
+  salePerMetre: number;
+  mpsPerMetre: number;
+}
+
+export interface RubberPricingResult {
+  family: RubberPriceFamily;
+  costWithWastePerKg: number;
+  cwPerM2: number;
+  labourStack: RubberLabourStack;
+  thicknesses: RubberThicknessPrice[];
+  runningMetres: RubberRunningMetrePrice[] | null;
+}
+
+export interface RubberPriceListRow {
+  item: RubberPriceListItem;
+  pricing: RubberPricingResult;
+}
+
+export interface RubberNbFactorConfig {
+  nb: string;
+  pie: number;
+  additional: number;
+}
+
+export interface RubberLabourComponentConfig {
+  department: string;
+  m2PerHour: number;
+}
+
+export interface RubberFamilyPricingConfig {
+  wastePct: number;
+  markupFactor: number;
+  mpsFactor: number;
+  thicknessesMm: number[];
+  rubberLining: RubberLabourComponentConfig;
+  handling: RubberLabourComponentConfig;
+  finishing: RubberLabourComponentConfig;
+  solution: RubberLabourComponentConfig;
+  cwAgentBaselinePerM2: Record<string, number>;
+}
+
+export interface RubberPipePricingConfig extends RubberFamilyPricingConfig {
+  nbFactors: RubberNbFactorConfig[];
+}
+
+export interface RubberBlastingConfig {
+  elecAvgRate: number;
+  elecAvgKwh: number;
+  gritBagCost: number;
+  gritM2PerBag: number;
+  m2PerHour: number;
+  crewSize: number;
+  margin: number;
+}
+
+export interface RubberParaffinConfig {
+  ltrsPerCure: number;
+  costPerLitre: number;
+  m2PerPot: number;
+}
+
+export interface RubberPricingConfig {
+  paraffin: RubberParaffinConfig;
+  blasting: RubberBlastingConfig;
+  deptAvgHourly: Record<string, number>;
+  consumableMarkup: number;
+  plate: RubberFamilyPricingConfig;
+  pipe: RubberPipePricingConfig;
+}
+
+export interface RubberPricingResponse {
+  config: RubberPricingConfig;
+  items: RubberPriceListRow[];
+}
+
+export interface RubberQuoteCatalogThickness {
+  thicknessMm: number;
+  salePerM2: number;
+  mpsPerM2: number;
+}
+
+export interface RubberQuoteCatalogItem {
+  id: number;
+  family: RubberPriceFamily;
+  supplier: string;
+  productCode: string;
+  productName: string | null;
+  bondingType: string | null;
+  colour: string | null;
+  shoreHardness: number | null;
+  preferred: boolean;
+  thicknesses: RubberQuoteCatalogThickness[];
+}
+
+export interface RubberQuoteInput {
+  itemId?: number | null;
+  family?: RubberPriceFamily | null;
+  thicknessMm: number;
+  nb?: string | null;
+  areaOrLength: number;
+  bondingType?: string | null;
+}
+
+export interface RubberQuoteResult {
+  itemId: number;
+  family: RubberPriceFamily;
+  supplier: string;
+  productCode: string;
+  thicknessMm: number;
+  nb: string | null;
+  areaOrLength: number;
+  salePerM2: number | null;
+  mpsPerM2: number | null;
+  salePerMetre: number | null;
+  mpsPerMetre: number | null;
+  saleTotal: number;
+  mpsTotal: number;
+}
+
+export interface CreateRubberPriceListItemInput {
+  family: RubberPriceFamily;
+  supplier: string;
+  productCode: string;
+  productName?: string | null;
+  bondingType?: string | null;
+  colour?: string | null;
+  shoreHardness?: number | null;
+  specificGravity: number;
+  costPerKg?: number | null;
+  upliftPercent?: number | null;
+  active?: boolean;
+  preferred?: boolean;
+}
+
+export type UpdateRubberPriceListItemInput = Partial<CreateRubberPriceListItemInput>;
+
+export interface RubberPriceListRowPreview {
+  family: RubberPriceFamily;
+  supplier: string;
+  productCode: string;
+  bondingType: string | null;
+  colour: string | null;
+  shoreHardness: number | null;
+  specificGravity: number | null;
+  costPerKg: number | null;
+}
+
+export interface RubberPriceListImportPreview {
+  supplier: string;
+  rows: RubberPriceListRowPreview[];
+}
+
+export interface CommitRubberPriceListImportInput {
+  supplier: string;
+  replaceSupplier: boolean;
+  rows: CreateRubberPriceListItemInput[];
+}
+
+export interface RubberBondingAgent {
+  id: number;
+  supplier: string | null;
+  name: string;
+  packSizeLitres: number | null;
+  pricePerTin: number | null;
+  pricePerLitre: number | null;
+  areaCoverPerLitre: number | null;
+  active: boolean;
+  preferred: boolean;
+}
+
+export interface RubberBondingAgentPricing {
+  pricePerLitre: number | null;
+  costPerM2: number | null;
+  salePerM2: number | null;
+}
+
+export interface RubberBondingAgentRow {
+  agent: RubberBondingAgent;
+  pricing: RubberBondingAgentPricing;
+}
+
+export interface RubberBondingAgentsResponse {
+  consumableMarkup: number;
+  agents: RubberBondingAgentRow[];
+}
+
+export interface CreateRubberBondingAgentInput {
+  supplier?: string | null;
+  name: string;
+  packSizeLitres?: number | null;
+  pricePerTin?: number | null;
+  pricePerLitre?: number | null;
+  areaCoverPerLitre?: number | null;
+  active?: boolean;
+  preferred?: boolean;
+}
+
+export type UpdateRubberBondingAgentInput = Partial<CreateRubberBondingAgentInput>;
+
+export interface RubberBondingAgentImportRow {
+  name: string;
+  packSizeLitres: number | null;
+  pricePerTin: number | null;
+  pricePerLitre: number | null;
+}
+
+export interface RubberBondingAgentImportPreview {
+  rows: RubberBondingAgentImportRow[];
+}
+
+export interface CommitRubberBondingAgentImportInput {
+  supplier: string;
+  replaceSupplier: boolean;
+  rows: RubberBondingAgentImportRow[];
 }
 
 export interface StockControlLoginDto {

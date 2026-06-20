@@ -18,7 +18,8 @@ export type PaintGenericType =
   | "high-temp-silicone"
   | "intumescent"
   | "fbe"
-  | "3lpe";
+  | "3lpe"
+  | "bitumen";
 
 export type PaintFinishType =
   | "aliphatic-pu"

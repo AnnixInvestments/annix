@@ -4,6 +4,7 @@ import { JwtModule } from "@nestjs/jwt";
 import { MongooseModule } from "@nestjs/mongoose";
 import { MulterModule } from "@nestjs/platform-express";
 import { AdminModule } from "../admin/admin.module";
+import { CoatingSpecificationModule } from "../coating-specification/coating-specification.module";
 import { EmailModule } from "../email/email.module";
 import { FlangeDimensionModule } from "../flange-dimension/flange-dimension.module";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
@@ -56,6 +57,8 @@ import { QrCodeController } from "./controllers/qr-code.controller";
 import { ReconciliationController } from "./controllers/reconciliation.controller";
 import { ReportsController } from "./controllers/reports.controller";
 import { RequisitionsController } from "./controllers/requisitions.controller";
+import { RubberBondingAgentController } from "./controllers/rubber-bonding-agent.controller";
+import { RubberPricingController } from "./controllers/rubber-pricing.controller";
 import { SearchController } from "./controllers/search.controller";
 import { SignatureController } from "./controllers/signature.controller";
 import { StaffController } from "./controllers/staff.controller";
@@ -183,10 +186,14 @@ import { RequisitionRepository } from "./repositories/requisition.repository";
 import { MongoRequisitionRepository } from "./repositories/requisition.repository.mongo";
 import { RequisitionItemRepository } from "./repositories/requisition-item.repository";
 import { MongoRequisitionItemRepository } from "./repositories/requisition-item.repository.mongo";
+import { RubberBondingAgentRepository } from "./repositories/rubber-bonding-agent.repository";
+import { MongoRubberBondingAgentRepository } from "./repositories/rubber-bonding-agent.repository.mongo";
 import { RubberCuttingTrainingRepository } from "./repositories/rubber-cutting-training.repository";
 import { MongoRubberCuttingTrainingRepository } from "./repositories/rubber-cutting-training.repository.mongo";
 import { RubberDimensionOverrideRepository } from "./repositories/rubber-dimension-override.repository";
 import { MongoRubberDimensionOverrideRepository } from "./repositories/rubber-dimension-override.repository.mongo";
+import { RubberPriceListItemRepository } from "./repositories/rubber-price-list-item.repository";
+import { MongoRubberPriceListItemRepository } from "./repositories/rubber-price-list-item.repository.mongo";
 import { StaffMemberRepository } from "./repositories/staff-member.repository";
 import { MongoStaffMemberRepository } from "./repositories/staff-member.repository.mongo";
 import { StaffSignatureRepository } from "./repositories/staff-signature.repository";
@@ -284,8 +291,10 @@ import { ReconciliationEventSchema } from "./schemas/reconciliation-event.schema
 import { ReconciliationItemSchema } from "./schemas/reconciliation-item.schema";
 import { RequisitionSchema } from "./schemas/requisition.schema";
 import { RequisitionItemSchema } from "./schemas/requisition-item.schema";
+import { RubberBondingAgentSchema } from "./schemas/rubber-bonding-agent.schema";
 import { RubberCuttingTrainingSchema } from "./schemas/rubber-cutting-training.schema";
 import { RubberDimensionOverrideSchema } from "./schemas/rubber-dimension-override.schema";
+import { RubberPriceListItemSchema } from "./schemas/rubber-price-list-item.schema";
 import { StaffMemberSchema } from "./schemas/staff-member.schema";
 import { StaffSignatureSchema } from "./schemas/staff-signature.schema";
 import { StockAllocationSchema } from "./schemas/stock-allocation.schema";
@@ -354,6 +363,7 @@ import { JobFileService } from "./services/job-file.service";
 import { LookupService } from "./services/lookup.service";
 import { M2CalculationService } from "./services/m2-calculation.service";
 import { MovementService } from "./services/movement.service";
+import { PaintCoatingSystemService } from "./services/paint-coating-system.service";
 import { PaintPriceListService } from "./services/paint-price-list.service";
 import { PaintPriceListExtractionService } from "./services/paint-price-list-extraction.service";
 import { PaintPricingService } from "./services/paint-pricing.service";
@@ -367,7 +377,11 @@ import { ReconciliationDocumentService } from "./services/reconciliation-documen
 import { ReconciliationExtractionService } from "./services/reconciliation-extraction.service";
 import { ReportsService } from "./services/reports.service";
 import { RequisitionService } from "./services/requisition.service";
+import { RubberBondingAgentService } from "./services/rubber-bonding-agent.service";
 import { RubberCuttingTrainingService } from "./services/rubber-cutting-training.service";
+import { RubberPriceListService } from "./services/rubber-price-list.service";
+import { RubberPriceListExtractionService } from "./services/rubber-price-list-extraction.service";
+import { RubberPricingService } from "./services/rubber-pricing.service";
 import { SageInvoiceAdapterService } from "./services/sage-invoice-adapter.service";
 import { SageJcDumpService } from "./services/sage-jc-dump.service";
 import { ScEmailAdapterService } from "./services/sc-email-adapter.service";
@@ -393,6 +407,8 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       { name: "ChatMessage", schema: ChatMessageSchema },
       { name: "JobCardCoatingAnalysis", schema: JobCardCoatingAnalysisSchema },
       { name: "PaintPriceListItem", schema: PaintPriceListItemSchema },
+      { name: "RubberPriceListItem", schema: RubberPriceListItemSchema },
+      { name: "RubberBondingAgent", schema: RubberBondingAgentSchema },
       { name: "CpoCalloffRecord", schema: CpoCalloffRecordSchema },
       {
         name: "CustomerPurchaseOrderItem",
@@ -505,6 +521,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       { name: "QcShoreHardness", schema: QcShoreHardnessSchema },
     ]),
     AdminModule,
+    CoatingSpecificationModule,
     EmailModule,
     FlangeDimensionModule,
     JwtModule.registerAsync({
@@ -554,6 +571,8 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     SignatureController,
     InvoicesController,
     PaintPricingController,
+    RubberPricingController,
+    RubberBondingAgentController,
     SupplierController,
     CpoController,
     GlossaryController,
@@ -588,6 +607,11 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     PaintPricingService,
     PaintPriceListService,
     PaintPriceListExtractionService,
+    PaintCoatingSystemService,
+    RubberPricingService,
+    RubberPriceListService,
+    RubberPriceListExtractionService,
+    RubberBondingAgentService,
     CompanyEmailService,
     DashboardService,
     QrCodeService,
@@ -644,6 +668,8 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     repositoryProvider(ChatMessageRepository, MongoChatMessageRepository),
     repositoryProvider(JobCardCoatingAnalysisRepository, MongoJobCardCoatingAnalysisRepository),
     repositoryProvider(PaintPriceListItemRepository, MongoPaintPriceListItemRepository),
+    repositoryProvider(RubberPriceListItemRepository, MongoRubberPriceListItemRepository),
+    repositoryProvider(RubberBondingAgentRepository, MongoRubberBondingAgentRepository),
     repositoryProvider(CpoCalloffRecordRepository, MongoCpoCalloffRecordRepository),
     repositoryProvider(
       CustomerPurchaseOrderItemRepository,

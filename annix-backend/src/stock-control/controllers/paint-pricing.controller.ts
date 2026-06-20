@@ -27,6 +27,7 @@ import {
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
+import { PaintCoatingSystemService } from "../services/paint-coating-system.service";
 import { PaintPriceListService } from "../services/paint-price-list.service";
 import { PaintPriceListExtractionService } from "../services/paint-price-list-extraction.service";
 
@@ -38,6 +39,7 @@ export class PaintPricingController {
   constructor(
     private readonly paintPriceListService: PaintPriceListService,
     private readonly extractionService: PaintPriceListExtractionService,
+    private readonly coatingSystemService: PaintCoatingSystemService,
   ) {}
 
   @Get()
@@ -90,6 +92,15 @@ export class PaintPricingController {
   @ApiOperation({ summary: "Customer-safe paint catalogue (sell prices only) for self-quote" })
   async quoteCatalog(@Req() req: any) {
     return this.paintPriceListService.quoteCatalog(req.user.companyId);
+  }
+
+  @Get("coating-systems")
+  @ApiOperation({
+    summary:
+      "ISO 12944 coating systems per corrosivity category, normalised into primer/intermediate/final coats",
+  })
+  async coatingSystems() {
+    return this.coatingSystemService.coatingSystems();
   }
 
   @Post("quote")

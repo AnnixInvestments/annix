@@ -344,6 +344,30 @@ const COATING_PRODUCTS: CoatingProductSpec[] = [
     volumeSolidsPercent: 50,
     defaultDftUm: 125,
   },
+  {
+    name: "Bituminous Aluminium",
+    aliases: [
+      "bitumen aluminium",
+      "bituminous al",
+      "aluminium bitumen",
+      "bituminous aluminium paint",
+    ],
+    genericType: "bitumen",
+    volumeSolidsPercent: 48,
+    defaultDftUm: 100,
+  },
+  {
+    name: "Pro-Struct 202",
+    aliases: [
+      "prostruct 202",
+      "pro struct 202",
+      "pro-struct 202 bitumen aluminium",
+      "bituminous aluminium bright shine",
+    ],
+    genericType: "bitumen",
+    volumeSolidsPercent: 48,
+    defaultDftUm: 100,
+  },
 ];
 
 function normalizeProductName(name: string): string {

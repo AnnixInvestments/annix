@@ -1,3 +1,7 @@
+export type { RubberBondingAgentSeed } from "./rubberBondingAgents";
+export { RUBBER_BONDING_AGENTS } from "./rubberBondingAgents";
+export type { RubberLabourRateSeed } from "./rubberLabourRates";
+export { RUBBER_LABOUR_RATES } from "./rubberLabourRates";
 export type {
   AdhesiveRecommendation,
   CureMethodRecommendation,
@@ -29,6 +33,20 @@ export {
   selectAdhesiveSystem,
 } from "./rubberLiningRecommendations";
 export type {
+  RubberPriceProductFamily,
+  RubberPriceProductSeed,
+} from "./rubberPriceProducts";
+export {
+  RUBBER_PIPE_PRICE_PRODUCTS,
+  RUBBER_PLATE_PRICE_PRODUCTS,
+  RUBBER_PRICE_PRODUCTS,
+} from "./rubberPriceProducts";
+export type {
+  RubberNbFactor,
+  RubberPricingDefaults,
+} from "./rubberPricingDefaults";
+export { RUBBER_PRICING_DEFAULTS } from "./rubberPricingDefaults";
+export type {
   AbrasionResistance,
   HardnessClass,
   PolymerBase,
@@ -50,3 +68,14 @@ export {
   rubberProductsForAbrasion,
   rubberProductsForTemperature,
 } from "./rubberProducts";
+export type {
+  PricePerKgFromRollInput,
+  RubberRollDimensions,
+} from "./rubberRollMath";
+export {
+  defaultRubberSgByType,
+  lookupRubberSgByCode,
+  pricePerKgFromRoll,
+  rubberRollKg,
+  STANDARD_RUBBER_ROLL,
+} from "./rubberRollMath";
