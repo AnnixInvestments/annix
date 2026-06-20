@@ -114,6 +114,7 @@ export interface SeekerJobMatch {
 
 export interface AdminSeekerSummary {
   id: number;
+  userId: number | null;
   name: string | null;
   email: string | null;
   matchTier: string;
@@ -189,6 +190,7 @@ export interface SeekerEntitlementsResult {
 }
 
 interface SeekerContactState {
+  userId: number;
   whatsappOptIn: boolean;
   whatsappConsentRequestedAt: string | null;
   whatsappPhone: string | null;
@@ -692,6 +694,7 @@ export class SeekerJobFeedService {
       const cvPhone = row.extractedData ? row.extractedData.phone : null;
       return {
         id: row.id,
+        userId: whatsapp ? whatsapp.userId : null,
         name: row.name,
         email: row.email,
         matchTier: row.matchTier,
@@ -729,6 +732,7 @@ export class SeekerJobFeedService {
         return map;
       }
       map.set(user.email.toLowerCase(), {
+        userId: user.id,
         whatsappOptIn: user.whatsappOptIn === true,
         whatsappConsentRequestedAt: user.whatsappConsentRequestedAt
           ? user.whatsappConsentRequestedAt.toISOString()
@@ -774,6 +778,7 @@ export class SeekerJobFeedService {
 
     return {
       id: candidate.id,
+      userId: seekerUser ? seekerUser.id : null,
       name: candidate.name,
       email: candidate.email,
       matchTier: candidate.matchTier,

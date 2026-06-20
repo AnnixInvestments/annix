@@ -1961,6 +1961,7 @@ export interface PlatformLimitBreakdown {
 
 export interface OrbitSeekerSummary {
   id: number;
+  userId: number | null;
   name: string | null;
   email: string | null;
   matchTier: string;

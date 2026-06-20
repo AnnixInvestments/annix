@@ -252,12 +252,13 @@ export default function OrbitSeekersPage() {
                 const tierBadge = seekerTierBadgeClass(seeker.matchTier);
                 const statusBadge = seekerStatusBadgeClass(seeker.status);
                 const seekerId = seeker.id;
+                const consentUserId = seeker.userId;
                 const isProspect = seeker.isProspect === true;
                 const whatsappOptIn = seeker.whatsappOptIn;
                 const whatsappRequestedAt = seeker.whatsappConsentRequestedAt;
                 const whatsappPhone = seeker.whatsappPhone;
                 const hasWhatsAppNumber = Boolean(contactPhoneValue || whatsappPhone);
-                const isRequestingConsent = requestingId === seekerId;
+                const isRequestingConsent = consentUserId != null && requestingId === consentUserId;
                 const isRequestingWhatsApp =
                   isRequestingConsent && requestingChannel === "whatsapp";
                 const isRequestingEmail = isRequestingConsent && requestingChannel === "email";
@@ -306,12 +307,20 @@ export default function OrbitSeekersPage() {
                           <div className="flex items-center gap-1.5">
                             <button
                               type="button"
-                              onClick={(e) => void handleRequestConsent(e, seekerId, "whatsapp")}
-                              disabled={isRequestingConsent || !hasWhatsAppNumber}
+                              onClick={(e) => {
+                                if (consentUserId != null) {
+                                  void handleRequestConsent(e, consentUserId, "whatsapp");
+                                }
+                              }}
+                              disabled={
+                                isRequestingConsent || !hasWhatsAppNumber || consentUserId == null
+                              }
                               title={
-                                hasWhatsAppNumber
-                                  ? `${consentVerb} consent via WhatsApp`
-                                  : "No number on file"
+                                consentUserId == null
+                                  ? "No seeker account on file"
+                                  : hasWhatsAppNumber
+                                    ? `${consentVerb} consent via WhatsApp`
+                                    : "No number on file"
                               }
                               className="px-2 py-0.5 rounded-md border border-green-300 text-xs font-medium text-green-700 hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                             >
@@ -319,8 +328,12 @@ export default function OrbitSeekersPage() {
                             </button>
                             <button
                               type="button"
-                              onClick={(e) => void handleRequestConsent(e, seekerId, "email")}
-                              disabled={isRequestingConsent}
+                              onClick={(e) => {
+                                if (consentUserId != null) {
+                                  void handleRequestConsent(e, consentUserId, "email");
+                                }
+                              }}
+                              disabled={isRequestingConsent || consentUserId == null}
                               title={`${consentVerb} consent via email`}
                               className="px-2 py-0.5 rounded-md border border-gray-300 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 whitespace-nowrap"
                             >
