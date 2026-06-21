@@ -127,7 +127,7 @@ const SearchableSelect = React.forwardRef<HTMLButtonElement, SearchableSelectPro
         </Popover.Trigger>
         <Popover.Portal>
           <Popover.Content
-            className="bg-white border border-gray-200 rounded-md shadow-lg z-50 w-[var(--radix-popover-trigger-width)] max-h-80 overflow-hidden"
+            className="bg-white border border-gray-200 rounded-md shadow-lg z-[10000] w-[var(--radix-popover-trigger-width)] max-h-80 overflow-hidden"
             sideOffset={4}
             align="start"
           >
