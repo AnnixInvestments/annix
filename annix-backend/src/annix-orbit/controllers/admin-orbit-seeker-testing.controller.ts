@@ -9,6 +9,8 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { AdminAuthGuard } from "../../admin/guards/admin-auth.guard";
+import { Roles } from "../../auth/roles.decorator";
+import { RolesGuard } from "../../auth/roles.guard";
 import { CustomerFeedback } from "../../feedback/entities/customer-feedback.entity";
 import { FeedbackService } from "../../feedback/feedback.service";
 import { fromISO, now } from "../../lib/datetime";
@@ -29,7 +31,7 @@ import { SeekerTelemetryService } from "../services/seeker-telemetry.service";
 import { SeekerWorkflowProgressService } from "../services/seeker-workflow-progress.service";
 
 @Controller("admin/annix-orbit/seeker-testing")
-@UseGuards(AdminAuthGuard)
+@UseGuards(AdminAuthGuard, RolesGuard)
 export class AdminOrbitSeekerTestingController {
   constructor(
     private readonly phases: SeekerTestPhaseRepository,
@@ -46,6 +48,7 @@ export class AdminOrbitSeekerTestingController {
   private static readonly ORBIT_FEEDBACK_CONTEXT = "annix-orbit";
 
   @Get("phases")
+  @Roles("admin")
   async phasesList() {
     const phases = await this.phases.listNewestFirst();
     const registeredProspects = (await this.userService.seekerProspects()).filter(
@@ -62,6 +65,7 @@ export class AdminOrbitSeekerTestingController {
   }
 
   @Post("phases")
+  @Roles("admin")
   createPhase(@Body() dto: CreateSeekerTestPhaseDto) {
     return this.phases.create({
       name: dto.name,
@@ -76,6 +80,7 @@ export class AdminOrbitSeekerTestingController {
   }
 
   @Patch("phases/:id")
+  @Roles("admin")
   async updatePhase(@Param("id") id: string, @Body() dto: UpdateSeekerTestPhaseDto) {
     const phase = await this.phases.findById(id);
     if (!phase) {
@@ -94,6 +99,7 @@ export class AdminOrbitSeekerTestingController {
   }
 
   @Get("overview")
+  @Roles("admin")
   async overview() {
     const readiness = await this.readiness.compute();
     const funnel = await this.progress.funnel();
@@ -101,6 +107,7 @@ export class AdminOrbitSeekerTestingController {
   }
 
   @Get("errors-latency")
+  @Roles("admin")
   async errorsLatency() {
     const recentFailures = await this.telemetry.recentFailures(50);
     const latency = await this.telemetry.latencyStats();
@@ -134,6 +141,7 @@ export class AdminOrbitSeekerTestingController {
   }
 
   @Get("users")
+  @Roles("admin")
   async users() {
     const rows = await this.progress.listProgress();
     const candidateIds = [...new Set(rows.map((row) => row.candidateId))];
@@ -175,6 +183,7 @@ export class AdminOrbitSeekerTestingController {
   }
 
   @Get("readiness")
+  @Roles("admin")
   async readinessReport() {
     const current = await this.readiness.compute();
     const history = await this.readiness.history(30);
@@ -182,11 +191,13 @@ export class AdminOrbitSeekerTestingController {
   }
 
   @Post("recalculate")
+  @Roles("admin")
   recalculate() {
     return this.readiness.snapshot();
   }
 
   @Get("issues")
+  @Roles("admin")
   async issuesList() {
     const manual = await this.issues.listNewestFirst();
     const manualMapped = manual.map((issue) => ({
@@ -239,6 +250,7 @@ export class AdminOrbitSeekerTestingController {
   }
 
   @Post("issues")
+  @Roles("admin")
   createIssue(@Body() dto: CreateSeekerTestingIssueDto) {
     return this.issues.create({
       title: dto.title,
@@ -254,6 +266,7 @@ export class AdminOrbitSeekerTestingController {
   }
 
   @Patch("issues/:id")
+  @Roles("admin")
   async updateIssue(@Param("id") id: string, @Body() dto: UpdateSeekerTestingIssueDto) {
     if (id.startsWith("fb-")) {
       const feedbackId = Number.parseInt(id.slice(3), 10);

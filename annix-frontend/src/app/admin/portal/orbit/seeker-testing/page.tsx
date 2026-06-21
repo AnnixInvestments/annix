@@ -28,7 +28,7 @@ import {
   useBranding,
 } from "@/app/lib/query/hooks";
 
-const TOTAL_STEPS = 12;
+const TOTAL_STEPS = 10;
 const PHASE_STATUSES = ["pending", "active", "complete"];
 const ISSUE_STATUSES = ["open", "in_progress", "resolved", "ignored"];
 const SEVERITIES = ["low", "medium", "high", "critical"];

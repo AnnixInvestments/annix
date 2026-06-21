@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  HttpException,
   Injectable,
   Logger,
   ServiceUnavailableException,
@@ -40,6 +41,16 @@ import { SeekerJobFeedService } from "./seeker-job-feed.service";
 import { SeekerTelemetryService } from "./seeker-telemetry.service";
 
 type CredentialPhotoMediaType = "image/jpeg" | "image/png" | "image/webp";
+
+function telemetryErrorLabel(error: unknown): string {
+  if (error instanceof HttpException) {
+    return `${error.name}: ${error.message}`.slice(0, 200);
+  }
+  if (error instanceof Error) {
+    return error.name;
+  }
+  return "UnknownError";
+}
 
 function coerceOverallScore(value: unknown): number | null {
   if (isNumber(value) && Number.isFinite(value)) {
@@ -297,7 +308,7 @@ export class NixSeekerAssistService {
     } catch (error) {
       await this.seekerTelemetry.record(candidateId, SEEKER_EVENTS.aiAnalysisCompleted, {
         ok: false,
-        errorMessage: error instanceof Error ? error.message : String(error),
+        errorMessage: telemetryErrorLabel(error),
         durationMs: nowMillis() - startedMs,
       });
       throw error;

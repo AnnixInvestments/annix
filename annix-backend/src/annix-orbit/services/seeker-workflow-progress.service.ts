@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { now } from "../../lib/datetime";
 import { UserRepository } from "../../user/user.repository";
+import { AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
 import { SeekerTestParticipant } from "../entities/seeker-test-participant.entity";
 import { SeekerWorkflowProgress } from "../entities/seeker-workflow-progress.entity";
 import { SEEKER_EVENT_TO_STEP, SEEKER_WORKFLOW_STEPS } from "../lib/seeker-testing.constants";
@@ -18,9 +19,14 @@ export interface FunnelRow {
   pct: number;
 }
 
+function isDuplicateKeyError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && (error as { code?: number }).code === 11000;
+}
+
 @Injectable()
 export class SeekerWorkflowProgressService {
   private readonly logger = new Logger(SeekerWorkflowProgressService.name);
+  private reconcileInFlight: Promise<{ participants: number; events: number }> | null = null;
 
   constructor(
     private readonly events: SeekerTestEventRepository,
@@ -47,12 +53,12 @@ export class SeekerWorkflowProgressService {
     if (!email) {
       return derived;
     }
-    const user = await this.users.findOneByEmailCaseInsensitive(email).catch(() => null);
+    const user = await this.users.findOrbitUserByEmail(email).catch(() => null);
     if (!user) {
       return derived;
     }
     const profile = await this.profiles.findByUserId(user.id).catch(() => null);
-    if (!profile) {
+    if (!profile || profile.userType !== AnnixOrbitUserType.INDIVIDUAL) {
       return derived;
     }
     if (profile.onboardingCompletedAt) {
@@ -73,7 +79,21 @@ export class SeekerWorkflowProgressService {
     return all.length > 0 ? String(all[0].id) : null;
   }
 
+  // Reconcile runs on every admin seeker-testing dashboard view (and the daily
+  // cron). Overlapping views would otherwise race to create the same progress /
+  // step rows and trip the unique indexes (E11000). Collapse concurrent callers
+  // onto a single in-flight run.
   async reconcile(): Promise<{ participants: number; events: number }> {
+    if (this.reconcileInFlight) {
+      return this.reconcileInFlight;
+    }
+    this.reconcileInFlight = this.runReconcile().finally(() => {
+      this.reconcileInFlight = null;
+    });
+    return this.reconcileInFlight;
+  }
+
+  private async runReconcile(): Promise<{ participants: number; events: number }> {
     const since = now().minus({ years: 5 }).toJSDate();
     const allEvents = await this.events.eventsSince(since);
     const phaseId = await this.activePhaseId();
@@ -178,7 +198,14 @@ export class SeekerWorkflowProgressService {
       }
       return;
     }
-    await this.steps.create({ participantId, stepKey, completed: true, completedAt });
+    try {
+      await this.steps.create({ participantId, stepKey, completed: true, completedAt });
+    } catch (error) {
+      if (!isDuplicateKeyError(error)) {
+        throw error;
+      }
+      // A concurrent reconcile already created this step (already completed).
+    }
   }
 
   private async updateProgress(
@@ -206,21 +233,7 @@ export class SeekerWorkflowProgressService {
     }, null);
     const completedSteps = firstTsByStep.size;
 
-    const existing = await this.progress.findByParticipant(participantId);
-    if (existing) {
-      existing.registeredAt = registeredAt;
-      existing.cvUploadedAt = cvUploadedAt;
-      existing.careerScoreGeneratedAt = careerScoreGeneratedAt;
-      existing.firstJobsViewedAt = firstJobsViewedAt;
-      existing.timeToFirstValueSeconds = ttfv;
-      existing.completedSteps = completedSteps;
-      existing.lastActiveAt = lastActiveAt;
-      await this.progress.save(existing);
-      return;
-    }
-    await this.progress.create({
-      participantId,
-      candidateId,
+    const fields = {
       registeredAt,
       cvUploadedAt,
       careerScoreGeneratedAt,
@@ -228,7 +241,27 @@ export class SeekerWorkflowProgressService {
       timeToFirstValueSeconds: ttfv,
       completedSteps,
       lastActiveAt,
-    });
+    };
+
+    const existing = await this.progress.findByParticipant(participantId);
+    if (existing) {
+      Object.assign(existing, fields);
+      await this.progress.save(existing);
+      return;
+    }
+    try {
+      await this.progress.create({ participantId, candidateId, ...fields });
+    } catch (error) {
+      if (!isDuplicateKeyError(error)) {
+        throw error;
+      }
+      // A concurrent reconcile created the row first; update it instead.
+      const raced = await this.progress.findByParticipant(participantId);
+      if (raced) {
+        Object.assign(raced, fields);
+        await this.progress.save(raced);
+      }
+    }
   }
 
   async stepCounts(): Promise<Map<string, number>> {

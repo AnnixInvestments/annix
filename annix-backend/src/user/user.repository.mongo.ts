@@ -94,6 +94,17 @@ export class MongoUserRepository extends MongoCrudRepository<User> implements Us
     return this.toDomain(doc);
   }
 
+  async findOrbitUserByEmail(email: string): Promise<User | null> {
+    const doc = await this.documents
+      .findOne({
+        email: { $regex: `^${escapeRegExp(email)}$`, $options: "i" },
+        ...ORBIT_SCOPE_FILTER,
+      })
+      .lean()
+      .exec();
+    return this.toDomain(doc);
+  }
+
   async findByEmailWithRoles(email: string): Promise<User | null> {
     const doc = await this.documents
       .findOne({ email, ...NON_ORBIT_SCOPE_FILTER })

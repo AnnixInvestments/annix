@@ -39,9 +39,33 @@ const SEEKER_WALKTHROUGHS: Record<string, SeekerWalkthrough> = {
       },
       {
         kind: "instruction",
+        title: "Let Nix polish your CV",
+        body: "With your CV in, tap **Click Here to Improve my CV** and Nix rewrites it recruiter-ready. Review the changes, then tap **Use this CV** to adopt it — that's what Nix matches you to jobs with.",
+        target: "nix-section",
+      },
+      {
+        kind: "instruction",
+        title: "Verify your identity",
+        body: "Upload a photo of your ID or passport here. Nix checks the name matches your CV — **verified profiles stand out to employers**. Only the name, number and dates are kept; the image is deleted once it's checked.",
+        target: "identity-section",
+      },
+      {
+        kind: "instruction",
+        title: "Add your qualifications",
+        body: "Upload your **qualifications and certificates** here. They back up your CV and help Nix match you to roles that ask for them.",
+        target: "qualifications",
+      },
+      {
+        kind: "instruction",
         title: "Complete your Work Profile",
         body: "Next, fill in your **Work Profile** — experience, role, salary and availability. This is what employers match against.",
         target: "work-profile-section",
+      },
+      {
+        kind: "instruction",
+        title: "Pick your plan",
+        body: "Choose your plan under **Plans** — Explorer is free, and higher tiers unlock sharper matching and more **Nix Job Finds**. It's all free while Annix Orbit is in testing.",
+        target: "nav-plans",
       },
       {
         kind: "instruction",
@@ -66,6 +90,18 @@ const SEEKER_WALKTHROUGHS: Record<string, SeekerWalkthrough> = {
         title: "Nix is always here",
         body: "That's the tour! Need a hand with any step, tap **Ask Nix** and I'll walk you through it. Good luck with the search!",
         target: "ask-nix-button",
+      },
+    ],
+  },
+  "use-this-cv": {
+    key: "use-this-cv",
+    label: "Use your improved CV",
+    steps: [
+      {
+        kind: "instruction",
+        title: "Use your new CV",
+        body: "Nix has rebuilt your CV. Review the changes above, then tap **Use this CV** to adopt it — Nix starts matching you to jobs with this version.",
+        target: "nix-adopt-cv",
       },
     ],
   },

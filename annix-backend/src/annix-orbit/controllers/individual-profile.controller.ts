@@ -16,6 +16,7 @@ import {
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
+import { Throttle } from "@nestjs/throttler";
 import type { Response } from "express";
 import { FEATURE_FLAGS } from "../../feature-flags/feature-flags.constants";
 import { FeatureFlagsService } from "../../feature-flags/feature-flags.service";
@@ -28,6 +29,7 @@ import {
   UpdateCredentialFieldsDto,
   UploadIndividualDocumentDto,
 } from "../dto/individual-profile.dto";
+import { NixGeneratedCvDto } from "../dto/nix-generated-cv.dto";
 import { UpdateSeekerEeAttributesDto } from "../dto/seeker-ee-attributes.dto";
 import type {
   EeDisabilityStatus,
@@ -37,10 +39,11 @@ import type {
   EePurpose,
 } from "../entities/annix-orbit-candidate-ee-attributes.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { SeekerThrottlerGuard } from "../guards/seeker-throttler.guard";
 import { IndividualProfileService } from "../services/individual-profile.service";
 import { InterviewBookingService } from "../services/interview-booking.service";
 import { NixCvPdfService } from "../services/nix-cv-pdf.service";
-import type { NixCalendarAdvisoryConflict, NixGeneratedCv } from "../services/nix-prompts";
+import type { NixCalendarAdvisoryConflict } from "../services/nix-prompts";
 import { NixSeekerAssistService } from "../services/nix-seeker-assist.service";
 
 @Controller("annix-orbit/me")
@@ -260,11 +263,15 @@ export class IndividualProfileController {
   }
 
   @Post("nix-wizard/cv-improvements")
+  @UseGuards(SeekerThrottlerGuard)
+  @Throttle({ default: { limit: 6, ttl: 60000 } })
   nixCvImprovements(@Request() req: { user: { id: number } }) {
     return this.nixSeekerAssistService.cvImprovements(req.user.id);
   }
 
   @Post("nix-wizard/generate-cv")
+  @UseGuards(SeekerThrottlerGuard)
+  @Throttle({ default: { limit: 6, ttl: 60000 } })
   async nixGenerateCv(@Request() req: { user: { id: number } }) {
     await this.ensureNixCvBuilderEnabled();
     return this.nixSeekerAssistService.generateCv(req.user.id);
@@ -279,7 +286,7 @@ export class IndividualProfileController {
   @Patch("nix-wizard/generated-cv")
   async nixUpdateGeneratedCv(
     @Request() req: { user: { id: number } },
-    @Body() body: NixGeneratedCv,
+    @Body() body: NixGeneratedCvDto,
   ) {
     await this.ensureNixCvBuilderEnabled();
     return this.nixSeekerAssistService.updateGeneratedCv(req.user.id, body);

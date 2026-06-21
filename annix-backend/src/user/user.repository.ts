@@ -8,6 +8,7 @@ export abstract class UserRepository extends CrudRepository<User> {
   abstract findAllWithRoles(): Promise<User[]>;
   abstract findByIdWithRoles(id: number): Promise<User | null>;
   abstract findOrbitUserById(id: number): Promise<User | null>;
+  abstract findOrbitUserByEmail(email: string): Promise<User | null>;
   abstract findByEmailWithRoles(email: string): Promise<User | null>;
   abstract findByIds(ids: number[]): Promise<User[]>;
   abstract findByIdsWithRoles(ids: number[]): Promise<User[]>;

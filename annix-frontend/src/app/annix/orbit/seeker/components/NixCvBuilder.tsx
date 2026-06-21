@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { PhotoCapture } from "@/app/components/PhotoCapture";
+import { requestSeekerTour } from "@/app/lib/annix-orbit/seekerTourSignal";
 import type {
   NixGeneratedCv,
   NixGeneratedCvExperience,
@@ -77,6 +78,12 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
   useEffect(() => {
     if (generateMutation.isSuccess) {
       onBuilt?.();
+      const spotlightKey = "annix-orbit:nix-adopt-cv-spotlight";
+      const alreadyShown = window.localStorage.getItem(spotlightKey);
+      if (!alreadyShown) {
+        window.localStorage.setItem(spotlightKey, "1");
+        requestSeekerTour("use-this-cv");
+      }
     }
   }, [generateMutation.isSuccess, onBuilt]);
 
@@ -378,6 +385,7 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
           <div className="flex items-center gap-3 flex-wrap">
             <button
               type="button"
+              data-nix-target="nix-adopt-cv"
               onClick={handleUseThisCv}
               disabled={adopting}
               className={`${
