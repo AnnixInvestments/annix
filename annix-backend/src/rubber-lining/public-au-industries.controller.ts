@@ -10,6 +10,7 @@ import { BlogPost } from "./entities/blog-post.entity";
 import { CompoundDataSheet } from "./entities/compound-data-sheet.entity";
 import { Testimonial } from "./entities/testimonial.entity";
 import { WebsitePage } from "./entities/website-page.entity";
+import { type LinkedInFeedPost, LinkedInFeedService } from "./linkedin-feed.service";
 import { TestimonialsService } from "./testimonials.service";
 import { WebsitePagesService } from "./website-pages.service";
 
@@ -32,6 +33,7 @@ export class PublicAuIndustriesController {
     private readonly dataSheetsService: CompoundDataSheetsService,
     private readonly companyProfileService: AdminCompanyProfileService,
     private readonly emailService: EmailService,
+    private readonly linkedInFeedService: LinkedInFeedService,
   ) {}
 
   @Get("pages")
@@ -91,6 +93,13 @@ export class PublicAuIndustriesController {
   @ApiResponse({ status: 200, type: CompoundDataSheet })
   async publishedDataSheetBySlug(@Param("slug") slug: string): Promise<CompoundDataSheet> {
     return this.dataSheetsService.publishedSheetBySlug(slug);
+  }
+
+  @Get("linkedin-feed")
+  @ApiOperation({ summary: "Recent LinkedIn posts for the AU Industries page feed" })
+  @ApiResponse({ status: 200 })
+  async linkedInFeed(): Promise<LinkedInFeedPost[]> {
+    return this.linkedInFeedService.feed();
   }
 
   @Get("contact")

@@ -2,6 +2,7 @@ import { isString } from "es-toolkit/compat";
 import { headers } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
+import { AuIndustriesLinkedInFeed } from "./AuIndustriesLinkedInFeed";
 import { type CaseStudy, projectCaseStudies } from "./caseStudies";
 
 const DEFAULT_HERO_IMAGE = "/au-industries/gallery/gallery29.jpg";
@@ -252,10 +253,7 @@ export default async function AuIndustriesHomePage(): Promise<React.JSX.Element>
         />
         <div className="absolute inset-0 bg-black/30" />
         <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div
-            className="elfsight-app-4c13c174-7edd-4de9-b428-dc35d38ec263"
-            data-elfsight-app-lazy
-          />
+          <AuIndustriesLinkedInFeed />
         </div>
       </section>
 

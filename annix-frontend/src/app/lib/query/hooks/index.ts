@@ -890,6 +890,8 @@ export {
 } from "./au-industries/useAuIndustriesContent";
 export type { AuIndustriesEnquiry } from "./au-industries/useAuIndustriesEnquiry";
 export { useSubmitAuIndustriesEnquiry } from "./au-industries/useAuIndustriesEnquiry";
+export type { AuIndustriesLinkedInPost } from "./au-industries/useAuIndustriesLinkedInFeed";
+export { useAuIndustriesLinkedInFeed } from "./au-industries/useAuIndustriesLinkedInFeed";
 export {
   useAuRubberAccessPermissions,
   useAuRubberAccessRoles,

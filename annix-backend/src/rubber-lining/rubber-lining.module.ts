@@ -31,6 +31,7 @@ import { CompoundDataSheetsController } from "./compound-data-sheets.controller"
 import { CompoundDataSheetsService } from "./compound-data-sheets.service";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
 import { AuRubberFeatureGuard } from "./guards/au-rubber-feature.guard";
+import { LinkedInFeedService } from "./linkedin-feed.service";
 import { PublicAuIndustriesController } from "./public-au-industries.controller";
 import { BlogPostRepository } from "./repositories/blog-post.repository";
 import { MongoBlogPostRepository } from "./repositories/blog-post.repository.mongo";
@@ -374,6 +375,7 @@ import { WebsitePagesService } from "./website-pages.service";
     CompoundDataSheetsService,
     ChemicalSupplierDocumentService,
     ChemicalDocExtractionService,
+    LinkedInFeedService,
     ArEmailAdapterService,
     AuRubberDocumentFilerService,
     PdfPageCacheService,
