@@ -1,4 +1,18 @@
 . "$PSScriptRoot\dev-lib.ps1"
+
+$lockFile = Join-Path $env:TEMP "annix-run-backend.lock"
+if (Test-Path $lockFile) {
+    $existingPid = (Get-Content $lockFile -ErrorAction SilentlyContinue | Select-Object -First 1)
+    if ($existingPid -and (Get-Process -Id ([int]$existingPid) -ErrorAction SilentlyContinue)) {
+        Write-Host "[run-backend] Backend launcher already running (pid $existingPid) - exiting to avoid stacking nest watchers. Stop that one first if you want a fresh launcher." -ForegroundColor Yellow
+        exit 0
+    }
+}
+Set-Content -Path $lockFile -Value $PID
+Register-EngineEvent PowerShell.Exiting -Action {
+    Remove-Item (Join-Path $env:TEMP "annix-run-backend.lock") -ErrorAction SilentlyContinue
+} | Out-Null
+
 Remove-OrphanedNestWatchers
 Set-Location "$PSScriptRoot\annix-backend"
 

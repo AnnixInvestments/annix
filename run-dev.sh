@@ -356,6 +356,8 @@ start_services() {
   : >"$BACKEND_LOG"
   : >"$FRONTEND_LOG"
 
+  ensure_single_backend
+
   info "Starting backend (logs: $BACKEND_LOG)..."
   (
     cd "$BACKEND_DIR"
@@ -365,6 +367,8 @@ start_services() {
 
   info "Clearing frontend cache..."
   node -e "const fs = require('fs'); fs.rmSync('$FRONTEND_DIR/.next', { recursive: true, force: true, maxRetries: 10, retryDelay: 500 }); fs.rmSync('$FRONTEND_DIR/node_modules/.cache', { recursive: true, force: true, maxRetries: 10, retryDelay: 500 });" 2>/dev/null || true
+
+  ensure_single_frontend
 
   info "Starting frontend with Turbopack (logs: $FRONTEND_LOG)..."
   (
@@ -401,6 +405,36 @@ remove_orphaned_nest_watchers() {
 
   if [ "$killed" -gt 0 ]; then
     info "Cleaned up $killed orphaned nest --watch process(es)"
+  fi
+}
+
+ensure_single_backend() {
+  # Single-instance guard. Stacked nest --watch processes each recompile the
+  # backend continuously and saturate the CPU, which starves every build (and
+  # made pre-push times balloon from ~2min to 7min). Before starting a fresh
+  # backend, stop ANY existing watcher and free port 4001 so exactly one
+  # backend ever runs — last launcher wins, deterministically.
+  local existing np owner
+  existing=$(pgrep -f 'nest.*start.*--watch' 2>/dev/null) || true
+  if [ -n "$existing" ]; then
+    info "Existing backend watcher(s) detected — stopping them so only one runs."
+    for np in $existing; do kill -9 "$np" 2>/dev/null || true; done
+  fi
+  owner=$(netstat -ano 2>/dev/null | grep -E 'LISTENING' | grep ':4001' | awk '{print $NF}' | head -1)
+  if [ -n "$owner" ]; then
+    info "Freeing port 4001 (held by PID $owner)."
+    taskkill //PID "$owner" //F >/dev/null 2>&1 || kill -9 "$owner" 2>/dev/null || true
+  fi
+}
+
+ensure_single_frontend() {
+  # Mirror of ensure_single_backend for the Next dev server, so re-running this
+  # script is always safe and never stacks a second frontend on port 3000.
+  local owner
+  owner=$(netstat -ano 2>/dev/null | grep -E 'LISTENING' | grep ':3000' | awk '{print $NF}' | head -1)
+  if [ -n "$owner" ]; then
+    info "Freeing port 3000 (held by PID $owner)."
+    taskkill //PID "$owner" //F >/dev/null 2>&1 || kill -9 "$owner" 2>/dev/null || true
   fi
 }
 
