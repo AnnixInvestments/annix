@@ -33,6 +33,12 @@ import { StorageModule } from "../storage/storage.module";
 import { UserSchema } from "../user/schemas/user.schema";
 import { UserRepository } from "../user/user.repository";
 import { MongoUserRepository } from "../user/user.repository.mongo";
+import { WhatsAppConversationRepository } from "../whatsapp/repositories/whatsapp-conversation.repository";
+import { MongoWhatsAppConversationRepository } from "../whatsapp/repositories/whatsapp-conversation.repository.mongo";
+import { WhatsAppMessageRepository } from "../whatsapp/repositories/whatsapp-message.repository";
+import { MongoWhatsAppMessageRepository } from "../whatsapp/repositories/whatsapp-message.repository.mongo";
+import { WhatsAppConversationSchema } from "../whatsapp/schemas/whatsapp-conversation.schema";
+import { WhatsAppMessageSchema } from "../whatsapp/schemas/whatsapp-message.schema";
 import { resolveAnnixOrbitJwtSecret } from "./annix-orbit.constants";
 import { AnnixOrbitLicensingRegistrar } from "./annix-orbit-licensing.registrar";
 import { AnnixOrbitRecruiterLicensingRegistrar } from "./annix-orbit-recruiter-licensing.registrar";
@@ -534,6 +540,8 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       { name: "AppRole", schema: AppRoleSchema },
       { name: "UserAppAccess", schema: UserAppAccessSchema },
       { name: "Rfq", schema: RfqSchema },
+      { name: "WhatsAppConversation", schema: WhatsAppConversationSchema },
+      { name: "WhatsAppMessage", schema: WhatsAppMessageSchema },
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -811,6 +819,8 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     repositoryProvider(AppRoleRepository, MongoAppRoleRepository),
     repositoryProvider(UserAppAccessRepository, MongoUserAppAccessRepository),
     repositoryProvider(RfqRepository, MongoRfqRepository),
+    repositoryProvider(WhatsAppConversationRepository, MongoWhatsAppConversationRepository),
+    repositoryProvider(WhatsAppMessageRepository, MongoWhatsAppMessageRepository),
   ],
   exports: [AnnixOrbitAuthService],
 })

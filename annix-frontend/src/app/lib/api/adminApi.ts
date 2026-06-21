@@ -1975,6 +1975,8 @@ export interface OrbitSeekerSummary {
   whatsappOptIn: boolean;
   whatsappConsentRequestedAt: string | null;
   whatsappPhone: string | null;
+  whatsappDeliveryStatus: string | null;
+  whatsappDeliveryDetail: string | null;
 }
 
 export interface OrbitSeekerDocument {

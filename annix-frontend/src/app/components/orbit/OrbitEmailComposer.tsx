@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { isUndefined } from "es-toolkit/compat";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useToast } from "@/app/components/Toast";
 import { DateInput } from "@/app/components/ui/DateInput";
@@ -76,6 +77,20 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+const ENV_STORAGE_KEY = "orbit-outreach-environment";
+const PROVISION_STORAGE_KEY = "orbit-outreach-provision-account";
+const PROVISION_TIER_STORAGE_KEY = "orbit-outreach-provision-tier";
+
+function readStored(key: string): string | null {
+  if (isUndefined(globalThis.window)) return null;
+  return window.localStorage.getItem(key);
+}
+
+function writeStored(key: string, value: string): void {
+  if (isUndefined(globalThis.window)) return;
+  window.localStorage.setItem(key, value);
+}
+
 export function OrbitEmailComposer(props: OrbitEmailComposerProps) {
   const recipients = props.recipients;
   const simple = props.variant === "simple";
@@ -100,7 +115,10 @@ export function OrbitEmailComposer(props: OrbitEmailComposerProps) {
   );
   const [subject, setSubject] = useState(DEFAULT_SUBJECT);
   const [body, setBody] = useState(DEFAULT_BODY);
-  const [environment, setEnvironment] = useState<"prod" | "test">("prod");
+  const [environment, setEnvironment] = useState<"prod" | "test">(() => {
+    const stored = readStored(ENV_STORAGE_KEY);
+    return stored === "test" ? "test" : "prod";
+  });
   const [includeDeviceGuide, setIncludeDeviceGuide] = useState(!simple);
   const [includeFbwGuide, setIncludeFbwGuide] = useState(!simple);
   const [selectedExtraIds, setSelectedExtraIds] = useState<string[]>([]);
@@ -113,8 +131,13 @@ export function OrbitEmailComposer(props: OrbitEmailComposerProps) {
   const [scheduleTime, setScheduleTime] = useState("09:00");
   const [scheduling, setScheduling] = useState(false);
   const [scheduleConfirmed, setScheduleConfirmed] = useState(false);
-  const [provisionAccount, setProvisionAccount] = useState(false);
-  const [provisionTier, setProvisionTier] = useState("");
+  const [provisionAccount, setProvisionAccount] = useState<boolean>(
+    () => readStored(PROVISION_STORAGE_KEY) === "true",
+  );
+  const [provisionTier, setProvisionTier] = useState<string>(() => {
+    const stored = readStored(PROVISION_TIER_STORAGE_KEY);
+    return stored ?? "";
+  });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const pendingSlotRef = useRef<string | null>(null);
 
@@ -125,6 +148,16 @@ export function OrbitEmailComposer(props: OrbitEmailComposerProps) {
     () => recipients.filter((r) => selectedIds.has(r.id)),
     [recipients, selectedIds],
   );
+
+  useEffect(() => {
+    writeStored(ENV_STORAGE_KEY, environment);
+  }, [environment]);
+  useEffect(() => {
+    writeStored(PROVISION_STORAGE_KEY, String(provisionAccount));
+  }, [provisionAccount]);
+  useEffect(() => {
+    writeStored(PROVISION_TIER_STORAGE_KEY, provisionTier);
+  }, [provisionTier]);
 
   if (!props.open) {
     return null;

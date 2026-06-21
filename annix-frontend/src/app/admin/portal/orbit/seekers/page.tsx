@@ -19,6 +19,22 @@ import { seekerStatusBadgeClass, seekerTierBadgeClass } from "./seekerBadges";
 const PAGE_SIZE = 20;
 const EXPORT_LIMIT = 10000;
 
+function deliveryBadge(status: string | null): { label: string; className: string } | null {
+  if (status === "read") {
+    return { label: "Read", className: "bg-green-100 text-green-700" };
+  }
+  if (status === "delivered") {
+    return { label: "Delivered", className: "bg-green-100 text-green-700" };
+  }
+  if (status === "sent") {
+    return { label: "Sent", className: "bg-gray-100 text-gray-600" };
+  }
+  if (status === "failed") {
+    return { label: "Failed", className: "bg-red-100 text-red-700" };
+  }
+  return null;
+}
+
 function csvCell(value: string | null): string {
   const raw = value || "";
   const needsQuotes = raw.includes(",") || raw.includes('"') || raw.includes("\n");
@@ -257,6 +273,9 @@ export default function OrbitSeekersPage() {
                 const whatsappOptIn = seeker.whatsappOptIn;
                 const whatsappRequestedAt = seeker.whatsappConsentRequestedAt;
                 const whatsappPhone = seeker.whatsappPhone;
+                const deliveryStatus = seeker.whatsappDeliveryStatus;
+                const deliveryDetail = seeker.whatsappDeliveryDetail;
+                const delivery = deliveryBadge(deliveryStatus);
                 const hasWhatsAppNumber = Boolean(contactPhoneValue || whatsappPhone);
                 const isRequestingConsent = consentUserId != null && requestingId === consentUserId;
                 const isRequestingWhatsApp =
@@ -303,6 +322,18 @@ export default function OrbitSeekersPage() {
                           requestedAt={whatsappRequestedAt}
                           phone={whatsappPhone}
                         />
+                        {delivery ? (
+                          <span
+                            title={
+                              deliveryStatus === "failed"
+                                ? (deliveryDetail ?? undefined)
+                                : undefined
+                            }
+                            className={`px-2 py-0.5 rounded-full text-xs font-medium ${delivery.className}`}
+                          >
+                            {delivery.label}
+                          </span>
+                        ) : null}
                         {!whatsappOptIn && !isProspect ? (
                           <div className="flex items-center gap-1.5">
                             <button

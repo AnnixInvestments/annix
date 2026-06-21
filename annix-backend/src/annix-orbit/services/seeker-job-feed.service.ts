@@ -16,6 +16,8 @@ import { DateTime, fromJSDate, nowMillis } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { UserRepository } from "../../user/user.repository";
+import { WhatsAppConversationRepository } from "../../whatsapp/repositories/whatsapp-conversation.repository";
+import { WhatsAppMessageRepository } from "../../whatsapp/repositories/whatsapp-message.repository";
 import { IndividualDocumentKind } from "../entities/annix-orbit-individual-document.entity";
 import { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch, MatchDetails } from "../entities/candidate-job-match.entity";
@@ -127,6 +129,8 @@ export interface AdminSeekerSummary {
   whatsappConsentRequestedAt: string | null;
   whatsappPhone: string | null;
   contactPhone: string | null;
+  whatsappDeliveryStatus: string | null;
+  whatsappDeliveryDetail: string | null;
 }
 
 export interface AdminSeekerDocument {
@@ -195,6 +199,8 @@ interface SeekerContactState {
   whatsappConsentRequestedAt: string | null;
   whatsappPhone: string | null;
   contactPhone: string | null;
+  whatsappDeliveryStatus: string | null;
+  whatsappDeliveryDetail: string | null;
 }
 
 function candidateHasCv(candidate: Candidate): boolean {
@@ -286,6 +292,8 @@ export class SeekerJobFeedService {
     private readonly storageService: IStorageService,
     private readonly pendingTierRepo: PendingSeekerTierRepository,
     private readonly embeddingService: EmbeddingService,
+    private readonly waConversationRepo: WhatsAppConversationRepository,
+    private readonly waMessageRepo: WhatsAppMessageRepository,
   ) {}
 
   // Union of the seeker's candidates' target countries; defaults to South Africa.
@@ -707,9 +715,29 @@ export class SeekerJobFeedService {
         whatsappConsentRequestedAt: whatsapp ? whatsapp.whatsappConsentRequestedAt : null,
         whatsappPhone: whatsapp ? whatsapp.whatsappPhone : null,
         contactPhone: profilePhone ?? cvPhone,
+        whatsappDeliveryStatus: whatsapp ? whatsapp.whatsappDeliveryStatus : null,
+        whatsappDeliveryDetail: whatsapp ? whatsapp.whatsappDeliveryDetail : null,
       };
     });
     return { seekers, total };
+  }
+
+  private async consentDeliveryStatus(
+    waId: string | null,
+  ): Promise<{ status: string | null; detail: string | null } | null> {
+    if (!waId) return null;
+    const conversation = await this.waConversationRepo.findByWaId(waId);
+    if (!conversation) return null;
+    const messages = await this.waMessageRepo.findByConversationOrdered(
+      String(conversation.id),
+      50,
+    );
+    const consent = messages.filter(
+      (msg) => msg.direction === "outbound" && msg.appContext === "admin-consent",
+    );
+    if (consent.length === 0) return null;
+    const latest = consent[consent.length - 1];
+    return { status: latest.status, detail: latest.errorDetail };
   }
 
   private async whatsappStateByEmail(emails: string[]): Promise<Map<string, SeekerContactState>> {
@@ -727,19 +755,32 @@ export class SeekerJobFeedService {
       return map;
     }, new Map<number, string>());
 
-    return users.reduce((map, user) => {
-      if (!user.email) {
+    const states = await Promise.all(
+      users.map(async (user) => {
+        const delivery =
+          user.whatsappConsentRequestedAt && user.whatsappPhone
+            ? await this.consentDeliveryStatus(user.whatsappPhone)
+            : null;
+        const state: SeekerContactState = {
+          userId: user.id,
+          whatsappOptIn: user.whatsappOptIn === true,
+          whatsappConsentRequestedAt: user.whatsappConsentRequestedAt
+            ? user.whatsappConsentRequestedAt.toISOString()
+            : null,
+          whatsappPhone: user.whatsappPhone ?? null,
+          contactPhone: phoneByUserId.get(user.id) ?? null,
+          whatsappDeliveryStatus: delivery ? delivery.status : null,
+          whatsappDeliveryDetail: delivery ? delivery.detail : null,
+        };
+        return { email: user.email, state };
+      }),
+    );
+
+    return states.reduce((map, entry) => {
+      if (!entry.email) {
         return map;
       }
-      map.set(user.email.toLowerCase(), {
-        userId: user.id,
-        whatsappOptIn: user.whatsappOptIn === true,
-        whatsappConsentRequestedAt: user.whatsappConsentRequestedAt
-          ? user.whatsappConsentRequestedAt.toISOString()
-          : null,
-        whatsappPhone: user.whatsappPhone ?? null,
-        contactPhone: phoneByUserId.get(user.id) ?? null,
-      });
+      map.set(entry.email.toLowerCase(), entry.state);
       return map;
     }, new Map<string, SeekerContactState>());
   }
@@ -772,6 +813,11 @@ export class SeekerJobFeedService {
       ? seekerProfile.dismissWarningAcknowledgedAt.toISOString()
       : null;
 
+    const consentDelivery =
+      seekerUser?.whatsappConsentRequestedAt && seekerUser.whatsappPhone
+        ? await this.consentDeliveryStatus(seekerUser.whatsappPhone)
+        : null;
+
     const extracted = candidate.extractedData;
     const analysis = candidate.matchAnalysis;
     const profileHasCv = seekerProfile ? seekerProfile.cvFilePath != null : false;
@@ -793,6 +839,8 @@ export class SeekerJobFeedService {
         : null,
       whatsappPhone: seekerUser ? (seekerUser.whatsappPhone ?? null) : null,
       contactPhone: seekerProfile?.phone ?? null,
+      whatsappDeliveryStatus: consentDelivery ? consentDelivery.status : null,
+      whatsappDeliveryDetail: consentDelivery ? consentDelivery.detail : null,
       popiaConsent: candidate.popiaConsent,
       popiaConsentedAt: candidate.popiaConsentedAt
         ? candidate.popiaConsentedAt.toISOString()
