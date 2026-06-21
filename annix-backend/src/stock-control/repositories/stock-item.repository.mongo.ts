@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { ClientSession, Model } from "mongoose";
 import type { DeepPartial } from "../../lib/persistence/crud-repository";
@@ -27,7 +27,7 @@ export class MongoStockItemRepository
 {
   constructor(
     @InjectModel("StockItem") model: Model<StockItem>,
-    session: ClientSession | null = null,
+    @Optional() session: ClientSession | null = null,
   ) {
     super(model, session);
   }
