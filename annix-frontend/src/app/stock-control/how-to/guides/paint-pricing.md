@@ -5,7 +5,7 @@ category: Admin
 roles: [admin, manager]
 order: 6
 tags: [paint, pricing, coating, quoting, discounts]
-lastUpdated: 2026-06-20
+lastUpdated: 2026-06-21
 summary: Maintain the paint price list and the markup, application cost, discount tiers and blasting prices used to quote coating work per square metre.
 readingMinutes: 4
 relatedPaths: [annix-frontend/src/app/stock-control/portal/admin/paint-pricing/page.tsx, annix-frontend/src/app/lib/query/hooks/stock-control/usePaintPricing.ts, annix-frontend/src/app/lib/api/stock-control-api/paintPricingMethods.ts, annix-frontend/src/app/stock-control/portal/job-cards/[id]/components/CoatingAnalysisTab.tsx]
@@ -93,8 +93,11 @@ Some price lists (like StonCor's) already include volume solids, film thickness 
 
 1. Click **Upload supplier price list** at the top of the price list and pick the file. Nix reads it and shows a progress popup while it works.
 2. A review window opens listing every paint it found — supplier, product, coat type, pack size, volume solids, cost per litre, thinner and max thinning. Check the **Found N paints** count and the rows.
-3. Leave **Replace all existing {supplier} rows** ticked to swap out that supplier's current paints for the imported set, or untick it to add the imported paints alongside what's already there.
-4. Click **Confirm import**. The paints are saved, the list refreshes with recalculated pricing, and you'll see an **Imported N paints** confirmation. Click **Cancel** to discard the extraction without saving anything.
+3. Choose how the import is applied with the **On import** dropdown:
+   - **Update existing (match by name)** (the default) refreshes prices on paints it can match by name and adds any new ones, leaving the rest of the list untouched.
+   - **Replace supplier** removes that supplier's current paints first, then adds the imported set.
+   - **Append** adds every imported paint as a new row alongside what's already there.
+4. Click **Confirm import**. The paints are saved and the list refreshes with recalculated pricing — you'll see an **Updated N, added M paints** confirmation when updating, or **Imported N paints** otherwise. Click **Cancel** to discard the extraction without saving anything.
 
 ## Filling in missing specs
 

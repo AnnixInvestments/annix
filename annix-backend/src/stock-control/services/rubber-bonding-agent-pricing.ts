@@ -12,18 +12,26 @@ export function computeRubberBondingAgentPricing(
   agent: RubberBondingAgent,
   consumableMarkup: number,
 ): RubberBondingAgentPricing {
-  const derivedPerLitre =
+  const derivedPerUnit =
     agent.pricePerLitre ??
     (agent.pricePerTin != null && agent.packSizeLitres != null && agent.packSizeLitres > 0
       ? agent.pricePerTin / agent.packSizeLitres
       : null);
-  const costPerM2 =
-    derivedPerLitre != null && agent.areaCoverPerLitre != null && agent.areaCoverPerLitre > 0
-      ? derivedPerLitre / agent.areaCoverPerLitre
-      : 0;
+  const gramsPerM2 = agent.gramsPerM2;
+  const areaCoverPerLitre = agent.areaCoverPerLitre;
+  let costPerM2 = 0;
+  if (derivedPerUnit != null && agent.coverageBasis !== "none") {
+    if (agent.coverageBasis === "gram") {
+      // derivedPerUnit is price per kg; gramsPerM2 / 1000 = kg of adhesive used per m²
+      costPerM2 = gramsPerM2 != null && gramsPerM2 > 0 ? derivedPerUnit * (gramsPerM2 / 1000) : 0;
+    } else {
+      costPerM2 =
+        areaCoverPerLitre != null && areaCoverPerLitre > 0 ? derivedPerUnit / areaCoverPerLitre : 0;
+    }
+  }
   const salePerM2 = costPerM2 * consumableMarkup;
   return {
-    pricePerLitre: derivedPerLitre != null ? round2(derivedPerLitre) : null,
+    pricePerLitre: derivedPerUnit != null ? round2(derivedPerUnit) : null,
     costPerM2: round2(costPerM2),
     salePerM2: round2(salePerM2),
   };

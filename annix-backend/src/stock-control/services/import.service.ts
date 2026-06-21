@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { fromISO } from "../../lib/datetime";
+import type { DeepPartial } from "../../lib/persistence/crud-repository";
 import { selectSheetForMonth } from "../../lib/xlsx-sheet-select";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { LearningSource, LearningType } from "../../nix/entities/nix-learning.entity";
@@ -604,16 +605,16 @@ export class ImportService {
         const existing = await this.stockItemRepo.findOneBySkuForCompany(row.sku, companyId);
 
         if (existing) {
+          const fields: DeepPartial<StockItem> = {};
           if (!isStockTake) {
-            Object.assign(existing, {
-              name: row.name || existing.name,
-              description: row.description ?? existing.description,
-              category: row.category ?? existing.category,
-              unitOfMeasure: row.unitOfMeasure ?? existing.unitOfMeasure,
-              costPerUnit: row.costPerUnit ?? existing.costPerUnit,
-              minStockLevel: row.minStockLevel ?? existing.minStockLevel,
-              location: row.location ?? existing.location,
-            });
+            fields.name = row.name || existing.name;
+            fields.description = row.description ?? existing.description;
+            fields.category = row.category ?? existing.category;
+            fields.unitOfMeasure = row.unitOfMeasure ?? existing.unitOfMeasure;
+            fields.costPerUnit = row.costPerUnit ?? existing.costPerUnit;
+            fields.minStockLevel = row.minStockLevel ?? existing.minStockLevel;
+            fields.location = row.location ?? existing.location;
+            Object.assign(existing, fields);
           }
 
           if (row.quantity !== undefined) {
@@ -643,7 +644,12 @@ export class ImportService {
             }
           }
 
-          await this.stockItemRepo.save(existing);
+          await this.stockItemRepo.setQuantityAndFieldsForCompany(
+            existing.id,
+            companyId,
+            existing.quantity,
+            fields,
+          );
           return { ...acc, updated: acc.updated + 1 };
         }
 
@@ -1022,15 +1028,17 @@ export class ImportService {
           const systemQtyBefore = Number(existing.quantity) || 0;
           countedItemIds.add(existing.id);
 
+          const fields: DeepPartial<StockItem> = {};
           if (!isStockTake) {
-            existing.sku = row.sku || existing.sku;
-            existing.name = row.name || existing.name;
-            existing.description = row.description ?? existing.description;
-            existing.category = row.category ?? existing.category;
-            existing.unitOfMeasure = row.unitOfMeasure || existing.unitOfMeasure;
-            existing.costPerUnit = row.costPerUnit ?? existing.costPerUnit;
-            existing.minStockLevel = row.minStockLevel ?? existing.minStockLevel;
-            existing.location = row.location ?? existing.location;
+            fields.sku = row.sku || existing.sku;
+            fields.name = row.name || existing.name;
+            fields.description = row.description ?? existing.description;
+            fields.category = row.category ?? existing.category;
+            fields.unitOfMeasure = row.unitOfMeasure || existing.unitOfMeasure;
+            fields.costPerUnit = row.costPerUnit ?? existing.costPerUnit;
+            fields.minStockLevel = row.minStockLevel ?? existing.minStockLevel;
+            fields.location = row.location ?? existing.location;
+            Object.assign(existing, fields);
           } else {
             row.corrections.forEach((correction) => {
               const value = correction.correctedValue;
@@ -1042,6 +1050,11 @@ export class ImportService {
             if (row.location && row.location !== existing.location) {
               existing.location = row.location;
             }
+            fields.sku = existing.sku;
+            fields.name = existing.name;
+            fields.description = existing.description;
+            fields.category = existing.category;
+            fields.location = existing.location;
           }
 
           if (row.quantity !== null && row.quantity !== undefined) {
@@ -1071,7 +1084,12 @@ export class ImportService {
             }
           }
 
-          await this.stockItemRepo.save(existing);
+          await this.stockItemRepo.setQuantityAndFieldsForCompany(
+            existing.id,
+            companyId,
+            existing.quantity,
+            fields,
+          );
           result.updated += 1;
 
           if (isStockTake && row.quantity !== null && row.quantity !== undefined) {
@@ -1153,7 +1171,7 @@ export class ImportService {
               createdBy,
               companyId,
             });
-            await this.stockItemRepo.save(item);
+            await this.stockItemRepo.setQuantityForCompany(item.id, companyId, item.quantity);
           }
           result.zeroed += 1;
           result.variances.push(this.buildVariance(item, systemQtyBefore, 0, true));

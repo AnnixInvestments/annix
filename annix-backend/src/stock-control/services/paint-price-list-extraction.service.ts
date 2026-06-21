@@ -532,10 +532,15 @@ export class PaintPriceListExtractionService {
             .filter((value): value is number => typeof value === "number" && value > 0),
         ),
       ).sort((a, b) => b - a);
-      const summed =
-        componentCount >= 2 && packs.length >= 2
-          ? packs.slice(0, componentCount).reduce((total, value) => total + value, 0)
-          : (packs[0] ?? first.packSizeLitres ?? null);
+      const canSumKit = componentCount >= 2 && packs.length === componentCount;
+      if (componentCount >= 2 && packs.length >= 2 && !canSumKit) {
+        this.logger.warn(
+          `Kit-size mismatch for "${name}": componentCount=${componentCount} but packs.length=${packs.length} — not summing, falling back to single pack`,
+        );
+      }
+      const summed = canSumKit
+        ? packs.reduce((total, value) => total + value, 0)
+        : (packs[0] ?? first.packSizeLitres ?? null);
       const kit = summed === null ? null : Math.round(summed * 100) / 100;
       return { ...first, packSizeLitres: kit };
     });

@@ -1,12 +1,26 @@
 import { RUBBER_BONDING_AGENTS, type RubberBondingAgentSeed } from "@annix/product-data/rubber";
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { RubberBondingAgent } from "../entities/rubber-bonding-agent.entity";
+import {
+  RubberBondingAgent,
+  type RubberBondingCoverageBasis,
+} from "../entities/rubber-bonding-agent.entity";
 import { RubberBondingAgentRepository } from "../repositories/rubber-bonding-agent.repository";
 import {
   computeRubberBondingAgentPricing,
   type RubberBondingAgentPricing,
 } from "./rubber-bonding-agent-pricing";
 import { RubberPriceListService } from "./rubber-price-list.service";
+
+function normalizeCoverageBasis(value: string | null | undefined): RubberBondingCoverageBasis {
+  if (value === "gram" || value === "none") {
+    return value;
+  }
+  return "litre";
+}
+
+function normalizeMatchKey(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
 
 export interface RubberBondingAgentInput {
   supplier?: string | null;
@@ -15,6 +29,8 @@ export interface RubberBondingAgentInput {
   pricePerTin?: number | null;
   pricePerLitre?: number | null;
   areaCoverPerLitre?: number | null;
+  coverageBasis?: string | null;
+  gramsPerM2?: number | null;
   active?: boolean;
   preferred?: boolean;
 }
@@ -67,6 +83,8 @@ export class RubberBondingAgentService {
       pricePerTin: input.pricePerTin ?? null,
       pricePerLitre: input.pricePerLitre ?? null,
       areaCoverPerLitre: input.areaCoverPerLitre ?? null,
+      coverageBasis: normalizeCoverageBasis(input.coverageBasis),
+      gramsPerM2: input.gramsPerM2 ?? null,
       active: input.active ?? true,
       preferred: input.preferred ?? false,
     };
@@ -127,6 +145,36 @@ export class RubberBondingAgentService {
     const toRemove = existing.filter((agent) => agent.supplier === supplier);
     await Promise.all(toRemove.map((agent) => this.agentRepo.remove(agent)));
     return this.addMany(companyId, inputs);
+  }
+
+  async updateByName(
+    companyId: number,
+    supplier: string,
+    inputs: RubberBondingAgentInput[],
+  ): Promise<{ updated: number; created: number }> {
+    const existing = await this.agentRepo.findAllForCompany(companyId);
+    const byName = new Map(existing.map((agent) => [normalizeMatchKey(agent.name), agent]));
+    const supplierName = supplier.trim() || null;
+    const matched = inputs.filter((input) => byName.has(normalizeMatchKey(input.name)));
+    const unmatched = inputs
+      .filter((input) => !byName.has(normalizeMatchKey(input.name)))
+      .map((input) => ({ ...input, supplier: supplierName }));
+    await matched.reduce<Promise<void>>(async (previous, input) => {
+      await previous;
+      const match = byName.get(normalizeMatchKey(input.name));
+      if (!match) {
+        return;
+      }
+      await this.agentRepo.save({
+        ...match,
+        supplier: supplierName ?? match.supplier,
+        packSizeLitres: input.packSizeLitres ?? match.packSizeLitres,
+        pricePerTin: input.pricePerTin ?? match.pricePerTin,
+        pricePerLitre: input.pricePerLitre ?? null,
+      });
+    }, Promise.resolve());
+    await this.createSequentially(companyId, unmatched);
+    return { updated: matched.length, created: unmatched.length };
   }
 
   private seedToInput(seed: RubberBondingAgentSeed): RubberBondingAgentInput {

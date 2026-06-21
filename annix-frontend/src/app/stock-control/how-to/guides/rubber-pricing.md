@@ -5,7 +5,7 @@ category: Admin
 roles: [admin, manager]
 order: 8
 tags: [rubber, lining, pricing, quoting, plate, pipe]
-lastUpdated: 2026-06-20
+lastUpdated: 2026-06-21
 summary: Maintain the rubber lining price list, the bonding agents list, and the global tunables — paraffin, blasting, department rates, markup, waste and MPS — used to quote rubber lining work per square metre (plate) and per running metre (pipe). Prices are per-kilogram and serve both plate and pipe; cure type (steam, pre-cured, chemical) is recorded per rubber.
 readingMinutes: 5
 relatedPaths: [annix-frontend/src/app/stock-control/portal/admin/rubber-pricing/page.tsx, annix-frontend/src/app/stock-control/portal/admin/rubber-pricing/BondingAgentsCard.tsx, annix-frontend/src/app/stock-control/portal/rubber-quote/page.tsx, annix-frontend/src/app/lib/query/hooks/stock-control/useRubberPricing.ts, annix-frontend/src/app/lib/query/hooks/stock-control/useRubberBondingAgents.ts, annix-frontend/src/app/lib/api/stock-control-api/rubberPricingMethods.ts, annix-frontend/src/app/lib/api/stock-control-api/rubberBondingAgentMethods.ts]
@@ -94,23 +94,33 @@ Instead of typing rubbers in one by one, you can import a supplier's price list 
 
 1. Click **Upload supplier price list** at the top of the price list and pick the file. Nix reads it and shows a branded progress popup while it works.
 2. A review window opens listing every rubber it found — supplier, code, cure type, bonding type, colour, Shore A, specific gravity and cost/kg. Check the count and the rows.
-3. Leave **Replace all existing products for this supplier** ticked to swap out that supplier's current rubbers for the imported set, or untick it to append the imported rubbers alongside what's already there.
-4. Click **Import products** to save, or **Cancel** to discard the extraction without saving anything.
+3. Choose how the import is applied with the **On import** dropdown:
+   - **Update existing (match by name)** (the default) refreshes prices on rubbers it can match by name and adds any new ones, leaving the rest of the list untouched.
+   - **Replace supplier** removes that supplier's current rubbers first, then adds the imported set.
+   - **Append** adds every imported rubber as a new row alongside what's already there.
+4. Click **Import products** to save, or **Cancel** to discard the extraction without saving anything. When you update, the confirmation reads **Updated N, added M**.
 
 Nothing is saved until you confirm — the upload step is only a preview. Computed pricing refreshes as soon as the import is saved.
 
 ## Bonding agents
 
-Below the rubber price list is a separate **Bonding agents** card for the adhesives / bonding agents used to bond rubber to steel. Each row's **spread rate** (m² per litre) drives its **Cost/m²**, and the **Sale/m²** is the cost multiplied by the consumable markup (set in **Global pricing settings → Consumable markup**). Both computed columns are read-only.
+Below the rubber price list is a separate **Bonding agents** card for the adhesives / bonding agents used to bond rubber to steel. Each row's **coverage** drives its **Cost/m²**, and the **Sale/m²** is the cost multiplied by the consumable markup (set in **Global pricing settings → Consumable markup**). Both computed columns are read-only.
+
+Coverage is recorded on one of two **bases**, chosen per row:
+
+- **Litre (m²/L)** — for tin/litre adhesives. Cost/m² = price per litre ÷ spread rate (m² per litre).
+- **Kg (g/m²)** — for kg-kit adhesives quoted by grams per square metre (e.g. ±700 g/m²). Cost/m² = price per kilogram × (grams per m² ÷ 1000).
+
+The **Coverage** column shows `m²/L` for litre-basis rows and `g/m²` for kg-basis rows, and the pack size is labelled `L` or `kg` to match.
 
 ### Managing bonding agents
 
 - **Filter** the list to one supplier with the **Supplier** dropdown, or leave it on **All suppliers**.
-- **Edit** a row to change supplier, name, pack size (L), price/tin, price/L or spread rate (m²/L), then **Save**. Only the name is required. Cost/m² and Sale/m² recompute automatically.
+- **Edit** a row to change supplier, name, pack size, price/tin, price/L, the coverage **basis** and its coverage value (m²/L for litre basis, g/m² for kg basis), then **Save**. Only the name is required. Cost/m² and Sale/m² recompute automatically.
 - **Add** a bonding agent in the blank row at the bottom of the table and click **Add**.
 - **Delete** a bonding agent with **Delete** and confirm. This cannot be undone.
 
 ### Seeding and importing bonding agents
 
 - **Seed from product data** backfills the list from the built-in reference data, and only runs while the list is empty.
-- **Upload supplier price list** reads a supplier's adhesive price list from a **PDF, photo, or Excel/CSV** file. Nix shows a branded progress popup while it works, then a review window lists every bonding agent it found (name, pack size, price/tin, price/L). Enter the **supplier name**, choose whether to **replace** that supplier's existing bonding agents or append, and click **Import bonding agents**. Nothing is saved until you confirm.
+- **Upload supplier price list** reads a supplier's adhesive price list from a **PDF, photo, or Excel/CSV** file. Nix shows a branded progress popup while it works, then a review window lists every bonding agent it found (name, pack size, price/tin, price/L, coverage). Enter the **supplier name**, pick an **On import** mode (**Update existing (match by name)** is the default and refreshes matched agents while adding new ones; **Replace supplier** swaps out that supplier's existing agents; **Append** adds every row as new), and click **Import bonding agents**. Nothing is saved until you confirm.

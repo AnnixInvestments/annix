@@ -9,6 +9,8 @@ import {
 import { AuditService } from "../../audit/audit.service";
 import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { now } from "../../lib/datetime";
+import type { TransactionContext } from "../../lib/persistence/transaction-context";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { PaginatedResponse } from "../../shared/dto/api-response.dto";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCard } from "../entities/job-card.entity";
@@ -50,6 +52,7 @@ export class JobCardService {
     @Inject(forwardRef(() => WorkflowNotificationService))
     private readonly notificationService: WorkflowNotificationService,
     private readonly auditService: AuditService,
+    private readonly txRunner: TransactionRunner,
   ) {}
 
   async create(companyId: number, data: Partial<JobCard>): Promise<JobCard> {
@@ -168,6 +171,7 @@ export class JobCardService {
       allocatedBy?: string;
       staffMemberId?: number;
     },
+    userId?: number,
   ): Promise<StockAllocation> {
     const outcome = await (async () => {
       const { stockItem, jobCard } = await this.validateAllocationEntities(
@@ -197,27 +201,42 @@ export class JobCardService {
         return { saved, pendingApproval: true as const, stockItem, overAllocationCheck };
       }
 
-      stockItem.quantity = stockItem.quantity - data.quantityUsed;
-      await this.stockItemRepo.save(stockItem);
+      const saved = await this.txRunner.run(async (ctx) => {
+        const stockItemTx = this.stockItemRepo.withTransaction(ctx);
+        const decremented = await stockItemTx.decrementQuantityForCompany(
+          stockItem.id,
+          companyId,
+          data.quantityUsed,
+          true,
+        );
+        if (!decremented) {
+          throw new BadRequestException(
+            `Insufficient stock. Available: ${stockItem.quantity}, Requested: ${data.quantityUsed}`,
+          );
+        }
 
-      const saved = await this.createAllocationRecord({
-        stockItem,
-        jobCard,
-        data,
-        companyId,
-        pendingApproval: false,
-        allowedLitres: overAllocationCheck.allowedLitres,
-      });
+        const allocation = await this.createAllocationRecord({
+          stockItem,
+          jobCard,
+          data,
+          companyId,
+          pendingApproval: false,
+          allowedLitres: overAllocationCheck.allowedLitres,
+          ctx,
+        });
 
-      await this.stockMovementRepo.create({
-        stockItemId: stockItem.id,
-        movementType: MovementType.OUT,
-        quantity: data.quantityUsed,
-        referenceType: ReferenceType.ALLOCATION,
-        referenceId: saved.id,
-        notes: `Allocated to job ${jobCard.jobNumber}`,
-        createdBy: data.allocatedBy || null,
-        companyId,
+        await this.stockMovementRepo.withTransaction(ctx).create({
+          stockItemId: stockItem.id,
+          movementType: MovementType.OUT,
+          quantity: data.quantityUsed,
+          referenceType: ReferenceType.ALLOCATION,
+          referenceId: allocation.id,
+          notes: `Allocated to job ${jobCard.jobNumber}`,
+          createdBy: data.allocatedBy || null,
+          companyId,
+        });
+
+        return allocation;
       });
 
       return { saved, pendingApproval: false as const, stockItem, overAllocationCheck };
@@ -237,7 +256,13 @@ export class JobCardService {
       return outcome.saved;
     }
 
-    this.triggerPostAllocationSideEffects(companyId, outcome.stockItem, outcome.saved, data);
+    this.triggerPostAllocationSideEffects(
+      companyId,
+      outcome.stockItem,
+      outcome.saved,
+      data,
+      userId,
+    );
 
     return outcome.saved;
   }
@@ -280,8 +305,12 @@ export class JobCardService {
     companyId: number;
     pendingApproval: boolean;
     allowedLitres: number | null | undefined;
+    ctx?: TransactionContext;
   }): Promise<StockAllocation> {
-    const saved = await this.allocationRepo.create({
+    const allocationRepo = params.ctx
+      ? this.allocationRepo.withTransaction(params.ctx)
+      : this.allocationRepo;
+    const saved = await allocationRepo.create({
       stockItemId: params.stockItem.id,
       jobCardId: params.jobCard.id,
       quantityUsed: params.data.quantityUsed,
@@ -303,14 +332,11 @@ export class JobCardService {
     stockItem: StockItem,
     allocation: StockAllocation,
     data: { stockItemId: number; quantityUsed: number; jobCardId: number; allocatedBy?: string },
+    userId?: number,
   ): void {
-    if (stockItem.minStockLevel > 0 && stockItem.quantity < stockItem.minStockLevel) {
-      this.requisitionService
-        .createReorderRequisition(companyId, stockItem.id)
-        .catch((err) =>
-          this.logger.error(`Failed to create reorder requisition: ${err.message}`, err.stack),
-        );
-    }
+    this.evaluateReorderThreshold(companyId, stockItem.id).catch((err) =>
+      this.logger.error(`Failed to create reorder requisition: ${err.message}`, err.stack),
+    );
 
     this.auditService
       .log({
@@ -318,6 +344,8 @@ export class JobCardService {
         entityId: allocation.id,
         action: AuditAction.CREATE,
         newValues: {
+          companyId,
+          userId: userId ?? null,
           stockItemId: data.stockItemId,
           quantity: data.quantityUsed,
           jobCardId: data.jobCardId,
@@ -325,6 +353,13 @@ export class JobCardService {
         },
       })
       .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
+  }
+
+  private async evaluateReorderThreshold(companyId: number, stockItemId: number): Promise<void> {
+    const refreshed = await this.stockItemRepo.findOneForCompany(stockItemId, companyId);
+    if (refreshed && refreshed.minStockLevel > 0 && refreshed.quantity < refreshed.minStockLevel) {
+      await this.requisitionService.createReorderRequisition(companyId, stockItemId);
+    }
   }
 
   private async checkOverAllocation(
@@ -417,39 +452,47 @@ export class JobCardService {
         );
       }
 
-      stockItem.quantity = stockItem.quantity - allocation.quantityUsed;
-      await this.stockItemRepo.save(stockItem);
-
-      allocation.pendingApproval = false;
-      allocation.approvedByManagerId = managerId;
-      allocation.approvedAt = now().toJSDate();
-      const saved = await this.allocationRepo.save(allocation);
-
       const jobCard = await this.jobCardRepo.findOneForCompany(
         Number(allocation.jobCardId),
         companyId,
       );
       const jobLabel = jobCard ? jobCard.jobNumber : allocation.jobCardId;
 
-      await this.stockMovementRepo.create({
-        stockItemId: stockItem.id,
-        movementType: MovementType.OUT,
-        quantity: allocation.quantityUsed,
-        referenceType: ReferenceType.ALLOCATION,
-        referenceId: saved.id,
-        notes: `Allocated to job ${jobLabel} (manager approved over-allocation)`,
-        createdBy: allocation.allocatedBy || null,
-        companyId,
+      const saved = await this.txRunner.run(async (ctx) => {
+        const decremented = await this.stockItemRepo
+          .withTransaction(ctx)
+          .decrementQuantityForCompany(stockItem.id, companyId, allocation.quantityUsed, true);
+        if (!decremented) {
+          throw new BadRequestException(
+            `Insufficient stock. Available: ${stockItem.quantity}, Requested: ${allocation.quantityUsed}`,
+          );
+        }
+
+        allocation.pendingApproval = false;
+        allocation.approvedByManagerId = managerId;
+        allocation.approvedAt = now().toJSDate();
+        const persisted = await this.allocationRepo.withTransaction(ctx).save(allocation);
+
+        await this.stockMovementRepo.withTransaction(ctx).create({
+          stockItemId: stockItem.id,
+          movementType: MovementType.OUT,
+          quantity: allocation.quantityUsed,
+          referenceType: ReferenceType.ALLOCATION,
+          referenceId: persisted.id,
+          notes: `Allocated to job ${jobLabel} (manager approved over-allocation)`,
+          createdBy: allocation.allocatedBy || null,
+          companyId,
+        });
+
+        return persisted;
       });
 
       return { saved, stockItem };
     })();
 
-    if (stockItem.minStockLevel > 0 && stockItem.quantity < stockItem.minStockLevel) {
-      this.requisitionService
-        .createReorderRequisition(companyId, stockItem.id)
-        .catch((err) => this.logger.error(`Failed to create reorder requisition: ${err.message}`));
-    }
+    this.evaluateReorderThreshold(companyId, stockItem.id).catch((err) =>
+      this.logger.error(`Failed to create reorder requisition: ${err.message}`),
+    );
 
     this.auditService
       .log({
@@ -457,7 +500,15 @@ export class JobCardService {
         entityId: saved.id,
         action: AuditAction.APPROVE,
         oldValues: { pendingApproval: true },
-        newValues: { pendingApproval: false, approvedByManagerId: managerId },
+        newValues: {
+          companyId,
+          userId: managerId,
+          pendingApproval: false,
+          approvedByManagerId: managerId,
+          stockItemId: stockItem.id,
+          jobCardId: saved.jobCardId,
+          quantity: saved.quantityUsed,
+        },
       })
       .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
 
@@ -548,23 +599,26 @@ export class JobCardService {
       throw new NotFoundException("Stock item not found");
     }
 
-    stockItem.quantity = Number(stockItem.quantity) + Number(allocation.quantityUsed);
-    await this.stockItemRepo.save(stockItem);
+    await this.txRunner.run(async (ctx) => {
+      await this.stockItemRepo
+        .withTransaction(ctx)
+        .incrementQuantityForCompany(stockItem.id, companyId, Number(allocation.quantityUsed));
 
-    allocation.undone = true;
-    allocation.undoneAt = now().toJSDate();
-    allocation.undoneByName = user.name;
-    await this.allocationRepo.save(allocation);
+      allocation.undone = true;
+      allocation.undoneAt = now().toJSDate();
+      allocation.undoneByName = user.name;
+      await this.allocationRepo.withTransaction(ctx).save(allocation);
 
-    await this.stockMovementRepo.create({
-      stockItemId: stockItem.id,
-      movementType: MovementType.IN,
-      quantity: allocation.quantityUsed,
-      referenceType: ReferenceType.ALLOCATION,
-      referenceId: allocation.id,
-      notes: `Undo allocation #${allocation.id} by ${user.name}`,
-      createdBy: user.name,
-      companyId,
+      await this.stockMovementRepo.withTransaction(ctx).create({
+        stockItemId: stockItem.id,
+        movementType: MovementType.IN,
+        quantity: allocation.quantityUsed,
+        referenceType: ReferenceType.ALLOCATION,
+        referenceId: allocation.id,
+        notes: `Undo allocation #${allocation.id} by ${user.name}`,
+        createdBy: user.name,
+        companyId,
+      });
     });
 
     this.auditService
@@ -573,7 +627,14 @@ export class JobCardService {
         entityId: allocation.id,
         action: AuditAction.DELETE,
         oldValues: { stockItemId: allocation.stockItemId, quantity: allocation.quantityUsed },
-        newValues: { undoneBy: user.name },
+        newValues: {
+          companyId,
+          userId: user.id,
+          stockItemId: allocation.stockItemId,
+          jobCardId: allocation.jobCardId,
+          quantity: allocation.quantityUsed,
+          undoneBy: user.name,
+        },
       })
       .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
 

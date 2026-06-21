@@ -4,10 +4,15 @@ import { isUndefined, keys } from "es-toolkit/compat";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
+import {
+  PriceListImportModeSelect,
+  priceListImportResultMessage,
+} from "@/app/components/shared/PriceListImportMode";
 import { useToast } from "@/app/components/Toast";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import type {
   CreateRubberPriceListItemInput,
+  PriceListImportMode,
   RubberCureType,
   RubberNbFactorConfig,
   RubberPriceFamily,
@@ -29,7 +34,6 @@ import {
   useUpdateRubberPriceItem,
   useUpdateRubberPricingConfig,
 } from "@/app/lib/query/hooks";
-import { BondingAgentsCard } from "./BondingAgentsCard";
 
 const IMPORT_FALLBACK_MS = 60000;
 
@@ -253,7 +257,7 @@ export default function RubberPricingAdminPage() {
   const [newDraft, setNewDraft] = useState<RowDraft>(EMPTY_DRAFT);
   const [configDraft, setConfigDraft] = useState<RubberPricingConfig | null>(null);
   const [importPreview, setImportPreview] = useState<RubberPriceListImportPreview | null>(null);
-  const [replaceSupplier, setReplaceSupplier] = useState(true);
+  const [importMode, setImportMode] = useState<PriceListImportMode>("update");
   const [bulkUpliftValue, setBulkUpliftValue] = useState("");
   const [supplierFilter, setSupplierFilter] = useState("all");
   const [colourFilter, setColourFilter] = useState("all");
@@ -522,7 +526,7 @@ export default function RubberPricingAdminPage() {
         });
         const preview = await importPriceList.mutateAsync(file);
         setImportPreview(preview);
-        setReplaceSupplier(true);
+        setImportMode("update");
       } catch {
         showToast("Could not read that price list — please try a clearer file.", "error");
       } finally {
@@ -561,17 +565,18 @@ export default function RubberPricingAdminPage() {
         upliftPercent: 0,
       };
     });
+    const mode = importMode;
     commitImport.mutate(
-      { supplier: preview.supplier, replaceSupplier, rows: rowsInput },
+      { supplier: preview.supplier, replaceSupplier: mode === "replace", mode, rows: rowsInput },
       {
         onSuccess: (result) => {
-          showToast(`Imported ${result.imported} rubber products.`, "success");
+          showToast(priceListImportResultMessage(result, "rubber products"), "success");
           setImportPreview(null);
         },
         onError: () => showToast("Could not import the price list — please try again.", "error"),
       },
     );
-  }, [importPreview, replaceSupplier, commitImport, showToast]);
+  }, [importPreview, importMode, commitImport, showToast]);
 
   const handleBulkUplift = useCallback(async () => {
     const parsedValue = numberOrNull(bulkUpliftValue);
@@ -1522,14 +1527,12 @@ export default function RubberPricingAdminPage() {
         </div>
       </div>
 
-      <BondingAgentsCard accentColor={accentColor} />
-
       {importPreview && (
         <ImportPreviewModal
           supplier={previewSupplier}
           rowCount={previewRows.length}
-          replaceSupplier={replaceSupplier}
-          onReplaceChange={setReplaceSupplier}
+          mode={importMode}
+          onModeChange={setImportMode}
           onCancel={() => setImportPreview(null)}
           onConfirm={handleConfirmImport}
           committing={commitImport.isPending}
@@ -1546,8 +1549,8 @@ export default function RubberPricingAdminPage() {
 interface ImportPreviewModalProps {
   supplier: string;
   rowCount: number;
-  replaceSupplier: boolean;
-  onReplaceChange: (value: boolean) => void;
+  mode: PriceListImportMode;
+  onModeChange: (value: PriceListImportMode) => void;
   onCancel: () => void;
   onConfirm: () => void;
   committing: boolean;
@@ -1574,15 +1577,13 @@ function ImportPreviewModal(props: ImportPreviewModalProps) {
           </p>
         </div>
         <div className="p-5 overflow-auto flex-1">
-          <label className="flex items-center gap-2 text-sm text-gray-700 mb-4">
-            <input
-              type="checkbox"
-              checked={props.replaceSupplier}
-              onChange={(e) => props.onReplaceChange(e.target.checked)}
-              className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+          <div className="mb-4">
+            <PriceListImportModeSelect
+              value={props.mode}
+              onChange={props.onModeChange}
+              itemNoun="products"
             />
-            Replace all existing products for this supplier (uncheck to append)
-          </label>
+          </div>
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>

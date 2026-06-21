@@ -1,4 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { AuditService } from "../../audit/audit.service";
 import { StockControlActionPermissionRepository } from "../repositories/stock-control-action-permission.repository";
 import {
   ACTION_PERMISSION_LABELS,
@@ -18,11 +19,16 @@ describe("ActionPermissionService", () => {
 
   const createdRows = () => mockRepo.create.mock.calls.map(([row]) => row);
 
+  const mockAuditService = {
+    log: jest.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ActionPermissionService,
         { provide: StockControlActionPermissionRepository, useValue: mockRepo },
+        { provide: AuditService, useValue: mockAuditService },
       ],
     }).compile();
 

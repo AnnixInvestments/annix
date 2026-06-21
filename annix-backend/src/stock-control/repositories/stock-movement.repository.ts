@@ -1,4 +1,5 @@
 import { CrudRepository, type DeepPartial } from "../../lib/persistence/crud-repository";
+import type { TransactionContext } from "../../lib/persistence/transaction-context";
 import { MovementType, StockMovement } from "../entities/stock-movement.entity";
 
 export interface MovementListFilters {
@@ -16,6 +17,7 @@ export interface MovementHistoryFilters {
 }
 
 export abstract class StockMovementRepository extends CrudRepository<StockMovement> {
+  abstract withTransaction(context: TransactionContext): CrudRepository<StockMovement>;
   abstract build(data: DeepPartial<StockMovement>): StockMovement;
   abstract findFilteredForCompany(
     companyId: number,

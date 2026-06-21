@@ -853,7 +853,10 @@ export class InvoiceExtractionService {
         clarification.invoiceItem.stockItemId = response.selectedStockItemId;
         clarification.invoiceItem.matchStatus = InvoiceItemMatchStatus.MANUALLY_MATCHED;
 
-        const stockItem = await this.stockItemRepo.findById(response.selectedStockItemId);
+        const stockItem = await this.stockItemRepo.findOneForCompany(
+          response.selectedStockItemId,
+          clarification.companyId,
+        );
         if (stockItem) {
           clarification.invoiceItem.previousPrice = Number(stockItem.costPerUnit) || null;
         }
@@ -1026,7 +1029,7 @@ export class InvoiceExtractionService {
       if (stockItemId === null) {
         return;
       }
-      const stockItem = await this.stockItemRepo.findById(stockItemId);
+      const stockItem = await this.stockItemRepo.findOneForCompany(stockItemId, invoice.companyId);
 
       if (stockItem) {
         const oldPrice = Number(stockItem.costPerUnit) || null;

@@ -3,6 +3,10 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { FormModal } from "@/app/components/modals/FormModal";
+import {
+  PriceListImportModeSelect,
+  priceListImportResultMessage,
+} from "@/app/components/shared/PriceListImportMode";
 import { useToast } from "@/app/components/Toast";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import type {
@@ -14,6 +18,7 @@ import type {
   PaintPriceListImportPreview,
   PaintPriceListRow,
   PaintPricingConfig,
+  PriceListImportMode,
 } from "@/app/lib/api/stockControlApi";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
@@ -257,7 +262,7 @@ export default function PaintPricingPage() {
   const [newDraft, setNewDraft] = useState<RowDraft>(EMPTY_DRAFT);
   const [configDraft, setConfigDraft] = useState<PaintPricingConfig | null>(null);
   const [importPreview, setImportPreview] = useState<PaintPriceListImportPreview | null>(null);
-  const [replaceSupplier, setReplaceSupplier] = useState(true);
+  const [importMode, setImportMode] = useState<PriceListImportMode>("update");
   const [bulkUpliftValue, setBulkUpliftValue] = useState("");
   const [supplierFilter, setSupplierFilter] = useState("all");
   const [coatFilter, setCoatFilter] = useState("all");
@@ -493,7 +498,7 @@ export default function PaintPricingPage() {
         });
         const preview = await importPriceList.mutateAsync(file);
         setImportPreview(preview);
-        setReplaceSupplier(true);
+        setImportMode("update");
       } catch {
         showToast("Could not read that price list — please try a clearer file.", "error");
       } finally {
@@ -564,17 +569,23 @@ export default function PaintPricingPage() {
   const handleConfirmImport = useCallback(() => {
     const preview = importPreview;
     if (!preview) return;
+    const mode = importMode;
     commitImport.mutate(
-      { supplierName: preview.supplierName, replaceSupplier, rows: preview.rows },
+      {
+        supplierName: preview.supplierName,
+        replaceSupplier: mode === "replace",
+        mode,
+        rows: preview.rows,
+      },
       {
         onSuccess: (result) => {
-          showToast(`Imported ${result.imported} paints.`, "success");
+          showToast(priceListImportResultMessage(result, "paints"), "success");
           setImportPreview(null);
         },
         onError: () => showToast("Could not import the price list — please try again.", "error"),
       },
     );
-  }, [importPreview, replaceSupplier, commitImport, showToast]);
+  }, [importPreview, importMode, commitImport, showToast]);
 
   const handleBulkUplift = useCallback(async () => {
     const trimmed = bulkUpliftValue.trim();
@@ -1683,15 +1694,11 @@ export default function PaintPricingPage() {
             </table>
           </div>
 
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input
-              type="checkbox"
-              checked={replaceSupplier}
-              onChange={(e) => setReplaceSupplier(e.target.checked)}
-              className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
-            />
-            Replace all existing {previewSupplierName ? previewSupplierName : "supplier"} rows
-          </label>
+          <PriceListImportModeSelect
+            value={importMode}
+            onChange={setImportMode}
+            itemNoun="paints"
+          />
         </div>
       </FormModal>
 

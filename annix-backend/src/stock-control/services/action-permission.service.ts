@@ -1,4 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { AuditService } from "../../audit/audit.service";
+import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { nowMillis } from "../../lib/datetime";
 import { StockControlActionPermissionRepository } from "../repositories/stock-control-action-permission.repository";
 
@@ -69,7 +71,10 @@ export class ActionPermissionService {
   private readonly logger = new Logger(ActionPermissionService.name);
   private cache = new Map<number, { data: Record<string, string[]>; expiresAt: number }>();
 
-  constructor(private readonly repo: StockControlActionPermissionRepository) {}
+  constructor(
+    private readonly repo: StockControlActionPermissionRepository,
+    private readonly auditService: AuditService,
+  ) {}
 
   async permissionsForCompany(companyId: number): Promise<Record<string, string[]>> {
     const cached = this.cache.get(companyId);
@@ -113,7 +118,10 @@ export class ActionPermissionService {
   async updatePermissions(
     companyId: number,
     config: Record<string, string[]>,
+    userId?: number,
   ): Promise<Record<string, string[]>> {
+    const previousConfig = await this.permissionsForCompany(companyId);
+
     const mergedConfig = { ...config };
 
     IMMUTABLE_ACTIONS.forEach((key) => {
@@ -136,7 +144,37 @@ export class ActionPermissionService {
 
     this.cache.delete(companyId);
     this.logger.log(`Updated action permissions for company ${companyId}`);
-    return this.permissionsForCompany(companyId);
+
+    const updated = await this.permissionsForCompany(companyId);
+
+    this.auditService
+      .log({
+        entityType: "stock_control_action_permission",
+        entityId: companyId,
+        action: AuditAction.UPDATE,
+        oldValues: { companyId, permissions: previousConfig },
+        newValues: {
+          companyId,
+          userId: userId ?? null,
+          permissions: updated,
+          changedActions: this.changedActionKeys(previousConfig, updated),
+        },
+      })
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
+
+    return updated;
+  }
+
+  private changedActionKeys(
+    previous: Record<string, string[]>,
+    next: Record<string, string[]>,
+  ): string[] {
+    const keys = new Set([...Object.keys(previous), ...Object.keys(next)]);
+    return Array.from(keys).filter((key) => {
+      const before = [...(previous[key] ?? [])].sort();
+      const after = [...(next[key] ?? [])].sort();
+      return before.join(",") !== after.join(",");
+    });
   }
 
   actionLabels(): Record<string, { group: string; label: string }> {

@@ -249,9 +249,18 @@ export interface PaintPriceListImportPreview {
   rows: CreatePaintPriceListItemInput[];
 }
 
+export type PriceListImportMode = "replace" | "append" | "update";
+
+export interface PriceListImportCommitResult {
+  imported?: number;
+  updated?: number;
+  created?: number;
+}
+
 export interface CommitPaintPriceListImportInput {
   supplierName: string;
   replaceSupplier: boolean;
+  mode?: PriceListImportMode;
   rows: CreatePaintPriceListItemInput[];
 }
 
@@ -457,8 +466,11 @@ export interface RubberPriceListImportPreview {
 export interface CommitRubberPriceListImportInput {
   supplier: string;
   replaceSupplier: boolean;
+  mode?: PriceListImportMode;
   rows: CreateRubberPriceListItemInput[];
 }
+
+export type RubberBondingCoverageBasis = "litre" | "gram" | "none";
 
 export interface RubberBondingAgent {
   id: number;
@@ -468,6 +480,8 @@ export interface RubberBondingAgent {
   pricePerTin: number | null;
   pricePerLitre: number | null;
   areaCoverPerLitre: number | null;
+  coverageBasis: RubberBondingCoverageBasis;
+  gramsPerM2: number | null;
   active: boolean;
   preferred: boolean;
 }
@@ -495,6 +509,8 @@ export interface CreateRubberBondingAgentInput {
   pricePerTin?: number | null;
   pricePerLitre?: number | null;
   areaCoverPerLitre?: number | null;
+  coverageBasis?: RubberBondingCoverageBasis;
+  gramsPerM2?: number | null;
   active?: boolean;
   preferred?: boolean;
 }
@@ -506,15 +522,20 @@ export interface RubberBondingAgentImportRow {
   packSizeLitres: number | null;
   pricePerTin: number | null;
   pricePerLitre: number | null;
+  areaCoverPerLitre: number | null;
+  coverageBasis: RubberBondingCoverageBasis;
+  gramsPerM2: number | null;
 }
 
 export interface RubberBondingAgentImportPreview {
+  supplier: string | null;
   rows: RubberBondingAgentImportRow[];
 }
 
 export interface CommitRubberBondingAgentImportInput {
   supplier: string;
   replaceSupplier: boolean;
+  mode?: PriceListImportMode;
   rows: RubberBondingAgentImportRow[];
 }
 

@@ -4,12 +4,18 @@ import { isUndefined } from "es-toolkit/compat";
 import { useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
+import {
+  PriceListImportModeSelect,
+  priceListImportResultMessage,
+} from "@/app/components/shared/PriceListImportMode";
 import { useToast } from "@/app/components/Toast";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import type {
   CreateRubberBondingAgentInput,
+  PriceListImportMode,
   RubberBondingAgentImportPreview,
   RubberBondingAgentRow,
+  RubberBondingCoverageBasis,
 } from "@/app/lib/api/stockControlApi";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
@@ -39,6 +45,8 @@ interface AgentDraft {
   pricePerTin: string;
   pricePerLitre: string;
   areaCoverPerLitre: string;
+  coverageBasis: string;
+  gramsPerM2: string;
 }
 
 const EMPTY_DRAFT: AgentDraft = {
@@ -48,6 +56,8 @@ const EMPTY_DRAFT: AgentDraft = {
   pricePerTin: "",
   pricePerLitre: "",
   areaCoverPerLitre: "",
+  coverageBasis: "litre",
+  gramsPerM2: "",
 };
 
 function numberOrNull(value: string): number | null {
@@ -84,6 +94,8 @@ function draftFromRow(row: RubberBondingAgentRow): AgentDraft {
   const pricePerTin = agent.pricePerTin;
   const pricePerLitre = agent.pricePerLitre;
   const areaCoverPerLitre = agent.areaCoverPerLitre;
+  const coverageBasis = agent.coverageBasis;
+  const gramsPerM2 = agent.gramsPerM2;
   return {
     supplier: supplier ?? "",
     name: agent.name,
@@ -91,22 +103,78 @@ function draftFromRow(row: RubberBondingAgentRow): AgentDraft {
     pricePerTin: pricePerTin === null ? "" : String(pricePerTin),
     pricePerLitre: pricePerLitre === null ? "" : String(pricePerLitre),
     areaCoverPerLitre: areaCoverPerLitre === null ? "" : String(areaCoverPerLitre),
+    coverageBasis: coverageBasis ?? "litre",
+    gramsPerM2: gramsPerM2 === null ? "" : String(gramsPerM2),
   };
 }
 
 function draftToInput(draft: AgentDraft): CreateRubberBondingAgentInput {
+  const basis = draft.coverageBasis;
+  const coverageBasis: RubberBondingCoverageBasis =
+    basis === "gram" ? "gram" : basis === "none" ? "none" : "litre";
   return {
     supplier: textOrNull(draft.supplier),
     name: draft.name.trim(),
     packSizeLitres: numberOrNull(draft.packSizeLitres),
     pricePerTin: numberOrNull(draft.pricePerTin),
     pricePerLitre: numberOrNull(draft.pricePerLitre),
-    areaCoverPerLitre: numberOrNull(draft.areaCoverPerLitre),
+    areaCoverPerLitre: coverageBasis === "litre" ? numberOrNull(draft.areaCoverPerLitre) : null,
+    coverageBasis,
+    gramsPerM2: coverageBasis === "gram" ? numberOrNull(draft.gramsPerM2) : null,
   };
 }
 
 function draftIsValid(draft: AgentDraft): boolean {
   return draft.name.trim() !== "";
+}
+
+interface CoverageEditorProps {
+  draft: AgentDraft;
+  onBasisChange: (value: string) => void;
+  onAreaCoverChange: (value: string) => void;
+  onGramsPerM2Change: (value: string) => void;
+}
+
+function CoverageEditor(props: CoverageEditorProps) {
+  const draft = props.draft;
+  const basis = draft.coverageBasis;
+  return (
+    <div className="flex flex-col gap-1">
+      <select
+        value={basis}
+        onChange={(e) => props.onBasisChange(e.target.value)}
+        aria-label="Coverage basis"
+        className={`${INPUT_CLASS} w-28`}
+      >
+        <option value="litre">Litre (m²/L)</option>
+        <option value="gram">Kg (g/m²)</option>
+        <option value="none">Per unit</option>
+      </select>
+      {basis === "gram" && (
+        <input
+          type="number"
+          step="0.01"
+          value={draft.gramsPerM2}
+          placeholder="g/m²"
+          aria-label="Grams per square metre"
+          onChange={(e) => props.onGramsPerM2Change(e.target.value)}
+          className={`${INPUT_CLASS} w-28`}
+        />
+      )}
+      {basis === "litre" && (
+        <input
+          type="number"
+          step="0.01"
+          value={draft.areaCoverPerLitre}
+          placeholder="m²/L"
+          aria-label="Spread rate in square metres per litre"
+          onChange={(e) => props.onAreaCoverChange(e.target.value)}
+          className={`${INPUT_CLASS} w-28`}
+        />
+      )}
+      {basis === "none" && <span className="text-xs text-gray-400">No coverage</span>}
+    </div>
+  );
 }
 
 interface BondingAgentsCardProps {
@@ -133,7 +201,7 @@ export function BondingAgentsCard(props: BondingAgentsCardProps) {
   const [supplierFilter, setSupplierFilter] = useState("all");
   const [importSupplier, setImportSupplier] = useState("");
   const [importPreview, setImportPreview] = useState<RubberBondingAgentImportPreview | null>(null);
-  const [replaceSupplier, setReplaceSupplier] = useState(true);
+  const [importMode, setImportMode] = useState<PriceListImportMode>("update");
 
   const data = query.data;
   const rows = data ? data.agents : [];
@@ -260,9 +328,10 @@ export function BondingAgentsCard(props: BondingAgentsCardProps) {
           backgroundSafe: true,
         });
         const preview = await importAgents.mutateAsync(file);
+        const detectedSupplier = preview.supplier;
         setImportPreview(preview);
-        setImportSupplier("");
-        setReplaceSupplier(true);
+        setImportSupplier(detectedSupplier ?? "");
+        setImportMode("update");
       } catch {
         showToast("Could not read that price list — please try a clearer file.", "error");
       } finally {
@@ -292,17 +361,18 @@ export function BondingAgentsCard(props: BondingAgentsCardProps) {
       showToast("Enter a supplier name for the imported bonding agents.", "warning");
       return;
     }
+    const mode = importMode;
     commitImport.mutate(
-      { supplier, replaceSupplier, rows: preview.rows },
+      { supplier, replaceSupplier: mode === "replace", mode, rows: preview.rows },
       {
         onSuccess: (result) => {
-          showToast(`Imported ${result.imported} bonding agents.`, "success");
+          showToast(priceListImportResultMessage(result, "bonding agents"), "success");
           setImportPreview(null);
         },
         onError: () => showToast("Could not import the price list — please try again.", "error"),
       },
     );
-  }, [importPreview, importSupplier, replaceSupplier, commitImport, showToast]);
+  }, [importPreview, importSupplier, importMode, commitImport, showToast]);
 
   const queryIsLoading = query.isLoading;
   const queryIsError = query.isError;
@@ -314,8 +384,9 @@ export function BondingAgentsCard(props: BondingAgentsCardProps) {
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Bonding agents</h2>
           <p className="text-sm text-gray-500 mt-1">
-            Bonding agents / adhesives. Spread rate drives cost/m². Sale/m² = cost × consumable
-            markup. Upload a supplier price list to populate.
+            Bonding agents / adhesives. Coverage (m²/L for litre basis, g/m² for kg-kit basis)
+            drives cost/m². Sale/m² = cost × consumable markup. Upload a supplier price list to
+            populate.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -385,7 +456,7 @@ export function BondingAgentsCard(props: BondingAgentsCardProps) {
                 <th className={TH_CLASS}>Pack size (L)</th>
                 <th className={TH_CLASS}>Price/tin</th>
                 <th className={TH_CLASS}>Price/L</th>
-                <th className={TH_CLASS}>Spread rate (m²/L)</th>
+                <th className={TH_CLASS}>Coverage</th>
                 <th className={TH_CLASS}>Cost/m²</th>
                 <th className={TH_CLASS}>Sale/m²</th>
                 <th className={TH_CLASS}>Actions</th>
@@ -445,12 +516,11 @@ export function BondingAgentsCard(props: BondingAgentsCardProps) {
                         />
                       </td>
                       <td className={TD_CLASS}>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={rowDraft.areaCoverPerLitre}
-                          onChange={(e) => setRowField("areaCoverPerLitre", e.target.value)}
-                          className={`${INPUT_CLASS} w-24`}
+                        <CoverageEditor
+                          draft={rowDraft}
+                          onBasisChange={(value) => setRowField("coverageBasis", value)}
+                          onAreaCoverChange={(value) => setRowField("areaCoverPerLitre", value)}
+                          onGramsPerM2Change={(value) => setRowField("gramsPerM2", value)}
                         />
                       </td>
                       <td className={TD_CLASS}>{costPerM2 === null ? "—" : money(costPerM2)}</td>
@@ -480,25 +550,39 @@ export function BondingAgentsCard(props: BondingAgentsCardProps) {
                 const supplier = agent.supplier;
                 const packSizeLitres = agent.packSizeLitres;
                 const pricePerTin = agent.pricePerTin;
-                const pricePerLitre = agent.pricePerLitre;
+                const pricePerLitre = pricing.pricePerLitre;
                 const areaCoverPerLitre = agent.areaCoverPerLitre;
+                const coverageBasis = agent.coverageBasis;
+                const gramsPerM2 = agent.gramsPerM2;
+                const isGram = coverageBasis === "gram";
+                const isNone = coverageBasis === "none";
+                const packUnit = isGram ? "kg" : "L";
+                const packSizeDisplay =
+                  packSizeLitres === null ? "—" : `${decimal(packSizeLitres, 2)} ${packUnit}`;
+                const coverageDisplay = isNone
+                  ? "Per unit"
+                  : isGram
+                    ? gramsPerM2 === null
+                      ? "—"
+                      : `${decimal(gramsPerM2, 0)} g/m²`
+                    : areaCoverPerLitre === null
+                      ? "—"
+                      : `${decimal(areaCoverPerLitre, 2)} m²/L`;
                 return (
                   <tr key={agent.id} className="hover:bg-gray-50">
                     <td className={`${TD_CLASS} font-medium text-gray-900`}>{supplier ?? "—"}</td>
                     <td className={TD_CLASS}>{agent.name}</td>
-                    <td className={TD_CLASS}>
-                      {packSizeLitres === null ? "—" : decimal(packSizeLitres, 2)}
-                    </td>
+                    <td className={TD_CLASS}>{packSizeDisplay}</td>
                     <td className={TD_CLASS}>{pricePerTin === null ? "—" : money(pricePerTin)}</td>
                     <td className={TD_CLASS}>
                       {pricePerLitre === null ? "—" : money(pricePerLitre)}
                     </td>
+                    <td className={TD_CLASS}>{coverageDisplay}</td>
                     <td className={TD_CLASS}>
-                      {areaCoverPerLitre === null ? "—" : decimal(areaCoverPerLitre, 2)}
+                      {isNone || costPerM2 === null ? "—" : money(costPerM2)}
                     </td>
-                    <td className={TD_CLASS}>{costPerM2 === null ? "—" : money(costPerM2)}</td>
                     <td className={`${TD_CLASS} font-semibold text-gray-900`}>
-                      {salePerM2 === null ? "—" : money(salePerM2)}
+                      {isNone || salePerM2 === null ? "—" : money(salePerM2)}
                     </td>
                     <td className={TD_CLASS}>
                       <div className="flex items-center gap-2">
@@ -569,12 +653,11 @@ export function BondingAgentsCard(props: BondingAgentsCardProps) {
                   />
                 </td>
                 <td className={TD_CLASS}>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={newDraft.areaCoverPerLitre}
-                    onChange={(e) => setNewField("areaCoverPerLitre", e.target.value)}
-                    className={`${INPUT_CLASS} w-24`}
+                  <CoverageEditor
+                    draft={newDraft}
+                    onBasisChange={(value) => setNewField("coverageBasis", value)}
+                    onAreaCoverChange={(value) => setNewField("areaCoverPerLitre", value)}
+                    onGramsPerM2Change={(value) => setNewField("gramsPerM2", value)}
                   />
                 </td>
                 <td className={TD_CLASS}>—</td>
@@ -600,8 +683,8 @@ export function BondingAgentsCard(props: BondingAgentsCardProps) {
           supplier={importSupplier}
           onSupplierChange={setImportSupplier}
           rowCount={previewRows.length}
-          replaceSupplier={replaceSupplier}
-          onReplaceChange={setReplaceSupplier}
+          mode={importMode}
+          onModeChange={setImportMode}
           onCancel={() => setImportPreview(null)}
           onConfirm={handleConfirmImport}
           committing={commitImport.isPending}
@@ -619,8 +702,8 @@ interface BondingAgentImportModalProps {
   supplier: string;
   onSupplierChange: (value: string) => void;
   rowCount: number;
-  replaceSupplier: boolean;
-  onReplaceChange: (value: boolean) => void;
+  mode: PriceListImportMode;
+  onModeChange: (value: PriceListImportMode) => void;
   onCancel: () => void;
   onConfirm: () => void;
   committing: boolean;
@@ -657,22 +740,19 @@ function BondingAgentImportModal(props: BondingAgentImportModalProps) {
               className={`${INPUT_CLASS} mt-1`}
             />
           </label>
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input
-              type="checkbox"
-              checked={props.replaceSupplier}
-              onChange={(e) => props.onReplaceChange(e.target.checked)}
-              className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
-            />
-            Replace all existing bonding agents for this supplier (uncheck to append)
-          </label>
+          <PriceListImportModeSelect
+            value={props.mode}
+            onChange={props.onModeChange}
+            itemNoun="bonding agents"
+          />
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
                 <th className={TH_CLASS}>Name</th>
-                <th className={TH_CLASS}>Pack size (L)</th>
+                <th className={TH_CLASS}>Pack size</th>
                 <th className={TH_CLASS}>Price/tin</th>
                 <th className={TH_CLASS}>Price/L</th>
+                <th className={TH_CLASS}>Coverage</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -680,16 +760,32 @@ function BondingAgentImportModal(props: BondingAgentImportModalProps) {
                 const packSizeLitres = row.packSizeLitres;
                 const pricePerTin = row.pricePerTin;
                 const pricePerLitre = row.pricePerLitre;
+                const areaCoverPerLitre = row.areaCoverPerLitre;
+                const coverageBasis = row.coverageBasis;
+                const gramsPerM2 = row.gramsPerM2;
+                const isGram = coverageBasis === "gram";
+                const isNone = coverageBasis === "none";
+                const packUnit = isGram ? "kg" : "L";
+                const packSizeDisplay =
+                  packSizeLitres === null ? "—" : `${decimal(packSizeLitres, 2)} ${packUnit}`;
+                const coverageDisplay = isNone
+                  ? "Per unit"
+                  : isGram
+                    ? gramsPerM2 === null
+                      ? "—"
+                      : `${decimal(gramsPerM2, 0)} g/m²`
+                    : areaCoverPerLitre === null
+                      ? "—"
+                      : `${decimal(areaCoverPerLitre, 2)} m²/L`;
                 return (
                   <tr key={`${row.name}-${index}`}>
                     <td className={TD_CLASS}>{row.name}</td>
-                    <td className={TD_CLASS}>
-                      {packSizeLitres === null ? "—" : decimal(packSizeLitres, 2)}
-                    </td>
+                    <td className={TD_CLASS}>{packSizeDisplay}</td>
                     <td className={TD_CLASS}>{pricePerTin === null ? "—" : money(pricePerTin)}</td>
                     <td className={TD_CLASS}>
                       {pricePerLitre === null ? "—" : money(pricePerLitre)}
                     </td>
+                    <td className={TD_CLASS}>{coverageDisplay}</td>
                   </tr>
                 );
               })}

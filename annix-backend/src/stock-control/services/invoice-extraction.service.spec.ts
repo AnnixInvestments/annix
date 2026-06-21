@@ -749,7 +749,7 @@ describe("InvoiceExtractionService", () => {
 
       await service.applyPriceUpdates(1, 42);
 
-      expect(mockStockItemRepo.findOne).toHaveBeenCalledWith({ where: { id: 50 } });
+      expect(mockStockItemRepo.findOne).toHaveBeenCalledWith({ where: { id: 50, companyId: 10 } });
       expect(mockPriceHistoryRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({ oldPrice: 100, newPrice: 120 }),
       );

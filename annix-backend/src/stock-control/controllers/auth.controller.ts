@@ -494,7 +494,11 @@ export class StockControlAuthController {
     @Body() body: { config: Record<string, string[]> },
   ) {
     return {
-      config: await this.actionPermissionService.updatePermissions(req.user.companyId, body.config),
+      config: await this.actionPermissionService.updatePermissions(
+        req.user.companyId,
+        body.config,
+        req.user.id,
+      ),
       labels: this.actionPermissionService.actionLabels(),
     };
   }

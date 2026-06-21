@@ -1,9 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
+import type { ClientSession, Model } from "mongoose";
 import type { DeepPartial } from "../../lib/persistence/crud-repository";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { nestPopulate } from "../../lib/persistence/nest-populate";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import { StockItem } from "../entities/stock-item.entity";
 import {
   type SohByLocationRow,
@@ -21,8 +25,22 @@ export class MongoStockItemRepository
   extends MongoCrudRepository<StockItem>
   implements StockItemRepository
 {
-  constructor(@InjectModel("StockItem") model: Model<StockItem>) {
-    super(model);
+  constructor(
+    @InjectModel("StockItem") model: Model<StockItem>,
+    session: ClientSession | null = null,
+  ) {
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoStockItemRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoStockItemRepository requires a MongoTransactionContext");
+    }
+    return new MongoStockItemRepository(this.model, context.session);
+  }
+
+  private get writeSessionOption(): { session: ClientSession } | Record<string, never> {
+    return this.session ? { session: this.session } : {};
   }
 
   build(data: DeepPartial<StockItem>): StockItem {
@@ -37,20 +55,76 @@ export class MongoStockItemRepository
     return Promise.all(entities.map((entity) => this.save(entity)));
   }
 
-  async updateById(id: number, updates: DeepPartial<StockItem>): Promise<void> {
-    await this.documents.updateOne({ _id: id }, { $set: updates }).exec();
-  }
-
   async updateByIdForCompany(
     id: number,
     companyId: number,
     updates: DeepPartial<StockItem>,
   ): Promise<void> {
-    await this.documents.updateOne({ _id: id, companyId }, { $set: updates }).exec();
+    await this.documents
+      .updateOne({ _id: id, companyId }, { $set: updates }, this.writeSessionOption)
+      .exec();
   }
 
-  async incrementQuantityById(id: number, amount: number): Promise<void> {
-    await this.documents.updateOne({ _id: id }, { $inc: { quantity: amount } }).exec();
+  async incrementQuantityForCompany(
+    id: number,
+    companyId: number,
+    amount: number,
+  ): Promise<boolean> {
+    const result = await this.documents
+      .updateOne({ _id: id, companyId }, { $inc: { quantity: amount } }, this.writeSessionOption)
+      .exec();
+    return result.matchedCount > 0;
+  }
+
+  async decrementQuantityForCompany(
+    id: number,
+    companyId: number,
+    amount: number,
+    enforceNonNegative: boolean,
+  ): Promise<boolean> {
+    const filter: Record<string, unknown> = { _id: id, companyId };
+    if (enforceNonNegative) {
+      filter.quantity = { $gte: amount };
+    }
+    const result = await this.documents
+      .updateOne(filter, { $inc: { quantity: -amount } }, this.writeSessionOption)
+      .exec();
+    return result.matchedCount > 0;
+  }
+
+  async setQuantityForCompany(id: number, companyId: number, value: number): Promise<boolean> {
+    const result = await this.documents
+      .updateOne({ _id: id, companyId }, { $set: { quantity: value } }, this.writeSessionOption)
+      .exec();
+    return result.matchedCount > 0;
+  }
+
+  async setQuantityAndFieldsForCompany(
+    id: number,
+    companyId: number,
+    quantity: number,
+    fields: DeepPartial<StockItem>,
+  ): Promise<boolean> {
+    const result = await this.documents
+      .updateOne({ _id: id, companyId }, { $set: { quantity, ...fields } }, this.writeSessionOption)
+      .exec();
+    return result.matchedCount > 0;
+  }
+
+  async incrementQuantityAndSetFieldsForCompany(
+    id: number,
+    companyId: number,
+    amount: number,
+    fields: DeepPartial<StockItem>,
+  ): Promise<boolean> {
+    const result = await this.documents
+      .updateOne(
+        { _id: id, companyId },
+        { $inc: { quantity: amount }, $set: fields },
+        this.writeSessionOption,
+      )
+      .exec();
+    return result.matchedCount > 0;
   }
 
   async findOneForCompany(id: number, companyId: number): Promise<StockItem | null> {

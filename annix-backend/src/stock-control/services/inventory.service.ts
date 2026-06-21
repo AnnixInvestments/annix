@@ -464,8 +464,11 @@ export class InventoryService {
       );
     }
 
-    targetItem.quantity = Number(targetItem.quantity) + quantityAdded;
-    const saved = await this.stockItemRepo.save(targetItem);
+    await this.stockItemRepo.incrementQuantityForCompany(targetItemId, companyId, quantityAdded);
+    const saved = await this.stockItemRepo.findOneForCompany(targetItemId, companyId);
+    if (!saved) {
+      throw new NotFoundException("Target stock item not found");
+    }
 
     this.logger.log(
       `Merge complete: ${sourceItems.length} items into "${targetItem.name}", total qty now ${saved.quantity}`,
@@ -485,8 +488,24 @@ export class InventoryService {
       throw new NotFoundException("Stock item not found");
     }
 
-    item.quantity = Math.max(0, item.quantity + delta);
-    const saved = await this.stockItemRepo.save(item);
+    if (delta >= 0) {
+      await this.stockItemRepo.incrementQuantityForCompany(id, companyId, delta);
+    } else {
+      const decremented = await this.stockItemRepo.decrementQuantityForCompany(
+        id,
+        companyId,
+        Math.abs(delta),
+        true,
+      );
+      if (!decremented) {
+        await this.stockItemRepo.setQuantityForCompany(id, companyId, 0);
+      }
+    }
+
+    const saved = await this.stockItemRepo.findOneForCompany(id, companyId);
+    if (!saved) {
+      throw new NotFoundException("Stock item not found");
+    }
 
     if (delta < 0 && saved.minStockLevel > 0 && saved.quantity < saved.minStockLevel) {
       this.requisitionService

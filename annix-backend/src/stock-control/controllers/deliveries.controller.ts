@@ -64,11 +64,15 @@ export class DeliveriesController {
   @UseInterceptors(IdempotencyInterceptor)
   @ApiOperation({ summary: "Create a delivery note with items" })
   async create(@Body() dto: CreateDeliveryNoteDto, @Req() req: any) {
-    return this.deliveryService.create(req.user.companyId, {
-      ...dto,
-      receivedDate: dto.receivedDate ? new Date(dto.receivedDate) : null,
-      receivedBy: req.user.name,
-    });
+    return this.deliveryService.create(
+      req.user.companyId,
+      {
+        ...dto,
+        receivedDate: dto.receivedDate ? new Date(dto.receivedDate) : null,
+        receivedBy: req.user.name,
+      },
+      req.user.id,
+    );
   }
 
   @StockControlRoles("accounts", "manager", "admin")
@@ -91,7 +95,7 @@ export class DeliveriesController {
   @Delete(":id")
   @ApiOperation({ summary: "Delete a delivery note" })
   async remove(@Req() req: any, @Param("id") id: number) {
-    return this.deliveryService.remove(req.user.companyId, id);
+    return this.deliveryService.remove(req.user.companyId, id, req.user.id);
   }
 
   @Post(":id/photo")

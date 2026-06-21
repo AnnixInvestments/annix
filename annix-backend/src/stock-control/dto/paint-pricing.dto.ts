@@ -1,12 +1,14 @@
 import { ApiSchema } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsIn,
   IsNumber,
   IsOptional,
   IsString,
+  Max,
   Min,
   ValidateNested,
 } from "class-validator";
@@ -65,11 +67,11 @@ export class CreatePaintPriceListItemDto {
   packSizeLitres?: number | null;
 
   @IsNumber()
-  @Min(0)
+  @Min(0.01)
   volumeSolidsPercent: number;
 
   @IsNumber()
-  @Min(0)
+  @Min(0.01)
   costPerLitre: number;
 
   @IsOptional()
@@ -165,12 +167,12 @@ export class UpdatePaintPriceListItemDto {
 
   @IsOptional()
   @IsNumber()
-  @Min(0)
+  @Min(0.01)
   volumeSolidsPercent?: number;
 
   @IsOptional()
   @IsNumber()
-  @Min(0)
+  @Min(0.01)
   costPerLitre?: number;
 
   @IsOptional()
@@ -223,6 +225,7 @@ export class PaintDiscountTierDto {
 
   @IsNumber()
   @Min(0)
+  @Max(100)
   discountPercent: number;
 }
 
@@ -255,6 +258,7 @@ export class PaintBlastGradeDto {
 export class UpdatePaintPricingConfigDto {
   @IsNumber()
   @Min(0)
+  @Max(99)
   lossPct: number;
 
   @IsNumber()
@@ -262,7 +266,7 @@ export class UpdatePaintPricingConfigDto {
   applicationCostPerM2: number;
 
   @IsNumber()
-  @Min(0)
+  @Min(1)
   markupFactor: number;
 
   @IsArray()
@@ -289,6 +293,7 @@ export class PackOptionRequestItemDto {
 @ApiSchema({ name: "StockControlPackOptionsDto" })
 export class PackOptionsDto {
   @IsArray()
+  @ArrayMaxSize(100)
   @ValidateNested({ each: true })
   @Type(() => PackOptionRequestItemDto)
   items: PackOptionRequestItemDto[];
@@ -308,6 +313,7 @@ export class MultiCoatQuoteCoatDto {
 @ApiSchema({ name: "StockControlMultiCoatQuoteDto" })
 export class MultiCoatQuoteDto {
   @IsArray()
+  @ArrayMaxSize(20)
   @ValidateNested({ each: true })
   @Type(() => MultiCoatQuoteCoatDto)
   coats: MultiCoatQuoteCoatDto[];
@@ -358,6 +364,10 @@ export class CommitPaintPriceListImportDto {
 
   @IsBoolean()
   replaceSupplier: boolean;
+
+  @IsOptional()
+  @IsIn(["replace", "append", "update"])
+  mode?: string;
 
   @IsArray()
   @ValidateNested({ each: true })

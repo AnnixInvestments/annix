@@ -62,15 +62,24 @@ export class PaintPricingController {
   }
 
   @Post("import/commit")
-  @ApiOperation({ summary: "Save extracted price list rows (replace-by-supplier or append)" })
+  @ApiOperation({
+    summary: "Save extracted price list rows (replace-by-supplier, append or update)",
+  })
   async commitImport(@Req() req: any, @Body() dto: CommitPaintPriceListImportDto) {
-    const imported = dto.replaceSupplier
-      ? await this.paintPriceListService.replaceSupplier(
-          req.user.companyId,
-          dto.supplierName,
-          dto.rows,
-        )
-      : await this.paintPriceListService.addMany(req.user.companyId, dto.rows);
+    const companyId = req.user.companyId;
+    const mode = dto.mode ?? (dto.replaceSupplier ? "replace" : "append");
+    if (mode === "update") {
+      return this.paintPriceListService.updateByName(companyId, dto.rows);
+    }
+    const imported =
+      mode === "replace"
+        ? await this.paintPriceListService.replaceSupplier(
+            companyId,
+            dto.supplierName,
+            dto.rows,
+            req.user.id,
+          )
+        : await this.paintPriceListService.addMany(companyId, dto.rows);
     return { imported };
   }
 
@@ -89,7 +98,10 @@ export class PaintPricingController {
   }
 
   @Get("quote/catalog")
-  @ApiOperation({ summary: "Customer-safe paint catalogue (sell prices only) for self-quote" })
+  @ApiOperation({
+    summary:
+      "Sell-price-only paint catalogue for the quote page — no cost or markup exposed (admin/manager only)",
+  })
   async quoteCatalog(@Req() req: any) {
     return this.paintPriceListService.quoteCatalog(req.user.companyId);
   }
@@ -126,7 +138,11 @@ export class PaintPricingController {
   @Post("bulk-uplift")
   @ApiOperation({ summary: "Apply an uplift % to every paint in the price list" })
   async bulkUplift(@Req() req: any, @Body() dto: BulkUpliftDto) {
-    return this.paintPriceListService.setUpliftForAll(req.user.companyId, dto.upliftPercent);
+    return this.paintPriceListService.setUpliftForAll(
+      req.user.companyId,
+      dto.upliftPercent,
+      req.user.id,
+    );
   }
 
   @Patch(":id")
@@ -147,6 +163,6 @@ export class PaintPricingController {
     summary: "Update paint pricing config (loss %, application cost, markup, discount tiers)",
   })
   async updateConfig(@Req() req: any, @Body() dto: UpdatePaintPricingConfigDto) {
-    return this.paintPriceListService.updateConfig(req.user.companyId, dto);
+    return this.paintPriceListService.updateConfig(req.user.companyId, dto, req.user.id);
   }
 }

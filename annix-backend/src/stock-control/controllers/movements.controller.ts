@@ -47,9 +47,13 @@ export class MovementsController {
   @Post("adjustment")
   @ApiOperation({ summary: "Create a manual stock adjustment" })
   async createAdjustment(@Body() dto: CreateStockMovementDto, @Req() req: any) {
-    return this.movementService.createManualAdjustment(req.user.companyId, {
-      ...dto,
-      createdBy: req.user.name,
-    });
+    return this.movementService.createManualAdjustment(
+      req.user.companyId,
+      {
+        ...dto,
+        createdBy: req.user.name,
+      },
+      req.user.id,
+    );
   }
 }

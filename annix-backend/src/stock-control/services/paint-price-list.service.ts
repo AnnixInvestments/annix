@@ -1,4 +1,8 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { chunk } from "es-toolkit/compat";
+import { AuditService } from "../../audit/audit.service";
+import { AuditAction } from "../../audit/entities/audit-log.entity";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { lookupCoatingProduct } from "../config/coating-products";
 import {
   PaintCoatRole,
@@ -173,6 +177,8 @@ export interface MultiCoatQuoteResult {
   total: number;
 }
 
+const PAINT_WRITE_BATCH = 25;
+
 @Injectable()
 export class PaintPriceListService {
   private readonly logger = new Logger(PaintPriceListService.name);
@@ -182,6 +188,8 @@ export class PaintPriceListService {
     private readonly companyRepo: StockControlCompanyRepository,
     private readonly pricingService: PaintPricingService,
     private readonly extractionService: PaintPriceListExtractionService,
+    private readonly auditService: AuditService,
+    private readonly txRunner: TransactionRunner,
   ) {}
 
   private itemNeedsSpecs(item: PaintPriceListItem): boolean {
@@ -477,8 +485,33 @@ export class PaintPriceListService {
     };
   }
 
-  async updateConfig(companyId: number, config: PaintPricingConfig): Promise<PaintPricingConfig> {
+  async updateConfig(
+    companyId: number,
+    config: PaintPricingConfig,
+    userId?: number,
+  ): Promise<PaintPricingConfig> {
+    const previous = await this.configForCompany(companyId);
     await this.companyRepo.updateById(companyId, { paintPricingConfig: config });
+    this.auditService
+      .log({
+        entityType: "paint_pricing_config",
+        entityId: companyId,
+        action: AuditAction.UPDATE,
+        oldValues: {
+          companyId,
+          lossPct: previous.lossPct,
+          applicationCostPerM2: previous.applicationCostPerM2,
+          markupFactor: previous.markupFactor,
+        },
+        newValues: {
+          companyId,
+          userId: userId ?? null,
+          lossPct: config.lossPct,
+          applicationCostPerM2: config.applicationCostPerM2,
+          markupFactor: config.markupFactor,
+        },
+      })
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
     return config;
   }
 
@@ -870,33 +903,118 @@ export class PaintPriceListService {
     return this.itemRepo.create(this.toCreatePayload(companyId, input));
   }
 
+  private async runWritesInBatches(workers: (() => Promise<unknown>)[]): Promise<void> {
+    const batches = chunk(workers, PAINT_WRITE_BATCH);
+    for (const batch of batches) {
+      await Promise.all(batch.map((run) => run()));
+    }
+  }
+
   async replaceSupplier(
     companyId: number,
     supplierName: string,
     inputs: PaintPriceListItemInput[],
+    userId?: number,
   ): Promise<number> {
-    const existing = await this.itemRepo.findAllForCompany(companyId);
-    const toRemove = existing.filter((item) => item.supplierName === supplierName);
-    await Promise.all(toRemove.map((item) => this.itemRepo.remove(item)));
-    const created = await Promise.all(
-      inputs.map((input) => this.itemRepo.create(this.toCreatePayload(companyId, input))),
-    );
-    return created.length;
+    const result = await this.txRunner.run(async (ctx) => {
+      const itemTx = this.itemRepo.withTransaction(ctx);
+      const existing = await this.itemRepo.findAllForCompany(companyId);
+      const toRemove = existing.filter((item) => item.supplierName === supplierName);
+      await this.runWritesInBatches(toRemove.map((item) => () => itemTx.remove(item)));
+      await this.runWritesInBatches(
+        inputs.map((input) => () => itemTx.create(this.toCreatePayload(companyId, input))),
+      );
+      return { removed: toRemove.length, created: inputs.length };
+    });
+    this.auditService
+      .log({
+        entityType: "paint_price_list",
+        entityId: companyId,
+        action: AuditAction.UPDATE,
+        newValues: {
+          companyId,
+          userId: userId ?? null,
+          supplierName,
+          removed: result.removed,
+          created: result.created,
+        },
+      })
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
+    return result.created;
   }
 
   async addMany(companyId: number, inputs: PaintPriceListItemInput[]): Promise<number> {
-    const created = await Promise.all(
-      inputs.map((input) => this.itemRepo.create(this.toCreatePayload(companyId, input))),
+    await this.runWritesInBatches(
+      inputs.map((input) => () => this.itemRepo.create(this.toCreatePayload(companyId, input))),
     );
-    return created.length;
+    return inputs.length;
   }
 
-  async setUpliftForAll(companyId: number, upliftPercent: number): Promise<{ updated: number }> {
-    const items = await this.itemRepo.findAllForCompany(companyId);
-    const updated = await Promise.all(
-      items.map((item) => this.itemRepo.save({ ...item, upliftPercent })),
+  private importMatchKey(
+    supplierName: string,
+    productName: string,
+    packSizeLitres?: number | null,
+  ): string {
+    return `${this.normalizeMatchKey(supplierName)}|${this.normalizeMatchKey(productName)}|${packSizeLitres ?? ""}`;
+  }
+
+  async updateByName(
+    companyId: number,
+    inputs: PaintPriceListItemInput[],
+  ): Promise<{ updated: number; created: number }> {
+    const existing = await this.itemRepo.findAllForCompany(companyId);
+    const byKey = new Map(
+      existing.map((item) => [
+        this.importMatchKey(item.supplierName, item.productName, item.packSizeLitres),
+        item,
+      ]),
     );
-    return { updated: updated.length };
+    const keyOf = (input: PaintPriceListItemInput) =>
+      this.importMatchKey(input.supplierName, input.productName, input.packSizeLitres);
+    const matched = inputs.filter((input) => byKey.has(keyOf(input)));
+    const unmatched = inputs.filter((input) => !byKey.has(keyOf(input)));
+    await this.runWritesInBatches(
+      matched.map((input) => () => {
+        const match = byKey.get(keyOf(input));
+        if (!match) {
+          return Promise.resolve(match);
+        }
+        return this.itemRepo.save({
+          ...match,
+          costPerLitre: input.costPerLitre ?? match.costPerLitre,
+          costPerKit: input.costPerKit ?? match.costPerKit,
+        });
+      }),
+    );
+    await this.runWritesInBatches(
+      unmatched.map((input) => () => this.itemRepo.create(this.toCreatePayload(companyId, input))),
+    );
+    return { updated: matched.length, created: unmatched.length };
+  }
+
+  async setUpliftForAll(
+    companyId: number,
+    upliftPercent: number,
+    userId?: number,
+  ): Promise<{ updated: number }> {
+    const items = await this.itemRepo.findAllForCompany(companyId);
+    await this.runWritesInBatches(
+      items.map((item) => () => this.itemRepo.save({ ...item, upliftPercent })),
+    );
+    this.auditService
+      .log({
+        entityType: "paint_price_list",
+        entityId: companyId,
+        action: AuditAction.UPDATE,
+        newValues: {
+          companyId,
+          userId: userId ?? null,
+          upliftPercent,
+          itemsUpdated: items.length,
+        },
+      })
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
+    return { updated: items.length };
   }
 
   async update(

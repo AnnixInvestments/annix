@@ -44,9 +44,12 @@ interface ExtractedBondingAgent {
   packSizeLitres?: number | null;
   pricePerTin?: number | null;
   pricePerLitre?: number | null;
+  areaCoverPerLitre?: number | null;
+  gramsPerM2?: number | null;
 }
 
 interface ExtractedBondingAgentList {
+  supplier?: string | null;
   agents?: ExtractedBondingAgent[];
 }
 
@@ -77,9 +80,13 @@ export interface RubberBondingAgentRowPreview {
   packSizeLitres: number | null;
   pricePerTin: number | null;
   pricePerLitre: number | null;
+  areaCoverPerLitre: number | null;
+  coverageBasis: "litre" | "gram" | "none";
+  gramsPerM2: number | null;
 }
 
 export interface RubberBondingAgentImportPreview {
+  supplier: string | null;
   rows: RubberBondingAgentRowPreview[];
 }
 
@@ -139,20 +146,32 @@ ${PRICE_LIST_RULES}`;
 
 const BONDING_AGENT_JSON_SHAPE = `Return ONLY a JSON object, no prose:
 {
+  "supplier": string | null,
   "agents": [{
     "name": string,
     "packSizeLitres": number | null,
     "pricePerTin": number | null,
-    "pricePerLitre": number | null
+    "pricePerLitre": number | null,
+    "areaCoverPerLitre": number | null,
+    "gramsPerM2": number | null
   }]
 }`;
 
-const BONDING_AGENT_RULES = `Rules:
-- name: the bonding agent / primer / solution product name verbatim (e.g. "Ty Cote 286/VS86", "Megum 3351 Primer", "Toluene").
-- packSizeLitres: the tin/pack size in litres as a number; null if absent.
-- pricePerTin: the price for a full tin/pack as a number ("R1 957,00" -> 1957); null when only a per-litre price is shown.
-- pricePerLitre: the price per litre as a number; null when only a per-tin price is shown.
-- Skip rubber sheet/lining products — those are a separate list.
+const BONDING_AGENT_RULES = `These adhesive / bonding-agent price lists arrive in a few supplier layouts. Recognise the layout and map every row.
+
+LAYOUT — Impilo adhesives (e.g. "Impilo Industries"): columns Description, Unit (e.g. "1 litre" / "5 litre" / "25 litre" / "1 kg" / "25 kg"), Price/Litre, Price/Unit, Spreadrate. Products are grouped under headings (Metal primer, Pre-cured adhesives, Uncured Adhesives, Contact Adhesive, Solvents). There is usually one row PER pack size — keep each as its own agent with the size in the name. The Spreadrate column gives coverage, often "12,0 m²/litre", "5 m²/Litre per coat", "10 - 11 m2"; sometimes a grammage like "±700 g/m²" or "±500 g/m²" — see areaCoverPerLitre rule.
+
+LAYOUT — Rema adhesives (e.g. "Rema Tip Top ... Adhesive Price List"): columns ITEM CODE, DESCRIPTION, PRICE EX VAT. The pack size is embedded IN the description ("... 1 KG", "... 25 LT", "... 65 G", "... 0.7 KG"). There is no per-litre column and no coverage — give pricePerTin only and derive nothing you cannot see.
+
+Field rules:
+- supplier: the adhesive MANUFACTURER/brand from the document header (e.g. "Impilo", "Rema", "AU", "Truco", "Megum"), NOT the customer it is addressed to. null if not stated.
+- name: the product name verbatim INCLUDING its pack size when sizes repeat (e.g. "HeroPrime 105 25 litre", "HeroBond 200 kit 25 kg", "REMABOND 33 BLACK 25 LT", "Toluene 25 L").
+- packSizeLitres: the pack size as a number in litres when the unit is litres ("25 litre" -> 25); for kg/g packs use the numeric size too (e.g. "25 kg" -> 25, "65 G" -> 0.065) — it is the pack quantity.
+- pricePerTin: the price for the full tin/pack/unit ("R4 686,50" -> 4686.5); null for POA.
+- pricePerLitre: the per-litre (or per-unit) price when a column shows it ("187,46" -> 187.46); null when only a pack price is shown (the app derives it from pricePerTin / packSizeLitres).
+- areaCoverPerLitre: the coverage in SQUARE METRES PER LITRE only. Parse "12,0 m²/litre" -> 12, "5 m²/Litre per coat" -> 5; for a range like "10 - 11 m2" use the midpoint (10.5). Use null if the coverage is a grammage (g/m²) or is absent/POA.
+- gramsPerM2: the coverage when it is a GRAMMAGE (grams of adhesive per m²), as a number in grams. Parse "±500 g/m²" -> 500, "±700 g/m²" -> 700, "onto metal ±500 g/m², onto rubber ±650 g/m²" -> use the higher value 650. Use null when the coverage is an m²/litre figure or absent. Set EITHER areaCoverPerLitre OR gramsPerM2 for a row, never both.
+- Skip rubber SHEET / lining products — those are a separate list. Keep primers, cover coats, tie coats, cements, hardeners, contact adhesives and solvents.
 - NEVER invent a number; use null when a value is genuinely absent.`;
 
 const BONDING_AGENT_VISION_SYSTEM_PROMPT = `You are a rubber bonding-agent price-list parser. Read EVERY page and extract all bonding agents, primers and solutions.
@@ -424,22 +443,30 @@ export class RubberPriceListExtractionService {
     parsed: ExtractedBondingAgentList,
   ): RubberBondingAgentImportPreview {
     const agents = parsed.agents ?? [];
+    const supplier = parsed.supplier?.trim() || null;
     const rows = agents
       .map((agent): RubberBondingAgentRowPreview | null => {
         const name = agent.name?.trim();
         if (!name) {
           return null;
         }
+        const gramsPerM2 = agent.gramsPerM2 ?? null;
+        const areaCoverPerLitre = agent.areaCoverPerLitre ?? null;
+        const coverageBasis: "litre" | "gram" | "none" =
+          gramsPerM2 != null ? "gram" : areaCoverPerLitre != null ? "litre" : "none";
         return {
           name,
           packSizeLitres: agent.packSizeLitres ?? null,
           pricePerTin: agent.pricePerTin ?? null,
           pricePerLitre: agent.pricePerLitre ?? null,
+          areaCoverPerLitre,
+          coverageBasis,
+          gramsPerM2,
         };
       })
       .filter((row): row is RubberBondingAgentRowPreview => row !== null);
     this.logger.log(`Extracted ${rows.length} bonding agent(s) from price list`);
-    return { rows };
+    return { supplier, rows };
   }
 
   async extractPriceList(file: Express.Multer.File): Promise<RubberPriceListImportPreview> {

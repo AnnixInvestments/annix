@@ -1,5 +1,7 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
+import { AuditService } from "../../audit/audit.service";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { SupplierInvoiceFifoBridgeService } from "../../stock-management/services/supplier-invoice-fifo-bridge.service";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
 import { MovementType, ReferenceType } from "../entities/stock-movement.entity";
@@ -30,23 +32,38 @@ describe("DeliveryService", () => {
     findAllForCompanyByReceivedDate: jest.fn().mockResolvedValue([]),
     findAutoLinkCandidates: jest.fn().mockResolvedValue([]),
     remove: jest.fn(),
+    withTransaction: jest.fn(),
   };
+  mockDeliveryNoteRepo.withTransaction.mockReturnValue(mockDeliveryNoteRepo);
 
   const mockDeliveryNoteItemRepo = {
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     createMany: jest.fn().mockResolvedValue([]),
     remove: jest.fn(),
+    withTransaction: jest.fn(),
   };
+  mockDeliveryNoteItemRepo.withTransaction.mockReturnValue(mockDeliveryNoteItemRepo);
 
   const mockStockItemRepo = {
     findOneForCompany: jest.fn(),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ ...entity })),
+    incrementQuantityForCompany: jest.fn().mockResolvedValue(true),
+    decrementQuantityForCompany: jest.fn().mockResolvedValue(true),
+    setQuantityForCompany: jest.fn().mockResolvedValue(true),
+    withTransaction: jest.fn(),
   };
+  mockStockItemRepo.withTransaction.mockReturnValue(mockStockItemRepo);
 
   const mockStockMovementRepo = {
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     findManyWhere: jest.fn().mockResolvedValue([]),
     remove: jest.fn(),
+    withTransaction: jest.fn(),
+  };
+  mockStockMovementRepo.withTransaction.mockReturnValue(mockStockMovementRepo);
+
+  const mockTxRunner = {
+    run: jest.fn().mockImplementation((work) => work({})),
   };
 
   const mockInvoiceClarificationRepo = {
@@ -117,6 +134,10 @@ describe("DeliveryService", () => {
     deleteByInvoice: jest.fn().mockResolvedValue(undefined),
   };
 
+  const mockAuditService = {
+    log: jest.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -135,18 +156,28 @@ describe("DeliveryService", () => {
         { provide: StockItemRepository, useValue: mockStockItemRepo },
         { provide: StockMovementRepository, useValue: mockStockMovementRepo },
         { provide: InvoiceClarificationRepository, useValue: mockInvoiceClarificationRepo },
+        { provide: TransactionRunner, useValue: mockTxRunner },
+        { provide: AuditService, useValue: mockAuditService },
       ],
     }).compile();
 
     service = module.get<DeliveryService>(DeliveryService);
     jest.clearAllMocks();
     mockDeliveryNoteRepo.create.mockImplementation((data) => Promise.resolve({ id: 1, ...data }));
+    mockDeliveryNoteRepo.withTransaction.mockReturnValue(mockDeliveryNoteRepo);
     mockDeliveryNoteItemRepo.create.mockImplementation((data) =>
       Promise.resolve({ id: 1, ...data }),
     );
+    mockDeliveryNoteItemRepo.withTransaction.mockReturnValue(mockDeliveryNoteItemRepo);
     mockStockItemRepo.save.mockImplementation((entity) => Promise.resolve({ ...entity }));
+    mockStockItemRepo.withTransaction.mockReturnValue(mockStockItemRepo);
+    mockStockItemRepo.incrementQuantityForCompany.mockResolvedValue(true);
+    mockStockItemRepo.decrementQuantityForCompany.mockResolvedValue(true);
+    mockStockItemRepo.setQuantityForCompany.mockResolvedValue(true);
     mockStockMovementRepo.create.mockImplementation((data) => Promise.resolve({ id: 1, ...data }));
+    mockStockMovementRepo.withTransaction.mockReturnValue(mockStockMovementRepo);
     mockStockMovementRepo.findManyWhere.mockResolvedValue([]);
+    mockTxRunner.run.mockImplementation((work) => work({}));
     mockSupplierInvoiceRepo.findCompletedLinkedToDeliveryNote.mockResolvedValue([]);
     mockSupplierInvoiceRepo.findManyWhere.mockResolvedValue([]);
     mockSupplierInvoiceItemRepo.findByInvoice.mockResolvedValue([]);
@@ -173,9 +204,7 @@ describe("DeliveryService", () => {
         items: [{ stockItemId: 1, quantityReceived: 20 }],
       });
 
-      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ quantity: 70 }),
-      );
+      expect(mockStockItemRepo.incrementQuantityForCompany).toHaveBeenCalledWith(1, 1, 20);
     });
 
     it("creates IN movement for each delivered item", async () => {
@@ -259,9 +288,7 @@ describe("DeliveryService", () => {
 
       await service.remove(1, 1);
 
-      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ quantity: 50 }),
-      );
+      expect(mockStockItemRepo.decrementQuantityForCompany).toHaveBeenCalledWith(1, 1, 20, false);
       expect(mockStockMovementRepo.remove).toHaveBeenCalledWith(movement);
     });
 

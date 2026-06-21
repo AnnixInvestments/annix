@@ -856,6 +856,23 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     ),
   },
   {
+    key: "bonding-agents",
+    href: "/stock-control/portal/admin/bonding-agents",
+    label: "Bonding Agents",
+    defaultRoles: ["manager", "admin"],
+    group: "Resources",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M9 3h6m-5 0v5L5 18a2 2 0 002 3h10a2 2 0 002-3l-5-10V3"
+        />
+      </svg>
+    ),
+  },
+  {
     key: "rubber-quote",
     href: "/stock-control/portal/rubber-quote",
     label: "Rubber Quote",

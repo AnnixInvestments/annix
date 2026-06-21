@@ -1,5 +1,6 @@
 import { BadRequestException, Inject, Injectable, Logger } from "@nestjs/common";
 import { nowMillis } from "../../lib/datetime";
+import type { DeepPartial } from "../../lib/persistence/crud-repository";
 import { LearningSource, LearningType } from "../../nix/entities/nix-learning.entity";
 import { NixLearningRepository } from "../../nix/nix-learning.repository";
 import { RubberRollStockRepository } from "../../rubber-lining/repositories/rubber-roll-stock.repository";
@@ -484,11 +485,18 @@ export class DeliveryExtractionService {
       if (overrideItemId !== undefined && overrideItemId !== null) {
         const overrideItem = await this.stockItemRepo.findOneForCompany(overrideItemId, companyId);
         if (overrideItem) {
+          const fields: DeepPartial<StockItem> = {};
           overrideItem.quantity = overrideItem.quantity + quantity;
           if (Number.isFinite(costPerUnit) && costPerUnit > 0) {
             overrideItem.costPerUnit = costPerUnit;
+            fields.costPerUnit = costPerUnit;
           }
-          await this.stockItemRepo.save(overrideItem);
+          await this.stockItemRepo.incrementQuantityAndSetFieldsForCompany(
+            overrideItem.id,
+            companyId,
+            quantity,
+            fields,
+          );
           this.logger.log(
             `Matched via user override: "${sku}" -> "${overrideItem.sku}", +${quantity}`,
           );
@@ -507,14 +515,22 @@ export class DeliveryExtractionService {
       item.description!,
     );
     if (learnedMatch) {
+      const fields: DeepPartial<StockItem> = {};
       learnedMatch.quantity = learnedMatch.quantity + quantity;
       if (Number.isFinite(costPerUnit) && costPerUnit > 0) {
         learnedMatch.costPerUnit = costPerUnit;
+        fields.costPerUnit = costPerUnit;
       }
       if (item.isPaint && item.volumeLitersPerPack && !learnedMatch.packSizeLitres) {
         learnedMatch.packSizeLitres = item.volumeLitersPerPack;
+        fields.packSizeLitres = item.volumeLitersPerPack;
       }
-      await this.stockItemRepo.save(learnedMatch);
+      await this.stockItemRepo.incrementQuantityAndSetFieldsForCompany(
+        learnedMatch.id,
+        companyId,
+        quantity,
+        fields,
+      );
       this.logger.log(`Matched via NixLearning: "${sku}" -> "${learnedMatch.sku}", +${quantity}`);
       return learnedMatch;
     }
@@ -522,28 +538,44 @@ export class DeliveryExtractionService {
     const existingBySku = await this.stockItemRepo.findOneBySkuForCompany(sku, companyId);
 
     if (existingBySku) {
+      const fields: DeepPartial<StockItem> = {};
       existingBySku.quantity = existingBySku.quantity + quantity;
       if (Number.isFinite(costPerUnit) && costPerUnit > 0) {
         existingBySku.costPerUnit = costPerUnit;
+        fields.costPerUnit = costPerUnit;
       }
       if (item.isPaint && item.volumeLitersPerPack && !existingBySku.packSizeLitres) {
         existingBySku.packSizeLitres = item.volumeLitersPerPack;
+        fields.packSizeLitres = item.volumeLitersPerPack;
       }
-      await this.stockItemRepo.save(existingBySku);
+      await this.stockItemRepo.incrementQuantityAndSetFieldsForCompany(
+        existingBySku.id,
+        companyId,
+        quantity,
+        fields,
+      );
       this.logger.log(`Updated existing stock item ${sku}: +${quantity}`);
       return existingBySku;
     }
 
     const normalisedMatch = await this.supplierService.findByNormalisedSku(companyId, sku);
     if (normalisedMatch) {
+      const fields: DeepPartial<StockItem> = {};
       normalisedMatch.quantity = normalisedMatch.quantity + quantity;
       if (Number.isFinite(costPerUnit) && costPerUnit > 0) {
         normalisedMatch.costPerUnit = costPerUnit;
+        fields.costPerUnit = costPerUnit;
       }
       if (item.isPaint && item.volumeLitersPerPack && !normalisedMatch.packSizeLitres) {
         normalisedMatch.packSizeLitres = item.volumeLitersPerPack;
+        fields.packSizeLitres = item.volumeLitersPerPack;
       }
-      await this.stockItemRepo.save(normalisedMatch);
+      await this.stockItemRepo.incrementQuantityAndSetFieldsForCompany(
+        normalisedMatch.id,
+        companyId,
+        quantity,
+        fields,
+      );
       this.logger.log(
         `Matched via normalised SKU: "${sku}" -> existing "${normalisedMatch.sku}", +${quantity}`,
       );
@@ -565,17 +597,26 @@ export class DeliveryExtractionService {
     if (matchResult.existingItem && (matchResult.sameSupplier || matchResult.score >= 0.85)) {
       const matched = matchResult.existingItem;
       const oldSku = matched.sku;
+      const fields: DeepPartial<StockItem> = {};
       if (matchResult.sameSupplier) {
         matched.sku = sku;
+        fields.sku = sku;
       }
       matched.quantity = matched.quantity + quantity;
       if (Number.isFinite(costPerUnit) && costPerUnit > 0) {
         matched.costPerUnit = costPerUnit;
+        fields.costPerUnit = costPerUnit;
       }
       if (item.isPaint && item.volumeLitersPerPack && !matched.packSizeLitres) {
         matched.packSizeLitres = item.volumeLitersPerPack;
+        fields.packSizeLitres = item.volumeLitersPerPack;
       }
-      await this.stockItemRepo.save(matched);
+      await this.stockItemRepo.incrementQuantityAndSetFieldsForCompany(
+        matched.id,
+        companyId,
+        quantity,
+        fields,
+      );
       this.logger.log(
         `Merged item: "${oldSku}" -> "${matched.sku}", +${quantity} ` +
           `(score=${matchResult.score.toFixed(2)}, sameSupplier=${matchResult.sameSupplier}, supplier="${supplierName}")`,
@@ -599,11 +640,18 @@ export class DeliveryExtractionService {
       ? await this.stockItemRepo.findOneBySkuForCompany(finalSku, companyId)
       : null;
     if (existingByEnrichedSku) {
+      const fields: DeepPartial<StockItem> = {};
       existingByEnrichedSku.quantity = existingByEnrichedSku.quantity + quantity;
       if (Number.isFinite(costPerUnit) && costPerUnit > 0) {
         existingByEnrichedSku.costPerUnit = costPerUnit;
+        fields.costPerUnit = costPerUnit;
       }
-      await this.stockItemRepo.save(existingByEnrichedSku);
+      await this.stockItemRepo.incrementQuantityAndSetFieldsForCompany(
+        existingByEnrichedSku.id,
+        companyId,
+        quantity,
+        fields,
+      );
       this.logger.log(`Updated existing enriched stock item ${finalSku}: +${quantity}`);
       return existingByEnrichedSku;
     }
@@ -960,7 +1008,7 @@ export class DeliveryExtractionService {
       : (item.quantity ?? 1);
 
     stockItem.quantity = Math.max(0, stockItem.quantity - quantity);
-    await this.stockItemRepo.save(stockItem);
+    await this.stockItemRepo.setQuantityForCompany(stockItem.id, companyId, stockItem.quantity);
     this.logger.log(
       `Reduced stock for returned item ${sku}: -${quantity} (new qty: ${stockItem.quantity})`,
     );

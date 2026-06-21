@@ -317,6 +317,10 @@ export class RubberCommitImportDto {
   @IsBoolean()
   replaceSupplier: boolean;
 
+  @IsOptional()
+  @IsIn(["replace", "append", "update"])
+  mode?: string;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateRubberPriceListItemDto)

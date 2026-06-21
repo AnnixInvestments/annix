@@ -131,11 +131,15 @@ describe("DeliveriesController", () => {
 
       const result = await controller.create(dto, mockReq());
 
-      expect(deliveryService.create).toHaveBeenCalledWith(1, {
-        ...dto,
-        receivedDate: expect.any(Date),
-        receivedBy: "Test User",
-      });
+      expect(deliveryService.create).toHaveBeenCalledWith(
+        1,
+        {
+          ...dto,
+          receivedDate: expect.any(Date),
+          receivedBy: "Test User",
+        },
+        10,
+      );
       expect(result).toBe(created);
     });
 
@@ -145,11 +149,15 @@ describe("DeliveriesController", () => {
 
       await controller.create(dto, mockReq());
 
-      expect(deliveryService.create).toHaveBeenCalledWith(1, {
-        ...dto,
-        receivedDate: null,
-        receivedBy: "Test User",
-      });
+      expect(deliveryService.create).toHaveBeenCalledWith(
+        1,
+        {
+          ...dto,
+          receivedDate: null,
+          receivedBy: "Test User",
+        },
+        10,
+      );
     });
   });
 
@@ -159,7 +167,7 @@ describe("DeliveriesController", () => {
 
       await controller.remove(mockReq(), 5);
 
-      expect(deliveryService.remove).toHaveBeenCalledWith(1, 5);
+      expect(deliveryService.remove).toHaveBeenCalledWith(1, 5, 10);
     });
   });
 

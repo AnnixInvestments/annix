@@ -3,12 +3,15 @@ import { Type } from "class-transformer";
 import {
   IsArray,
   IsBoolean,
+  IsIn,
   IsNumber,
   IsOptional,
   IsString,
   Min,
   ValidateNested,
 } from "class-validator";
+
+const COVERAGE_BASES = ["litre", "gram", "none"] as const;
 
 @ApiSchema({ name: "StockControlRubberBondingAgentCreateDto" })
 export class CreateRubberBondingAgentDto {
@@ -38,6 +41,15 @@ export class CreateRubberBondingAgentDto {
   @IsNumber()
   @Min(0)
   areaCoverPerLitre?: number | null;
+
+  @IsOptional()
+  @IsIn(COVERAGE_BASES)
+  coverageBasis?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  gramsPerM2?: number | null;
 
   @IsOptional()
   @IsBoolean()
@@ -79,6 +91,15 @@ export class UpdateRubberBondingAgentDto {
   areaCoverPerLitre?: number | null;
 
   @IsOptional()
+  @IsIn(COVERAGE_BASES)
+  coverageBasis?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  gramsPerM2?: number | null;
+
+  @IsOptional()
   @IsBoolean()
   active?: boolean;
 
@@ -94,6 +115,10 @@ export class RubberBondingAgentCommitImportDto {
 
   @IsBoolean()
   replaceSupplier: boolean;
+
+  @IsOptional()
+  @IsIn(["replace", "append", "update"])
+  mode?: string;
 
   @IsArray()
   @ValidateNested({ each: true })

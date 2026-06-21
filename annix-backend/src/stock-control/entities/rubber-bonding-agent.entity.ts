@@ -1,3 +1,5 @@
+export type RubberBondingCoverageBasis = "litre" | "gram" | "none";
+
 export class RubberBondingAgent {
   id: number;
 
@@ -14,6 +16,10 @@ export class RubberBondingAgent {
   pricePerLitre: number | null;
 
   areaCoverPerLitre: number | null;
+
+  coverageBasis: RubberBondingCoverageBasis;
+
+  gramsPerM2: number | null;
 
   active: boolean;
 

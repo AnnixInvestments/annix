@@ -1,4 +1,5 @@
 import { CrudRepository, type DeepPartial } from "../../lib/persistence/crud-repository";
+import type { TransactionContext } from "../../lib/persistence/transaction-context";
 import { StockItem } from "../entities/stock-item.entity";
 
 export interface StockItemListFilters {
@@ -20,16 +21,39 @@ export interface SohByLocationRow {
 }
 
 export abstract class StockItemRepository extends CrudRepository<StockItem> {
+  abstract withTransaction(context: TransactionContext): StockItemRepository;
   abstract build(data: DeepPartial<StockItem>): StockItem;
   abstract buildMany(rows: DeepPartial<StockItem>[]): StockItem[];
   abstract saveMany(entities: StockItem[]): Promise<StockItem[]>;
-  abstract updateById(id: number, updates: DeepPartial<StockItem>): Promise<void>;
   abstract updateByIdForCompany(
     id: number,
     companyId: number,
     updates: DeepPartial<StockItem>,
   ): Promise<void>;
-  abstract incrementQuantityById(id: number, amount: number): Promise<void>;
+  abstract incrementQuantityForCompany(
+    id: number,
+    companyId: number,
+    amount: number,
+  ): Promise<boolean>;
+  abstract decrementQuantityForCompany(
+    id: number,
+    companyId: number,
+    amount: number,
+    enforceNonNegative: boolean,
+  ): Promise<boolean>;
+  abstract setQuantityForCompany(id: number, companyId: number, value: number): Promise<boolean>;
+  abstract setQuantityAndFieldsForCompany(
+    id: number,
+    companyId: number,
+    quantity: number,
+    fields: DeepPartial<StockItem>,
+  ): Promise<boolean>;
+  abstract incrementQuantityAndSetFieldsForCompany(
+    id: number,
+    companyId: number,
+    amount: number,
+    fields: DeepPartial<StockItem>,
+  ): Promise<boolean>;
   abstract findOneForCompany(id: number, companyId: number): Promise<StockItem | null>;
   abstract findOneForCompanyWithRelations(
     id: number,

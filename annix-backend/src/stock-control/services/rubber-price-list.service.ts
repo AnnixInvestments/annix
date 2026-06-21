@@ -358,6 +358,38 @@ export class RubberPriceListService {
     return this.addMany(companyId, inputs);
   }
 
+  private matchKey(supplier: string | null, code: string, cureType?: string | null): string {
+    const norm = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+    return `${norm(supplier ?? "")}|${norm(code)}|${norm(cureType ?? "")}`;
+  }
+
+  async updateByCode(
+    companyId: number,
+    inputs: RubberPriceListItemInput[],
+  ): Promise<{ updated: number; created: number }> {
+    const existing = await this.itemRepo.findAllForCompany(companyId);
+    const byKey = new Map(
+      existing.map((item) => [this.matchKey(item.supplier, item.productCode, item.cureType), item]),
+    );
+    const keyOf = (input: RubberPriceListItemInput) =>
+      this.matchKey(input.supplier ?? null, input.productCode, input.cureType ?? null);
+    const matched = inputs.filter((input) => byKey.has(keyOf(input)));
+    const unmatched = inputs.filter((input) => !byKey.has(keyOf(input)));
+    await matched.reduce<Promise<void>>(async (previous, input) => {
+      await previous;
+      const match = byKey.get(keyOf(input));
+      if (!match) {
+        return;
+      }
+      await this.itemRepo.save({
+        ...match,
+        costPerKg: input.costPerKg ?? match.costPerKg,
+      });
+    }, Promise.resolve());
+    await this.createSequentially(companyId, unmatched);
+    return { updated: matched.length, created: unmatched.length };
+  }
+
   private seedToInput(seed: RubberPriceProductSeed): RubberPriceListItemInput {
     const hasCost = seed.costPerKg != null;
     return {

@@ -1,5 +1,8 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { AuditService } from "../../audit/audit.service";
+import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { now } from "../../lib/datetime";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { type StockAssessmentItem } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
@@ -57,6 +60,8 @@ export class StockAllocationService {
     private readonly jobCardRepo: JobCardRepository,
     private readonly movementRepo: StockMovementRepository,
     private readonly stockReturnRepo: StockReturnRepository,
+    private readonly txRunner: TransactionRunner,
+    private readonly auditService: AuditService,
   ) {}
 
   async recommendedAllocations(
@@ -316,6 +321,7 @@ export class StockAllocationService {
     items: AllocatePackDto[],
     staffMemberId: number | null,
     allocatedByName: string | null,
+    userId?: number,
   ): Promise<StockAllocation[]> {
     const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
 
@@ -344,33 +350,43 @@ export class StockAllocationService {
           );
         }
 
-        stockItem.quantity = Number(stockItem.quantity) - totalLitres;
-        await this.stockItemRepo.save(stockItem);
+        const saved = await this.txRunner.run(async (ctx) => {
+          const decremented = await this.stockItemRepo
+            .withTransaction(ctx)
+            .decrementQuantityForCompany(stockItem.id, companyId, totalLitres, true);
+          if (!decremented) {
+            throw new BadRequestException(
+              `Insufficient stock for ${stockItem.name}. Available: ${stockItem.quantity}, Requested: ${totalLitres}`,
+            );
+          }
 
-        const saved = await this.allocationRepo.create({
-          stockItemId: stockItem.id,
-          jobCardId,
-          companyId,
-          quantityUsed: totalLitres,
-          packCount: item.packCount,
-          litresPerPack,
-          totalLitres,
-          allocationType: "allocation",
-          allocatedBy: allocatedByName,
-          staffMemberId,
-          sourceLeftoverItemId: item.sourceLeftoverItemId || null,
-          pendingApproval: false,
-          undone: false,
-        });
+          const allocation = await this.allocationRepo.withTransaction(ctx).create({
+            stockItemId: stockItem.id,
+            jobCardId,
+            companyId,
+            quantityUsed: totalLitres,
+            packCount: item.packCount,
+            litresPerPack,
+            totalLitres,
+            allocationType: "allocation",
+            allocatedBy: allocatedByName,
+            staffMemberId,
+            sourceLeftoverItemId: item.sourceLeftoverItemId || null,
+            pendingApproval: false,
+            undone: false,
+          });
 
-        await this.movementRepo.create({
-          stockItemId: stockItem.id,
-          movementType: MovementType.OUT,
-          quantity: totalLitres,
-          referenceType: ReferenceType.ALLOCATION,
-          referenceId: saved.id,
-          createdBy: allocatedByName,
-          companyId,
+          await this.movementRepo.withTransaction(ctx).create({
+            stockItemId: stockItem.id,
+            movementType: MovementType.OUT,
+            quantity: totalLitres,
+            referenceType: ReferenceType.ALLOCATION,
+            referenceId: allocation.id,
+            createdBy: allocatedByName,
+            companyId,
+          });
+
+          return allocation;
         });
 
         return [...acc, saved];
@@ -382,6 +398,25 @@ export class StockAllocationService {
       `Allocated ${allocations.length} items for JC ${jobCardId} by ${allocatedByName}`,
     );
 
+    allocations.forEach((allocation) =>
+      this.auditService
+        .log({
+          entityType: "stock_allocation",
+          entityId: allocation.id,
+          action: AuditAction.CREATE,
+          newValues: {
+            companyId,
+            userId: userId ?? null,
+            jobCardId,
+            stockItemId: allocation.stockItemId,
+            quantity: allocation.totalLitres ?? allocation.quantityUsed,
+            packCount: allocation.packCount,
+            allocatedBy: allocatedByName,
+          },
+        })
+        .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack)),
+    );
+
     return allocations;
   }
 
@@ -390,6 +425,7 @@ export class StockAllocationService {
     jobCardId: number,
     allocationId: number,
     userName: string | null,
+    userId?: number,
   ): Promise<StockAllocation> {
     const allocation = await this.allocationRepo.findActiveUnissuedByIdForJobCard(
       allocationId,
@@ -402,30 +438,52 @@ export class StockAllocationService {
     }
 
     const stockItem = await this.stockItemRepo.findOneForCompany(allocation.stockItemId, companyId);
+    const returnedQuantity = Number(allocation.totalLitres || allocation.quantityUsed);
 
-    if (stockItem) {
-      stockItem.quantity =
-        Number(stockItem.quantity) + Number(allocation.totalLitres || allocation.quantityUsed);
-      await this.stockItemRepo.save(stockItem);
-    }
+    const saved = await this.txRunner.run(async (ctx) => {
+      if (stockItem) {
+        await this.stockItemRepo
+          .withTransaction(ctx)
+          .incrementQuantityForCompany(stockItem.id, companyId, returnedQuantity);
+      }
 
-    allocation.undone = true;
-    allocation.undoneAt = now().toJSDate();
-    allocation.undoneByName = userName;
-    const saved = await this.allocationRepo.save(allocation);
+      allocation.undone = true;
+      allocation.undoneAt = now().toJSDate();
+      allocation.undoneByName = userName;
+      const persisted = await this.allocationRepo.withTransaction(ctx).save(allocation);
 
-    if (stockItem) {
-      await this.movementRepo.create({
-        stockItemId: stockItem.id,
-        movementType: MovementType.IN,
-        quantity: Number(allocation.totalLitres || allocation.quantityUsed),
-        referenceType: ReferenceType.ALLOCATION,
-        referenceId: allocation.id,
-        notes: "Deallocated",
-        createdBy: userName,
-        companyId,
-      });
-    }
+      if (stockItem) {
+        await this.movementRepo.withTransaction(ctx).create({
+          stockItemId: stockItem.id,
+          movementType: MovementType.IN,
+          quantity: returnedQuantity,
+          referenceType: ReferenceType.ALLOCATION,
+          referenceId: allocation.id,
+          notes: "Deallocated",
+          createdBy: userName,
+          companyId,
+        });
+      }
+
+      return persisted;
+    });
+
+    this.auditService
+      .log({
+        entityType: "stock_allocation",
+        entityId: saved.id,
+        action: AuditAction.DELETE,
+        oldValues: { stockItemId: allocation.stockItemId, quantity: returnedQuantity },
+        newValues: {
+          companyId,
+          userId: userId ?? null,
+          jobCardId,
+          stockItemId: allocation.stockItemId,
+          quantity: returnedQuantity,
+          undoneBy: userName,
+        },
+      })
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
 
     return saved;
   }
@@ -469,6 +527,7 @@ export class StockAllocationService {
     returnedByName: string | null,
     staffMemberId: number | null,
     notes: string | null,
+    userId?: number,
   ): Promise<{ stockReturn: StockReturn; costReduction: number }> {
     const allocation = await this.allocationRepo.findActiveByIdForJobCard(
       allocationId,
@@ -502,60 +561,84 @@ export class StockAllocationService {
       isLeftover: true,
     });
 
-    if (existingLeftover) {
-      existingLeftover.quantity = Number(existingLeftover.quantity) + litresReturned;
-    }
+    const stockReturn = await this.txRunner.run(async (ctx) => {
+      const stockItemTx = this.stockItemRepo.withTransaction(ctx);
+      const leftoverItem = existingLeftover
+        ? await (async () => {
+            await stockItemTx.incrementQuantityForCompany(
+              existingLeftover.id,
+              companyId,
+              litresReturned,
+            );
+            return existingLeftover;
+          })()
+        : await stockItemTx.create({
+            sku: `${originalItem.sku}-LO`,
+            name: leftoverName,
+            description: `Leftover from ${originalItem.name}`,
+            category: originalItem.category,
+            unitOfMeasure: "litres",
+            costPerUnit: costPerLitre,
+            quantity: litresReturned,
+            minStockLevel: 0,
+            location: originalItem.location,
+            locationId: originalItem.locationId,
+            companyId,
+            isLeftover: true,
+            sourceJobCardId: jobCardId,
+            packSizeLitres: null,
+            componentGroup: originalItem.componentGroup,
+            componentRole: originalItem.componentRole,
+            mixRatio: originalItem.mixRatio,
+            needsQrPrint: false,
+          });
 
-    const leftoverItem = existingLeftover
-      ? await this.stockItemRepo.save(existingLeftover)
-      : await this.stockItemRepo.create({
-          sku: `${originalItem.sku}-LO`,
-          name: leftoverName,
-          description: `Leftover from ${originalItem.name}`,
-          category: originalItem.category,
-          unitOfMeasure: "litres",
-          costPerUnit: costPerLitre,
-          quantity: litresReturned,
-          minStockLevel: 0,
-          location: originalItem.location,
-          locationId: originalItem.locationId,
-          companyId,
-          isLeftover: true,
-          sourceJobCardId: jobCardId,
-          packSizeLitres: null,
-          componentGroup: originalItem.componentGroup,
-          componentRole: originalItem.componentRole,
-          mixRatio: originalItem.mixRatio,
-          needsQrPrint: false,
-        });
+      await this.movementRepo.withTransaction(ctx).create({
+        stockItemId: leftoverItem.id,
+        movementType: MovementType.IN,
+        quantity: litresReturned,
+        referenceType: ReferenceType.RETURN,
+        referenceId: allocationId,
+        notes: `Returned from JC ${jobCardId}`,
+        createdBy: returnedByName,
+        companyId,
+      });
 
-    await this.movementRepo.create({
-      stockItemId: leftoverItem.id,
-      movementType: MovementType.IN,
-      quantity: litresReturned,
-      referenceType: ReferenceType.RETURN,
-      referenceId: allocationId,
-      notes: `Returned from JC ${jobCardId}`,
-      createdBy: returnedByName,
-      companyId,
-    });
-
-    const stockReturn = await this.stockReturnRepo.create({
-      companyId,
-      jobCardId,
-      allocationId,
-      originalStockItemId: originalItem.id,
-      leftoverStockItemId: leftoverItem.id,
-      litresReturned,
-      costReduction,
-      returnedByName,
-      returnedByStaffId: staffMemberId,
-      notes,
+      return this.stockReturnRepo.withTransaction(ctx).create({
+        companyId,
+        jobCardId,
+        allocationId,
+        originalStockItemId: originalItem.id,
+        leftoverStockItemId: leftoverItem.id,
+        litresReturned,
+        costReduction,
+        returnedByName,
+        returnedByStaffId: staffMemberId,
+        notes,
+      });
     });
 
     this.logger.log(
       `Returned ${litresReturned}L from allocation ${allocationId}, cost reduction: R${costReduction}`,
     );
+
+    this.auditService
+      .log({
+        entityType: "stock_return",
+        entityId: stockReturn.id,
+        action: AuditAction.CREATE,
+        newValues: {
+          companyId,
+          userId: userId ?? null,
+          jobCardId,
+          allocationId,
+          stockItemId: originalItem.id,
+          quantity: litresReturned,
+          costReduction,
+          returnedBy: returnedByName,
+        },
+      })
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
 
     return { stockReturn, costReduction };
   }

@@ -81,11 +81,17 @@ export class RubberPricingController {
   }
 
   @Post("import/commit")
-  @ApiOperation({ summary: "Save extracted rubber rows (replace-by-supplier or append)" })
+  @ApiOperation({ summary: "Save extracted rubber rows (replace-by-supplier, append or update)" })
   async commitImport(@Req() req: any, @Body() dto: RubberCommitImportDto) {
-    const imported = dto.replaceSupplier
-      ? await this.priceListService.replaceSupplier(req.user.companyId, dto.supplier, dto.rows)
-      : await this.priceListService.addMany(req.user.companyId, dto.rows);
+    const companyId = req.user.companyId;
+    const mode = dto.mode ?? (dto.replaceSupplier ? "replace" : "append");
+    if (mode === "update") {
+      return this.priceListService.updateByCode(companyId, dto.rows);
+    }
+    const imported =
+      mode === "replace"
+        ? await this.priceListService.replaceSupplier(companyId, dto.supplier, dto.rows)
+        : await this.priceListService.addMany(companyId, dto.rows);
     return { imported };
   }
 

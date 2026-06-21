@@ -97,7 +97,7 @@ describe("JobCardsController", () => {
       findRubberInStockForCompanyOrdered: jest.fn().mockResolvedValue([]),
       findOneWastageForCompany: jest.fn(),
       create: jest.fn(),
-      incrementQuantityById: jest.fn().mockResolvedValue(undefined),
+      incrementQuantityForCompany: jest.fn().mockResolvedValue(true),
     };
 
     dimensionOverrideRepo = {
@@ -441,12 +441,16 @@ describe("JobCardsController", () => {
 
       const result = await controller.allocateStock(5, dto, mockReq());
 
-      expect(jobCardService.allocateStock).toHaveBeenCalledWith(1, {
-        stockItemId: 1,
-        quantity: 5,
-        jobCardId: 5,
-        allocatedBy: "Test User",
-      });
+      expect(jobCardService.allocateStock).toHaveBeenCalledWith(
+        1,
+        {
+          stockItemId: 1,
+          quantity: 5,
+          jobCardId: 5,
+          allocatedBy: "Test User",
+        },
+        10,
+      );
       expect(result).toBe(expected);
     });
   });
@@ -687,7 +691,7 @@ describe("JobCardsController", () => {
       const result = await controller.markOffcutAsWastage(mockReq(), 5, dto as any);
 
       expect(stockItemRepo.findOneWastageForCompany).toHaveBeenCalled();
-      expect(stockItemRepo.incrementQuantityById).toHaveBeenCalled();
+      expect(stockItemRepo.incrementQuantityForCompany).toHaveBeenCalled();
       expect(stockMovementRepo.build).toHaveBeenCalled();
       expect(stockMovementRepo.save).toHaveBeenCalled();
       expect(result.weightKg).toBeCloseTo(0.72);

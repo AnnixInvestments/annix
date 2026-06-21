@@ -34,6 +34,12 @@ export class RubberBondingAgent {
   @Prop({ type: Number, required: false, default: null })
   areaCoverPerLitre: number | null;
 
+  @Prop({ type: String, required: true, default: "litre" })
+  coverageBasis: string;
+
+  @Prop({ type: Number, required: false, default: null })
+  gramsPerM2: number | null;
+
   @Prop({ type: Boolean, required: true, default: true })
   active: boolean;
 

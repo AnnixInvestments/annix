@@ -2,6 +2,7 @@ import { StockControlApiClient } from "./base";
 import type {
   CommitRubberPriceListImportInput,
   CreateRubberPriceListItemInput,
+  PriceListImportCommitResult,
   RubberPriceFamily,
   RubberPriceListImportPreview,
   RubberPriceListItem,
@@ -31,7 +32,7 @@ declare module "./base" {
     importRubberPriceList(file: File): Promise<RubberPriceListImportPreview>;
     commitRubberPriceListImport(
       input: CommitRubberPriceListImportInput,
-    ): Promise<{ imported: number }>;
+    ): Promise<PriceListImportCommitResult>;
   }
 }
 

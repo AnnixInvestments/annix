@@ -14,6 +14,7 @@ import type {
   PaintQuoteInput,
   PaintQuoteResult,
   PreferredPaintOption,
+  PriceListImportCommitResult,
   QuoteCatalogItem,
 } from "./types";
 
@@ -36,7 +37,7 @@ declare module "./base" {
     importPaintPriceList(file: File): Promise<PaintPriceListImportPreview>;
     commitPaintPriceListImport(
       input: CommitPaintPriceListImportInput,
-    ): Promise<{ imported: number }>;
+    ): Promise<PriceListImportCommitResult>;
     enrichPaintPriceSpecs(): Promise<{
       enriched: number;
       checked: number;

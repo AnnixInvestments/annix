@@ -690,7 +690,7 @@ export class JobCardsController {
 
     const roundedKg = Math.round(weightKg * 100) / 100;
     const wholeKg = Math.max(1, Math.round(weightKg));
-    await this.stockItemRepo.incrementQuantityById(wastageItem.id, wholeKg);
+    await this.stockItemRepo.incrementQuantityForCompany(wastageItem.id, companyId, wholeKg);
 
     const movement = this.stockMovementRepo.build({
       stockItem: wastageItem,
@@ -833,11 +833,15 @@ export class JobCardsController {
   @Post(":id/allocate")
   @ApiOperation({ summary: "Allocate stock to a job card" })
   async allocateStock(@Param("id") id: number, @Body() dto: CreateAllocationDto, @Req() req: any) {
-    return this.jobCardService.allocateStock(req.user.companyId, {
-      ...dto,
-      jobCardId: id,
-      allocatedBy: req.user.name,
-    });
+    return this.jobCardService.allocateStock(
+      req.user.companyId,
+      {
+        ...dto,
+        jobCardId: id,
+        allocatedBy: req.user.name,
+      },
+      req.user.id,
+    );
   }
 
   @Get(":id/allocations")
@@ -1065,6 +1069,7 @@ export class JobCardsController {
       body.items,
       req.user.staffMemberId || null,
       req.user.name || null,
+      req.user.id,
     );
   }
 
@@ -1081,6 +1086,7 @@ export class JobCardsController {
       id,
       allocationId,
       req.user.name || null,
+      req.user.id,
     );
   }
 
@@ -1117,6 +1123,7 @@ export class JobCardsController {
       req.user.name || null,
       req.user.staffMemberId || null,
       body.notes || null,
+      req.user.id,
     );
   }
 

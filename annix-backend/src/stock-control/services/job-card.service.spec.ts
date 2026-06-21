@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { AuditService } from "../../audit/audit.service";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
 import { MovementType, ReferenceType } from "../entities/stock-movement.entity";
 import { JobCardCoatingAnalysisRepository } from "../repositories/coating-analysis.repository";
@@ -64,16 +65,29 @@ describe("JobCardService", () => {
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
     remove: jest.fn(),
+    withTransaction: jest.fn(),
   };
+  mockAllocationRepo.withTransaction.mockReturnValue(mockAllocationRepo);
 
   const mockStockItemRepo = {
     findOne: jest.fn(),
     findOneForCompany: jest.fn(),
     save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
+    incrementQuantityForCompany: jest.fn().mockResolvedValue(true),
+    decrementQuantityForCompany: jest.fn().mockResolvedValue(true),
+    setQuantityForCompany: jest.fn().mockResolvedValue(true),
+    withTransaction: jest.fn(),
   };
+  mockStockItemRepo.withTransaction.mockReturnValue(mockStockItemRepo);
 
   const mockMovementRepo = {
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
+    withTransaction: jest.fn(),
+  };
+  mockMovementRepo.withTransaction.mockReturnValue(mockMovementRepo);
+
+  const mockTxRunner = {
+    run: jest.fn().mockImplementation((work) => work({})),
   };
 
   const mockStockReturnRepo = {
@@ -138,11 +152,19 @@ describe("JobCardService", () => {
         { provide: RequisitionService, useValue: mockRequisitionService },
         { provide: WorkflowNotificationService, useValue: mockNotificationService },
         { provide: AuditService, useValue: mockAuditService },
+        { provide: TransactionRunner, useValue: mockTxRunner },
       ],
     }).compile();
 
     service = module.get<JobCardService>(JobCardService);
     jest.clearAllMocks();
+    mockStockItemRepo.withTransaction.mockReturnValue(mockStockItemRepo);
+    mockMovementRepo.withTransaction.mockReturnValue(mockMovementRepo);
+    mockAllocationRepo.withTransaction.mockReturnValue(mockAllocationRepo);
+    mockStockItemRepo.incrementQuantityForCompany.mockResolvedValue(true);
+    mockStockItemRepo.decrementQuantityForCompany.mockResolvedValue(true);
+    mockStockItemRepo.setQuantityForCompany.mockResolvedValue(true);
+    mockTxRunner.run.mockImplementation((work) => work({}));
   });
 
   it("should be defined", () => {
@@ -270,9 +292,7 @@ describe("JobCardService", () => {
 
       const result = await service.allocateStock(1, allocationData);
 
-      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ quantity: 95 }),
-      );
+      expect(mockStockItemRepo.decrementQuantityForCompany).toHaveBeenCalledWith(10, 1, 5, true);
       expect(mockAllocationRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
           stockItemId: 10,
@@ -317,13 +337,27 @@ describe("JobCardService", () => {
     });
 
     it("triggers reorder requisition when stock drops below minimum", async () => {
-      const stockItem = { id: 10, name: "Paint A", quantity: 20, minStockLevel: 18, companyId: 1 };
       const jobCard = { id: 1, jobNumber: "JC-001", companyId: 1 };
-      mockStockItemRepo.findOneForCompany.mockResolvedValue(stockItem);
+      mockStockItemRepo.findOneForCompany
+        .mockResolvedValueOnce({
+          id: 10,
+          name: "Paint A",
+          quantity: 20,
+          minStockLevel: 18,
+          companyId: 1,
+        })
+        .mockResolvedValueOnce({
+          id: 10,
+          name: "Paint A",
+          quantity: 15,
+          minStockLevel: 18,
+          companyId: 1,
+        });
       jobCardFindOne.mockResolvedValue(jobCard);
       mockCoatingAnalysisRepo.findOneForJobCard.mockResolvedValue(null);
 
       await service.allocateStock(1, allocationData);
+      await new Promise((resolve) => process.nextTick(resolve));
 
       expect(mockRequisitionService.createReorderRequisition).toHaveBeenCalledWith(1, 10);
     });
@@ -412,7 +446,7 @@ describe("JobCardService", () => {
 
       await service.allocateStock(1, allocationData);
 
-      expect(mockStockItemRepo.save).not.toHaveBeenCalled();
+      expect(mockStockItemRepo.decrementQuantityForCompany).not.toHaveBeenCalled();
     });
 
     it("accounts for existing allocations when checking over-allocation", async () => {
@@ -460,9 +494,7 @@ describe("JobCardService", () => {
 
       await service.allocateStock(1, { ...allocationData, quantityUsed: 10 });
 
-      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ quantity: 90 }),
-      );
+      expect(mockStockItemRepo.decrementQuantityForCompany).toHaveBeenCalledWith(10, 1, 10, true);
       expect(mockNotificationService.notifyOverAllocationApproval).not.toHaveBeenCalled();
     });
 
@@ -475,9 +507,7 @@ describe("JobCardService", () => {
 
       await service.allocateStock(1, allocationData);
 
-      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ quantity: 85 }),
-      );
+      expect(mockStockItemRepo.decrementQuantityForCompany).toHaveBeenCalledWith(10, 1, 15, true);
     });
 
     it("skips over-allocation check when no fuzzy match for stock item name", async () => {
@@ -500,9 +530,7 @@ describe("JobCardService", () => {
 
       await service.allocateStock(1, allocationData);
 
-      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ quantity: 85 }),
-      );
+      expect(mockStockItemRepo.decrementQuantityForCompany).toHaveBeenCalledWith(10, 1, 15, true);
     });
   });
 
@@ -526,9 +554,7 @@ describe("JobCardService", () => {
 
       const result = await service.approveOverAllocation(1, 5, 99);
 
-      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ quantity: 40 }),
-      );
+      expect(mockStockItemRepo.decrementQuantityForCompany).toHaveBeenCalledWith(10, 1, 10, true);
       expect(mockAllocationRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({
           pendingApproval: false,
@@ -590,14 +616,16 @@ describe("JobCardService", () => {
         jobCardId: 1,
         allocatedBy: "admin",
       };
-      const stockItem = { id: 10, quantity: 15, minStockLevel: 10, companyId: 1 };
       const jobCard = { id: 1, jobNumber: "JC-001", companyId: 1 };
 
       allocFindOne.mockResolvedValue(allocation);
-      mockStockItemRepo.findOneForCompany.mockResolvedValue(stockItem);
+      mockStockItemRepo.findOneForCompany
+        .mockResolvedValueOnce({ id: 10, quantity: 15, minStockLevel: 10, companyId: 1 })
+        .mockResolvedValueOnce({ id: 10, quantity: 5, minStockLevel: 10, companyId: 1 });
       jobCardFindOne.mockResolvedValue(jobCard);
 
       await service.approveOverAllocation(1, 5, 99);
+      await new Promise((resolve) => process.nextTick(resolve));
 
       expect(mockRequisitionService.createReorderRequisition).toHaveBeenCalledWith(1, 10);
     });
@@ -649,9 +677,7 @@ describe("JobCardService", () => {
 
       const result = await service.undoAllocation(1, 5, user);
 
-      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ quantity: 50 }),
-      );
+      expect(mockStockItemRepo.incrementQuantityForCompany).toHaveBeenCalledWith(10, 1, 10);
       expect(mockAllocationRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({
           undone: true,
@@ -732,7 +758,7 @@ describe("JobCardService", () => {
       mockStockItemRepo.findOneForCompany.mockResolvedValue(null);
 
       await expect(service.undoAllocation(1, 5, user)).rejects.toThrow(NotFoundException);
-      expect(mockStockItemRepo.save).not.toHaveBeenCalled();
+      expect(mockStockItemRepo.incrementQuantityForCompany).not.toHaveBeenCalled();
     });
 
     it("logs audit entry on successful undo", async () => {

@@ -2,6 +2,7 @@ import { StockControlApiClient } from "./base";
 import type {
   CommitRubberBondingAgentImportInput,
   CreateRubberBondingAgentInput,
+  PriceListImportCommitResult,
   RubberBondingAgentImportPreview,
   RubberBondingAgentsResponse,
   UpdateRubberBondingAgentInput,
@@ -17,7 +18,7 @@ declare module "./base" {
     importRubberBondingAgents(file: File): Promise<RubberBondingAgentImportPreview>;
     commitRubberBondingAgentImport(
       input: CommitRubberBondingAgentImportInput,
-    ): Promise<{ imported: number }>;
+    ): Promise<PriceListImportCommitResult>;
   }
 }
 

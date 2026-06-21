@@ -7,10 +7,14 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
+import { AuditService } from "../../audit/audit.service";
+import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { fromISO, now, nowMillis } from "../../lib/datetime";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { SupplierInvoiceFifoBridgeService } from "../../stock-management/services/supplier-invoice-fifo-bridge.service";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { DeliveryNote, SdnStatus } from "../entities/delivery-note.entity";
+import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType } from "../entities/stock-movement.entity";
 import { SupplierInvoice } from "../entities/supplier-invoice.entity";
 import { DeliveryNoteRepository } from "../repositories/delivery-note.repository";
@@ -47,6 +51,8 @@ export class DeliveryService {
     private readonly stockItemRepo: StockItemRepository,
     private readonly stockMovementRepo: StockMovementRepository,
     private readonly invoiceClarificationRepo: InvoiceClarificationRepository,
+    private readonly txRunner: TransactionRunner,
+    private readonly auditService: AuditService,
   ) {}
 
   private async bridgeDeliveryReceiptToStockManagement(
@@ -166,6 +172,7 @@ export class DeliveryService {
       receivedBy?: string;
       items: { stockItemId: number; quantityReceived: number; photoUrl?: string }[];
     },
+    userId?: number,
   ): Promise<DeliveryNote> {
     const existingNote = await this.deliveryNoteRepo.findOneByNumber(
       companyId,
@@ -175,45 +182,63 @@ export class DeliveryService {
       throw new ConflictException(`Delivery note ${data.deliveryNumber} has already been uploaded`);
     }
 
-    const savedNote = await this.deliveryNoteRepo.create({
-      deliveryNumber: data.deliveryNumber,
-      supplierName: data.supplierName,
-      receivedDate: data.receivedDate || now().toJSDate(),
-      notes: data.notes || null,
-      photoUrl: data.photoUrl || null,
-      receivedBy: data.receivedBy || null,
-      companyId,
-    });
-
-    await data.items.reduce(async (prev, itemData) => {
-      await prev;
+    const stockItemsById = await data.items.reduce(async (accPromise, itemData) => {
+      const acc = await accPromise;
       const stockItem = await this.stockItemRepo.findOneForCompany(itemData.stockItemId, companyId);
       if (!stockItem) {
         throw new NotFoundException(`Stock item ${itemData.stockItemId} not found`);
       }
+      acc.set(itemData.stockItemId, stockItem);
+      return acc;
+    }, Promise.resolve(new Map<number, StockItem>()));
 
-      await this.deliveryNoteItemRepo.create({
-        deliveryNote: savedNote,
-        stockItem,
-        quantityReceived: itemData.quantityReceived,
-        photoUrl: itemData.photoUrl || null,
+    const savedNote = await this.txRunner.run(async (ctx) => {
+      const note = await this.deliveryNoteRepo.withTransaction(ctx).create({
+        deliveryNumber: data.deliveryNumber,
+        supplierName: data.supplierName,
+        receivedDate: data.receivedDate || now().toJSDate(),
+        notes: data.notes || null,
+        photoUrl: data.photoUrl || null,
+        receivedBy: data.receivedBy || null,
         companyId,
       });
 
-      stockItem.quantity = stockItem.quantity + itemData.quantityReceived;
-      await this.stockItemRepo.save(stockItem);
+      const noteItemTx = this.deliveryNoteItemRepo.withTransaction(ctx);
+      const stockItemTx = this.stockItemRepo.withTransaction(ctx);
+      const movementTx = this.stockMovementRepo.withTransaction(ctx);
 
-      await this.stockMovementRepo.create({
-        stockItemId: stockItem.id,
-        movementType: MovementType.IN,
-        quantity: itemData.quantityReceived,
-        referenceType: ReferenceType.DELIVERY,
-        referenceId: savedNote.id,
-        notes: `Received via delivery ${data.deliveryNumber}`,
-        createdBy: data.receivedBy || null,
-        companyId,
-      });
-    }, Promise.resolve());
+      await data.items.reduce(async (prev, itemData) => {
+        await prev;
+        const stockItem = stockItemsById.get(itemData.stockItemId) as StockItem;
+
+        await noteItemTx.create({
+          deliveryNote: note,
+          stockItem,
+          quantityReceived: itemData.quantityReceived,
+          photoUrl: itemData.photoUrl || null,
+          companyId,
+        });
+
+        await stockItemTx.incrementQuantityForCompany(
+          stockItem.id,
+          companyId,
+          itemData.quantityReceived,
+        );
+
+        await movementTx.create({
+          stockItemId: stockItem.id,
+          movementType: MovementType.IN,
+          quantity: itemData.quantityReceived,
+          referenceType: ReferenceType.DELIVERY,
+          referenceId: note.id,
+          notes: `Received via delivery ${data.deliveryNumber}`,
+          createdBy: data.receivedBy || null,
+          companyId,
+        });
+      }, Promise.resolve());
+
+      return note;
+    });
 
     this.cpoService
       .linkDeliveryToCalloffs(companyId, data.supplierName, savedNote.id)
@@ -223,6 +248,22 @@ export class DeliveryService {
       });
 
     await this.bridgeDeliveryReceiptToStockManagement(companyId, savedNote.id);
+
+    this.auditService
+      .log({
+        entityType: "delivery_note",
+        entityId: savedNote.id,
+        action: AuditAction.CREATE,
+        newValues: {
+          companyId,
+          userId: userId ?? null,
+          deliveryNumber: data.deliveryNumber,
+          supplierName: data.supplierName,
+          itemCount: data.items.length,
+          receivedBy: data.receivedBy ?? null,
+        },
+      })
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
 
     return this.findById(companyId, savedNote.id);
   }
@@ -281,7 +322,7 @@ export class DeliveryService {
     return note;
   }
 
-  async remove(companyId: number, id: number): Promise<void> {
+  async remove(companyId: number, id: number, userId?: number): Promise<void> {
     const note = await this.findById(companyId, id);
 
     const movements = await this.stockMovementRepo.findManyWhere({
@@ -290,21 +331,25 @@ export class DeliveryService {
       companyId,
     });
 
-    await movements.reduce(async (prev, movement) => {
-      await prev;
-      if (movement.stockItemId) {
-        const stockItem = await this.stockItemRepo.findOneForCompany(
-          movement.stockItemId,
-          companyId,
-        );
-        if (stockItem) {
-          stockItem.quantity = stockItem.quantity - movement.quantity;
-          await this.stockItemRepo.save(stockItem);
-          this.logger.log(`Reversed stock movement: ${stockItem.sku} -${movement.quantity}`);
+    await this.txRunner.run(async (ctx) => {
+      const stockItemTx = this.stockItemRepo.withTransaction(ctx);
+      const movementTx = this.stockMovementRepo.withTransaction(ctx);
+      await movements.reduce(async (prev, movement) => {
+        await prev;
+        if (movement.stockItemId) {
+          await stockItemTx.decrementQuantityForCompany(
+            movement.stockItemId,
+            companyId,
+            movement.quantity,
+            false,
+          );
+          this.logger.log(
+            `Reversed stock movement for item ${movement.stockItemId} -${movement.quantity}`,
+          );
         }
-      }
-      await this.stockMovementRepo.remove(movement);
-    }, Promise.resolve());
+        await movementTx.remove(movement);
+      }, Promise.resolve());
+    });
 
     const invoicesByNumericKey = await this.supplierInvoiceRepo.findManyWhere({
       deliveryNoteId: id,
@@ -354,6 +399,26 @@ export class DeliveryService {
     }
 
     this.logger.log(`Deleted delivery note ${id} and reversed ${movementCount} stock movements`);
+
+    this.auditService
+      .log({
+        entityType: "delivery_note",
+        entityId: id,
+        action: AuditAction.DELETE,
+        oldValues: {
+          deliveryNumber: note.deliveryNumber,
+          supplierName: note.supplierName,
+        },
+        newValues: {
+          companyId,
+          userId: userId ?? null,
+          deliveryNumber: note.deliveryNumber,
+          supplierName: note.supplierName,
+          movementsReversed: movementCount,
+          linkedInvoicesDeleted: linkedInvoices.length,
+        },
+      })
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
   }
 
   async uploadPhoto(

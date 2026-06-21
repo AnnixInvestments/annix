@@ -55,11 +55,19 @@ export class RubberBondingAgentController {
   }
 
   @Post("import/commit")
-  @ApiOperation({ summary: "Save extracted bonding-agent rows (replace-by-supplier or append)" })
+  @ApiOperation({
+    summary: "Save extracted bonding-agent rows (replace-by-supplier, append or update)",
+  })
   async commitImport(@Req() req: any, @Body() dto: RubberBondingAgentCommitImportDto) {
-    const imported = dto.replaceSupplier
-      ? await this.agentService.replaceSupplier(req.user.companyId, dto.supplier, dto.rows)
-      : await this.agentService.addMany(req.user.companyId, dto.rows);
+    const companyId = req.user.companyId;
+    const mode = dto.mode ?? (dto.replaceSupplier ? "replace" : "append");
+    if (mode === "update") {
+      return this.agentService.updateByName(companyId, dto.supplier, dto.rows);
+    }
+    const imported =
+      mode === "replace"
+        ? await this.agentService.replaceSupplier(companyId, dto.supplier, dto.rows)
+        : await this.agentService.addMany(companyId, dto.rows);
     return { imported };
   }
 

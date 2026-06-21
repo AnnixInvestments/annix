@@ -36,6 +36,9 @@ describe("InventoryService", () => {
     lowStockForCompany: jest.fn().mockResolvedValue([]),
     categoriesForCompany: jest.fn().mockResolvedValue([]),
     updateByIdForCompany: jest.fn().mockResolvedValue(undefined),
+    incrementQuantityForCompany: jest.fn().mockResolvedValue(true),
+    decrementQuantityForCompany: jest.fn().mockResolvedValue(true),
+    setQuantityForCompany: jest.fn().mockResolvedValue(true),
   };
 
   const mockStorageService = {
@@ -337,40 +340,55 @@ describe("InventoryService", () => {
   });
 
   describe("adjustQuantity", () => {
-    beforeEach(() => {
-      mockStockItemRepo.save.mockImplementation((entity) => Promise.resolve({ ...entity }));
-    });
-
-    it("adds positive delta to quantity", async () => {
-      const item = { id: 1, companyId: 1, quantity: 50, minStockLevel: 0, photoUrl: null };
-      mockStockItemRepo.findOneForCompany.mockResolvedValue(item);
+    it("atomically increments for positive delta", async () => {
+      mockStockItemRepo.findOneForCompany
+        .mockResolvedValueOnce({ id: 1, companyId: 1, quantity: 50, minStockLevel: 0 })
+        .mockResolvedValueOnce({
+          id: 1,
+          companyId: 1,
+          quantity: 60,
+          minStockLevel: 0,
+          photoUrl: null,
+        });
 
       const result = await service.adjustQuantity(1, 1, 10);
 
-      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ quantity: 60 }),
-      );
+      expect(mockStockItemRepo.incrementQuantityForCompany).toHaveBeenCalledWith(1, 1, 10);
       expect(result).toBeDefined();
     });
 
-    it("subtracts negative delta from quantity", async () => {
-      const item = { id: 1, companyId: 1, quantity: 50, minStockLevel: 0, photoUrl: null };
-      mockStockItemRepo.findOneForCompany.mockResolvedValue(item);
+    it("atomically decrements for negative delta", async () => {
+      mockStockItemRepo.findOneForCompany
+        .mockResolvedValueOnce({ id: 1, companyId: 1, quantity: 50, minStockLevel: 0 })
+        .mockResolvedValueOnce({
+          id: 1,
+          companyId: 1,
+          quantity: 40,
+          minStockLevel: 0,
+          photoUrl: null,
+        });
 
       await service.adjustQuantity(1, 1, -10);
 
-      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ quantity: 40 }),
-      );
+      expect(mockStockItemRepo.decrementQuantityForCompany).toHaveBeenCalledWith(1, 1, 10, true);
+      expect(mockStockItemRepo.setQuantityForCompany).not.toHaveBeenCalled();
     });
 
-    it("clamps quantity to zero (never negative)", async () => {
-      const item = { id: 1, companyId: 1, quantity: 3, minStockLevel: 0, photoUrl: null };
-      mockStockItemRepo.findOneForCompany.mockResolvedValue(item);
+    it("clamps quantity to zero when decrement would go negative", async () => {
+      mockStockItemRepo.findOneForCompany
+        .mockResolvedValueOnce({ id: 1, companyId: 1, quantity: 3, minStockLevel: 0 })
+        .mockResolvedValueOnce({
+          id: 1,
+          companyId: 1,
+          quantity: 0,
+          minStockLevel: 0,
+          photoUrl: null,
+        });
+      mockStockItemRepo.decrementQuantityForCompany.mockResolvedValueOnce(false);
 
       await service.adjustQuantity(1, 1, -20);
 
-      expect(mockStockItemRepo.save).toHaveBeenCalledWith(expect.objectContaining({ quantity: 0 }));
+      expect(mockStockItemRepo.setQuantityForCompany).toHaveBeenCalledWith(1, 1, 0);
     });
 
     it("throws NotFoundException when item not found", async () => {
@@ -386,8 +404,15 @@ describe("InventoryService", () => {
     });
 
     it("triggers reorder when negative delta drops below minStockLevel", async () => {
-      const item = { id: 1, companyId: 1, quantity: 20, minStockLevel: 15, photoUrl: null };
-      mockStockItemRepo.findOneForCompany.mockResolvedValue(item);
+      mockStockItemRepo.findOneForCompany
+        .mockResolvedValueOnce({ id: 1, companyId: 1, quantity: 20, minStockLevel: 15 })
+        .mockResolvedValueOnce({
+          id: 1,
+          companyId: 1,
+          quantity: 10,
+          minStockLevel: 15,
+          photoUrl: null,
+        });
 
       await service.adjustQuantity(1, 1, -10);
 
@@ -395,8 +420,15 @@ describe("InventoryService", () => {
     });
 
     it("does not trigger reorder for positive delta", async () => {
-      const item = { id: 1, companyId: 1, quantity: 5, minStockLevel: 20, photoUrl: null };
-      mockStockItemRepo.findOneForCompany.mockResolvedValue(item);
+      mockStockItemRepo.findOneForCompany
+        .mockResolvedValueOnce({ id: 1, companyId: 1, quantity: 5, minStockLevel: 20 })
+        .mockResolvedValueOnce({
+          id: 1,
+          companyId: 1,
+          quantity: 15,
+          minStockLevel: 20,
+          photoUrl: null,
+        });
 
       await service.adjustQuantity(1, 1, 10);
 
@@ -404,8 +436,15 @@ describe("InventoryService", () => {
     });
 
     it("does not trigger reorder when minStockLevel is zero", async () => {
-      const item = { id: 1, companyId: 1, quantity: 5, minStockLevel: 0, photoUrl: null };
-      mockStockItemRepo.findOneForCompany.mockResolvedValue(item);
+      mockStockItemRepo.findOneForCompany
+        .mockResolvedValueOnce({ id: 1, companyId: 1, quantity: 5, minStockLevel: 0 })
+        .mockResolvedValueOnce({
+          id: 1,
+          companyId: 1,
+          quantity: 0,
+          minStockLevel: 0,
+          photoUrl: null,
+        });
 
       await service.adjustQuantity(1, 1, -5);
 
