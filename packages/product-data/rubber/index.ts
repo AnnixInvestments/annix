@@ -1,5 +1,13 @@
 export type { RubberBondingAgentSeed } from "./rubberBondingAgents";
 export { RUBBER_BONDING_AGENTS } from "./rubberBondingAgents";
+export type {
+  RubberBondingAgentNote,
+  RubberBondingSelectionRow,
+} from "./rubberBondingSelectorGuide";
+export {
+  RUBBER_BONDING_AGENT_NOTES,
+  RUBBER_BONDING_SELECTOR_GUIDE,
+} from "./rubberBondingSelectorGuide";
 export type { RubberLabourRateSeed } from "./rubberLabourRates";
 export { RUBBER_LABOUR_RATES } from "./rubberLabourRates";
 export type {
