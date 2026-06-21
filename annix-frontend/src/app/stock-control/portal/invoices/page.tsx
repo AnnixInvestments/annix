@@ -252,7 +252,7 @@ export default function InvoicesPage() {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading invoices...</p>
         </div>
       </div>
@@ -264,7 +264,7 @@ export default function InvoicesPage() {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{error.message}</p>
+          <p className="text-gray-600">Something went wrong — please try again.</p>
         </div>
       </div>
     );
@@ -278,10 +278,10 @@ export default function InvoicesPage() {
       onDrop={handleDrop}
     >
       {isDragOver && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-teal-600/20 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--sc-primary,#323288)]/20 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl p-8 text-center max-w-md mx-4">
             <svg
-              className="mx-auto h-12 w-12 text-teal-600"
+              className="mx-auto h-12 w-12 text-[var(--sc-primary,#323288)]"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -381,7 +381,7 @@ export default function InvoicesPage() {
           )}
           <Link
             href="/stock-control/portal/deliveries/scan"
-            className="inline-flex items-center px-4 py-2 border border-teal-600 rounded-md shadow-sm text-sm font-medium text-teal-700 bg-white hover:bg-teal-50"
+            className="inline-flex items-center px-4 py-2 border border-[var(--sc-primary,#323288)] rounded-md shadow-sm text-sm font-medium text-[var(--sc-primary-hover,#252560)] bg-white hover:bg-[var(--sc-primary-50,#eeeef6)]"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -415,7 +415,7 @@ export default function InvoicesPage() {
           </button>
           <button
             onClick={() => setShowUploadModal(true)}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700"
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)]"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -449,7 +449,7 @@ export default function InvoicesPage() {
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           placeholder="Search by invoice number or supplier..."
-          className="w-full sm:max-w-md rounded-md border-gray-300 pl-9 pr-3 py-2 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm"
+          className="w-full sm:max-w-md rounded-md border-gray-300 pl-9 pr-3 py-2 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] text-sm"
         />
       </div>
 
@@ -532,7 +532,7 @@ export default function InvoicesPage() {
                   onClick={() => router.push(`/stock-control/portal/invoices/${invoice.id}`)}
                 >
                   <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm font-medium text-teal-700">
+                    <span className="text-sm font-medium text-[var(--sc-primary-hover,#252560)]">
                       {invoice.invoiceNumber}
                     </span>
                   </td>
@@ -569,7 +569,7 @@ export default function InvoicesPage() {
                       {statusLabel(invoice)}
                     </span>
                     {invoice.exportedToSageAt && (
-                      <span className="ml-1 inline-flex px-2 py-1 text-xs font-medium rounded-full bg-indigo-100 text-indigo-800">
+                      <span className="ml-1 inline-flex px-2 py-1 text-xs font-medium rounded-full bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary-active,#1c1c48)]">
                         Exported
                       </span>
                     )}
@@ -582,7 +582,7 @@ export default function InvoicesPage() {
                             e.stopPropagation();
                             handleReExtract(invoice.id);
                           }}
-                          className="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium text-teal-700 bg-teal-50 rounded-full hover:bg-teal-100 transition-colors"
+                          className="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium text-[var(--sc-primary-hover,#252560)] bg-[var(--sc-primary-50,#eeeef6)] rounded-full hover:bg-[var(--sc-primary-100,#d6d6e9)] transition-colors"
                           title="Re-extract invoice data from scan"
                         >
                           Re-extract

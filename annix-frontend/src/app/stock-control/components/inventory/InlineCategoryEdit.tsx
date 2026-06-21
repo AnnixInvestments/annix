@@ -53,7 +53,7 @@ export function InlineCategoryEdit(props: InlineCategoryEditProps) {
         }}
         className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-colors cursor-pointer ${
           isCategorized
-            ? "bg-teal-50 text-teal-700 hover:bg-teal-100"
+            ? "bg-[var(--sc-primary-50,#eeeef6)] text-[var(--sc-primary-hover,#252560)] hover:bg-[var(--sc-primary-100,#d6d6e9)]"
             : "bg-gray-100 text-gray-500 hover:bg-gray-200"
         }`}
       >
@@ -74,7 +74,7 @@ export function InlineCategoryEdit(props: InlineCategoryEditProps) {
                 if (e.key === "Enter") handleCustomSubmit();
               }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full text-xs px-2 py-1 border border-gray-300 rounded focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+              className="w-full text-xs px-2 py-1 border border-gray-300 rounded focus:border-[var(--sc-primary,#323288)] focus:ring-1 focus:ring-[var(--sc-primary,#323288)] outline-none"
               autoFocus
             />
           </div>
@@ -94,7 +94,9 @@ export function InlineCategoryEdit(props: InlineCategoryEditProps) {
                     handleSelect(cat);
                   }}
                   className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 ${
-                    isActive ? "bg-teal-50 text-teal-700 font-medium" : "text-gray-700"
+                    isActive
+                      ? "bg-[var(--sc-primary-50,#eeeef6)] text-[var(--sc-primary-hover,#252560)] font-medium"
+                      : "text-gray-700"
                   }`}
                 >
                   {cat}

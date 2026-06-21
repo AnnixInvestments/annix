@@ -21,7 +21,7 @@ interface DeliveryNoteConfirmationModalProps {
 }
 
 const inputClass =
-  "block w-full rounded border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-xs border px-1.5 py-1";
+  "block w-full rounded border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] text-xs border px-1.5 py-1";
 
 function isRubberItem(item: AnalyzedDeliveryNoteLineItem): boolean {
   return (
@@ -199,7 +199,7 @@ export function DeliveryNoteConfirmationModal(props: DeliveryNoteConfirmationMod
                   type="text"
                   value={header.deliveryNoteNumber}
                   onChange={(e) => updateHeader("deliveryNoteNumber", e.target.value)}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm border p-2"
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm border p-2"
                 />
               </div>
               <div>
@@ -208,7 +208,7 @@ export function DeliveryNoteConfirmationModal(props: DeliveryNoteConfirmationMod
                   type="text"
                   value={header.supplierName}
                   onChange={(e) => updateHeader("supplierName", e.target.value)}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm border p-2"
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm border p-2"
                 />
               </div>
               <div>
@@ -216,7 +216,7 @@ export function DeliveryNoteConfirmationModal(props: DeliveryNoteConfirmationMod
                 <DateInput
                   value={header.deliveryDate}
                   onChange={(value) => updateHeader("deliveryDate", value)}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm border p-2"
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm border p-2"
                 />
               </div>
               <div>
@@ -225,7 +225,7 @@ export function DeliveryNoteConfirmationModal(props: DeliveryNoteConfirmationMod
                   type="text"
                   value={header.purchaseOrderNumber}
                   onChange={(e) => updateHeader("purchaseOrderNumber", e.target.value)}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm border p-2"
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm border p-2"
                 />
               </div>
               <div>
@@ -234,7 +234,7 @@ export function DeliveryNoteConfirmationModal(props: DeliveryNoteConfirmationMod
                   type="text"
                   value={header.customerReference}
                   onChange={(e) => updateHeader("customerReference", e.target.value)}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm border p-2"
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm border p-2"
                 />
               </div>
             </div>
@@ -246,7 +246,7 @@ export function DeliveryNoteConfirmationModal(props: DeliveryNoteConfirmationMod
                   <button
                     type="button"
                     onClick={addRubberRow}
-                    className="inline-flex items-center px-2 py-1 text-xs font-medium text-teal-700 bg-teal-50 border border-teal-200 rounded hover:bg-teal-100"
+                    className="inline-flex items-center px-2 py-1 text-xs font-medium text-[var(--sc-primary-hover,#252560)] bg-[var(--sc-primary-50,#eeeef6)] border border-[var(--sc-primary-200,#adadcf)] rounded hover:bg-[var(--sc-primary-100,#d6d6e9)]"
                   >
                     <svg
                       className="h-3 w-3 mr-1"
@@ -602,7 +602,7 @@ export function DeliveryNoteConfirmationModal(props: DeliveryNoteConfirmationMod
                   <button
                     type="button"
                     onClick={addGeneralRow}
-                    className="inline-flex items-center px-2 py-1 text-xs font-medium text-teal-700 bg-teal-50 border border-teal-200 rounded hover:bg-teal-100"
+                    className="inline-flex items-center px-2 py-1 text-xs font-medium text-[var(--sc-primary-hover,#252560)] bg-[var(--sc-primary-50,#eeeef6)] border border-[var(--sc-primary-200,#adadcf)] rounded hover:bg-[var(--sc-primary-100,#d6d6e9)]"
                   >
                     <svg
                       className="h-3 w-3 mr-1"
@@ -868,7 +868,7 @@ export function DeliveryNoteConfirmationModal(props: DeliveryNoteConfirmationMod
                 <button
                   type="button"
                   onClick={addGeneralRow}
-                  className="text-teal-600 hover:underline"
+                  className="text-[var(--sc-primary,#323288)] hover:underline"
                 >
                   Add a row
                 </button>

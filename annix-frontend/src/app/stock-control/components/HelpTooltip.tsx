@@ -102,7 +102,7 @@ export function HelpTooltip(props: HelpTooltipProps) {
           className={`absolute z-[9999] ${positionClasses} left-1/2 -translate-x-1/2 w-72 max-w-[calc(100vw-2rem)]`}
         >
           <span className="block bg-gray-900 text-white rounded-lg shadow-xl p-3 text-sm">
-            <span className="block font-semibold text-teal-300 mb-1">
+            <span className="block font-semibold text-[var(--sc-primary-300,#8484b5)] mb-1">
               {glossaryTerm.abbreviation} — {glossaryTerm.term}
             </span>
             <span className="block text-gray-200 text-xs leading-relaxed">
@@ -110,7 +110,7 @@ export function HelpTooltip(props: HelpTooltipProps) {
             </span>
             <a
               href="/stock-control/portal/glossary"
-              className="inline-block mt-2 text-xs text-teal-400 hover:text-teal-300 underline"
+              className="inline-block mt-2 text-xs text-[var(--sc-primary-400,#5b5b9c)] hover:text-[var(--sc-primary-300,#8484b5)] underline"
               onClick={(e) => e.stopPropagation()}
             >
               View full glossary

@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type {
   ReconciliationDocCategory,
   ReconciliationDocumentRecord,
@@ -267,7 +268,7 @@ export function ReconciliationTab(props: ReconciliationTabProps) {
                 key={cat}
                 onClick={() => handleUploadAdditionalDoc(cat)}
                 disabled={uploadingCategory === cat}
-                className="rounded-md bg-teal-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+                className="rounded-md bg-[var(--sc-primary,#323288)] px-2.5 py-1 text-xs font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
               >
                 {uploadingCategory === cat ? (
                   <Loader2 className="inline h-3 w-3 animate-spin" />
@@ -378,7 +379,7 @@ export function ReconciliationTab(props: ReconciliationTabProps) {
             </button>
             <button
               onClick={() => setAddingItem(true)}
-              className="rounded-md bg-teal-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-teal-700"
+              className="rounded-md bg-[var(--sc-primary,#323288)] px-2.5 py-1 text-xs font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)]"
             >
               <Plus className="mr-0.5 inline h-3 w-3" /> Add Item
             </button>
@@ -418,7 +419,7 @@ export function ReconciliationTab(props: ReconciliationTabProps) {
               <button
                 onClick={handleAddItem}
                 disabled={!newItem.itemDescription || !newItem.quantityOrdered}
-                className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+                className="rounded-md bg-[var(--sc-primary,#323288)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
               >
                 Save
               </button>
@@ -536,112 +537,120 @@ export function ReconciliationTab(props: ReconciliationTabProps) {
         )}
       </div>
 
-      {recordModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
-          <div className="w-full max-w-lg rounded-lg bg-white p-5 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-900">
-                Record {recordModal === "polymer_dn" ? "Polymer DN" : "MPS DN"}
-              </h3>
-              <button onClick={() => setRecordModal(null)}>
-                <X className="h-5 w-5 text-gray-400" />
-              </button>
-            </div>
+      {recordModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/10 backdrop-blur-md">
+            <div className="w-full max-w-lg rounded-lg bg-white p-5 shadow-xl">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Record {recordModal === "polymer_dn" ? "Polymer DN" : "MPS DN"}
+                </h3>
+                <button onClick={() => setRecordModal(null)}>
+                  <X className="h-5 w-5 text-gray-400" />
+                </button>
+              </div>
 
-            <div className="mb-3">
-              <label className="mb-1 block text-xs font-medium text-gray-600">
-                DN Reference Number
-              </label>
-              <input
-                value={recordRef}
-                onChange={(e) => setRecordRef(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
-                placeholder="e.g. DN-1234"
+              <div className="mb-3">
+                <label className="mb-1 block text-xs font-medium text-gray-600">
+                  DN Reference Number
+                </label>
+                <input
+                  value={recordRef}
+                  onChange={(e) => setRecordRef(e.target.value)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+                  placeholder="e.g. DN-1234"
+                />
+              </div>
+
+              <div className="mb-3 max-h-60 overflow-y-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="px-2 py-1.5 text-left font-medium text-gray-500">Item</th>
+                      <th className="w-20 px-2 py-1.5 text-right font-medium text-gray-500">
+                        Ordered
+                      </th>
+                      <th className="w-24 px-2 py-1.5 text-right font-medium text-gray-500">Qty</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {items.map((item) => {
+                      const rawRecordEntry = recordEntries[item.id];
+                      return (
+                        <tr key={item.id}>
+                          <td className="px-2 py-1.5">{item.itemDescription}</td>
+                          <td className="px-2 py-1.5 text-right text-gray-500">
+                            {item.quantityOrdered}
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <input
+                              type="number"
+                              min="0"
+                              value={rawRecordEntry || ""}
+                              onChange={(e) =>
+                                setRecordEntries({ ...recordEntries, [item.id]: e.target.value })
+                              }
+                              className="w-full rounded border border-gray-300 px-2 py-1 text-right text-xs"
+                              placeholder="0"
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mb-3">
+                <label className="mb-1 block text-xs font-medium text-gray-600">Notes</label>
+                <textarea
+                  value={recordNotes}
+                  onChange={(e) => setRecordNotes(e.target.value)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+                  rows={2}
+                  placeholder="Optional notes"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setRecordModal(null)}
+                  className="rounded-md bg-gray-200 px-4 py-1.5 text-xs font-medium text-gray-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleRecordSubmit}
+                  disabled={isRecording}
+                  className="rounded-md bg-[var(--sc-primary,#323288)] px-4 py-1.5 text-xs font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
+                >
+                  {isRecording ? "Recording..." : "Record"}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {viewingUrl &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/10 backdrop-blur-md">
+            <div className="relative h-[90vh] w-[90vw] max-w-5xl rounded-lg bg-white shadow-xl">
+              <button
+                onClick={() => setViewingUrl(null)}
+                className="absolute right-3 top-3 z-10 rounded-full bg-gray-100 p-1.5 hover:bg-gray-200"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <iframe
+                src={viewingUrl}
+                className="h-full w-full rounded-lg"
+                title="Document Viewer"
               />
             </div>
-
-            <div className="mb-3 max-h-60 overflow-y-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b">
-                    <th className="px-2 py-1.5 text-left font-medium text-gray-500">Item</th>
-                    <th className="w-20 px-2 py-1.5 text-right font-medium text-gray-500">
-                      Ordered
-                    </th>
-                    <th className="w-24 px-2 py-1.5 text-right font-medium text-gray-500">Qty</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {items.map((item) => {
-                    const rawRecordEntry = recordEntries[item.id];
-                    return (
-                      <tr key={item.id}>
-                        <td className="px-2 py-1.5">{item.itemDescription}</td>
-                        <td className="px-2 py-1.5 text-right text-gray-500">
-                          {item.quantityOrdered}
-                        </td>
-                        <td className="px-2 py-1.5">
-                          <input
-                            type="number"
-                            min="0"
-                            value={rawRecordEntry || ""}
-                            onChange={(e) =>
-                              setRecordEntries({ ...recordEntries, [item.id]: e.target.value })
-                            }
-                            className="w-full rounded border border-gray-300 px-2 py-1 text-right text-xs"
-                            placeholder="0"
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="mb-3">
-              <label className="mb-1 block text-xs font-medium text-gray-600">Notes</label>
-              <textarea
-                value={recordNotes}
-                onChange={(e) => setRecordNotes(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
-                rows={2}
-                placeholder="Optional notes"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setRecordModal(null)}
-                className="rounded-md bg-gray-200 px-4 py-1.5 text-xs font-medium text-gray-700"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleRecordSubmit}
-                disabled={isRecording}
-                className="rounded-md bg-teal-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-teal-700 disabled:opacity-50"
-              >
-                {isRecording ? "Recording..." : "Record"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {viewingUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
-          <div className="relative h-[90vh] w-[90vw] max-w-5xl rounded-lg bg-white shadow-xl">
-            <button
-              onClick={() => setViewingUrl(null)}
-              className="absolute right-3 top-3 z-10 rounded-full bg-gray-100 p-1.5 hover:bg-gray-200"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            <iframe src={viewingUrl} className="h-full w-full rounded-lg" title="Document Viewer" />
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

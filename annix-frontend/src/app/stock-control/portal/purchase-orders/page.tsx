@@ -59,7 +59,7 @@ export default function PurchaseOrdersPage() {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading purchase orders...</p>
         </div>
       </div>
@@ -71,12 +71,10 @@ export default function PurchaseOrdersPage() {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">
-            {error instanceof Error ? error.message : "Failed to load CPOs"}
-          </p>
+          <p className="text-gray-600">Something went wrong — please try again.</p>
           <button
             onClick={() => refetch()}
-            className="mt-4 px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700"
+            className="mt-4 px-4 py-2 bg-[var(--sc-primary,#323288)] text-white rounded-md hover:bg-[var(--sc-primary-hover,#252560)]"
           >
             Retry
           </button>
@@ -125,7 +123,7 @@ export default function PurchaseOrdersPage() {
             </svg>
             Reports
           </Link>
-          <label className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 cursor-pointer">
+          <label className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)] cursor-pointer">
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
@@ -146,9 +144,9 @@ export default function PurchaseOrdersPage() {
       </div>
 
       {isDragging && (
-        <div className="border-2 border-dashed border-teal-400 bg-teal-50 rounded-lg p-8 text-center">
+        <div className="border-2 border-dashed border-[var(--sc-primary-400,#5b5b9c)] bg-[var(--sc-primary-50,#eeeef6)] rounded-lg p-8 text-center">
           <svg
-            className="mx-auto h-12 w-12 text-teal-400"
+            className="mx-auto h-12 w-12 text-[var(--sc-primary-400,#5b5b9c)]"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -160,7 +158,9 @@ export default function PurchaseOrdersPage() {
               d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
             />
           </svg>
-          <p className="mt-2 text-teal-700 font-medium">Drop your Excel/PDF file here to import</p>
+          <p className="mt-2 text-[var(--sc-primary-hover,#252560)] font-medium">
+            Drop your Excel/PDF file here to import
+          </p>
         </div>
       )}
 
@@ -171,7 +171,7 @@ export default function PurchaseOrdersPage() {
             onClick={() => setActiveTab(tab)}
             className={`px-3 py-2 text-sm font-medium rounded-md capitalize ${
               activeTab === tab
-                ? "bg-teal-100 text-teal-800"
+                ? "bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary-active,#1c1c48)]"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
@@ -258,7 +258,9 @@ export default function PurchaseOrdersPage() {
                       onClick={() => router.push(`/stock-control/portal/purchase-orders/${cpo.id}`)}
                     >
                       <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                        <span className="text-teal-600 font-medium">{cpo.cpoNumber}</span>
+                        <span className="text-[var(--sc-primary,#323288)] font-medium">
+                          {cpo.cpoNumber}
+                        </span>
                       </td>
                       <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
@@ -275,7 +277,7 @@ export default function PurchaseOrdersPage() {
                         <div className="flex items-center space-x-2">
                           <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden w-24">
                             <div
-                              className={`h-full rounded-full ${pct >= 100 ? "bg-blue-500" : "bg-teal-500"}`}
+                              className={`h-full rounded-full ${pct >= 100 ? "bg-blue-500" : "bg-[var(--sc-primary,#323288)]"}`}
                               style={{ width: `${pct}%` }}
                             />
                           </div>

@@ -36,7 +36,10 @@ function MetricCard({
 
   if (href) {
     return (
-      <Link href={href} className="hover:ring-2 hover:ring-teal-500 rounded-lg transition-all">
+      <Link
+        href={href}
+        className="hover:ring-2 hover:ring-[var(--sc-primary,#323288)] rounded-lg transition-all"
+      >
         {content}
       </Link>
     );
@@ -62,7 +65,7 @@ function WidgetContainer({
         <h3 className="text-base sm:text-lg leading-6 font-medium text-gray-900">{title}</h3>
         {badge && (
           <span
-            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeColor ?? "bg-teal-100 text-teal-800"}`}
+            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeColor ?? "bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary-active,#1c1c48)]"}`}
           >
             {badge}
           </span>
@@ -85,7 +88,7 @@ export function StoremanWidget({ data }: StoremanWidgetProps) {
           label="Incoming Deliveries"
           value={data.incomingDeliveries}
           href="/stock-control/portal/deliveries"
-          colorClass="bg-teal-400"
+          colorClass="bg-[var(--sc-primary-400,#5b5b9c)]"
         />
         <MetricCard
           label="Dispatch Ready"
@@ -120,7 +123,11 @@ export function AccountsWidget({ data }: AccountsWidgetProps) {
     { label: "Extraction", value: data.pendingExtraction, colorClass: "bg-gray-400" },
     { label: "Processing", value: data.processing, colorClass: "bg-blue-400" },
     { label: "Clarification", value: data.needsClarification, colorClass: "bg-amber-400" },
-    { label: "Approval", value: data.awaitingApproval, colorClass: "bg-teal-400" },
+    {
+      label: "Approval",
+      value: data.awaitingApproval,
+      colorClass: "bg-[var(--sc-primary-400,#5b5b9c)]",
+    },
     { label: "Complete", value: data.completedThisMonth, colorClass: "bg-emerald-400" },
   ];
 
@@ -250,7 +257,11 @@ export function ViewerWidget({ data }: ViewerWidgetProps) {
     <WidgetContainer title="Stock Summary">
       <div className="grid grid-cols-3 gap-3 sm:gap-4">
         <MetricCard label="Active Jobs" value={data.activeJobs} colorClass="bg-blue-400" />
-        <MetricCard label="Total Items" value={data.totalItems} colorClass="bg-teal-400" />
+        <MetricCard
+          label="Total Items"
+          value={data.totalItems}
+          colorClass="bg-[var(--sc-primary-400,#5b5b9c)]"
+        />
         <MetricCard
           label="Low Stock"
           value={data.lowStockCount}

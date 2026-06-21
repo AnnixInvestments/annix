@@ -27,10 +27,10 @@ export default function ResendVerificationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-[var(--sc-primary-active,#1c1c48)] via-[var(--sc-primary-active,#1c1c48)] to-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-teal-500 mb-4">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[var(--sc-primary,#323288)] mb-4">
             <svg
               className="w-10 h-10 text-white"
               fill="none"
@@ -46,7 +46,7 @@ export default function ResendVerificationPage() {
             </svg>
           </div>
           <h1 className="text-3xl font-bold text-white">Resend Verification</h1>
-          <p className="mt-2 text-xl text-teal-200">
+          <p className="mt-2 text-xl text-[var(--sc-primary-200,#adadcf)]">
             Enter your email to receive a new verification link
           </p>
         </div>
@@ -76,7 +76,7 @@ export default function ResendVerificationPage() {
               </p>
               <Link
                 href="/stock-control/login"
-                className="mt-6 w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 transition-colors"
+                className="mt-6 w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)] transition-colors"
               >
                 Back to Sign In
               </Link>
@@ -95,7 +95,7 @@ export default function ResendVerificationPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)]"
                   placeholder="user@example.com"
                 />
               </div>
@@ -109,7 +109,7 @@ export default function ResendVerificationPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--sc-primary,#323288)] disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
                 {isSubmitting ? "Sending..." : "Resend Verification Email"}
               </button>
@@ -118,7 +118,7 @@ export default function ResendVerificationPage() {
                 <p className="text-sm text-gray-600">
                   <Link
                     href="/stock-control/login"
-                    className="font-medium text-teal-600 hover:text-teal-500"
+                    className="font-medium text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary,#323288)]"
                   >
                     Back to Sign In
                   </Link>
@@ -127,7 +127,7 @@ export default function ResendVerificationPage() {
                   Don&apos;t have an account?{" "}
                   <Link
                     href="/stock-control/register"
-                    className="font-medium text-teal-600 hover:text-teal-500"
+                    className="font-medium text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary,#323288)]"
                   >
                     Register here
                   </Link>
@@ -138,7 +138,7 @@ export default function ResendVerificationPage() {
         </div>
 
         <div className="mt-6 text-center">
-          <Link href="/" className="text-sm text-teal-200 hover:text-white">
+          <Link href="/" className="text-sm text-[var(--sc-primary-200,#adadcf)] hover:text-white">
             Back to Home
           </Link>
         </div>

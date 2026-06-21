@@ -237,7 +237,7 @@ export function PwaProvider(props: { children: React.ReactNode }) {
 
       {showUpdatePrompt && (
         <div className="fixed top-4 left-4 right-4 z-[60] md:left-auto md:right-4 md:max-w-sm">
-          <div className="bg-teal-600 text-white rounded-xl shadow-xl p-4">
+          <div className="bg-[var(--sc-primary,#323288)] text-white rounded-xl shadow-xl p-4">
             <div className="flex items-start space-x-3">
               <div className="flex-shrink-0">
                 <svg
@@ -256,19 +256,19 @@ export function PwaProvider(props: { children: React.ReactNode }) {
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold">Update Available</h3>
-                <p className="text-sm text-teal-100 mt-1">
+                <p className="text-sm text-[var(--sc-primary-100,#d6d6e9)] mt-1">
                   A new version of Stock Control is available.
                 </p>
                 <div className="flex items-center space-x-2 mt-3">
                   <button
                     onClick={handleUpdate}
-                    className="px-3 py-1.5 bg-white text-teal-600 text-sm font-medium rounded-lg hover:bg-teal-50 transition-colors"
+                    className="px-3 py-1.5 bg-white text-[var(--sc-primary,#323288)] text-sm font-medium rounded-lg hover:bg-[var(--sc-primary-50,#eeeef6)] transition-colors"
                   >
                     Update Now
                   </button>
                   <button
                     onClick={handleDismissUpdate}
-                    className="px-3 py-1.5 text-teal-100 text-sm font-medium hover:text-white transition-colors"
+                    className="px-3 py-1.5 text-[var(--sc-primary-100,#d6d6e9)] text-sm font-medium hover:text-white transition-colors"
                   >
                     Later
                   </button>
@@ -276,7 +276,7 @@ export function PwaProvider(props: { children: React.ReactNode }) {
               </div>
               <button
                 onClick={handleDismissUpdate}
-                className="flex-shrink-0 p-1 text-teal-200 hover:text-white"
+                className="flex-shrink-0 p-1 text-[var(--sc-primary-200,#adadcf)] hover:text-white"
               >
                 <svg
                   className="w-5 h-5"
@@ -298,9 +298,9 @@ export function PwaProvider(props: { children: React.ReactNode }) {
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 p-4">
             <div className="flex items-start space-x-4">
               <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-teal-100 dark:bg-teal-900/30 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-[var(--sc-primary-100,#d6d6e9)] dark:bg-[var(--sc-primary-active,#1c1c48)]/30 rounded-xl flex items-center justify-center">
                   <svg
-                    className="w-6 h-6 text-teal-600 dark:text-teal-400"
+                    className="w-6 h-6 text-[var(--sc-primary,#323288)] dark:text-[var(--sc-primary-400,#5b5b9c)]"
                     fill="none"
                     viewBox="0 0 24 24"
                     strokeWidth={1.5}
@@ -327,7 +327,7 @@ export function PwaProvider(props: { children: React.ReactNode }) {
                   {!isIos && (
                     <button
                       onClick={handleInstall}
-                      className="px-3 py-1.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
+                      className="px-3 py-1.5 bg-[var(--sc-primary,#323288)] text-white text-sm font-medium rounded-lg hover:bg-[var(--sc-primary-hover,#252560)] transition-colors"
                     >
                       Install
                     </button>

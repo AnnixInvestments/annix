@@ -2,6 +2,7 @@
 
 import { keys } from "es-toolkit/compat";
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { DateInput } from "@/app/components/ui/DateInput";
 import type {
   SupplierDocument,
@@ -400,137 +401,139 @@ export default function SupplierDocumentsPage() {
         </div>
       )}
 
-      {showUploadModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                Upload Supplier Document
-              </h2>
+      {showUploadModal &&
+        createPortal(
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[9999]">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+              <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  Upload Supplier Document
+                </h2>
+              </div>
+              <form onSubmit={handleUpload} className="px-6 py-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Supplier *
+                  </label>
+                  <select
+                    required
+                    value={uploadSupplierId}
+                    onChange={(e) => setUploadSupplierId(e.target.value)}
+                    className="block w-full rounded-md border-gray-300 text-sm"
+                  >
+                    <option value="">Select a supplier…</option>
+                    {suppliers.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Document Type *
+                  </label>
+                  <select
+                    required
+                    value={uploadDocType}
+                    onChange={(e) => setUploadDocType(e.target.value as SupplierDocumentType)}
+                    className="block w-full rounded-md border-gray-300 text-sm"
+                  >
+                    {DOC_TYPE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    File *
+                  </label>
+                  <input
+                    type="file"
+                    required
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      const picked = files ? files[0] : null;
+                      setUploadFile(picked || null);
+                    }}
+                    className="block w-full text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Document Number
+                  </label>
+                  <input
+                    type="text"
+                    value={uploadDocNumber}
+                    onChange={(e) => setUploadDocNumber(e.target.value)}
+                    className="block w-full rounded-md border-gray-300 text-sm"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Issued Date
+                    </label>
+                    <DateInput
+                      value={uploadIssuedAt}
+                      onChange={(value) => setUploadIssuedAt(value)}
+                      className="block w-full rounded-md border-gray-300 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Expires Date
+                    </label>
+                    <DateInput
+                      value={uploadExpiresAt}
+                      onChange={(value) => setUploadExpiresAt(value)}
+                      className="block w-full rounded-md border-gray-300 text-sm"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Notes
+                  </label>
+                  <textarea
+                    value={uploadNotes}
+                    onChange={(e) => setUploadNotes(e.target.value)}
+                    rows={2}
+                    className="block w-full rounded-md border-gray-300 text-sm"
+                  />
+                </div>
+                {uploadError && (
+                  <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+                    {uploadError}
+                  </div>
+                )}
+                <div className="flex justify-end space-x-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowUploadModal(false);
+                      resetUploadForm();
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={uploading}
+                    className="px-4 py-2 text-sm font-medium text-white bg-[#323288] hover:bg-[#4a4da3] disabled:bg-gray-400 rounded-md"
+                  >
+                    {uploading ? "Uploading…" : "Upload"}
+                  </button>
+                </div>
+              </form>
             </div>
-            <form onSubmit={handleUpload} className="px-6 py-4 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Supplier *
-                </label>
-                <select
-                  required
-                  value={uploadSupplierId}
-                  onChange={(e) => setUploadSupplierId(e.target.value)}
-                  className="block w-full rounded-md border-gray-300 text-sm"
-                >
-                  <option value="">Select a supplier…</option>
-                  {suppliers.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Document Type *
-                </label>
-                <select
-                  required
-                  value={uploadDocType}
-                  onChange={(e) => setUploadDocType(e.target.value as SupplierDocumentType)}
-                  className="block w-full rounded-md border-gray-300 text-sm"
-                >
-                  {DOC_TYPE_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  File *
-                </label>
-                <input
-                  type="file"
-                  required
-                  onChange={(e) => {
-                    const files = e.target.files;
-                    const picked = files ? files[0] : null;
-                    setUploadFile(picked || null);
-                  }}
-                  className="block w-full text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Document Number
-                </label>
-                <input
-                  type="text"
-                  value={uploadDocNumber}
-                  onChange={(e) => setUploadDocNumber(e.target.value)}
-                  className="block w-full rounded-md border-gray-300 text-sm"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Issued Date
-                  </label>
-                  <DateInput
-                    value={uploadIssuedAt}
-                    onChange={(value) => setUploadIssuedAt(value)}
-                    className="block w-full rounded-md border-gray-300 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Expires Date
-                  </label>
-                  <DateInput
-                    value={uploadExpiresAt}
-                    onChange={(value) => setUploadExpiresAt(value)}
-                    className="block w-full rounded-md border-gray-300 text-sm"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Notes
-                </label>
-                <textarea
-                  value={uploadNotes}
-                  onChange={(e) => setUploadNotes(e.target.value)}
-                  rows={2}
-                  className="block w-full rounded-md border-gray-300 text-sm"
-                />
-              </div>
-              {uploadError && (
-                <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
-                  {uploadError}
-                </div>
-              )}
-              <div className="flex justify-end space-x-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowUploadModal(false);
-                    resetUploadForm();
-                  }}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={uploading}
-                  className="px-4 py-2 text-sm font-medium text-white bg-[#323288] hover:bg-[#4a4da3] disabled:bg-gray-400 rounded-md"
-                >
-                  {uploading ? "Uploading…" : "Upload"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
       {ConfirmDialog}
     </div>
   );

@@ -1396,7 +1396,8 @@ export function calculateCuttingPlan(
     (acc, item) => {
       const id = item.id;
       const itemDescription = item.itemDescription;
-      const desc = itemDescription || item.itemCode || "";
+      const itemCode = item.itemCode;
+      const desc = itemDescription || itemCode || "";
       const quantity = item.quantity;
       const qty = quantity || 1;
       const m2 = item.m2 ? Number(item.m2) : null;

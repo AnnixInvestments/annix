@@ -85,7 +85,7 @@ function SettingsIcon() {
 }
 
 const LINK_CLASS =
-  "bg-white shadow-sm border border-gray-200 rounded-lg p-4 hover:ring-2 hover:ring-teal-500 transition-all text-center";
+  "bg-white shadow-sm border border-gray-200 rounded-lg p-4 hover:ring-2 hover:ring-[var(--sc-primary,#323288)] transition-all text-center";
 
 export function QuickLinksSection({ navItemVisible }: QuickLinksSectionProps) {
   return (

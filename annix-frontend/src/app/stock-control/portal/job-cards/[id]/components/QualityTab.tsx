@@ -342,7 +342,7 @@ export function QualityTab(props: QualityTabProps) {
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setActiveForm("blast-profile")}
-                    className="rounded-md bg-sky-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-800"
+                    className="rounded-md bg-[var(--sc-primary,#323288)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)]"
                   >
                     + Blast Profile
                   </button>
@@ -356,7 +356,7 @@ export function QualityTab(props: QualityTabProps) {
                           setPaintProfileCoatLabel(label);
                           setActiveForm("paint-profile");
                         }}
-                        className="rounded-md bg-sky-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-800"
+                        className="rounded-md bg-[var(--sc-primary,#323288)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)]"
                       >
                         + Paint Profile ({label})
                       </button>
@@ -364,7 +364,7 @@ export function QualityTab(props: QualityTabProps) {
                   })}
                   <button
                     onClick={() => setActiveForm("shore-hardness")}
-                    className="rounded-md bg-sky-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-800"
+                    className="rounded-md bg-[var(--sc-primary,#323288)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)]"
                   >
                     + Shore Hardness
                   </button>
@@ -415,7 +415,7 @@ export function QualityTab(props: QualityTabProps) {
                               setEditingBlast(rec);
                               setActiveForm("blast-profile");
                             }}
-                            className="text-xs text-teal-600 hover:text-teal-800"
+                            className="text-xs text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                           >
                             Edit
                           </button>
@@ -441,7 +441,7 @@ export function QualityTab(props: QualityTabProps) {
                         className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-3 sm:px-5 py-3 hover:bg-gray-50"
                       >
                         <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
-                          <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
+                          <span className="inline-flex items-center rounded-full bg-[var(--sc-primary-100,#d6d6e9)] px-2.5 py-0.5 text-xs font-medium text-[var(--sc-primary-active,#1c1c48)]">
                             Paint
                           </span>
                           <span className="text-sm font-medium text-gray-900">{label}</span>
@@ -472,7 +472,7 @@ export function QualityTab(props: QualityTabProps) {
                               setPaintProfileCoatLabel(label);
                               setActiveForm("paint-profile");
                             }}
-                            className="text-xs text-teal-600 hover:text-teal-800"
+                            className="text-xs text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                           >
                             Edit
                           </button>
@@ -519,7 +519,7 @@ export function QualityTab(props: QualityTabProps) {
                               setEditingShoreHardness(rec);
                               setActiveForm("shore-hardness");
                             }}
-                            className="text-xs text-teal-600 hover:text-teal-800"
+                            className="text-xs text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                           >
                             Edit
                           </button>
@@ -581,7 +581,7 @@ export function QualityTab(props: QualityTabProps) {
                               setEditingDft(rec);
                               setActiveForm("dft");
                             }}
-                            className="text-xs text-teal-600 hover:text-teal-800"
+                            className="text-xs text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                           >
                             Edit
                           </button>
@@ -657,7 +657,7 @@ export function QualityTab(props: QualityTabProps) {
                       </div>
                       <button
                         onClick={() => handleViewCertificate(cert.id)}
-                        className="self-start text-sm text-teal-600 hover:text-teal-800 shrink-0"
+                        className="self-start text-sm text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] shrink-0"
                       >
                         View
                       </button>
@@ -691,7 +691,7 @@ export function QualityTab(props: QualityTabProps) {
                       className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-3 sm:px-5 py-3 hover:bg-gray-50"
                     >
                       <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
-                        <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
+                        <span className="inline-flex items-center rounded-full bg-[var(--sc-primary-100,#d6d6e9)] px-2.5 py-0.5 text-xs font-medium text-[var(--sc-primary-active,#1c1c48)]">
                           CAL
                         </span>
                         <span className="text-sm font-medium text-gray-900">

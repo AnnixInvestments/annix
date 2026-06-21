@@ -4,6 +4,7 @@ import type { SageExportInvoice } from "./sage-invoice";
 export interface SageAdapterContext {
   companyId: number | null;
   appKey: string;
+  userId?: number | null;
 }
 
 export interface SageExportResult {

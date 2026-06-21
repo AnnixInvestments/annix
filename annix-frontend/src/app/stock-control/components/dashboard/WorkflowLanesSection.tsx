@@ -95,9 +95,9 @@ function WorkshopLane({
   const requisitionsOrdered = lanes?.workshop.requisitionsOrdered;
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      <div className="px-4 py-3 bg-teal-600">
+      <div className="px-4 py-3 bg-[var(--sc-primary,#323288)]">
         <h2 className="text-sm font-semibold text-white uppercase tracking-wide">Workshop</h2>
-        <p className="text-xs text-teal-200">Job Cards & Processing</p>
+        <p className="text-xs text-[var(--sc-primary-200,#adadcf)]">Job Cards & Processing</p>
       </div>
       <div className="p-3 space-y-1">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 pt-1">
@@ -278,7 +278,7 @@ export function WorkflowLanesSection({
 
         {showWorkshop &&
           (lanesLoading ? (
-            <LaneSkeleton title="Workshop" color="bg-teal-600" />
+            <LaneSkeleton title="Workshop" color="bg-[var(--sc-primary,#323288)]" />
           ) : (
             <WorkshopLane lanes={lanes} stepConfigs={configs} />
           ))}

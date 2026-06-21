@@ -243,7 +243,7 @@ export default function PositectorPage() {
                         {status?.online && (
                           <button
                             onClick={() => handleBrowseBatches(device)}
-                            className="text-indigo-600 hover:text-indigo-800"
+                            className="text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                           >
                             Batches
                           </button>
@@ -704,7 +704,7 @@ function AddDeviceModal({ onClose, onAdded }: { onClose: () => void; onAdded: ()
                 <button
                   type="button"
                   onClick={handleBluetoothScan}
-                  className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
+                  className="rounded-md bg-[var(--sc-primary,#323288)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)]"
                 >
                   Bluetooth
                 </button>

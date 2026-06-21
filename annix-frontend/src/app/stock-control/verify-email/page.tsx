@@ -140,10 +140,10 @@ function VerifyEmailContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-[var(--sc-primary-active,#1c1c48)] via-[var(--sc-primary-active,#1c1c48)] to-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-teal-500 mb-4">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[var(--sc-primary,#323288)] mb-4">
             {status === "verifying" && (
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white"></div>
             )}
@@ -185,7 +185,9 @@ function VerifyEmailContent() {
             {status === "error" && "Verification failed"}
           </h1>
           {status === "branding" && (
-            <p className="mt-2 text-teal-200">Choose how you'd like your portal to look</p>
+            <p className="mt-2 text-[var(--sc-primary-200,#adadcf)]">
+              Choose how you'd like your portal to look
+            </p>
           )}
         </div>
       </div>
@@ -212,13 +214,13 @@ function VerifyEmailContent() {
                 }}
                 className={`relative flex flex-col items-center p-6 rounded-lg border-2 transition-all ${
                   brandingSelection === "annix"
-                    ? "border-teal-500 bg-teal-50 ring-2 ring-teal-500"
-                    : "border-gray-200 hover:border-teal-300 hover:bg-gray-50"
+                    ? "border-[var(--sc-primary,#323288)] bg-[var(--sc-primary-50,#eeeef6)] ring-2 ring-[var(--sc-primary,#323288)]"
+                    : "border-gray-200 hover:border-[var(--sc-primary-300,#8484b5)] hover:bg-gray-50"
                 }`}
               >
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-teal-100 mb-3">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-[var(--sc-primary-100,#d6d6e9)] mb-3">
                   <svg
-                    className="w-7 h-7 text-teal-600"
+                    className="w-7 h-7 text-[var(--sc-primary,#323288)]"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -237,7 +239,11 @@ function VerifyEmailContent() {
                 </p>
                 {brandingSelection === "annix" && (
                   <div className="absolute top-3 right-3">
-                    <svg className="w-5 h-5 text-teal-500" fill="currentColor" viewBox="0 0 20 20">
+                    <svg
+                      className="w-5 h-5 text-[var(--sc-primary,#323288)]"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
                       <path
                         fillRule="evenodd"
                         d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
@@ -256,8 +262,8 @@ function VerifyEmailContent() {
                 }}
                 className={`relative flex flex-col items-center p-6 rounded-lg border-2 transition-all ${
                   brandingSelection === "custom"
-                    ? "border-teal-500 bg-teal-50 ring-2 ring-teal-500"
-                    : "border-gray-200 hover:border-teal-300 hover:bg-gray-50"
+                    ? "border-[var(--sc-primary,#323288)] bg-[var(--sc-primary-50,#eeeef6)] ring-2 ring-[var(--sc-primary,#323288)]"
+                    : "border-gray-200 hover:border-[var(--sc-primary-300,#8484b5)] hover:bg-gray-50"
                 }`}
               >
                 <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-purple-100 mb-3">
@@ -281,7 +287,11 @@ function VerifyEmailContent() {
                 </p>
                 {brandingSelection === "custom" && (
                   <div className="absolute top-3 right-3">
-                    <svg className="w-5 h-5 text-teal-500" fill="currentColor" viewBox="0 0 20 20">
+                    <svg
+                      className="w-5 h-5 text-[var(--sc-primary,#323288)]"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
                       <path
                         fillRule="evenodd"
                         d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
@@ -308,7 +318,7 @@ function VerifyEmailContent() {
                       setWebsiteUrl(e.target.value);
                       setBrandingError("");
                     }}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] text-sm"
                   />
                 </div>
                 <label className="flex items-start gap-3 cursor-pointer">
@@ -319,7 +329,7 @@ function VerifyEmailContent() {
                       setBrandingAuthorized(e.target.checked);
                       setBrandingError("");
                     }}
-                    className="mt-0.5 h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
+                    className="mt-0.5 h-4 w-4 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] border-gray-300 rounded"
                   />
                   <span className="text-sm text-gray-600">
                     I authorize ASCA to access my website to extract branding elements (logo,
@@ -335,7 +345,7 @@ function VerifyEmailContent() {
               type="button"
               onClick={handleContinue}
               disabled={!brandingSelection || saving}
-              className="mt-6 w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="mt-6 w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--sc-primary,#323288)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving && brandingSelection === "custom" && brandingAuthorized
                 ? "Analyzing your brand..."
@@ -354,7 +364,7 @@ function VerifyEmailContent() {
               </p>
               <Link
                 href={loginUrl}
-                className="mt-6 w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-colors"
+                className="mt-6 w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--sc-primary,#323288)] transition-colors"
               >
                 Sign in to your account
               </Link>
@@ -369,13 +379,13 @@ function VerifyEmailContent() {
               <div className="mt-6 space-y-3">
                 <Link
                   href="/stock-control/register"
-                  className="w-full flex justify-center py-2 px-4 border border-teal-600 rounded-md shadow-sm text-sm font-medium text-teal-600 bg-white hover:bg-teal-50 transition-colors"
+                  className="w-full flex justify-center py-2 px-4 border border-[var(--sc-primary,#323288)] rounded-md shadow-sm text-sm font-medium text-[var(--sc-primary,#323288)] bg-white hover:bg-[var(--sc-primary-50,#eeeef6)] transition-colors"
                 >
                   Register again
                 </Link>
                 <Link
                   href={loginUrl}
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 transition-colors"
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)] transition-colors"
                 >
                   Go to sign in
                 </Link>
@@ -385,7 +395,7 @@ function VerifyEmailContent() {
         )}
 
         <div className="mt-6 text-center">
-          <Link href="/" className="text-sm text-teal-200 hover:text-white">
+          <Link href="/" className="text-sm text-[var(--sc-primary-200,#adadcf)] hover:text-white">
             Back to Home
           </Link>
         </div>
@@ -398,9 +408,9 @@ export default function StockControlVerifyEmailPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 flex items-center justify-center">
+        <div className="min-h-screen bg-gradient-to-br from-[var(--sc-primary-active,#1c1c48)] via-[var(--sc-primary-active,#1c1c48)] to-slate-900 flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-300 mx-auto"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary-300,#8484b5)] mx-auto"></div>
             <p className="mt-4 text-white">Loading...</p>
           </div>
         </div>

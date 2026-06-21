@@ -15,6 +15,11 @@ declare module "./base" {
     updateRubberBondingAgent(id: number, input: UpdateRubberBondingAgentInput): Promise<unknown>;
     deleteRubberBondingAgent(id: number): Promise<{ success: true }>;
     seedRubberBondingAgents(): Promise<{ seeded: number }>;
+    enrichRubberBondingCoverage(): Promise<{
+      enriched: number;
+      checked: number;
+      unmatched: string[];
+    }>;
     importRubberBondingAgents(file: File): Promise<RubberBondingAgentImportPreview>;
     commitRubberBondingAgentImport(
       input: CommitRubberBondingAgentImportInput,
@@ -48,6 +53,10 @@ proto.deleteRubberBondingAgent = async function (id) {
 
 proto.seedRubberBondingAgents = async function () {
   return this.request("/stock-control/rubber-bonding-agents/seed", { method: "POST" });
+};
+
+proto.enrichRubberBondingCoverage = async function () {
+  return this.request("/stock-control/rubber-bonding-agents/enrich-coverage", { method: "POST" });
 };
 
 proto.importRubberBondingAgents = async function (file) {

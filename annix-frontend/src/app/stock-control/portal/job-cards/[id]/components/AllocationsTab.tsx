@@ -267,7 +267,7 @@ export function AllocationsTab(props: AllocationsTabProps) {
                         stockItemId: parseInt(e.target.value, 10) || 0,
                       })
                     }
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                   >
                     <option value={0}>Select an item...</option>
                     {stockItems.map((item) => (
@@ -289,7 +289,7 @@ export function AllocationsTab(props: AllocationsTabProps) {
                         quantityUsed: parseInt(e.target.value, 10) || 1,
                       })
                     }
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                   />
                 </div>
                 <div>
@@ -303,7 +303,7 @@ export function AllocationsTab(props: AllocationsTabProps) {
                       })
                     }
                     rows={2}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                   />
                 </div>
                 {activeStaff.length > 0 && (
@@ -319,7 +319,7 @@ export function AllocationsTab(props: AllocationsTabProps) {
                           staffMemberId: parseInt(e.target.value, 10) || 0,
                         })
                       }
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                     >
                       <option value={0}>None</option>
                       {activeStaff.map((member) => (
@@ -349,7 +349,7 @@ export function AllocationsTab(props: AllocationsTabProps) {
                 <button
                   onClick={onSubmitAllocate}
                   disabled={isAllocating || !allocateForm.stockItemId}
-                  className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] border border-transparent rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   {isAllocating ? "Allocating..." : "Allocate"}
                 </button>

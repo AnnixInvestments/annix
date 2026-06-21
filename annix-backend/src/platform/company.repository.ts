@@ -13,8 +13,13 @@ export abstract class CompanyRepository extends CrudRepository<Company> {
     companyType: CompanyType,
     namePattern: string | null,
     limit: number,
+    ownerCompanyId?: number,
   ): Promise<Company[]>;
-  abstract findOneByIdAndType(id: number, companyType: CompanyType): Promise<Company | null>;
+  abstract findOneByIdAndType(
+    id: number,
+    companyType: CompanyType,
+    ownerCompanyId?: number,
+  ): Promise<Company | null>;
   abstract findByIds(ids: number[]): Promise<Company[]>;
   abstract findByRegistrationNumber(registrationNumber: string): Promise<Company | null>;
 }

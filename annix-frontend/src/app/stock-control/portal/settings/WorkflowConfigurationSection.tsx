@@ -610,7 +610,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
             e.stopPropagation();
             setShowAddStep(!showAddStep);
           }}
-          className="text-xs text-teal-600 hover:text-teal-800 font-medium"
+          className="text-xs text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] font-medium"
         >
           + Add Step
         </button>
@@ -640,7 +640,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                     value={newStepLabel}
                     onChange={(e) => setNewStepLabel(e.target.value)}
                     placeholder="Step name"
-                    className="px-2 py-1.5 text-sm border border-gray-300 rounded w-40 focus:ring-teal-500 focus:border-teal-500"
+                    className="px-2 py-1.5 text-sm border border-gray-300 rounded w-40 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                   />
                 </div>
                 <div>
@@ -648,7 +648,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                   <select
                     value={newStepIsBackground ? "bg" : "fg"}
                     onChange={(e) => setNewStepIsBackground(e.target.value === "bg")}
-                    className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
+                    className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                   >
                     <option value="fg">Foreground</option>
                     <option value="bg">Background</option>
@@ -661,7 +661,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                       <select
                         value={newStepTriggerAfter}
                         onChange={(e) => setNewStepTriggerAfter(e.target.value)}
-                        className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
+                        className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                       >
                         <option value="">Select step...</option>
                         {stepConfigs.map((s) => (
@@ -676,7 +676,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                       <select
                         value={newStepLineType}
                         onChange={(e) => setNewStepLineType(e.target.value as "connect" | "loop")}
-                        className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
+                        className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                       >
                         <option value="connect">Connect (amber)</option>
                         <option value="loop">Loop (blue)</option>
@@ -689,7 +689,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                     type="button"
                     onClick={handleAddStep}
                     disabled={saving || !newStepLabel.trim()}
-                    className="px-3 py-1.5 text-sm bg-teal-600 text-white rounded hover:bg-teal-700 disabled:opacity-50"
+                    className="px-3 py-1.5 text-sm bg-[var(--sc-primary,#323288)] text-white rounded hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
                   >
                     Add
                   </button>
@@ -746,7 +746,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                       <tr
                         className={`border-b border-gray-100 transition-colors ${
                           !isBg
-                            ? "bg-teal-50/60 hover:bg-teal-50"
+                            ? "bg-[var(--sc-primary-50,#eeeef6)]/60 hover:bg-[var(--sc-primary-50,#eeeef6)]"
                             : step.branchColor === "#3b82f6"
                               ? "bg-blue-50/50 hover:bg-blue-50/80"
                               : step.branchColor === "#22c55e"
@@ -756,7 +756,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                   : step.branchColor === "#ef4444"
                                     ? "bg-red-50/50 hover:bg-red-50/80"
                                     : "bg-amber-50/40 hover:bg-amber-50/70"
-                        } ${step.branchColor ? "border-l-2" : !isBg ? "border-l-2 border-l-teal-400" : "border-l-2 border-l-amber-400"}`}
+                        } ${step.branchColor ? "border-l-2" : !isBg ? "border-l-2 border-l-[var(--sc-primary-400,#5b5b9c)]" : "border-l-2 border-l-amber-400"}`}
                         style={step.branchColor ? { borderLeftColor: step.branchColor } : undefined}
                       >
                         {/* Order */}
@@ -767,7 +767,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                 <button
                                   type="button"
                                   onClick={() => handleMoveStep(step.key, "up")}
-                                  className="text-gray-300 hover:text-teal-600 leading-none"
+                                  className="text-gray-300 hover:text-[var(--sc-primary,#323288)] leading-none"
                                 >
                                   <svg
                                     className="w-3 h-3"
@@ -791,7 +791,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                 <button
                                   type="button"
                                   onClick={() => handleMoveStep(step.key, "down")}
-                                  className="text-gray-300 hover:text-teal-600 leading-none"
+                                  className="text-gray-300 hover:text-[var(--sc-primary,#323288)] leading-none"
                                 >
                                   <svg
                                     className="w-3 h-3"
@@ -827,7 +827,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                               }}
                               onBlur={() => saveField(step.key, "label", editValue)}
                               autoFocus
-                              className="px-1.5 py-0.5 border border-teal-400 rounded text-xs w-full max-w-[140px] focus:ring-1 focus:ring-teal-500"
+                              className="px-1.5 py-0.5 border border-[var(--sc-primary-400,#5b5b9c)] rounded text-xs w-full max-w-[140px] focus:ring-1 focus:ring-[var(--sc-primary,#323288)]"
                             />
                           ) : (
                             <button
@@ -836,7 +836,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                 setEditField({ key: step.key, field: "label" });
                                 setEditValue(step.label);
                               }}
-                              className="font-medium text-gray-900 hover:text-teal-600 text-left truncate max-w-[140px] block"
+                              className="font-medium text-gray-900 hover:text-[var(--sc-primary,#323288)] text-left truncate max-w-[140px] block"
                               title={`Click to rename: ${step.label}`}
                             >
                               {step.label}
@@ -850,8 +850,8 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                             onClick={() => handleToggleBackground(step.key, !isBg)}
                             className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
                               isBg
-                                ? "bg-amber-100 text-amber-700 hover:bg-teal-100 hover:text-teal-700"
-                                : "bg-teal-50 text-teal-600 hover:bg-amber-100 hover:text-amber-700"
+                                ? "bg-amber-100 text-amber-700 hover:bg-[var(--sc-primary-100,#d6d6e9)] hover:text-[var(--sc-primary-hover,#252560)]"
+                                : "bg-[var(--sc-primary-50,#eeeef6)] text-[var(--sc-primary,#323288)] hover:bg-amber-100 hover:text-amber-700"
                             }`}
                             title={`Click to make ${isBg ? "foreground" : "background"}`}
                           >
@@ -867,7 +867,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                               handleUpdateFollows(step.key, value || null);
                             }}
                             disabled={saving}
-                            className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-600 bg-white cursor-pointer max-w-[120px] focus:ring-teal-500 focus:border-teal-500"
+                            className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-600 bg-white cursor-pointer max-w-[120px] focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                           >
                             <option value="">None</option>
                             {allSteps
@@ -890,7 +890,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                 handleUpdateBranchColor(step.key, rawValue || null);
                               }}
                               disabled={saving}
-                              className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-600 bg-white cursor-pointer focus:ring-teal-500 focus:border-teal-500"
+                              className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-600 bg-white cursor-pointer focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                               style={
                                 step.branchColor
                                   ? { borderColor: step.branchColor, color: step.branchColor }
@@ -924,7 +924,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                               }}
                               onBlur={() => saveField(step.key, "actionLabel", editValue)}
                               autoFocus
-                              className="px-1.5 py-0.5 border border-teal-400 rounded text-xs w-full max-w-[120px] focus:ring-1 focus:ring-teal-500"
+                              className="px-1.5 py-0.5 border border-[var(--sc-primary-400,#5b5b9c)] rounded text-xs w-full max-w-[120px] focus:ring-1 focus:ring-[var(--sc-primary,#323288)]"
                             />
                           ) : (
                             <button
@@ -934,7 +934,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                 setEditField({ key: step.key, field: "actionLabel" });
                                 setEditValue(rawActionLabel || "");
                               }}
-                              className="text-gray-600 hover:text-teal-600 text-left truncate max-w-[120px] block"
+                              className="text-gray-600 hover:text-[var(--sc-primary,#323288)] text-left truncate max-w-[120px] block"
                               title={actionLabel || "Click to set action label"}
                             >
                               {actionLabel || <span className="text-gray-300 italic">--</span>}
@@ -956,7 +956,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                     entries(phaseLabels).map(([phase, label]) => (
                                       <span
                                         key={`phase-${phase}`}
-                                        className="inline-flex items-center px-1.5 py-0.5 rounded border text-[10px] font-medium bg-teal-100 text-teal-700 border-teal-300"
+                                        className="inline-flex items-center px-1.5 py-0.5 rounded border text-[10px] font-medium bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary-hover,#252560)] border-[var(--sc-primary-300,#8484b5)]"
                                         title={`Phase ${phase} action`}
                                       >
                                         P{phase}: {label}
@@ -1006,7 +1006,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                         setEditingOutcomes((outcomes || []).map((o) => ({ ...o })));
                                       }
                                     }}
-                                    className="text-[10px] text-gray-400 hover:text-teal-600"
+                                    className="text-[10px] text-gray-400 hover:text-[var(--sc-primary,#323288)]"
                                     title="Edit"
                                   >
                                     edit
@@ -1031,7 +1031,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                     },
                                   ]);
                                 }}
-                                className="text-[10px] text-gray-400 hover:text-teal-600 border border-dashed border-gray-300 hover:border-teal-400 rounded px-1.5 py-0.5 transition-colors"
+                                className="text-[10px] text-gray-400 hover:text-[var(--sc-primary,#323288)] border border-dashed border-gray-300 hover:border-[var(--sc-primary-400,#5b5b9c)] rounded px-1.5 py-0.5 transition-colors"
                                 title="Add branching outcomes (e.g. accept/reject)"
                               >
                                 + Add Paths
@@ -1050,7 +1050,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                               }
                             }}
                             disabled={saving}
-                            className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-600 bg-white cursor-pointer max-w-[110px] focus:ring-teal-500 focus:border-teal-500"
+                            className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-600 bg-white cursor-pointer max-w-[110px] focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                           >
                             <option value="">--</option>
                             {matrixUsers.map((u) => (
@@ -1071,7 +1071,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                               )
                             }
                             disabled={saving}
-                            className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-600 bg-white cursor-pointer max-w-[110px] focus:ring-teal-500 focus:border-teal-500"
+                            className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-600 bg-white cursor-pointer max-w-[110px] focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                           >
                             <option value="">--</option>
                             {matrixUsers
@@ -1106,7 +1106,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                               }
                             }}
                             disabled={saving}
-                            className="w-full text-xs border border-gray-200 rounded px-1 py-0.5 bg-transparent focus:ring-teal-500 focus:border-teal-500 max-w-[120px] truncate"
+                            className="w-full text-xs border border-gray-200 rounded px-1 py-0.5 bg-transparent focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] max-w-[120px] truncate"
                           >
                             <option value="">--</option>
                             {matrixUsers.map((u) => {
@@ -1126,7 +1126,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                             <button
                               type="button"
                               onClick={() => setExpandedRow(isExpanded(step.key) ? null : step.key)}
-                              className="text-gray-300 hover:text-teal-600 p-0.5"
+                              className="text-gray-300 hover:text-[var(--sc-primary,#323288)] p-0.5"
                               title="Expand"
                             >
                               <svg
@@ -1205,8 +1205,8 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                           key={u.id}
                                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full cursor-pointer transition-colors ${
                                             u.id === pId
-                                              ? "bg-teal-600 text-white"
-                                              : "bg-teal-100 text-teal-700 hover:bg-teal-200"
+                                              ? "bg-[var(--sc-primary,#323288)] text-white"
+                                              : "bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary-hover,#252560)] hover:bg-[var(--sc-primary-200,#adadcf)]"
                                           }`}
                                           onClick={() => handleToggleAssignment(u.id, step.key)}
                                           onContextMenu={(e) => {
@@ -1237,8 +1237,8 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                             }}
                                             className={
                                               u.id === pId
-                                                ? "text-teal-200 hover:text-white ml-0.5"
-                                                : "text-teal-400 hover:text-teal-700 ml-0.5"
+                                                ? "text-[var(--sc-primary-200,#adadcf)] hover:text-white ml-0.5"
+                                                : "text-[var(--sc-primary-400,#5b5b9c)] hover:text-[var(--sc-primary-hover,#252560)] ml-0.5"
                                             }
                                           >
                                             &times;
@@ -1256,7 +1256,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                           }
                                         }}
                                         disabled={saving}
-                                        className="border border-dashed border-gray-300 rounded-full px-2 py-0.5 text-gray-400 hover:border-teal-400 hover:text-teal-600 cursor-pointer bg-transparent"
+                                        className="border border-dashed border-gray-300 rounded-full px-2 py-0.5 text-gray-400 hover:border-[var(--sc-primary-400,#5b5b9c)] hover:text-[var(--sc-primary,#323288)] cursor-pointer bg-transparent"
                                       >
                                         <option value="">+ Assign</option>
                                         {matrixUsers
@@ -1282,7 +1282,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                         <select
                                           value={selectedEmail}
                                           onChange={(e) => setSelectedEmail(e.target.value)}
-                                          className="flex-1 px-2 py-1 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
+                                          className="flex-1 px-2 py-1 border border-gray-300 rounded focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                                         >
                                           <option value="">Select team member...</option>
                                           {teamMembers
@@ -1309,7 +1309,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                             setSelectedEmail("");
                                           }}
                                           disabled={!selectedEmail}
-                                          className="px-2 py-1 bg-teal-600 text-white rounded hover:bg-teal-700 disabled:opacity-50"
+                                          className="px-2 py-1 bg-[var(--sc-primary,#323288)] text-white rounded hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
                                         >
                                           Add
                                         </button>
@@ -1348,7 +1348,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                           type="button"
                                           onClick={handleSaveNotify}
                                           disabled={saving}
-                                          className="px-3 py-1 bg-teal-600 text-white rounded hover:bg-teal-700 disabled:opacity-50"
+                                          className="px-3 py-1 bg-[var(--sc-primary,#323288)] text-white rounded hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
                                         >
                                           {saving ? "Saving..." : "Save"}
                                         </button>
@@ -1400,7 +1400,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                                       setEditingPhase1Label(e.target.value)
                                                     }
                                                     placeholder="Phase 1 label"
-                                                    className="px-2 py-0.5 border border-gray-300 rounded w-32 text-xs focus:ring-teal-500 focus:border-teal-500"
+                                                    className="px-2 py-0.5 border border-gray-300 rounded w-32 text-xs focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                                                   />
                                                 ) : (
                                                   <span className="font-medium text-blue-800">
@@ -1470,7 +1470,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                                       setEditingPhase2Label(e.target.value)
                                                     }
                                                     placeholder="Phase 2 label"
-                                                    className="px-2 py-0.5 border border-gray-300 rounded w-32 text-xs focus:ring-teal-500 focus:border-teal-500"
+                                                    className="px-2 py-0.5 border border-gray-300 rounded w-32 text-xs focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                                                   />
                                                 ) : (
                                                   <span className="font-medium text-amber-800">
@@ -1535,7 +1535,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                                   type="button"
                                                   onClick={handleSavePhaseLabels}
                                                   disabled={saving}
-                                                  className="px-2 py-1 bg-teal-600 text-white rounded hover:bg-teal-700 disabled:opacity-50"
+                                                  className="px-2 py-1 bg-[var(--sc-primary,#323288)] text-white rounded hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
                                                 >
                                                   Save Labels
                                                 </button>
@@ -1557,7 +1557,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                                   setEditingPhase1Label(rawRawValue || "");
                                                   setEditingPhase2Label(rawValue || "");
                                                 }}
-                                                className="text-[10px] text-teal-600 hover:text-teal-800"
+                                                className="text-[10px] text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                                               >
                                                 Edit Phase Labels
                                               </button>
@@ -1601,7 +1601,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                               }
                                             }}
                                             disabled={saving}
-                                            className="px-1.5 py-0.5 border border-gray-300 rounded text-xs focus:ring-teal-500 focus:border-teal-500"
+                                            className="px-1.5 py-0.5 border border-gray-300 rounded text-xs focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                                           >
                                             <option value="loop">
                                               Loop (returns to same step)
@@ -1640,7 +1640,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                                 }
                                               }}
                                               disabled={saving}
-                                              className="px-1.5 py-0.5 border border-gray-300 rounded text-xs focus:ring-teal-500 focus:border-teal-500"
+                                              className="px-1.5 py-0.5 border border-gray-300 rounded text-xs focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                                             >
                                               <option value="">Select step...</option>
                                               {allSteps
@@ -1779,7 +1779,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                                   },
                                                 ])
                                               }
-                                              className="text-teal-600 hover:text-teal-800"
+                                              className="text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                                             >
                                               + Add Outcome
                                             </button>
@@ -1787,7 +1787,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                               type="button"
                                               onClick={handleSaveOutcomes}
                                               disabled={saving}
-                                              className="px-2 py-0.5 bg-teal-600 text-white rounded hover:bg-teal-700 disabled:opacity-50"
+                                              className="px-2 py-0.5 bg-[var(--sc-primary,#323288)] text-white rounded hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
                                             >
                                               Save
                                             </button>
@@ -1841,7 +1841,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                                       })),
                                                     );
                                                   }}
-                                                  className="text-teal-600 hover:text-teal-800"
+                                                  className="text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                                                 >
                                                   Edit
                                                 </button>
@@ -1865,7 +1865,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                                       },
                                                     ]);
                                                   }}
-                                                  className="text-teal-600 hover:text-teal-800"
+                                                  className="text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                                                 >
                                                   Add Outcomes
                                                 </button>
@@ -1909,7 +1909,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
             <span>Click type badge to toggle FG/BG</span>
             <span>
               <svg
-                className="w-2.5 h-2.5 text-teal-600 inline"
+                className="w-2.5 h-2.5 text-[var(--sc-primary,#323288)] inline"
                 fill="currentColor"
                 viewBox="0 0 24 24"
               >

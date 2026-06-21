@@ -18,6 +18,8 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBody, ApiConsumes, ApiOperation, ApiTags } from "@nestjs/swagger";
+import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
+import { isNumber } from "es-toolkit/compat";
 import { RubberCocExtractionService } from "../../rubber-lining/rubber-coc-extraction.service";
 import { IdempotencyInterceptor } from "../../shared/interceptors/idempotency.interceptor";
 import { CreateDeliveryNoteDto } from "../dto/create-delivery-note.dto";
@@ -30,6 +32,8 @@ import {
 } from "../guards/stock-control-role.guard";
 import { DeliveryService } from "../services/delivery.service";
 
+const MAX_EXTRACTION_FILE_BYTES = 25 * 1024 * 1024;
+
 @ApiTags("Stock Control - Deliveries")
 @Controller("stock-control/deliveries")
 @UseGuards(StockControlAuthGuard, StockControlOnboardingGuard, StockControlRoleGuard)
@@ -40,6 +44,21 @@ export class DeliveriesController {
     private readonly deliveryService: DeliveryService,
     private readonly extractionService: RubberCocExtractionService,
   ) {}
+
+  private assertExtractableFile(file: Express.Multer.File): void {
+    if (!file) {
+      throw new BadRequestException("No file provided");
+    }
+    const mimetype = file.mimetype ?? "";
+    const isPdf = mimetype === "application/pdf";
+    const isImage = mimetype.startsWith("image/");
+    if (!isPdf && !isImage) {
+      throw new BadRequestException("File must be an image (JPEG, PNG) or PDF");
+    }
+    if (isNumber(file.size) && file.size > MAX_EXTRACTION_FILE_BYTES) {
+      throw new BadRequestException("File is too large (max 25MB)");
+    }
+  }
 
   @Get()
   @ApiOperation({ summary: "List all delivery notes" })
@@ -110,6 +129,8 @@ export class DeliveriesController {
   }
 
   @Post(":id/extract")
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ upload: { ttl: 60000, limit: 10 } })
   @ApiOperation({ summary: "Extract data from delivery note photo using AI" })
   async extractFromPhoto(@Req() req: any, @Param("id") id: number) {
     return this.deliveryService.extractFromPhoto(req.user.companyId, id);
@@ -149,9 +170,7 @@ export class DeliveriesController {
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException(
-        `Failed to add items to stock: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
+      throw new InternalServerErrorException("Failed to add items to stock. Please try again.");
     }
   }
 
@@ -180,9 +199,7 @@ export class DeliveriesController {
     @UploadedFile() file: Express.Multer.File,
     @Body("analyzedData") analyzedDataJson: string,
   ) {
-    if (!file) {
-      throw new BadRequestException("No file provided");
-    }
+    this.assertExtractableFile(file);
     if (!analyzedDataJson) {
       throw new BadRequestException("No analyzed data provided");
     }
@@ -204,7 +221,7 @@ export class DeliveriesController {
         throw error;
       }
       throw new InternalServerErrorException(
-        `Failed to save pending delivery note: ${error instanceof Error ? error.message : "Unknown error"}`,
+        "Failed to save pending delivery note. Please try again.",
       );
     }
   }
@@ -236,13 +253,13 @@ export class DeliveriesController {
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException(
-        `Failed to confirm delivery note: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
+      throw new InternalServerErrorException("Failed to confirm delivery note. Please try again.");
     }
   }
 
   @Post("analyze")
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ upload: { ttl: 60000, limit: 10 } })
   @UseInterceptors(FileInterceptor("file"))
   @ApiOperation({ summary: "Analyze a delivery note photo or PDF to extract data" })
   @ApiConsumes("multipart/form-data")
@@ -259,16 +276,9 @@ export class DeliveriesController {
     },
   })
   async analyzeDocument(@Req() req: any, @UploadedFile() file: Express.Multer.File) {
-    if (!file) {
-      throw new BadRequestException("No file provided");
-    }
+    this.assertExtractableFile(file);
 
     const isPdf = file.mimetype === "application/pdf";
-    const isImage = file.mimetype.startsWith("image/");
-
-    if (!isPdf && !isImage) {
-      throw new BadRequestException("File must be an image (JPEG, PNG) or PDF");
-    }
 
     const correctionHints = await this.deliveryService.dnCorrectionHintsForCompany(
       req.user.companyId,
@@ -307,9 +317,7 @@ export class DeliveriesController {
     @Body("analyzedData") analyzedDataJson: string,
     @Body("documentType") documentType?: string,
   ) {
-    if (!file) {
-      throw new BadRequestException("No file provided");
-    }
+    this.assertExtractableFile(file);
 
     if (!analyzedDataJson) {
       throw new BadRequestException("No analyzed data provided");
@@ -379,9 +387,7 @@ export class DeliveriesController {
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new InternalServerErrorException(
-        `Failed to create record: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
+      throw new InternalServerErrorException("Failed to create record. Please try again.");
     }
   }
 }

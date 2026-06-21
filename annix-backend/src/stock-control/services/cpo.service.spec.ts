@@ -1,5 +1,6 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
+import { AuditService } from "../../audit/audit.service";
 import {
   CalloffStatus,
   CalloffType,
@@ -231,6 +232,10 @@ describe("CpoService", () => {
         {
           provide: QcMeasurementService,
           useValue: { propagateCpoQcpsToJobCard: jest.fn().mockResolvedValue(undefined) },
+        },
+        {
+          provide: AuditService,
+          useValue: { log: jest.fn().mockResolvedValue(undefined) },
         },
       ],
     }).compile();

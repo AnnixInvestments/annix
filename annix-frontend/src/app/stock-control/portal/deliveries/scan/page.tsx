@@ -183,7 +183,10 @@ export default function ScanDeliveryNotePage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center space-x-2 text-sm text-gray-500">
-        <Link href="/stock-control/portal/deliveries" className="hover:text-teal-600">
+        <Link
+          href="/stock-control/portal/deliveries"
+          className="hover:text-[var(--sc-primary,#323288)]"
+        >
           Delivery Notes
         </Link>
         <span>/</span>
@@ -216,7 +219,9 @@ export default function ScanDeliveryNotePage() {
               type="button"
               onClick={() => setDocType("SUPPLIER_DELIVERY")}
               className={`px-4 py-2 text-sm font-medium ${
-                isInvoice ? "bg-white text-gray-700 hover:bg-gray-50" : "bg-teal-600 text-white"
+                isInvoice
+                  ? "bg-white text-gray-700 hover:bg-gray-50"
+                  : "bg-[var(--sc-primary,#323288)] text-white"
               }`}
             >
               Delivery Note (SDN)
@@ -225,7 +230,9 @@ export default function ScanDeliveryNotePage() {
               type="button"
               onClick={() => setDocType("SUPPLIER_INVOICE")}
               className={`px-4 py-2 text-sm font-medium ${
-                isInvoice ? "bg-teal-600 text-white" : "bg-white text-gray-700 hover:bg-gray-50"
+                isInvoice
+                  ? "bg-[var(--sc-primary,#323288)] text-white"
+                  : "bg-white text-gray-700 hover:bg-gray-50"
               }`}
             >
               Tax Invoice (STI)
@@ -241,9 +248,9 @@ export default function ScanDeliveryNotePage() {
         <h2 className="text-lg font-medium text-gray-900 mb-4">Upload Document</h2>
 
         {isDragOver && (
-          <div className="mb-4 p-6 border-2 border-dashed border-teal-500 bg-teal-50 rounded-lg text-center">
+          <div className="mb-4 p-6 border-2 border-dashed border-[var(--sc-primary,#323288)] bg-[var(--sc-primary-50,#eeeef6)] rounded-lg text-center">
             <svg
-              className="mx-auto h-10 w-10 text-teal-600"
+              className="mx-auto h-10 w-10 text-[var(--sc-primary,#323288)]"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -255,7 +262,9 @@ export default function ScanDeliveryNotePage() {
                 d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
               />
             </svg>
-            <p className="mt-2 text-sm font-medium text-teal-700">Drop file here</p>
+            <p className="mt-2 text-sm font-medium text-[var(--sc-primary-hover,#252560)]">
+              Drop file here
+            </p>
           </div>
         )}
 
@@ -372,7 +381,7 @@ export default function ScanDeliveryNotePage() {
               type="button"
               onClick={handleAnalyze}
               disabled={!selectedFile || isAnalyzing}
-              className="flex-1 inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isAnalyzing ? (
                 <>

@@ -1,6 +1,14 @@
 export type { RubberBondingAgentSeed } from "./rubberBondingAgents";
 export { RUBBER_BONDING_AGENTS } from "./rubberBondingAgents";
 export type {
+  RubberBondingCoverageRef,
+  RubberBondingCoverageResult,
+} from "./rubberBondingCoverage";
+export {
+  lookupRubberBondingCoverage,
+  RUBBER_BONDING_COVERAGE_REFS,
+} from "./rubberBondingCoverage";
+export type {
   RubberBondingAgentNote,
   RubberBondingSelectionRow,
 } from "./rubberBondingSelectorGuide";

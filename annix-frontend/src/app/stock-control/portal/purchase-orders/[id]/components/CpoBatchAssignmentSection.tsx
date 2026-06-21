@@ -385,7 +385,7 @@ export function CpoBatchAssignmentSection(props: CpoBatchAssignmentSectionProps)
                     <button
                       onClick={() => handleOpenAddForm(field.fieldKey)}
                       disabled={addForm !== null}
-                      className="rounded bg-teal-600 px-2 py-0.5 text-[10px] font-medium text-white hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                      className="rounded bg-[var(--sc-primary,#323288)] px-2 py-0.5 text-[10px] font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed"
                     >
                       + Add Batch
                     </button>
@@ -410,7 +410,7 @@ export function CpoBatchAssignmentSection(props: CpoBatchAssignmentSectionProps)
                       <div key={batchNum} className="rounded bg-white border border-gray-200 p-2">
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center gap-2">
-                            <span className="inline-flex items-center rounded-full bg-teal-100 px-2 py-0.5 text-[10px] font-medium text-teal-800">
+                            <span className="inline-flex items-center rounded-full bg-[var(--sc-primary-100,#d6d6e9)] px-2 py-0.5 text-[10px] font-medium text-[var(--sc-primary-active,#1c1c48)]">
                               {isNA ? "N/A" : batchNum}
                             </span>
                             <span className="text-[10px] text-gray-500">
@@ -555,7 +555,7 @@ function CpoAddBatchForm(props: CpoAddBatchFormProps) {
   }, [allLineItems, assignedIds]);
 
   return (
-    <div className="rounded bg-white border border-teal-200 p-3 mt-2">
+    <div className="rounded bg-white border border-[var(--sc-primary-200,#adadcf)] p-3 mt-2">
       <div className="space-y-3">
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-1.5 cursor-pointer">
@@ -563,7 +563,7 @@ function CpoAddBatchForm(props: CpoAddBatchFormProps) {
               type="checkbox"
               checked={addForm.notApplicable}
               onChange={(e) => props.onNotApplicableChange(e.target.checked)}
-              className="rounded border-gray-300 text-teal-600 focus:ring-teal-500 h-4 w-4"
+              className="rounded border-gray-300 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] h-4 w-4"
             />
             <span className="text-xs text-gray-700">N/A</span>
           </label>
@@ -577,7 +577,7 @@ function CpoAddBatchForm(props: CpoAddBatchFormProps) {
               value={addForm.batchNumber}
               onChange={(e) => props.onBatchNumberChange(e.target.value)}
               placeholder="e.g. B241"
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-[var(--sc-primary,#323288)] focus:ring-1 focus:ring-[var(--sc-primary,#323288)]"
             />
           </div>
         )}
@@ -617,7 +617,7 @@ function CpoAddBatchForm(props: CpoAddBatchFormProps) {
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => props.onToggleItem(li.id)}
-                            className="rounded border-gray-300 text-teal-600 focus:ring-teal-500 h-4 w-4"
+                            className="rounded border-gray-300 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] h-4 w-4"
                           />
                           {li.itemNo && (
                             <span className="text-[10px] font-mono text-gray-500 shrink-0">
@@ -648,7 +648,7 @@ function CpoAddBatchForm(props: CpoAddBatchFormProps) {
           <button
             onClick={props.onSave}
             disabled={isSaving}
-            className="rounded bg-teal-600 px-4 py-2 text-xs font-medium text-white hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="rounded bg-[var(--sc-primary,#323288)] px-4 py-2 text-xs font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             {isSaving ? "Saving..." : "Save"}
           </button>

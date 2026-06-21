@@ -194,7 +194,7 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
                         type="text"
                         value={description || ""}
                         onChange={(e) => updateEditField(item.id, "description", e.target.value)}
-                        className="w-full px-1 py-0.5 text-xs border border-teal-300 rounded focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                        className="w-full px-1 py-0.5 text-xs border border-[var(--sc-primary-300,#8484b5)] rounded focus:ring-1 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                         title="Edit item description to correct matching"
                       />
                     ) : (
@@ -207,7 +207,7 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
                         type="number"
                         value={edits.quantity}
                         onChange={(e) => updateEditField(item.id, "quantity", e.target.value)}
-                        className="w-14 px-1 py-0.5 text-xs border border-teal-300 rounded text-right focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                        className="w-14 px-1 py-0.5 text-xs border border-[var(--sc-primary-300,#8484b5)] rounded text-right focus:ring-1 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                         min={0}
                         step="1"
                       />
@@ -221,7 +221,7 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
                         type="number"
                         value={edits.unitPrice}
                         onChange={(e) => updateEditField(item.id, "unitPrice", e.target.value)}
-                        className="w-20 px-1 py-0.5 text-xs border border-teal-300 rounded text-right focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                        className="w-20 px-1 py-0.5 text-xs border border-[var(--sc-primary-300,#8484b5)] rounded text-right focus:ring-1 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                         min={0}
                         step="0.01"
                         autoFocus
@@ -249,7 +249,7 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
                             type="button"
                             onClick={() => saveItem(item.id, item)}
                             disabled={isRowSaving}
-                            className="px-1.5 py-0.5 text-[10px] font-medium text-white bg-teal-600 rounded hover:bg-teal-700 disabled:opacity-50"
+                            className="px-1.5 py-0.5 text-[10px] font-medium text-white bg-[var(--sc-primary,#323288)] rounded hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
                           >
                             {isRowSaving ? "..." : "Save"}
                           </button>
@@ -265,7 +265,7 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
                         <button
                           type="button"
                           onClick={() => startEditing(item)}
-                          className="p-1 text-gray-400 hover:text-teal-600 transition-colors"
+                          className="p-1 text-gray-400 hover:text-[var(--sc-primary,#323288)] transition-colors"
                           title="Edit item"
                         >
                           <svg
@@ -294,7 +294,7 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
 
       <button
         onClick={onApprove}
-        className="w-full py-2 px-4 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition-colors"
+        className="w-full py-2 px-4 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-lg hover:bg-[var(--sc-primary-hover,#252560)] transition-colors"
       >
         Approve & Apply Price Updates
       </button>

@@ -31,9 +31,9 @@ const VARIANT_STYLES: Record<BannerVariant, { container: string; icon: string; a
     action: "bg-green-600 hover:bg-green-700 text-white",
   },
   action: {
-    container: "bg-teal-50 border-teal-200",
-    icon: "text-teal-500",
-    action: "bg-teal-600 hover:bg-teal-700 text-white",
+    container: "bg-[var(--sc-primary-50,#eeeef6)] border-[var(--sc-primary-200,#adadcf)]",
+    icon: "text-[var(--sc-primary,#323288)]",
+    action: "bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)] text-white",
   },
 };
 

@@ -273,7 +273,7 @@ export default function RequisitionDetailPage() {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading requisition...</p>
         </div>
       </div>
@@ -290,7 +290,7 @@ export default function RequisitionDetailPage() {
           </p>
           <Link
             href="/stock-control/portal/requisitions"
-            className="mt-4 inline-block text-teal-600 hover:text-teal-800"
+            className="mt-4 inline-block text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
           >
             Back to Requisitions
           </Link>
@@ -359,7 +359,7 @@ export default function RequisitionDetailPage() {
                 Job Card:{" "}
                 <Link
                   href={`/stock-control/portal/job-cards/${requisition.jobCardId}`}
-                  className="text-teal-700 hover:text-teal-900"
+                  className="text-[var(--sc-primary-hover,#252560)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                 >
                   {requisition.jobCard.jobNumber} - {requisition.jobCard.jobName}
                 </Link>
@@ -372,7 +372,7 @@ export default function RequisitionDetailPage() {
             <button
               onClick={handleAcceptAndReturn}
               disabled={isAccepting}
-              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50"
+              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--sc-primary,#323288)] disabled:opacity-50"
             >
               {isAccepting ? (
                 <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -407,7 +407,7 @@ export default function RequisitionDetailPage() {
           <div className="relative" ref={exportMenuRef}>
             <button
               onClick={() => setShowExportMenu(!showExportMenu)}
-              className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
+              className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--sc-primary,#323288)]"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -477,7 +477,7 @@ export default function RequisitionDetailPage() {
         <div className="relative" ref={exportMenuRef}>
           <button
             onClick={() => setShowExportMenu(!showExportMenu)}
-            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
+            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--sc-primary,#323288)]"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -692,7 +692,7 @@ export default function RequisitionDetailPage() {
                               step={1}
                               value={editPackSize}
                               onChange={(e) => setEditPackSize(parseFloat(e.target.value) || 1)}
-                              className="w-20 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm text-right"
+                              className="w-20 rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm text-right"
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") handleSavePackSize(item.id);
                                 if (e.key === "Escape") handleCancelEdit();
@@ -701,7 +701,7 @@ export default function RequisitionDetailPage() {
                             <button
                               onClick={() => handleSavePackSize(item.id)}
                               disabled={isSaving}
-                              className="text-teal-600 hover:text-teal-800 disabled:text-gray-400"
+                              className="text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] disabled:text-gray-400"
                             >
                               <svg
                                 className="w-4 h-4"
@@ -739,7 +739,7 @@ export default function RequisitionDetailPage() {
                         ) : (
                           <button
                             onClick={() => handleEditPackSize(item.id, item.packSizeLitres)}
-                            className="text-gray-900 hover:text-teal-700 cursor-pointer"
+                            className="text-gray-900 hover:text-[var(--sc-primary-hover,#252560)] cursor-pointer"
                             title="Click to edit pack size"
                           >
                             {Number(item.packSizeLitres).toFixed(0)}L
@@ -764,7 +764,7 @@ export default function RequisitionDetailPage() {
                         value={reorderQtyValue(item.id, item.reorderQty)}
                         onChange={(e) => handleReorderQtyChange(item.id, e.target.value)}
                         placeholder="-"
-                        className="w-20 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm text-right"
+                        className="w-20 rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm text-right"
                         disabled={isSaving}
                       />
                     )}
@@ -778,7 +778,7 @@ export default function RequisitionDetailPage() {
                         value={reqNumberValue(item.id, item.reqNumber)}
                         onChange={(e) => handleReqNumberChange(item.id, e.target.value)}
                         placeholder="-"
-                        className="w-28 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                        className="w-28 rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                         disabled={isSaving}
                       />
                     )}
@@ -813,7 +813,7 @@ export default function RequisitionDetailPage() {
                         <button
                           onClick={() => handleSaveRow(item.id)}
                           disabled={savingRowId === item.id}
-                          className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                          className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md bg-[var(--sc-primary,#323288)] text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                         >
                           {savingRowId === item.id ? "Saving..." : "Save"}
                         </button>

@@ -8,7 +8,7 @@ tags: [rubber, lining, pricing, quoting, plate, pipe]
 lastUpdated: 2026-06-21
 summary: Maintain the rubber lining price list, the bonding agents list, and the global tunables — paraffin, blasting, department rates, markup, waste and MPS — used to quote rubber lining work per square metre (plate) and per running metre (pipe). Prices are per-kilogram and serve both plate and pipe; cure type (steam, pre-cured, chemical) is recorded per rubber.
 readingMinutes: 5
-relatedPaths: [annix-frontend/src/app/stock-control/portal/admin/rubber-pricing/page.tsx, annix-frontend/src/app/stock-control/portal/admin/rubber-pricing/BondingAgentsCard.tsx, annix-frontend/src/app/stock-control/portal/rubber-quote/page.tsx, annix-frontend/src/app/lib/query/hooks/stock-control/useRubberPricing.ts, annix-frontend/src/app/lib/query/hooks/stock-control/useRubberBondingAgents.ts, annix-frontend/src/app/lib/api/stock-control-api/rubberPricingMethods.ts, annix-frontend/src/app/lib/api/stock-control-api/rubberBondingAgentMethods.ts]
+relatedPaths: [annix-frontend/src/app/stock-control/portal/admin/rubber-pricing/page.tsx, annix-frontend/src/app/stock-control/portal/admin/rubber-pricing/BondingAgentsCard.tsx, annix-frontend/src/app/stock-control/portal/admin/rubber-pricing/BondingSystemsCard.tsx, annix-frontend/src/app/stock-control/portal/admin/bonding-agents/page.tsx, annix-frontend/src/app/stock-control/portal/rubber-quote/page.tsx, annix-frontend/src/app/lib/query/hooks/stock-control/useRubberPricing.ts, annix-frontend/src/app/lib/query/hooks/stock-control/useRubberBondingAgents.ts, annix-frontend/src/app/lib/api/stock-control-api/rubberPricingMethods.ts, annix-frontend/src/app/lib/api/stock-control-api/rubberBondingAgentMethods.ts]
 ---
 
 ## What it does
@@ -102,9 +102,21 @@ Instead of typing rubbers in one by one, you can import a supplier's price list 
 
 Nothing is saved until you confirm — the upload step is only a preview. Computed pricing refreshes as soon as the import is saved.
 
+## Bonding systems
+
+At the top of the **Bonding Agents** page is a **Bonding systems** card. A bonding system is the set of adhesive products used together for one rubber type (application), for one supplier — e.g. the primer + cover coat + tie coat that go into a Natural-rubber-to-steel bond. This is where the per-supplier "recipe" from your spreadsheet lives.
+
+- Pick a **family** (Plate & fittings or Running-metre pipe) and a **supplier** at the top.
+- Each row is a **rubber type** (Natural, Premium Natural, Butyl, Nitrile, Neoprene, Chemical, EPDM, Cured). Use the **Products used** multi-select to choose which bonding agents make up that system — only that supplier's agents (plus shared items like Toluene) are offered.
+- The **Usages** column lists each chosen product with its working spread rate. Editing a usage here updates the **same coverage** shown in the Bonding agents table below — there is one usage per product, shared everywhere it is used. Adjust it to match your real working environment (datasheet spread rates are often optimistic).
+- A strip above the table shows, for the selected family, the **Labour /m²**, **Curing /m²** and **Blasting /m²** (set on the Labour and Blasting pages), plus their combined total. These are the same for every rubber type in that family.
+- **Adhesives /m²** is the sum of the chosen products' sale/m². **Full /m²** adds the labour, curing and blasting strip on top — that is the complete bonding-system cost (it reconciles with the old "C&W" total) and is what drives quotes once you click **Save bonding systems**.
+- **Old baseline /m²** shows the previous fixed value for reference, so you can tune the usages until the Full figure lines up with what you know the job costs.
+- A row whose products don't all resolve to a coverage keeps using the old baseline until every product has a usage — so quotes never silently drop to a partial figure.
+
 ## Bonding agents
 
-Below the rubber price list is a separate **Bonding agents** card for the adhesives / bonding agents used to bond rubber to steel. Each row's **coverage** drives its **Cost/m²**, and the **Sale/m²** is the cost multiplied by the consumable markup (set in **Global pricing settings → Consumable markup**). Both computed columns are read-only.
+Below the bonding systems is a separate **Bonding agents** card for the adhesives / bonding agents used to bond rubber to steel. Each row's **coverage** drives its **Cost/m²**, and the **Sale/m²** is the cost multiplied by the consumable markup (set in **Global pricing settings → Consumable markup**). Both computed columns are read-only.
 
 Coverage is recorded on one of two **bases**, chosen per row:
 
@@ -123,4 +135,5 @@ The **Coverage** column shows `m²/L` for litre-basis rows and `g/m²` for kg-ba
 ### Seeding and importing bonding agents
 
 - **Seed from product data** backfills the list from the built-in reference data, and only runs while the list is empty.
-- **Upload supplier price list** reads a supplier's adhesive price list from a **PDF, photo, or Excel/CSV** file. Nix shows a branded progress popup while it works, then a review window lists every bonding agent it found (name, pack size, price/tin, price/L, coverage). Enter the **supplier name**, pick an **On import** mode (**Update existing (match by name)** is the default and refreshes matched agents while adding new ones; **Replace supplier** swaps out that supplier's existing agents; **Append** adds every row as new), and click **Import bonding agents**. Nothing is saved until you confirm.
+- **Fill coverage from datasheets** sets the coverage for any bonding agent that is still missing one, using manufacturer figures matched by product name (Impilo HeroBond / HeroPrime from their price list and application guide; Rema SC2000 / SC4000 / BC3000 / PR200 from published technical data sheets). It only touches rows with no coverage yet — rows you have already filled, and rows set to **Per unit**, are left alone. Agents with no published figure (e.g. contact adhesives, several Rema-specific products) stay blank for you to enter by hand. Use it after importing a price list so you do not have to type each spread rate in.
+- **Upload supplier price list** reads a supplier's adhesive price list from a **PDF, photo, or Excel/CSV** file. Nix shows a branded progress popup while it works, then a review window lists every bonding agent it found (name, pack size, price/tin, price/L, coverage). Enter the **supplier name**, pick an **On import** mode (**Update existing (match by name)** is the default and refreshes matched agents while adding new ones; **Replace supplier** swaps out that supplier's existing agents; **Append** adds every row as new), and click **Import bonding agents**. Nothing is saved until you confirm. Imported rows that omit a spread rate are auto-filled from the same manufacturer datasheet figures where the product is recognised.

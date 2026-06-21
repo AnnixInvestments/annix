@@ -190,7 +190,7 @@ export default function StockControlDashboard() {
           onClick={() => setIsEditMode((prev) => !prev)}
           className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md shadow-sm transition-colors ${
             isEditMode
-              ? "bg-teal-600 text-white hover:bg-teal-700"
+              ? "bg-[var(--sc-primary,#323288)] text-white hover:bg-[var(--sc-primary-hover,#252560)]"
               : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
           }`}
         >
@@ -245,8 +245,10 @@ export default function StockControlDashboard() {
 
         <DragOverlay>
           {activeWidget && activeWidgetLabel && (
-            <div className="bg-white border-2 border-teal-400 rounded-lg shadow-2xl px-6 py-4 opacity-90">
-              <p className="text-sm font-medium text-teal-700">{activeWidgetLabel}</p>
+            <div className="bg-white border-2 border-[var(--sc-primary-400,#5b5b9c)] rounded-lg shadow-2xl px-6 py-4 opacity-90">
+              <p className="text-sm font-medium text-[var(--sc-primary-hover,#252560)]">
+                {activeWidgetLabel}
+              </p>
             </div>
           )}
         </DragOverlay>

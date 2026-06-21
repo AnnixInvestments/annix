@@ -274,7 +274,8 @@ export default function PositectorUploadPage() {
       const tempDiv = document.createElement("div");
       tempDiv.innerHTML = htmlData;
       const textContent = tempDiv.textContent;
-      const plainFromHtml = textContent || tempDiv.innerText || "";
+      const innerText = tempDiv.innerText;
+      const plainFromHtml = textContent || innerText || "";
       if (plainFromHtml.trim().length > 0) {
         processTextData(plainFromHtml, "posisoft-drag");
         return;
@@ -506,11 +507,11 @@ export default function PositectorUploadPage() {
 
                   {autoResult && (
                     <div
-                      className={`rounded-md p-4 ${autoResult.duplicateWarning ? "bg-amber-50" : "bg-teal-50"}`}
+                      className={`rounded-md p-4 ${autoResult.duplicateWarning ? "bg-amber-50" : "bg-[var(--sc-primary-50,#eeeef6)]"}`}
                     >
                       <div className="flex items-start gap-3">
                         <svg
-                          className="mt-0.5 h-5 w-5 text-teal-600"
+                          className="mt-0.5 h-5 w-5 text-[var(--sc-primary,#323288)]"
                           fill="none"
                           viewBox="0 0 24 24"
                           strokeWidth={2}
@@ -523,10 +524,10 @@ export default function PositectorUploadPage() {
                           />
                         </svg>
                         <div>
-                          <p className="text-sm font-medium text-teal-800">
+                          <p className="text-sm font-medium text-[var(--sc-primary-active,#1c1c48)]">
                             Auto-imported to job card
                           </p>
-                          <p className="mt-1 text-xs text-teal-700">
+                          <p className="mt-1 text-xs text-[var(--sc-primary-hover,#252560)]">
                             Batch name matched — {autoResult.readingsImported} readings imported as{" "}
                             {(() => {
                               const etl2 = ENTITY_TYPE_LABELS[autoResult.entityType];
@@ -641,7 +642,7 @@ export default function PositectorUploadPage() {
                             })()}
                           </span>
                           {isLinked && (
-                            <span className="inline-flex rounded-full bg-teal-100 px-2 py-0.5 text-xs font-medium text-teal-800">
+                            <span className="inline-flex rounded-full bg-[var(--sc-primary-100,#d6d6e9)] px-2 py-0.5 text-xs font-medium text-[var(--sc-primary-active,#1c1c48)]">
                               Linked to JC #{upload.linkedJobCardId}
                             </span>
                           )}
@@ -757,7 +758,7 @@ export default function PositectorUploadPage() {
                 </button>
                 <button
                   onClick={handleBundleImport}
-                  className="rounded-md bg-teal-600 px-6 py-2 text-sm font-medium text-white hover:bg-teal-700"
+                  className="rounded-md bg-[var(--sc-primary,#323288)] px-6 py-2 text-sm font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)]"
                 >
                   Import All {bundleAnalysis.reports.length} Reports
                 </button>
@@ -768,7 +769,7 @@ export default function PositectorUploadPage() {
           {bundleImporting && (
             <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
               <svg
-                className="mx-auto h-12 w-12 text-teal-600 animate-spin"
+                className="mx-auto h-12 w-12 text-[var(--sc-primary,#323288)] animate-spin"
                 fill="none"
                 viewBox="0 0 24 24"
               >
@@ -811,7 +812,7 @@ export default function PositectorUploadPage() {
                   setBundleResult(null);
                   setError(null);
                 }}
-                className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700"
+                className="rounded-md bg-[var(--sc-primary,#323288)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)]"
               >
                 Upload Another
               </button>

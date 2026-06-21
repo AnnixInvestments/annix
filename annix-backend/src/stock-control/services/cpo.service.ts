@@ -1,5 +1,7 @@
 import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
+import { AuditService } from "../../audit/audit.service";
+import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { fromJSDate, now, nowISO } from "../../lib/datetime";
 import {
   CalloffStatus,
@@ -60,6 +62,7 @@ export class CpoService {
     private readonly notificationService: WorkflowNotificationService,
     @Inject(forwardRef(() => QcMeasurementService))
     private readonly qcMeasurementService: QcMeasurementService,
+    private readonly auditService: AuditService,
   ) {}
 
   async findAll(
@@ -83,6 +86,7 @@ export class CpoService {
     companyId: number,
     rows: JobCardImportRow[],
     createdBy: string | null,
+    userId?: number,
   ): Promise<CpoImportResult> {
     const result: CpoImportResult = {
       totalRows: rows.length,
@@ -93,7 +97,7 @@ export class CpoService {
       createdCpoIds: [],
     };
 
-    return rows.reduce(async (accPromise, row, i) => {
+    const outcome = await rows.reduce(async (accPromise, row, i) => {
       const acc = await accPromise;
 
       if (!row.jobNumber || !row.jobName) {
@@ -192,34 +196,94 @@ export class CpoService {
         };
       }
     }, Promise.resolve(result));
+
+    this.auditService
+      .log({
+        entityType: "customer_purchase_order",
+        entityId: 0,
+        action: AuditAction.CREATE,
+        newValues: {
+          companyId,
+          userId: userId ?? null,
+          createdBy,
+          totalRows: outcome.totalRows,
+          created: outcome.created,
+          updated: outcome.updated,
+          createdCpoIds: outcome.createdCpoIds,
+        },
+      })
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
+
+    return outcome;
   }
 
-  async deleteCpo(companyId: number, id: number): Promise<void> {
+  async deleteCpo(companyId: number, id: number, userId?: number): Promise<void> {
     const cpo = await this.cpoRepo.findOneForCompany(id, companyId);
     if (!cpo) {
       throw new NotFoundException(`CPO ${id} not found`);
     }
     await this.cpoRepo.remove(cpo);
+
+    this.auditService
+      .log({
+        entityType: "customer_purchase_order",
+        entityId: id,
+        action: AuditAction.DELETE,
+        oldValues: {
+          companyId,
+          cpoNumber: cpo.cpoNumber,
+          jobNumber: cpo.jobNumber,
+          status: cpo.status,
+        },
+        newValues: { userId: userId ?? null },
+      })
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
   }
 
   async updateStatus(
     companyId: number,
     id: number,
     status: CpoStatus,
+    userId?: number,
   ): Promise<CustomerPurchaseOrder> {
     const cpo = await this.findById(companyId, id);
+    const previousStatus = cpo.status;
     cpo.status = status;
-    return this.cpoRepo.save(cpo);
+    const saved = await this.cpoRepo.save(cpo);
+
+    this.auditService
+      .log({
+        entityType: "customer_purchase_order",
+        entityId: id,
+        action: AuditAction.UPDATE,
+        oldValues: { companyId, cpoNumber: cpo.cpoNumber, status: previousStatus },
+        newValues: { userId: userId ?? null, status },
+      })
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
+
+    return saved;
   }
 
   async updateCoatingSpecs(
     companyId: number,
     id: number,
     coatingSpecs: string | null,
+    userId?: number,
   ): Promise<CustomerPurchaseOrder> {
     const cpo = await this.findById(companyId, id);
+    const previousCoatingSpecs = cpo.coatingSpecs;
     cpo.coatingSpecs = coatingSpecs;
     await this.cpoRepo.save(cpo);
+
+    this.auditService
+      .log({
+        entityType: "customer_purchase_order",
+        entityId: id,
+        action: AuditAction.UPDATE,
+        oldValues: { companyId, cpoNumber: cpo.cpoNumber, coatingSpecs: previousCoatingSpecs },
+        newValues: { userId: userId ?? null, coatingSpecs },
+      })
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
 
     const linkedJobCards = await this.jobCardRepo.findForCpo(id, companyId);
 

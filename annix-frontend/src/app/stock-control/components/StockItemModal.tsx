@@ -145,7 +145,7 @@ export function StockItemModal(props: StockItemModalProps) {
                     name="sku"
                     value={form.sku}
                     onChange={handleChange}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${fieldErrors.sku ? "border-red-500" : "border-gray-300"}`}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] ${fieldErrors.sku ? "border-red-500" : "border-gray-300"}`}
                   />
                   {fieldErrors.sku && (
                     <p className="mt-1 text-sm text-red-600">{fieldErrors.sku}</p>
@@ -158,7 +158,7 @@ export function StockItemModal(props: StockItemModalProps) {
                     name="name"
                     value={form.name}
                     onChange={handleChange}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${fieldErrors.name ? "border-red-500" : "border-gray-300"}`}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] ${fieldErrors.name ? "border-red-500" : "border-gray-300"}`}
                   />
                   {fieldErrors.name && (
                     <p className="mt-1 text-sm text-red-600">{fieldErrors.name}</p>
@@ -173,7 +173,7 @@ export function StockItemModal(props: StockItemModalProps) {
                   value={form.description}
                   onChange={handleChange}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                 />
               </div>
 
@@ -185,7 +185,7 @@ export function StockItemModal(props: StockItemModalProps) {
                     name="category"
                     value={form.category}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                   />
                 </div>
                 <div>
@@ -196,7 +196,7 @@ export function StockItemModal(props: StockItemModalProps) {
                     name="unitOfMeasure"
                     value={form.unitOfMeasure}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                   >
                     <option value="each">Each</option>
                     <option value="kg">Kilogram</option>
@@ -220,7 +220,7 @@ export function StockItemModal(props: StockItemModalProps) {
                     onChange={handleChange}
                     step="0.01"
                     min="0"
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${fieldErrors.costPerUnit ? "border-red-500" : "border-gray-300"}`}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] ${fieldErrors.costPerUnit ? "border-red-500" : "border-gray-300"}`}
                   />
                   {fieldErrors.costPerUnit && (
                     <p className="mt-1 text-sm text-red-600">{fieldErrors.costPerUnit}</p>
@@ -234,7 +234,7 @@ export function StockItemModal(props: StockItemModalProps) {
                     value={form.quantity}
                     onChange={handleChange}
                     min="0"
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${fieldErrors.quantity ? "border-red-500" : "border-gray-300"}`}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] ${fieldErrors.quantity ? "border-red-500" : "border-gray-300"}`}
                   />
                   {fieldErrors.quantity && (
                     <p className="mt-1 text-sm text-red-600">{fieldErrors.quantity}</p>
@@ -250,7 +250,7 @@ export function StockItemModal(props: StockItemModalProps) {
                     value={form.minStockLevel}
                     onChange={handleChange}
                     min="0"
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${fieldErrors.minStockLevel ? "border-red-500" : "border-gray-300"}`}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] ${fieldErrors.minStockLevel ? "border-red-500" : "border-gray-300"}`}
                   />
                   {fieldErrors.minStockLevel && (
                     <p className="mt-1 text-sm text-red-600">{fieldErrors.minStockLevel}</p>
@@ -265,7 +265,7 @@ export function StockItemModal(props: StockItemModalProps) {
                   name="location"
                   value={form.location}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                 />
               </div>
             </div>
@@ -280,7 +280,7 @@ export function StockItemModal(props: StockItemModalProps) {
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700"
+                className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)]"
               >
                 {item ? "Update" : "Create"}
               </button>

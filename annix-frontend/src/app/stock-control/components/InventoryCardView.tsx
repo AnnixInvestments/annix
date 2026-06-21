@@ -253,20 +253,20 @@ function ItemCard(props: {
   if (thumbnailSize === "S") {
     return (
       <div
-        className={`rounded-lg border p-2 transition-shadow hover:shadow-md ${colors.bg} ${selected ? "ring-2 ring-teal-500" : ""}`}
+        className={`rounded-lg border p-2 transition-shadow hover:shadow-md ${colors.bg} ${selected ? "ring-2 ring-[var(--sc-primary,#323288)]" : ""}`}
       >
         <div className="flex items-center gap-2">
           <input
             type="checkbox"
             checked={selected}
             onChange={() => onToggleSelect(item.id)}
-            className="h-3.5 w-3.5 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+            className="h-3.5 w-3.5 rounded border-gray-300 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)]"
           />
           <div className="flex-shrink-0">{thumbnailElement}</div>
           <div className="flex-1 min-w-0 flex items-center gap-1.5">
             <Link
               href={`/stock-control/portal/inventory/${item.id}`}
-              className="text-xs font-semibold text-gray-900 hover:text-teal-700 truncate"
+              className="text-xs font-semibold text-gray-900 hover:text-[var(--sc-primary-hover,#252560)] truncate"
             >
               {item.name}
             </Link>
@@ -280,7 +280,7 @@ function ItemCard(props: {
   if (thumbnailSize === "XL") {
     return (
       <div
-        className={`rounded-lg border overflow-hidden transition-shadow hover:shadow-md ${colors.bg} ${selected ? "ring-2 ring-teal-500" : ""}`}
+        className={`rounded-lg border overflow-hidden transition-shadow hover:shadow-md ${colors.bg} ${selected ? "ring-2 ring-[var(--sc-primary,#323288)]" : ""}`}
       >
         <div className="relative">
           {thumbnailElement}
@@ -288,14 +288,14 @@ function ItemCard(props: {
             type="checkbox"
             checked={selected}
             onChange={() => onToggleSelect(item.id)}
-            className="absolute top-2 left-2 h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+            className="absolute top-2 left-2 h-4 w-4 rounded border-gray-300 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)]"
           />
         </div>
         <div className="p-4">
           <div className="flex items-center gap-2">
             <Link
               href={`/stock-control/portal/inventory/${item.id}`}
-              className="text-sm font-semibold text-gray-900 hover:text-teal-700 truncate"
+              className="text-sm font-semibold text-gray-900 hover:text-[var(--sc-primary-hover,#252560)] truncate"
             >
               {item.name}
             </Link>
@@ -321,7 +321,7 @@ function ItemCard(props: {
           <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-100">
             <Link
               href={`/stock-control/portal/inventory/${item.id}`}
-              className="text-xs text-teal-600 hover:text-teal-800 font-medium"
+              className="text-xs text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] font-medium"
             >
               View
             </Link>
@@ -345,21 +345,21 @@ function ItemCard(props: {
 
   return (
     <div
-      className={`rounded-lg border p-4 transition-shadow hover:shadow-md ${colors.bg} ${selected ? "ring-2 ring-teal-500" : ""}`}
+      className={`rounded-lg border p-4 transition-shadow hover:shadow-md ${colors.bg} ${selected ? "ring-2 ring-[var(--sc-primary,#323288)]" : ""}`}
     >
       <div className="flex items-start gap-3">
         <input
           type="checkbox"
           checked={selected}
           onChange={() => onToggleSelect(item.id)}
-          className="mt-1 h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+          className="mt-1 h-4 w-4 rounded border-gray-300 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)]"
         />
         <div className="flex-shrink-0">{thumbnailElement}</div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <Link
               href={`/stock-control/portal/inventory/${item.id}`}
-              className="text-sm font-semibold text-gray-900 hover:text-teal-700 truncate"
+              className="text-sm font-semibold text-gray-900 hover:text-[var(--sc-primary-hover,#252560)] truncate"
             >
               {item.name}
             </Link>
@@ -387,7 +387,7 @@ function ItemCard(props: {
       <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-100">
         <Link
           href={`/stock-control/portal/inventory/${item.id}`}
-          className="text-xs text-teal-600 hover:text-teal-800 font-medium"
+          className="text-xs text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] font-medium"
         >
           View
         </Link>

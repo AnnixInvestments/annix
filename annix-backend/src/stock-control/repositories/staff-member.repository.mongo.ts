@@ -5,6 +5,10 @@ import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository
 import { StaffMember } from "../entities/staff-member.entity";
 import { StaffMemberRepository, type StaffSearchRow } from "./staff-member.repository";
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 @Injectable()
 export class MongoStaffMemberRepository
   extends MongoCrudRepository<StaffMember>
@@ -26,13 +30,14 @@ export class MongoStaffMemberRepository
       base.active = false;
     }
 
-    const query = filters?.search
+    const searchPattern = filters?.search ? escapeRegex(filters.search.slice(0, 100)) : null;
+    const query = searchPattern
       ? {
           ...base,
           $or: [
-            { name: { $regex: filters.search, $options: "i" } },
-            { employeeNumber: { $regex: filters.search, $options: "i" } },
-            { department: { $regex: filters.search, $options: "i" } },
+            { name: { $regex: searchPattern, $options: "i" } },
+            { employeeNumber: { $regex: searchPattern, $options: "i" } },
+            { department: { $regex: searchPattern, $options: "i" } },
           ],
         }
       : base;
@@ -71,7 +76,7 @@ export class MongoStaffMemberRepository
     pattern: string,
     limit: number,
   ): Promise<StaffSearchRow[]> {
-    const term = pattern.replace(/%/g, "");
+    const term = escapeRegex(pattern.replace(/%/g, "").slice(0, 100));
     const docs = await this.documents
       .find({
         companyId,

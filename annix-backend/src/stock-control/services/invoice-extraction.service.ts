@@ -211,6 +211,8 @@ export function consolidateRollLineItems(
   return result;
 }
 
+const MAX_BULK_AUTO_LINK = 200;
+
 @Injectable()
 export class InvoiceExtractionService {
   private readonly logger = new Logger(InvoiceExtractionService.name);
@@ -475,11 +477,19 @@ export class InvoiceExtractionService {
   }
 
   async autoLinkAllUnlinked(companyId: number): Promise<{ linked: number; details: string[] }> {
-    const unlinked = await this.invoiceRepo.findUnlinkedForCompany(companyId);
+    const allUnlinked = await this.invoiceRepo.findUnlinkedForCompany(companyId);
 
-    if (unlinked.length === 0) {
+    if (allUnlinked.length === 0) {
       return { linked: 0, details: [] };
     }
+
+    if (allUnlinked.length > MAX_BULK_AUTO_LINK) {
+      this.logger.warn(
+        `auto-link for company ${companyId} truncated from ${allUnlinked.length} to ${MAX_BULK_AUTO_LINK}`,
+      );
+    }
+
+    const unlinked = allUnlinked.slice(0, MAX_BULK_AUTO_LINK);
 
     const candidates = await this.deliveryNoteRepo.findAutoLinkCandidates(companyId);
 

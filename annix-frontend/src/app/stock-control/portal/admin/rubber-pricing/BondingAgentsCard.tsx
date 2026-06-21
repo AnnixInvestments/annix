@@ -22,6 +22,7 @@ import {
   useCommitRubberBondingAgentImport,
   useCreateRubberBondingAgent,
   useDeleteRubberBondingAgent,
+  useEnrichRubberBondingCoverage,
   useImportRubberBondingAgents,
   useRubberBondingAgents,
   useSeedRubberBondingAgents,
@@ -188,6 +189,7 @@ export function BondingAgentsCard(props: BondingAgentsCardProps) {
   const updateAgent = useUpdateRubberBondingAgent();
   const deleteAgent = useDeleteRubberBondingAgent();
   const seedAgents = useSeedRubberBondingAgents();
+  const enrichCoverage = useEnrichRubberBondingCoverage();
   const importAgents = useImportRubberBondingAgents();
   const commitImport = useCommitRubberBondingAgentImport();
   const { showToast } = useToast();
@@ -217,6 +219,7 @@ export function BondingAgentsCard(props: BondingAgentsCardProps) {
   });
 
   const seedPending = seedAgents.isPending;
+  const enrichPending = enrichCoverage.isPending;
   const importPending = importAgents.isPending;
 
   const setRowField = useCallback((field: keyof AgentDraft, value: string) => {
@@ -312,6 +315,29 @@ export function BondingAgentsCard(props: BondingAgentsCardProps) {
     });
   }, [confirm, seedAgents, showToast]);
 
+  const handleEnrichCoverage = useCallback(() => {
+    enrichCoverage.mutate(undefined, {
+      onSuccess: (result) => {
+        const enriched = result.enriched;
+        const checked = result.checked;
+        if (enriched > 0) {
+          showToast(
+            `Filled coverage for ${enriched} bonding agent${enriched === 1 ? "" : "s"} from datasheets.`,
+            "success",
+          );
+        } else if (checked === 0) {
+          showToast("All bonding agents already have coverage.", "info");
+        } else {
+          showToast(
+            "No datasheet match for the bonding agents missing coverage — enter those manually.",
+            "info",
+          );
+        }
+      },
+      onError: () => showToast("Could not fill coverage — please try again.", "error"),
+    });
+  }, [enrichCoverage, showToast]);
+
   const handleImportFile = useCallback(
     async (file: File) => {
       try {
@@ -404,6 +430,14 @@ export function BondingAgentsCard(props: BondingAgentsCardProps) {
             className="inline-flex items-center justify-center rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
           >
             {seedPending ? "Seeding…" : "Seed from product data"}
+          </button>
+          <button
+            type="button"
+            onClick={handleEnrichCoverage}
+            disabled={enrichPending || !hasRows}
+            className="inline-flex items-center justify-center rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            {enrichPending ? "Filling…" : "Fill coverage from datasheets"}
           </button>
           <button
             type="button"

@@ -2,6 +2,7 @@
 
 import { Download, Eye, FileText, Loader2, RefreshCw, Upload, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type {
   ReconciliationDocCategory,
   ReconciliationDocumentRecord,
@@ -243,7 +244,7 @@ export function DocumentUploadGate(props: DocumentUploadGateProps) {
                     <button
                       onClick={() => fileInputRefs.current[category]?.click()}
                       disabled={isUploading}
-                      className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-gray-300 px-3 py-2 text-xs text-gray-500 hover:border-teal-400 hover:text-teal-600 disabled:opacity-50"
+                      className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-gray-300 px-3 py-2 text-xs text-gray-500 hover:border-[var(--sc-primary-400,#5b5b9c)] hover:text-[var(--sc-primary,#323288)] disabled:opacity-50"
                     >
                       {isUploading ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -266,19 +267,25 @@ export function DocumentUploadGate(props: DocumentUploadGateProps) {
         )}
       </div>
 
-      {viewingUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
-          <div className="relative h-[90vh] w-[90vw] max-w-5xl rounded-lg bg-white shadow-xl">
-            <button
-              onClick={() => setViewingUrl(null)}
-              className="absolute right-3 top-3 z-10 rounded-full bg-gray-100 p-1.5 hover:bg-gray-200"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            <iframe src={viewingUrl} className="h-full w-full rounded-lg" title="Document Viewer" />
-          </div>
-        </div>
-      )}
+      {viewingUrl &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/10 backdrop-blur-md">
+            <div className="relative h-[90vh] w-[90vw] max-w-5xl rounded-lg bg-white shadow-xl">
+              <button
+                onClick={() => setViewingUrl(null)}
+                className="absolute right-3 top-3 z-10 rounded-full bg-gray-100 p-1.5 hover:bg-gray-200"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <iframe
+                src={viewingUrl}
+                className="h-full w-full rounded-lg"
+                title="Document Viewer"
+              />
+            </div>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }

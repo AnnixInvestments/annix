@@ -152,7 +152,7 @@ export function ApprovalModal(props: ApprovalModalProps) {
                 <div className="flex space-x-4">
                   <button
                     onClick={() => (hasOutcomes ? setMode("outcome") : setMode("approve"))}
-                    className="flex-1 px-4 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium"
+                    className="flex-1 px-4 py-3 bg-[var(--sc-primary,#323288)] text-white rounded-lg hover:bg-[var(--sc-primary-hover,#252560)] font-medium"
                   >
                     Approve
                   </button>
@@ -197,7 +197,7 @@ export function ApprovalModal(props: ApprovalModalProps) {
             {mode === "approve" && (
               <div className="space-y-4">
                 {selectedOutcomeLabel && (
-                  <div className="px-3 py-2 bg-teal-50 border border-teal-200 rounded-md text-sm text-teal-800">
+                  <div className="px-3 py-2 bg-[var(--sc-primary-50,#eeeef6)] border border-[var(--sc-primary-200,#adadcf)] rounded-md text-sm text-[var(--sc-primary-active,#1c1c48)]">
                     Material sourcing: <span className="font-semibold">{selectedOutcomeLabel}</span>
                   </div>
                 )}
@@ -216,7 +216,7 @@ export function ApprovalModal(props: ApprovalModalProps) {
                     value={comments}
                     onChange={(e) => setComments(e.target.value)}
                     rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                     placeholder="Add any comments..."
                   />
                 </div>

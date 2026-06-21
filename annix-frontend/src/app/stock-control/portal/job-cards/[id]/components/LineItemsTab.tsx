@@ -78,7 +78,7 @@ export function LineItemsTab(props: LineItemsTabProps) {
           <button
             type="button"
             onClick={() => setShowAddForm(true)}
-            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded bg-teal-100 text-teal-800 hover:bg-teal-200"
+            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary-active,#1c1c48)] hover:bg-[var(--sc-primary-200,#adadcf)]"
           >
             <Plus className="h-3.5 w-3.5" />
             Add Line
@@ -144,56 +144,56 @@ export function LineItemsTab(props: LineItemsTabProps) {
 
   function renderAddForm() {
     return (
-      <div className="px-4 py-3 bg-teal-50 border-b border-teal-200">
+      <div className="px-4 py-3 bg-[var(--sc-primary-50,#eeeef6)] border-b border-[var(--sc-primary-200,#adadcf)]">
         <div className="grid grid-cols-2 sm:grid-cols-8 gap-2 mb-2">
           <input
             type="text"
             value={addForm.itemCode}
             onChange={(e) => setAddForm({ ...addForm, itemCode: e.target.value })}
             placeholder="Item Code"
-            className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
+            className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
           />
           <input
             type="text"
             value={addForm.itemDescription}
             onChange={(e) => setAddForm({ ...addForm, itemDescription: e.target.value })}
             placeholder="Description"
-            className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500 sm:col-span-2"
+            className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] sm:col-span-2"
           />
           <input
             type="text"
             value={addForm.itemNo}
             onChange={(e) => setAddForm({ ...addForm, itemNo: e.target.value })}
             placeholder="Item No"
-            className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
+            className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
           />
           <input
             type="text"
             value={addForm.quantity}
             onChange={(e) => setAddForm({ ...addForm, quantity: e.target.value })}
             placeholder="Qty"
-            className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
+            className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
           />
           <input
             type="text"
             value={addForm.jtNo}
             onChange={(e) => setAddForm({ ...addForm, jtNo: e.target.value })}
             placeholder="JT No (scan/paste)"
-            className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
+            className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
           />
           <input
             type="text"
             value={addForm.liningM2}
             onChange={(e) => setAddForm({ ...addForm, liningM2: e.target.value })}
             placeholder="Lining m²"
-            className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
+            className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
           />
           <input
             type="text"
             value={addForm.m2}
             onChange={(e) => setAddForm({ ...addForm, m2: e.target.value })}
             placeholder="Paint m²"
-            className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
+            className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -201,7 +201,7 @@ export function LineItemsTab(props: LineItemsTabProps) {
             type="button"
             onClick={handleAddLineItem}
             disabled={addLineItem.isPending}
-            className="px-3 py-1.5 text-xs font-medium text-white bg-teal-600 rounded hover:bg-teal-700 disabled:opacity-50"
+            className="px-3 py-1.5 text-xs font-medium text-white bg-[var(--sc-primary,#323288)] rounded hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
           >
             {addLineItem.isPending ? "Adding..." : "Add"}
           </button>
@@ -251,7 +251,7 @@ export function LineItemsTab(props: LineItemsTabProps) {
             <button
               type="button"
               onClick={() => setShowAddForm(!showAddForm)}
-              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded bg-teal-100 text-teal-800 hover:bg-teal-200"
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary-active,#1c1c48)] hover:bg-[var(--sc-primary-200,#adadcf)]"
             >
               <Plus className="h-3.5 w-3.5" />
               Add Line
@@ -264,7 +264,7 @@ export function LineItemsTab(props: LineItemsTabProps) {
           }) && (
             <div className="flex items-center space-x-4 text-sm">
               <span className="text-gray-500">From drawings:</span>
-              <span className="font-semibold text-teal-700">
+              <span className="font-semibold text-[var(--sc-primary-hover,#252560)]">
                 Ext:{" "}
                 {attachments
                   .reduce((sum, a) => {
@@ -385,7 +385,7 @@ export function LineItemsTab(props: LineItemsTabProps) {
                       {quantity || "-"}
                     </td>
                     {showLiningColumn && (
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-medium text-teal-700">
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-medium text-[var(--sc-primary-hover,#252560)]">
                         {li.liningM2 ? Number(li.liningM2).toFixed(2) : "-"}
                       </td>
                     )}
@@ -467,7 +467,7 @@ export function LineItemsTab(props: LineItemsTabProps) {
                       <span className="font-semibold text-gray-900">Qty: {li.quantity}</span>
                     )}
                     {showLiningColumn && li.liningM2 ? (
-                      <span className="text-teal-700">
+                      <span className="text-[var(--sc-primary-hover,#252560)]">
                         Lining {Number(li.liningM2).toFixed(2)} m²
                       </span>
                     ) : null}

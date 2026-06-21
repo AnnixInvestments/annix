@@ -3,6 +3,7 @@ import { ChatConversationParticipant } from "../entities/chat-conversation-parti
 
 export abstract class ChatConversationParticipantRepository extends CrudRepository<ChatConversationParticipant> {
   abstract findConversationIdsForUser(userId: number): Promise<number[]>;
+  abstract isParticipant(conversationId: number, userId: number): Promise<boolean>;
   abstract findForUser(userId: number): Promise<ChatConversationParticipant[]>;
   abstract createMany(
     rows: Array<{ conversationId: number; userId: number }>,

@@ -303,7 +303,7 @@ export default function QuoteFromDocumentsPage() {
       />
 
       {reviewReady && session && (
-        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-300 rounded-lg p-4 flex items-center justify-between gap-4 shadow-sm">
+        <div className="bg-gradient-to-r from-emerald-50 to-[var(--sc-primary-50,#eeeef6)] border-2 border-emerald-300 rounded-lg p-4 flex items-center justify-between gap-4 shadow-sm">
           <div>
             <h3 className="text-base font-bold text-gray-900">Session #{session.id} ready</h3>
             <p className="text-sm text-gray-700 mt-1">

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -15,6 +16,8 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
+import { isNumber } from "es-toolkit/compat";
 import type { Response } from "express";
 import { SageExportFilterDto } from "../../sage-export/dto/sage-export.dto";
 import { SageExportService } from "../../sage-export/sage-export.service";
@@ -36,6 +39,8 @@ import {
 import { InvoiceExtractionService } from "../services/invoice-extraction.service";
 import { SageInvoiceAdapterService } from "../services/sage-invoice-adapter.service";
 
+const MAX_INVOICE_SCAN_BYTES = 25 * 1024 * 1024;
+
 @ApiTags("Stock Control - Invoices")
 @Controller("stock-control/invoices")
 @UseGuards(StockControlAuthGuard, StockControlOnboardingGuard, StockControlRoleGuard)
@@ -46,6 +51,21 @@ export class InvoicesController {
     private readonly sageAdapter: SageInvoiceAdapterService,
     private readonly sageExportService: SageExportService,
   ) {}
+
+  private assertScanFile(file: Express.Multer.File): void {
+    if (!file) {
+      throw new BadRequestException("No file provided");
+    }
+    const mimetype = file.mimetype ?? "";
+    const isPdf = mimetype === "application/pdf";
+    const isImage = mimetype.startsWith("image/");
+    if (!isPdf && !isImage) {
+      throw new BadRequestException("File must be an image (JPEG, PNG) or PDF");
+    }
+    if (isNumber(file.size) && file.size > MAX_INVOICE_SCAN_BYTES) {
+      throw new BadRequestException("File is too large (max 25MB)");
+    }
+  }
 
   @Get()
   @ApiOperation({ summary: "List all supplier invoices" })
@@ -84,7 +104,11 @@ export class InvoicesController {
     @Query() filters: SageExportFilterDto,
     @Res() res: Response,
   ) {
-    const context = { companyId: req.user.companyId, appKey: "stock-control" };
+    const context = {
+      companyId: req.user.companyId,
+      appKey: "stock-control",
+      userId: req.user.id,
+    };
     const { invoices, entityIds } = await this.sageAdapter.exportableInvoices(filters, context);
     const csv = this.sageExportService.generateCsv(invoices);
     await this.sageAdapter.markExported(entityIds, context);
@@ -95,12 +119,16 @@ export class InvoicesController {
   }
 
   @Post("auto-link")
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @ApiOperation({ summary: "Auto-link all unlinked invoices to matching delivery notes" })
   async autoLinkAll(@Req() req: any) {
     return this.invoiceService.autoLinkAllUnlinked(req.user.companyId);
   }
 
   @Post("re-extract-all-failed")
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { ttl: 60000, limit: 3 } })
   @ApiOperation({ summary: "Re-trigger AI extraction on all failed invoices" })
   async reExtractAllFailed(@Req() req: any) {
     return this.invoiceService.reExtractAllFailed(req.user.companyId);
@@ -135,10 +163,12 @@ export class InvoicesController {
   @UseInterceptors(IdempotencyInterceptor)
   @ApiOperation({ summary: "Create a new supplier invoice" })
   async create(@Body() dto: CreateInvoiceDto, @Req() req: any) {
-    return this.invoiceService.create(req.user.companyId, dto);
+    return this.invoiceService.create(req.user.companyId, dto, req.user.id);
   }
 
   @Post(":id/scan")
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ upload: { ttl: 60000, limit: 10 } })
   @UseInterceptors(FileInterceptor("file"))
   @ApiOperation({ summary: "Upload invoice scan and trigger AI extraction" })
   async uploadScan(
@@ -146,10 +176,13 @@ export class InvoicesController {
     @Param("id") id: number,
     @UploadedFile() file: Express.Multer.File,
   ) {
+    this.assertScanFile(file);
     return this.invoiceService.uploadScan(req.user.companyId, id, file);
   }
 
   @Post(":id/re-extract")
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ upload: { ttl: 60000, limit: 10 } })
   @ApiOperation({ summary: "Re-trigger AI extraction on an existing invoice scan" })
   async reExtract(@Req() req: any, @Param("id") id: number) {
     return this.invoiceService.reExtract(req.user.companyId, id);
@@ -254,6 +287,6 @@ export class InvoicesController {
   @Delete(":id")
   @ApiOperation({ summary: "Delete an invoice" })
   async remove(@Req() req: any, @Param("id") id: number) {
-    return this.invoiceService.remove(req.user.companyId, id);
+    return this.invoiceService.remove(req.user.companyId, id, req.user.id);
   }
 }

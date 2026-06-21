@@ -211,10 +211,12 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
   };
 
   return (
-    <div className="rounded-lg border border-teal-200 bg-teal-50 shadow-sm">
-      <div className="flex items-center justify-between border-b border-teal-200 px-5 py-3">
-        <h3 className="text-sm font-semibold text-teal-900">Release Document Generator</h3>
-        <span className="inline-flex items-center rounded-full bg-teal-100 px-2.5 py-0.5 text-xs font-medium text-teal-800">
+    <div className="rounded-lg border border-[var(--sc-primary-200,#adadcf)] bg-[var(--sc-primary-50,#eeeef6)] shadow-sm">
+      <div className="flex items-center justify-between border-b border-[var(--sc-primary-200,#adadcf)] px-5 py-3">
+        <h3 className="text-sm font-semibold text-[var(--sc-primary-active,#1c1c48)]">
+          Release Document Generator
+        </h3>
+        <span className="inline-flex items-center rounded-full bg-[var(--sc-primary-100,#d6d6e9)] px-2.5 py-0.5 text-xs font-medium text-[var(--sc-primary-active,#1c1c48)]">
           QA Final Check
         </span>
       </div>
@@ -238,7 +240,7 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
           </div>
         )}
 
-        <p className="mb-3 text-sm text-teal-800">
+        <p className="mb-3 text-sm text-[var(--sc-primary-active,#1c1c48)]">
           Select line items to include in the release documents. Both the Items Release (QD_PLS_09)
           and Release Certificate (QD_PLS_10) will be auto-generated with QC measurement data.
           Adjust quantities for partial releases.
@@ -308,7 +310,7 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
                 </div>
               </div>
             )}
-            <div className="overflow-x-auto rounded-md border border-teal-200 bg-white">
+            <div className="overflow-x-auto rounded-md border border-[var(--sc-primary-200,#adadcf)] bg-white">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -317,7 +319,7 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
                         type="checkbox"
                         checked={allAvailableSelected}
                         onChange={handleToggleAll}
-                        className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                        className="h-4 w-4 rounded border-gray-300 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)]"
                       />
                     </th>
                     <th className="hidden sm:table-cell px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
@@ -371,7 +373,7 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
                           isFullyReleased
                             ? "bg-gray-50 opacity-50"
                             : isSelected
-                              ? "cursor-pointer bg-teal-50 hover:bg-gray-50"
+                              ? "cursor-pointer bg-[var(--sc-primary-50,#eeeef6)] hover:bg-gray-50"
                               : "cursor-pointer hover:bg-gray-50"
                         }
                         onClick={() => handleToggle(idx)}
@@ -383,7 +385,7 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
                             disabled={isFullyReleased}
                             onChange={() => handleToggle(idx)}
                             onClick={(e) => e.stopPropagation()}
-                            className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-50"
+                            className="h-4 w-4 rounded border-gray-300 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] disabled:opacity-50"
                           />
                         </td>
                         <td className="hidden sm:table-cell whitespace-nowrap px-3 py-2 text-sm text-gray-500">
@@ -445,7 +447,7 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
             </div>
 
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <span className="text-sm text-teal-700">
+              <span className="text-sm text-[var(--sc-primary-hover,#252560)]">
                 {selectedIndices.size} of{" "}
                 {
                   lineItems.filter((_li, idx) => {
@@ -465,7 +467,7 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
               <button
                 onClick={handleGenerate}
                 disabled={selectedIndices.size === 0 || isGenerating}
-                className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-md bg-[var(--sc-primary,#323288)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isGenerating ? "Generating..." : "Generate Release Documents"}
               </button>

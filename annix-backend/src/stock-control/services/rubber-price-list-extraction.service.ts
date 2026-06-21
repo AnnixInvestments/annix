@@ -1,5 +1,6 @@
 import {
   defaultRubberSgByType,
+  lookupRubberBondingCoverage,
   lookupRubberSgByCode,
   pricePerKgFromRoll,
   STANDARD_RUBBER_ROLL,
@@ -450,8 +451,15 @@ export class RubberPriceListExtractionService {
         if (!name) {
           return null;
         }
-        const gramsPerM2 = agent.gramsPerM2 ?? null;
-        const areaCoverPerLitre = agent.areaCoverPerLitre ?? null;
+        const extractedGramsPerM2 = agent.gramsPerM2 ?? null;
+        const extractedAreaCoverPerLitre = agent.areaCoverPerLitre ?? null;
+        const reference =
+          extractedGramsPerM2 == null && extractedAreaCoverPerLitre == null
+            ? lookupRubberBondingCoverage(name)
+            : null;
+        const gramsPerM2 = reference != null ? reference.gramsPerM2 : extractedGramsPerM2;
+        const areaCoverPerLitre =
+          reference != null ? reference.areaCoverPerLitre : extractedAreaCoverPerLitre;
         const coverageBasis: "litre" | "gram" | "none" =
           gramsPerM2 != null ? "gram" : areaCoverPerLitre != null ? "litre" : "none";
         return {

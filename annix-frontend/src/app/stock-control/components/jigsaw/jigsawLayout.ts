@@ -11,7 +11,7 @@ import {
 
 const CUT_COLORS = [
   "bg-blue-500",
-  "bg-teal-500",
+  "bg-[var(--sc-primary,#323288)]",
   "bg-purple-500",
   "bg-orange-500",
   "bg-pink-500",

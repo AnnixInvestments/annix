@@ -169,7 +169,7 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>("JWT_SECRET", "stock-control-jwt-secret"),
+        secret: configService.getOrThrow<string>("JWT_SECRET"),
         signOptions: { expiresIn: "8h" },
       }),
     }),

@@ -29,11 +29,18 @@ import {
   useCreateRubberPriceItem,
   useDeleteRubberPriceItem,
   useImportRubberPriceList,
+  useRubberBondingAgents,
   useRubberPricing,
   useSeedRubberPriceList,
   useUpdateRubberPriceItem,
   useUpdateRubberPricingConfig,
 } from "@/app/lib/query/hooks";
+import {
+  agentPortionPerM2,
+  blastingCostPerM2,
+  curingCostPerM2,
+  labourCostPerM2,
+} from "./rubberCostMath";
 
 const IMPORT_FALLBACK_MS = 60000;
 
@@ -243,6 +250,7 @@ export default function RubberPricingAdminPage() {
   const bulkUplift = useBulkUpliftRubberPrices();
   const seedList = useSeedRubberPriceList();
   const clearList = useClearRubberPriceList();
+  const bondingAgentsQuery = useRubberBondingAgents();
   const brandingQuery = useBranding("stock-control");
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
@@ -264,6 +272,7 @@ export default function RubberPricingAdminPage() {
   const [bondingFilter, setBondingFilter] = useState("all");
   const [shoreFilter, setShoreFilter] = useState("all");
   const [cureFilter, setCureFilter] = useState("all");
+  const [summaryBondingType, setSummaryBondingType] = useState("Natural");
 
   const data = query.data;
   const config = data ? data.config : null;
@@ -613,41 +622,11 @@ export default function RubberPricingAdminPage() {
     setNewDraft((prev) => ({ ...prev, [field]: value }));
   }, []);
 
-  const updateBlasting = useCallback(
-    (field: keyof RubberPricingConfig["blasting"], value: string) => {
-      const parsed = numberOrNull(value);
-      setConfigDraft((prev) => {
-        if (!prev) return prev;
-        return { ...prev, blasting: { ...prev.blasting, [field]: parsed ?? 0 } };
-      });
-    },
-    [],
-  );
-
-  const updateParaffin = useCallback(
-    (field: keyof RubberPricingConfig["paraffin"], value: string) => {
-      const parsed = numberOrNull(value);
-      setConfigDraft((prev) => {
-        if (!prev) return prev;
-        return { ...prev, paraffin: { ...prev.paraffin, [field]: parsed ?? 0 } };
-      });
-    },
-    [],
-  );
-
   const updateConsumableMarkup = useCallback((value: string) => {
     const parsed = numberOrNull(value);
     setConfigDraft((prev) => {
       if (!prev) return prev;
       return { ...prev, consumableMarkup: parsed ?? 0 };
-    });
-  }, []);
-
-  const updateDeptRate = useCallback((dept: string, value: string) => {
-    const parsed = numberOrNull(value);
-    setConfigDraft((prev) => {
-      if (!prev) return prev;
-      return { ...prev, deptAvgHourly: { ...prev.deptAvgHourly, [dept]: parsed ?? 0 } };
     });
   }, []);
 
@@ -662,6 +641,14 @@ export default function RubberPricingAdminPage() {
     },
     [],
   );
+
+  const updateDefaultBondingSupplier = useCallback((fam: RubberPriceFamily, supplier: string) => {
+    setConfigDraft((prev) => {
+      if (!prev) return prev;
+      const famConfig = prev[fam];
+      return { ...prev, [fam]: { ...famConfig, defaultBondingAgentSupplier: supplier } };
+    });
+  }, []);
 
   const queryIsLoading = query.isLoading;
   const queryIsError = query.isError;
@@ -678,9 +665,32 @@ export default function RubberPricingAdminPage() {
     );
   }
 
-  const deptNames = keys(configDraft.deptAvgHourly);
-  const blasting = configDraft.blasting;
-  const paraffin = configDraft.paraffin;
+  const blastingPerM2 = blastingCostPerM2(configDraft);
+  const curingPerM2 = curingCostPerM2(configDraft);
+  const summaryLabourPerM2 = labourCostPerM2(configDraft, family);
+  const summaryFamilyConfig = configDraft[family];
+  const summarySupplierBaselines = summaryFamilyConfig.cwAgentSupplierBaselines;
+  const bondingSupplierOptions = keys(summarySupplierBaselines ?? {});
+  const storedDefaultSupplier = summaryFamilyConfig.defaultBondingAgentSupplier;
+  const firstSupplierOption = bondingSupplierOptions[0];
+  const summarySupplier = storedDefaultSupplier ?? firstSupplierOption ?? "";
+  const bondingAgentsData = bondingAgentsQuery.data;
+  const bondingAgentRows = bondingAgentsData ? bondingAgentsData.agents : [];
+  const summarySaleByName = new Map(
+    bondingAgentRows.map((row) => {
+      const sale = row.pricing.salePerM2;
+      return [row.agent.name, sale ?? null] as const;
+    }),
+  );
+  const summaryAdhesivesPerM2 = agentPortionPerM2(
+    configDraft,
+    family,
+    summaryBondingType,
+    summarySupplier,
+    summarySaleByName,
+  );
+  const summaryTotalAdditionalPerM2 =
+    blastingPerM2 + curingPerM2 + summaryLabourPerM2 + summaryAdhesivesPerM2;
   const previewSupplier = importPreview ? importPreview.supplier : "";
   const previewRows = importPreview ? importPreview.rows : [];
 
@@ -722,115 +732,94 @@ export default function RubberPricingAdminPage() {
           </button>
         </div>
 
-        <div className="space-y-2">
-          <span className="text-sm font-medium text-gray-700">Paraffin / curing</span>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="space-y-3">
+          <span className="text-sm font-medium text-gray-700">Bonding-system cost summary</span>
+          <div className="flex flex-wrap items-end gap-3">
             <label className="block">
-              <span className="text-xs text-gray-500">Litres per cure</span>
-              <input
-                type="number"
-                step="0.01"
-                value={paraffin.ltrsPerCure}
-                onChange={(e) => updateParaffin("ltrsPerCure", e.target.value)}
-                className={INPUT_CLASS}
-              />
+              <span className="text-xs text-gray-500">Family</span>
+              <select
+                value={family}
+                onChange={(e) => setFamily(e.target.value as RubberPriceFamily)}
+                aria-label="Cost summary family"
+                className={`${INPUT_CLASS} w-44`}
+              >
+                {FAMILY_TABS.map((tab) => (
+                  <option key={tab.value} value={tab.value}>
+                    {tab.label}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="block">
-              <span className="text-xs text-gray-500">Cost per litre (R)</span>
-              <input
-                type="number"
-                step="0.01"
-                value={paraffin.costPerLitre}
-                onChange={(e) => updateParaffin("costPerLitre", e.target.value)}
-                className={INPUT_CLASS}
-              />
+              <span className="text-xs text-gray-500">Bonding supplier (default)</span>
+              <select
+                value={summarySupplier}
+                onChange={(e) => updateDefaultBondingSupplier(family, e.target.value)}
+                aria-label="Default bonding agent supplier"
+                className={`${INPUT_CLASS} w-44`}
+              >
+                {bondingSupplierOptions.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="block">
-              <span className="text-xs text-gray-500">m² per pot</span>
-              <input
-                type="number"
-                step="0.01"
-                value={paraffin.m2PerPot}
-                onChange={(e) => updateParaffin("m2PerPot", e.target.value)}
-                className={INPUT_CLASS}
-              />
+              <span className="text-xs text-gray-500">Rubber type</span>
+              <select
+                value={summaryBondingType}
+                onChange={(e) => setSummaryBondingType(e.target.value)}
+                aria-label="Cost summary rubber type"
+                className={`${INPUT_CLASS} w-44`}
+              >
+                {BONDING_OPTIONS.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
             </label>
           </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div className="rounded-md border border-gray-200 p-3">
+              <span className="text-xs text-gray-500">Blasting / m²</span>
+              <div className="text-base font-semibold text-gray-900">{money(blastingPerM2)}</div>
+            </div>
+            <div className="rounded-md border border-gray-200 p-3">
+              <span className="text-xs text-gray-500">Paraffin / curing / m²</span>
+              <div className="text-base font-semibold text-gray-900">{money(curingPerM2)}</div>
+            </div>
+            <div className="rounded-md border border-gray-200 p-3">
+              <span className="text-xs text-gray-500">Labour / m²</span>
+              <div className="text-base font-semibold text-gray-900">
+                {money(summaryLabourPerM2)}
+              </div>
+            </div>
+            <div className="rounded-md border border-gray-200 p-3">
+              <span className="text-xs text-gray-500">Adhesives / m²</span>
+              <div className="text-base font-semibold text-gray-900">
+                {money(summaryAdhesivesPerM2)}
+              </div>
+            </div>
+            <div className="rounded-md border border-gray-300 bg-gray-50 p-3">
+              <span className="text-xs text-gray-500">Total additional / m²</span>
+              <div className="text-lg font-semibold text-gray-900">
+                {money(summaryTotalAdditionalPerM2)}
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-gray-400">
+            Blasting, paraffin and labour are edited on the Labour and Blasting pages under
+            Resources; adhesives come from the chosen supplier's bonding system for that rubber
+            type. The bonding supplier picked here is saved (on Save settings) as the default used
+            on quotes when none is chosen. Total additional / m² is what's added on top of the
+            rubber material cost.
+          </p>
         </div>
 
         <div className="space-y-2 border-t border-gray-100 pt-4">
-          <span className="text-sm font-medium text-gray-700">Blasting</span>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <label className="block">
-              <span className="text-xs text-gray-500">Elec avg rate</span>
-              <input
-                type="number"
-                step="0.01"
-                value={blasting.elecAvgRate}
-                onChange={(e) => updateBlasting("elecAvgRate", e.target.value)}
-                className={INPUT_CLASS}
-              />
-            </label>
-            <label className="block">
-              <span className="text-xs text-gray-500">Elec avg kWh</span>
-              <input
-                type="number"
-                step="0.01"
-                value={blasting.elecAvgKwh}
-                onChange={(e) => updateBlasting("elecAvgKwh", e.target.value)}
-                className={INPUT_CLASS}
-              />
-            </label>
-            <label className="block">
-              <span className="text-xs text-gray-500">Grit bag cost (R)</span>
-              <input
-                type="number"
-                step="0.01"
-                value={blasting.gritBagCost}
-                onChange={(e) => updateBlasting("gritBagCost", e.target.value)}
-                className={INPUT_CLASS}
-              />
-            </label>
-            <label className="block">
-              <span className="text-xs text-gray-500">Grit m² per bag</span>
-              <input
-                type="number"
-                step="0.01"
-                value={blasting.gritM2PerBag}
-                onChange={(e) => updateBlasting("gritM2PerBag", e.target.value)}
-                className={INPUT_CLASS}
-              />
-            </label>
-            <label className="block">
-              <span className="text-xs text-gray-500">m² per hour</span>
-              <input
-                type="number"
-                step="0.01"
-                value={blasting.m2PerHour}
-                onChange={(e) => updateBlasting("m2PerHour", e.target.value)}
-                className={INPUT_CLASS}
-              />
-            </label>
-            <label className="block">
-              <span className="text-xs text-gray-500">Crew size</span>
-              <input
-                type="number"
-                step="1"
-                value={blasting.crewSize}
-                onChange={(e) => updateBlasting("crewSize", e.target.value)}
-                className={INPUT_CLASS}
-              />
-            </label>
-            <label className="block">
-              <span className="text-xs text-gray-500">Margin</span>
-              <input
-                type="number"
-                step="0.01"
-                value={blasting.margin}
-                onChange={(e) => updateBlasting("margin", e.target.value)}
-                className={INPUT_CLASS}
-              />
-            </label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <label className="block">
               <span className="text-xs text-gray-500">Consumable markup</span>
               <input
@@ -841,28 +830,6 @@ export default function RubberPricingAdminPage() {
                 className={INPUT_CLASS}
               />
             </label>
-          </div>
-        </div>
-
-        <div className="space-y-2 border-t border-gray-100 pt-4">
-          <span className="text-sm font-medium text-gray-700">Department average hourly rates</span>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-            {deptNames.map((dept) => {
-              const rate = configDraft.deptAvgHourly[dept];
-              return (
-                <label key={dept} className="block">
-                  <span className="text-xs text-gray-500">{dept}</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={rate}
-                    onChange={(e) => updateDeptRate(dept, e.target.value)}
-                    aria-label={`${dept} average hourly rate`}
-                    className={INPUT_CLASS}
-                  />
-                </label>
-              );
-            })}
           </div>
         </div>
 

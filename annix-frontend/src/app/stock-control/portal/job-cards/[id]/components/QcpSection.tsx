@@ -189,7 +189,7 @@ function PartyCell(props: {
               val ? (val as InterventionType) : null,
             );
           }}
-          className="w-10 rounded border border-gray-300 px-0.5 py-0.5 text-xs text-center focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+          className="w-10 rounded border border-gray-300 px-0.5 py-0.5 text-xs text-center focus:border-[var(--sc-primary,#323288)] focus:ring-1 focus:ring-[var(--sc-primary,#323288)]"
         >
           {INTERVENTION_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -200,7 +200,7 @@ function PartyCell(props: {
         <button
           type="button"
           onClick={() => props.onClickInitial(props.activityIndex, props.party)}
-          className={`w-10 rounded border px-0.5 py-0.5 text-xs text-center ${so.initial ? "border-teal-300 bg-teal-50 font-medium text-teal-800" : "border-gray-300 text-gray-400 hover:border-teal-400 hover:bg-teal-50"}`}
+          className={`w-10 rounded border px-0.5 py-0.5 text-xs text-center ${so.initial ? "border-[var(--sc-primary-300,#8484b5)] bg-[var(--sc-primary-50,#eeeef6)] font-medium text-[var(--sc-primary-active,#1c1c48)]" : "border-gray-300 text-gray-400 hover:border-[var(--sc-primary-400,#5b5b9c)] hover:bg-[var(--sc-primary-50,#eeeef6)]"}`}
         >
           {initial || "init"}
         </button>
@@ -406,7 +406,7 @@ export function QcpSection(props: QcpSectionProps) {
                   setEditingPlan(null);
                   setViewMode("create");
                 }}
-                className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
+                className="rounded-md bg-[var(--sc-primary,#323288)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)]"
               >
                 + New QCP
               </button>
@@ -526,7 +526,7 @@ export function QcpSection(props: QcpSectionProps) {
                         e.stopPropagation();
                         setReviewPlan(plan);
                       }}
-                      className="text-sm text-indigo-600 hover:text-indigo-800"
+                      className="text-sm text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                     >
                       Review
                     </button>
@@ -537,7 +537,7 @@ export function QcpSection(props: QcpSectionProps) {
                           e.stopPropagation();
                           setEditModalPlan(plan);
                         }}
-                        className="text-sm text-teal-600 hover:text-teal-800"
+                        className="text-sm text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                       >
                         Edit
                       </button>
@@ -550,7 +550,7 @@ export function QcpSection(props: QcpSectionProps) {
                             e.stopPropagation();
                             handleEdit(plan);
                           }}
-                          className="text-sm text-teal-600 hover:text-teal-800"
+                          className="text-sm text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                         >
                           Edit
                         </button>

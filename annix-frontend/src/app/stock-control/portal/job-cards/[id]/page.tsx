@@ -461,7 +461,7 @@ export default function JobCardDetailPage() {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading job card...</p>
         </div>
       </div>
@@ -480,7 +480,7 @@ export default function JobCardDetailPage() {
           </p>
           <Link
             href="/stock-control/portal/job-cards"
-            className="mt-4 inline-block text-teal-600 hover:text-teal-800"
+            className="mt-4 inline-block text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
           >
             Back to Job Cards
           </Link>
@@ -848,7 +848,7 @@ export default function JobCardDetailPage() {
                               href={selectedVersion.filePath}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-sm text-teal-600 hover:text-teal-800 underline"
+                              className="text-sm text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] underline"
                             >
                               Download PDF
                             </a>
@@ -1152,7 +1152,7 @@ export default function JobCardDetailPage() {
                   <button
                     onClick={actions.handleExportPdf}
                     disabled={actions.isDownloadingQr}
-                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 disabled:bg-gray-400 transition-colors"
+                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-[var(--sc-primary,#323288)] text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 transition-colors"
                   >
                     <svg
                       className="w-4 h-4 mr-1.5"

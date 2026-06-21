@@ -163,6 +163,9 @@ export class Company {
   @Prop({ type: Number, required: false })
   ownerUserId: number;
 
+  @Prop({ type: Number, required: false })
+  ownerCompanyId: number;
+
   @Prop({ type: Date, required: false })
   createdAt: Date;
 

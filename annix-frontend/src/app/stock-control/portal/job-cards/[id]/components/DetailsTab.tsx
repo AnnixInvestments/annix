@@ -218,20 +218,20 @@ export function DetailsTab({
                     onChange={(e) => handleNotesChange(e.target.value)}
                     rows={2}
                     placeholder="No specifications extracted yet. Click Re-extract to pull from line item notes."
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                   />
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={handleSaveNotes}
                       disabled={isSavingNotes || !hasUnsavedChanges}
-                      className="px-3 py-1 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-gray-400"
+                      className="px-3 py-1 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400"
                     >
                       {isSavingNotes ? "Saving..." : "Save"}
                     </button>
                     <button
                       onClick={onReExtractNotes}
                       disabled={isReExtracting}
-                      className="px-3 py-1 text-sm font-medium text-teal-700 bg-teal-50 border border-teal-300 rounded-md hover:bg-teal-100 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300"
+                      className="px-3 py-1 text-sm font-medium text-[var(--sc-primary-hover,#252560)] bg-[var(--sc-primary-50,#eeeef6)] border border-[var(--sc-primary-300,#8484b5)] rounded-md hover:bg-[var(--sc-primary-100,#d6d6e9)] disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300"
                     >
                       {isReExtracting ? "Re-extracting..." : "Re-extract"}
                     </button>
@@ -319,7 +319,7 @@ export function DetailsTab({
                         href={version.filePath}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm text-teal-600 hover:text-teal-800"
+                        className="text-sm text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                       >
                         View
                       </a>
@@ -345,7 +345,7 @@ export function DetailsTab({
               <button
                 onClick={onExtractAll}
                 disabled={isExtractingAll}
-                className="px-3 py-1 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-gray-400"
+                className="px-3 py-1 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400"
               >
                 {isExtractingAll ? "Nix is analysing all drawings..." : "Extract All Drawings"}
               </button>
@@ -360,7 +360,7 @@ export function DetailsTab({
             onDragLeave={onAttachmentDragLeave}
             className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
               isDraggingAttachment
-                ? "border-teal-500 bg-teal-50"
+                ? "border-[var(--sc-primary,#323288)] bg-[var(--sc-primary-50,#eeeef6)]"
                 : "border-gray-300 hover:border-gray-400"
             }`}
           >
@@ -399,7 +399,7 @@ export function DetailsTab({
                   <button
                     onClick={onAttachmentUpload}
                     disabled={isUploadingAttachment}
-                    className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-gray-400"
+                    className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400"
                   >
                     {isUploadingAttachment ? "Uploading..." : "Upload All"}
                   </button>
@@ -422,7 +422,7 @@ export function DetailsTab({
                 </svg>
                 <p className="mt-2 text-sm text-gray-600">
                   Drop PDF, DXF, or image files here or{" "}
-                  <label className="text-teal-600 hover:text-teal-800 cursor-pointer">
+                  <label className="text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] cursor-pointer">
                     browse
                     <input
                       type="file"
@@ -564,7 +564,7 @@ export function DetailsTab({
                       <button
                         onClick={() => onTriggerExtraction(attachment.id)}
                         disabled={isExtracting === attachment.id}
-                        className="text-sm text-teal-600 hover:text-teal-800 disabled:text-gray-400"
+                        className="text-sm text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] disabled:text-gray-400"
                       >
                         {isExtracting === attachment.id ? "Extracting..." : "Extract"}
                       </button>
@@ -611,14 +611,14 @@ export function DetailsTab({
                   onDragLeave={onAmendmentDragLeave}
                   className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
                     isDraggingAmendment
-                      ? "border-teal-500 bg-teal-50"
+                      ? "border-[var(--sc-primary,#323288)] bg-[var(--sc-primary-50,#eeeef6)]"
                       : "border-gray-300 hover:border-gray-400"
                   }`}
                 >
                   {amendmentFile ? (
                     <div className="space-y-2">
                       <svg
-                        className="mx-auto h-8 w-8 text-teal-500"
+                        className="mx-auto h-8 w-8 text-[var(--sc-primary,#323288)]"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -655,7 +655,7 @@ export function DetailsTab({
                       </svg>
                       <p className="mt-2 text-sm text-gray-600">
                         Drop a file here or{" "}
-                        <label className="text-teal-600 hover:text-teal-800 cursor-pointer">
+                        <label className="text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] cursor-pointer">
                           browse
                           <input
                             type="file"
@@ -680,7 +680,7 @@ export function DetailsTab({
                     onChange={(e) => onAmendmentNotesChange(e.target.value)}
                     rows={2}
                     placeholder="Describe what changed in this version..."
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                   />
                 </div>
               </div>
@@ -698,7 +698,7 @@ export function DetailsTab({
                 <button
                   onClick={onAmendmentUpload}
                   disabled={isUploadingAmendment || !amendmentFile}
-                  className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] border border-transparent rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   {isUploadingAmendment ? "Uploading..." : "Upload Amendment"}
                 </button>

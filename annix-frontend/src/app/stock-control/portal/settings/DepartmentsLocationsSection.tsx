@@ -178,13 +178,13 @@ export function DepartmentsLocationsSection({
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleAddDepartment();
                 }}
-                className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
               />
               <button
                 type="button"
                 onClick={handleAddDepartment}
                 disabled={!newDepartmentName.trim()}
-                className="px-2.5 py-1 bg-teal-600 text-white text-xs font-medium rounded hover:bg-teal-700 disabled:opacity-50 transition-colors"
+                className="px-2.5 py-1 bg-[var(--sc-primary,#323288)] text-white text-xs font-medium rounded hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50 transition-colors"
               >
                 Add
               </button>
@@ -213,7 +213,7 @@ export function DepartmentsLocationsSection({
                           if (e.key === "Escape") setEditingDepartmentId(null);
                         }}
                         autoFocus
-                        className="flex-1 px-1.5 py-0.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                        className="flex-1 px-1.5 py-0.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                       />
                     ) : (
                       <span className="text-xs text-gray-900">{dept.name}</span>
@@ -224,7 +224,7 @@ export function DepartmentsLocationsSection({
                           <button
                             type="button"
                             onClick={() => handleUpdateDepartment(dept.id)}
-                            className="text-[10px] font-medium text-teal-600 hover:text-teal-800"
+                            className="text-[10px] font-medium text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                           >
                             Save
                           </button>
@@ -244,7 +244,7 @@ export function DepartmentsLocationsSection({
                               setEditingDepartmentId(dept.id);
                               setEditingDepartmentName(dept.name);
                             }}
-                            className="text-[10px] font-medium text-teal-600 hover:text-teal-800"
+                            className="text-[10px] font-medium text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                           >
                             Edit
                           </button>
@@ -280,7 +280,7 @@ export function DepartmentsLocationsSection({
                   setNewLocationName(e.target.value);
                   setLocationError("");
                 }}
-                className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
               />
               <input
                 type="text"
@@ -290,13 +290,13 @@ export function DepartmentsLocationsSection({
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleAddLocation();
                 }}
-                className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
               />
               <button
                 type="button"
                 onClick={handleAddLocation}
                 disabled={!newLocationName.trim()}
-                className="px-2.5 py-1 bg-teal-600 text-white text-xs font-medium rounded hover:bg-teal-700 disabled:opacity-50 transition-colors"
+                className="px-2.5 py-1 bg-[var(--sc-primary,#323288)] text-white text-xs font-medium rounded hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50 transition-colors"
               >
                 Add
               </button>
@@ -322,7 +322,7 @@ export function DepartmentsLocationsSection({
                           value={editingLocationName}
                           onChange={(e) => setEditingLocationName(e.target.value)}
                           autoFocus
-                          className="flex-1 px-1.5 py-0.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                          className="flex-1 px-1.5 py-0.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                         />
                         <input
                           type="text"
@@ -333,7 +333,7 @@ export function DepartmentsLocationsSection({
                             if (e.key === "Enter") handleUpdateLocation(loc.id);
                             if (e.key === "Escape") setEditingLocationId(null);
                           }}
-                          className="flex-1 px-1.5 py-0.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                          className="flex-1 px-1.5 py-0.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                         />
                       </div>
                     ) : (
@@ -352,7 +352,7 @@ export function DepartmentsLocationsSection({
                           <button
                             type="button"
                             onClick={() => handleUpdateLocation(loc.id)}
-                            className="text-[10px] font-medium text-teal-600 hover:text-teal-800"
+                            className="text-[10px] font-medium text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                           >
                             Save
                           </button>
@@ -374,7 +374,7 @@ export function DepartmentsLocationsSection({
                               setEditingLocationName(loc.name);
                               setEditingLocationDescription(description || "");
                             }}
-                            className="text-[10px] font-medium text-teal-600 hover:text-teal-800"
+                            className="text-[10px] font-medium text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                           >
                             Edit
                           </button>

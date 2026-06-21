@@ -49,7 +49,8 @@ export function UnlinkedUploadsSection(props: UnlinkedUploadsSectionProps) {
     const downloadUrl = result.url;
     if (downloadUrl) {
       const batchName = upload.batchName;
-      const filename = batchName || upload.originalFilename || "report";
+      const originalFilename = upload.originalFilename;
+      const filename = batchName || originalFilename || "report";
       pdfPreview.open(downloadUrl, `${filename}.pdf`);
     }
   };
@@ -65,7 +66,7 @@ export function UnlinkedUploadsSection(props: UnlinkedUploadsSectionProps) {
       <div className="px-4 py-3 border-b border-gray-200">
         <div className="flex items-center gap-2">
           <svg
-            className="h-5 w-5 text-teal-600"
+            className="h-5 w-5 text-[var(--sc-primary,#323288)]"
             fill="none"
             viewBox="0 0 24 24"
             strokeWidth={2}
@@ -196,7 +197,7 @@ function UploadRow(props: {
             <button
               type="button"
               onClick={() => onToggleExpand(upload.id)}
-              className="text-xs text-teal-600 hover:text-teal-800 font-medium"
+              className="text-xs text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] font-medium"
             >
               {isExpanded ? "Collapse" : "Expand"}
             </button>

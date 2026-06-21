@@ -182,6 +182,9 @@ export class RubberFamilyPricingConfigDto {
   @IsOptional()
   cwRecipes?: Record<string, string[]>;
 
+  @IsOptional()
+  cwSupplierRecipes?: Record<string, Record<string, string[]>>;
+
   @IsString()
   defaultBondingAgentSupplier: string;
 

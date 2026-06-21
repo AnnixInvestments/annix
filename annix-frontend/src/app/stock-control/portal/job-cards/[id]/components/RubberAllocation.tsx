@@ -1024,9 +1024,11 @@ function PipeCuttingView({
           <p className="text-sm font-medium text-blue-600">Total Used</p>
           <p className="text-2xl font-bold text-blue-900">{plan.totalUsedSqM.toFixed(2)} m&#178;</p>
         </div>
-        <div className="bg-teal-50 rounded-lg p-4">
-          <p className="text-sm font-medium text-teal-600">New Rolls</p>
-          <p className="text-2xl font-bold text-teal-900">{standardRolls.length}</p>
+        <div className="bg-[var(--sc-primary-50,#eeeef6)] rounded-lg p-4">
+          <p className="text-sm font-medium text-[var(--sc-primary,#323288)]">New Rolls</p>
+          <p className="text-2xl font-bold text-[var(--sc-primary-active,#1c1c48)]">
+            {standardRolls.length}
+          </p>
           {offcutRolls.length > 0 && (
             <p className="text-xs text-emerald-600 mt-1">+ {offcutRolls.length} from offcuts</p>
           )}
@@ -1158,10 +1160,14 @@ function GenericM2View({
           <p className="text-sm font-medium text-blue-600">Total Required</p>
           <p className="text-2xl font-bold text-blue-900">{totalM2.toFixed(2)} m&#178;</p>
         </div>
-        <div className="bg-teal-50 rounded-lg p-4">
-          <p className="text-sm font-medium text-teal-600">Rolls Required</p>
-          <p className="text-2xl font-bold text-teal-900">{fullRollsNeeded}</p>
-          <p className="text-xs text-teal-600 mt-1">({totalRollArea.toFixed(2)} m&#178; total)</p>
+        <div className="bg-[var(--sc-primary-50,#eeeef6)] rounded-lg p-4">
+          <p className="text-sm font-medium text-[var(--sc-primary,#323288)]">Rolls Required</p>
+          <p className="text-2xl font-bold text-[var(--sc-primary-active,#1c1c48)]">
+            {fullRollsNeeded}
+          </p>
+          <p className="text-xs text-[var(--sc-primary,#323288)] mt-1">
+            ({totalRollArea.toFixed(2)} m&#178; total)
+          </p>
         </div>
         <div className="bg-amber-50 rounded-lg p-4">
           <p className="text-sm font-medium text-amber-600">Last Roll Usage</p>
@@ -1189,7 +1195,7 @@ function GenericM2View({
                 <span className="text-sm font-medium text-gray-700 w-16">Roll {rollNum}</span>
                 <div className="flex-1 bg-gray-200 rounded-full h-4 overflow-hidden">
                   <div
-                    className={`h-full rounded-full ${isLastRoll ? "bg-amber-500" : "bg-teal-500"}`}
+                    className={`h-full rounded-full ${isLastRoll ? "bg-amber-500" : "bg-[var(--sc-primary,#323288)]"}`}
                     style={{ width: `${usedPercent}%` }}
                   />
                 </div>
@@ -1198,7 +1204,9 @@ function GenericM2View({
                 </span>
                 <span
                   className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                    isLastRoll ? "bg-amber-100 text-amber-800" : "bg-teal-100 text-teal-800"
+                    isLastRoll
+                      ? "bg-amber-100 text-amber-800"
+                      : "bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary-active,#1c1c48)]"
                   }`}
                 >
                   {usedPercent.toFixed(0)}%
@@ -1631,17 +1639,17 @@ function RubberSOHPanel({
       </div>
 
       {learnedSuggestion && planDecision === "pending" && (
-        <div className="mb-4 p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-sm">
+        <div className="mb-4 p-3 bg-[var(--sc-primary-50,#eeeef6)] border border-[var(--sc-primary-200,#adadcf)] rounded-lg text-sm">
           <div className="flex items-center gap-2 mb-1">
-            <span className="font-medium text-indigo-800">
+            <span className="font-medium text-[var(--sc-primary-active,#1c1c48)]">
               Nix has a learned layout for this panel set
             </span>
-            <span className="text-xs text-indigo-600">
+            <span className="text-xs text-[var(--sc-primary,#323288)]">
               (used {learnedSuggestion.usageCount} time
               {learnedSuggestion.usageCount === 1 ? "" : "s"})
             </span>
           </div>
-          <p className="text-xs text-indigo-700">
+          <p className="text-xs text-[var(--sc-primary-hover,#252560)]">
             A previous manual override with {Number(learnedSuggestion.manualWastePct).toFixed(1)}%
             waste was saved for an identical panel arrangement
             {learnedSuggestion.autoWastePct
@@ -1661,7 +1669,7 @@ function RubberSOHPanel({
                 setSuggestionWasApplied(true);
               }
             }}
-            className="mt-2 px-3 py-1 bg-indigo-600 text-white rounded text-xs font-medium hover:bg-indigo-700"
+            className="mt-2 px-3 py-1 bg-[var(--sc-primary,#323288)] text-white rounded text-xs font-medium hover:bg-[var(--sc-primary-hover,#252560)]"
           >
             Apply learned layout
           </button>
@@ -1754,7 +1762,7 @@ function RubberSOHPanel({
                         setAllocatingWidthMm(STANDARD_ROLL_WIDTH_MM);
                         setAllocatingLengthM(STANDARD_ROLL_LENGTH_M);
                       }}
-                      className="text-xs px-2 py-1 rounded bg-teal-600 text-white hover:bg-teal-700"
+                      className="text-xs px-2 py-1 rounded bg-[var(--sc-primary,#323288)] text-white hover:bg-[var(--sc-primary-hover,#252560)]"
                     >
                       Allocate Roll
                     </button>
@@ -1766,7 +1774,7 @@ function RubberSOHPanel({
                     <select
                       value={allocatingWidthMm}
                       onChange={(e) => setAllocatingWidthMm(Number(e.target.value))}
-                      className="text-xs rounded border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"
+                      className="text-xs rounded border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)]"
                     >
                       {ROLL_WIDTH_OPTIONS_MM.map((w) => {
                         const inStock = matchingStock.some(
@@ -1783,7 +1791,7 @@ function RubberSOHPanel({
                     <select
                       value={allocatingLengthM}
                       onChange={(e) => setAllocatingLengthM(Number(e.target.value))}
-                      className="text-xs rounded border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"
+                      className="text-xs rounded border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)]"
                     >
                       {ROLL_LENGTH_OPTIONS_M.map((l) => {
                         const inStock = matchingStock.some(
@@ -1810,7 +1818,7 @@ function RubberSOHPanel({
                       type="button"
                       onClick={() => handleAllocateRoll(idx)}
                       disabled={allocatingSaving}
-                      className="text-xs px-3 py-1.5 rounded bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50"
+                      className="text-xs px-3 py-1.5 rounded bg-[var(--sc-primary,#323288)] text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
                     >
                       {allocatingSaving ? "..." : "Confirm"}
                     </button>
@@ -2205,7 +2213,7 @@ export function RubberAllocationGuard({
               type="button"
               onClick={handleRecalculateM2}
               disabled={isRecalculating}
-              className="text-xs text-teal-600 hover:text-teal-800 disabled:text-gray-400"
+              className="text-xs text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] disabled:text-gray-400"
             >
               {isRecalculating ? "Recalculating..." : "Re-analyse m\u00B2"}
             </button>
@@ -2240,7 +2248,7 @@ export function RubberAllocationGuard({
                     <td className="py-2 pr-4 text-right text-gray-700">
                       {m2 > 0 ? m2.toFixed(2) : "—"}
                     </td>
-                    <td className="py-2 pr-4 text-right font-semibold text-teal-700">
+                    <td className="py-2 pr-4 text-right font-semibold text-[var(--sc-primary-hover,#252560)]">
                       {m2 > 0 ? (m2 * qty).toFixed(2) : "—"}
                     </td>
                   </tr>
@@ -2252,7 +2260,7 @@ export function RubberAllocationGuard({
                 <td colSpan={5} className="py-2 pr-4 text-right font-medium text-gray-600">
                   Total m²
                 </td>
-                <td className="py-2 pr-4 text-right font-bold text-teal-800">
+                <td className="py-2 pr-4 text-right font-bold text-[var(--sc-primary-active,#1c1c48)]">
                   {totalM2.toFixed(2)}
                 </td>
               </tr>

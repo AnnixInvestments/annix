@@ -47,7 +47,8 @@ function calloffStatusColor(status: string): string {
     pending: "bg-amber-100 text-amber-800 border-amber-200",
     called_off: "bg-blue-100 text-blue-800 border-blue-200",
     delivered: "bg-green-100 text-green-800 border-green-200",
-    invoiced: "bg-teal-100 text-teal-800 border-teal-200",
+    invoiced:
+      "bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary-active,#1c1c48)] border-[var(--sc-primary-200,#adadcf)]",
   };
   const statusColor = colors[status];
   return statusColor ? statusColor : "bg-gray-100 text-gray-800 border-gray-200";
@@ -471,7 +472,7 @@ export default function CpoDetailPage() {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading purchase order...</p>
         </div>
       </div>
@@ -486,7 +487,7 @@ export default function CpoDetailPage() {
           <p className="text-gray-600">{error || "CPO not found"}</p>
           <Link
             href="/stock-control/portal/purchase-orders"
-            className="mt-4 inline-block px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700"
+            className="mt-4 inline-block px-4 py-2 bg-[var(--sc-primary,#323288)] text-white rounded-md hover:bg-[var(--sc-primary-hover,#252560)]"
           >
             Back to Purchase Orders
           </Link>
@@ -556,7 +557,10 @@ export default function CpoDetailPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center space-x-2 text-sm text-gray-500 mb-1">
-            <Link href="/stock-control/portal/purchase-orders" className="hover:text-teal-600">
+            <Link
+              href="/stock-control/portal/purchase-orders"
+              className="hover:text-[var(--sc-primary,#323288)]"
+            >
               Purchase Orders
             </Link>
             <span>/</span>
@@ -637,7 +641,7 @@ export default function CpoDetailPage() {
             onClick={() => setActiveTab("details")}
             className={`whitespace-nowrap py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
               activeTab === "details"
-                ? "border-teal-500 text-teal-600"
+                ? "border-[var(--sc-primary,#323288)] text-[var(--sc-primary,#323288)]"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             }`}
           >
@@ -648,7 +652,7 @@ export default function CpoDetailPage() {
             onClick={() => setActiveTab("quality")}
             className={`whitespace-nowrap py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
               activeTab === "quality"
-                ? "border-teal-500 text-teal-600"
+                ? "border-[var(--sc-primary,#323288)] text-[var(--sc-primary,#323288)]"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             }`}
           >
@@ -686,7 +690,7 @@ export default function CpoDetailPage() {
               <div className="flex items-center space-x-2">
                 <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full ${overallPct >= 100 ? "bg-blue-500" : "bg-teal-500"}`}
+                    className={`h-full rounded-full ${overallPct >= 100 ? "bg-blue-500" : "bg-[var(--sc-primary,#323288)]"}`}
                     style={{ width: `${overallPct}%` }}
                   />
                 </div>
@@ -969,7 +973,7 @@ export default function CpoDetailPage() {
                           {row.jobCard ? (
                             <Link
                               href={`/stock-control/portal/job-cards/${row.jobCard.id}`}
-                              className="font-medium text-teal-700 hover:text-teal-900"
+                              className="font-medium text-[var(--sc-primary-hover,#252560)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                             >
                               {row.jobCard.jobNumber}
                             </Link>
@@ -1042,7 +1046,7 @@ export default function CpoDetailPage() {
                             >
                               <Link
                                 href={`/stock-control/portal/job-cards/${d.jobCardId}`}
-                                className="text-teal-600 hover:text-teal-800"
+                                className="text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                               >
                                 {deliveryLabel}
                               </Link>
@@ -1080,7 +1084,7 @@ export default function CpoDetailPage() {
                           return (
                             <td key={d.jobCardId} className="px-4 py-3 text-sm text-right">
                               {delivery ? (
-                                <span className="font-medium text-teal-700">
+                                <span className="font-medium text-[var(--sc-primary-hover,#252560)]">
                                   {delivery.quantity}
                                 </span>
                               ) : (
@@ -1109,7 +1113,7 @@ export default function CpoDetailPage() {
                       {deliveryHistory.deliveries.map((d) => (
                         <td
                           key={d.jobCardId}
-                          className="px-4 py-3 text-sm text-right font-semibold text-teal-700"
+                          className="px-4 py-3 text-sm text-right font-semibold text-[var(--sc-primary-hover,#252560)]"
                         >
                           {textOrDash(d.totalQuantity == null ? null : String(d.totalQuantity))}
                         </td>
@@ -1149,7 +1153,7 @@ export default function CpoDetailPage() {
                   setAddingItem(true);
                   setItemError(null);
                 }}
-                className="px-3 py-1.5 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700"
+                className="px-3 py-1.5 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)]"
               >
                 + Add Line Item
               </button>
@@ -1222,7 +1226,7 @@ export default function CpoDetailPage() {
 
                   if (isEditing) {
                     return (
-                      <tr key={item.id} className="bg-teal-50">
+                      <tr key={item.id} className="bg-[var(--sc-primary-50,#eeeef6)]">
                         <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-400">
                           {idx + 1}
                         </td>
@@ -1293,7 +1297,7 @@ export default function CpoDetailPage() {
                           <div className="flex items-center space-x-2">
                             <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
                               <div
-                                className={`h-full rounded-full ${pct >= 100 ? "bg-blue-500" : "bg-teal-500"}`}
+                                className={`h-full rounded-full ${pct >= 100 ? "bg-blue-500" : "bg-[var(--sc-primary,#323288)]"}`}
                                 style={{ width: `${pct}%` }}
                               />
                             </div>
@@ -1316,7 +1320,7 @@ export default function CpoDetailPage() {
                             <button
                               onClick={handleSaveEdit}
                               disabled={updateCpoItemMutation.isPending}
-                              className="px-2 py-1 text-xs font-medium text-white bg-teal-600 rounded hover:bg-teal-700 disabled:opacity-50"
+                              className="px-2 py-1 text-xs font-medium text-white bg-[var(--sc-primary,#323288)] rounded hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
                             >
                               Save
                             </button>
@@ -1332,7 +1336,7 @@ export default function CpoDetailPage() {
                           <td className="px-6 py-3 whitespace-nowrap text-right">
                             <button
                               onClick={() => openEditItemModal(item)}
-                              className="text-xs text-teal-600 hover:text-teal-800 font-medium"
+                              className="text-xs text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] font-medium"
                             >
                               Edit
                             </button>
@@ -1374,7 +1378,7 @@ export default function CpoDetailPage() {
                         <div className="flex items-center space-x-2">
                           <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
                             <div
-                              className={`h-full rounded-full ${pct >= 100 ? "bg-blue-500" : "bg-teal-500"}`}
+                              className={`h-full rounded-full ${pct >= 100 ? "bg-blue-500" : "bg-[var(--sc-primary,#323288)]"}`}
                               style={{ width: `${pct}%` }}
                             />
                           </div>
@@ -1390,7 +1394,7 @@ export default function CpoDetailPage() {
                             <button
                               onClick={() => handleEditItem(item)}
                               disabled={editingItemId !== null || addingItem}
-                              className="px-2 py-1 text-xs font-medium text-teal-700 bg-teal-50 rounded hover:bg-teal-100 disabled:opacity-40"
+                              className="px-2 py-1 text-xs font-medium text-[var(--sc-primary-hover,#252560)] bg-[var(--sc-primary-50,#eeeef6)] rounded hover:bg-[var(--sc-primary-100,#d6d6e9)] disabled:opacity-40"
                             >
                               Edit
                             </button>
@@ -1408,7 +1412,7 @@ export default function CpoDetailPage() {
                   );
                 })}
                 {addingItem && (
-                  <tr className="bg-teal-50">
+                  <tr className="bg-[var(--sc-primary-50,#eeeef6)]">
                     <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-400">
                       {sortedItems.length + 1}
                     </td>
@@ -1492,7 +1496,7 @@ export default function CpoDetailPage() {
                         <button
                           onClick={handleAddItem}
                           disabled={addCpoItemMutation.isPending}
-                          className="px-2 py-1 text-xs font-medium text-white bg-teal-600 rounded hover:bg-teal-700 disabled:opacity-50"
+                          className="px-2 py-1 text-xs font-medium text-white bg-[var(--sc-primary,#323288)] rounded hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
                         >
                           Add
                         </button>
@@ -1528,7 +1532,7 @@ export default function CpoDetailPage() {
                     type="text"
                     value={itemForm.itemCode}
                     onChange={(e) => setItemForm((f) => ({ ...f, itemCode: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)]"
                   />
                 </div>
                 <div>
@@ -1541,7 +1545,7 @@ export default function CpoDetailPage() {
                     onChange={(e) =>
                       setItemForm((f) => ({ ...f, itemDescription: e.target.value }))
                     }
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)]"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -1551,7 +1555,7 @@ export default function CpoDetailPage() {
                       type="text"
                       value={itemForm.itemNo}
                       onChange={(e) => setItemForm((f) => ({ ...f, itemNo: e.target.value }))}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)]"
                     />
                   </div>
                   <div>
@@ -1560,7 +1564,7 @@ export default function CpoDetailPage() {
                       type="text"
                       value={itemForm.jtNo}
                       onChange={(e) => setItemForm((f) => ({ ...f, jtNo: e.target.value }))}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)]"
                     />
                   </div>
                 </div>
@@ -1577,7 +1581,7 @@ export default function CpoDetailPage() {
                       onChange={(e) =>
                         setItemForm((f) => ({ ...f, quantityOrdered: e.target.value }))
                       }
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)]"
                     />
                   </div>
                   <div>
@@ -1588,7 +1592,7 @@ export default function CpoDetailPage() {
                       step="any"
                       value={itemForm.m2}
                       onChange={(e) => setItemForm((f) => ({ ...f, m2: e.target.value }))}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)]"
                     />
                   </div>
                 </div>
@@ -1604,7 +1608,7 @@ export default function CpoDetailPage() {
                 <button
                   onClick={handleItemFormSubmit}
                   disabled={isSavingItem}
-                  className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:opacity-50"
+                  className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
                 >
                   {isSavingItem ? "Saving..." : editingItem ? "Save Changes" : "Add Item"}
                 </button>

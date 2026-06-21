@@ -66,8 +66,8 @@ function CandidateThumbnail(props: {
       onClick={onSelect}
       className={`relative flex flex-col items-center rounded-lg border-2 p-1.5 transition-all hover:shadow-md ${
         selected
-          ? "border-teal-500 bg-teal-50 ring-2 ring-teal-500"
-          : "border-gray-200 hover:border-teal-300"
+          ? "border-[var(--sc-primary,#323288)] bg-[var(--sc-primary-50,#eeeef6)] ring-2 ring-[var(--sc-primary,#323288)]"
+          : "border-gray-200 hover:border-[var(--sc-primary-300,#8484b5)]"
       }`}
     >
       {objectUrl ? (
@@ -81,13 +81,17 @@ function CandidateThumbnail(props: {
         <div
           className={`${heightClass} w-full flex items-center justify-center bg-gray-100 rounded`}
         >
-          <div className="animate-spin rounded-full h-4 w-4 border-2 border-teal-500 border-t-transparent" />
+          <div className="animate-spin rounded-full h-4 w-4 border-2 border-[var(--sc-primary,#323288)] border-t-transparent" />
         </div>
       )}
       <span className="mt-1 text-[10px] text-gray-500 truncate w-full text-center">{label}</span>
       {selected && (
         <div className="absolute top-1 right-1">
-          <svg className="w-4 h-4 text-teal-500" fill="currentColor" viewBox="0 0 20 20">
+          <svg
+            className="w-4 h-4 text-[var(--sc-primary,#323288)]"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
             <path
               fillRule="evenodd"
               d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
@@ -496,7 +500,7 @@ export default function CompanyProfilePage() {
                 setDetailsSuccess(false);
               }}
               placeholder="Enter company name"
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] text-sm"
             />
           </div>
           <div>
@@ -512,7 +516,7 @@ export default function CompanyProfilePage() {
                 setDetailsSuccess(false);
               }}
               placeholder="e.g. 2020/123456/07"
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] text-sm"
             />
           </div>
           <div>
@@ -528,7 +532,7 @@ export default function CompanyProfilePage() {
                 setDetailsSuccess(false);
               }}
               placeholder="e.g. 4123456789"
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] text-sm"
             />
           </div>
           <div className="sm:col-span-2">
@@ -544,7 +548,7 @@ export default function CompanyProfilePage() {
                 setDetailsSuccess(false);
               }}
               placeholder="Enter street address"
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] text-sm"
             />
           </div>
           <div>
@@ -560,7 +564,7 @@ export default function CompanyProfilePage() {
                 setDetailsSuccess(false);
               }}
               placeholder="Enter city"
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] text-sm"
             />
           </div>
           <div>
@@ -574,7 +578,7 @@ export default function CompanyProfilePage() {
                 setProvince(e.target.value);
                 setDetailsSuccess(false);
               }}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] text-sm"
             >
               <option value="">Select province</option>
               <option value="Eastern Cape">Eastern Cape</option>
@@ -601,7 +605,7 @@ export default function CompanyProfilePage() {
                 setDetailsSuccess(false);
               }}
               placeholder="e.g. 2000"
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] text-sm"
             />
           </div>
           <div>
@@ -617,7 +621,7 @@ export default function CompanyProfilePage() {
                 setDetailsSuccess(false);
               }}
               placeholder="e.g. 011 123 4567"
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] text-sm"
             />
           </div>
           <div>
@@ -633,7 +637,7 @@ export default function CompanyProfilePage() {
                 setDetailsSuccess(false);
               }}
               placeholder="info@example.com"
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] text-sm"
             />
           </div>
           <div>
@@ -649,7 +653,7 @@ export default function CompanyProfilePage() {
                 setDetailsSuccess(false);
               }}
               placeholder="https://company.co.za"
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] text-sm"
             />
           </div>
         </div>
@@ -675,7 +679,7 @@ export default function CompanyProfilePage() {
                   setPipingLossFactorPct(Number(e.target.value));
                   setDetailsSuccess(false);
                 }}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] text-sm"
               />
               <span className="ml-2 text-sm text-gray-500">%</span>
             </div>
@@ -696,7 +700,7 @@ export default function CompanyProfilePage() {
                   setFlatPlateLossFactorPct(Number(e.target.value));
                   setDetailsSuccess(false);
                 }}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] text-sm"
               />
               <span className="ml-2 text-sm text-gray-500">%</span>
             </div>
@@ -720,7 +724,7 @@ export default function CompanyProfilePage() {
                   setStructuralSteelLossFactorPct(Number(e.target.value));
                   setDetailsSuccess(false);
                 }}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] text-sm"
               />
               <span className="ml-2 text-sm text-gray-500">%</span>
             </div>
@@ -735,7 +739,7 @@ export default function CompanyProfilePage() {
           type="button"
           onClick={handleSaveCompanyDetails}
           disabled={detailsSaving}
-          className="mt-4 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="mt-4 px-4 py-2 bg-[var(--sc-primary,#323288)] text-white text-sm font-medium rounded-md hover:bg-[var(--sc-primary-hover,#252560)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--sc-primary,#323288)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {detailsSaving ? "Saving..." : "Save Company Details"}
         </button>
@@ -761,8 +765,8 @@ export default function CompanyProfilePage() {
               role="switch"
               aria-checked={qcEnabled}
               onClick={() => setQcEnabled(!qcEnabled)}
-              className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 ${
-                qcEnabled ? "bg-teal-600" : "bg-gray-200"
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:ring-offset-2 ${
+                qcEnabled ? "bg-[var(--sc-primary,#323288)]" : "bg-gray-200"
               }`}
             >
               <span
@@ -785,8 +789,8 @@ export default function CompanyProfilePage() {
               role="switch"
               aria-checked={messagingEnabled}
               onClick={() => setMessagingEnabled(!messagingEnabled)}
-              className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 ${
-                messagingEnabled ? "bg-teal-600" : "bg-gray-200"
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:ring-offset-2 ${
+                messagingEnabled ? "bg-[var(--sc-primary,#323288)]" : "bg-gray-200"
               }`}
             >
               <span
@@ -810,8 +814,8 @@ export default function CompanyProfilePage() {
               role="switch"
               aria-checked={workflowEnabled}
               onClick={() => setWorkflowEnabled(!workflowEnabled)}
-              className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 ${
-                workflowEnabled ? "bg-teal-600" : "bg-gray-200"
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:ring-offset-2 ${
+                workflowEnabled ? "bg-[var(--sc-primary,#323288)]" : "bg-gray-200"
               }`}
             >
               <span
@@ -835,8 +839,8 @@ export default function CompanyProfilePage() {
               role="switch"
               aria-checked={staffLeaveEnabled}
               onClick={() => setStaffLeaveEnabled(!staffLeaveEnabled)}
-              className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 ${
-                staffLeaveEnabled ? "bg-teal-600" : "bg-gray-200"
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:ring-offset-2 ${
+                staffLeaveEnabled ? "bg-[var(--sc-primary,#323288)]" : "bg-gray-200"
               }`}
             >
               <span
@@ -861,8 +865,8 @@ export default function CompanyProfilePage() {
               role="switch"
               aria-checked={notificationsEnabled}
               onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-              className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 ${
-                notificationsEnabled ? "bg-teal-600" : "bg-gray-200"
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:ring-offset-2 ${
+                notificationsEnabled ? "bg-[var(--sc-primary,#323288)]" : "bg-gray-200"
               }`}
             >
               <span
@@ -878,12 +882,12 @@ export default function CompanyProfilePage() {
             pushPermissionState !== "unsupported" &&
             pushPermissionState !== "denied" &&
             !pushIsSubscribed && (
-              <div className="flex items-center justify-between rounded-md border border-teal-200 bg-teal-50 px-4 py-3">
+              <div className="flex items-center justify-between rounded-md border border-[var(--sc-primary-200,#adadcf)] bg-[var(--sc-primary-50,#eeeef6)] px-4 py-3">
                 <div>
-                  <p className="text-sm font-medium text-teal-900">
+                  <p className="text-sm font-medium text-[var(--sc-primary-active,#1c1c48)]">
                     Enable push notifications on this device
                   </p>
-                  <p className="text-xs text-teal-700 mt-0.5">
+                  <p className="text-xs text-[var(--sc-primary-hover,#252560)] mt-0.5">
                     Receive approval, dispatch, and alert notifications directly in this browser.
                   </p>
                 </div>
@@ -899,7 +903,7 @@ export default function CompanyProfilePage() {
                       setPushEnabling(false);
                     }
                   }}
-                  className="ml-4 px-3 py-1.5 bg-teal-600 text-white text-xs font-medium rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="ml-4 px-3 py-1.5 bg-[var(--sc-primary,#323288)] text-white text-xs font-medium rounded-md hover:bg-[var(--sc-primary-hover,#252560)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--sc-primary,#323288)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {pushEnabling ? "Enabling..." : "Enable"}
                 </button>
@@ -928,7 +932,7 @@ export default function CompanyProfilePage() {
           type="button"
           onClick={handleSaveFeatures}
           disabled={featuresSaving}
-          className="mt-4 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="mt-4 px-4 py-2 bg-[var(--sc-primary,#323288)] text-white text-sm font-medium rounded-md hover:bg-[var(--sc-primary-hover,#252560)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--sc-primary,#323288)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {featuresSaving ? "Saving..." : "Save Features"}
         </button>
@@ -951,13 +955,13 @@ export default function CompanyProfilePage() {
             }}
             className={`relative flex flex-col items-center p-6 rounded-lg border-2 transition-all ${
               brandingSelection === "annix"
-                ? "border-teal-500 bg-teal-50 ring-2 ring-teal-500"
-                : "border-gray-200 hover:border-teal-300 hover:bg-gray-50"
+                ? "border-[var(--sc-primary,#323288)] bg-[var(--sc-primary-50,#eeeef6)] ring-2 ring-[var(--sc-primary,#323288)]"
+                : "border-gray-200 hover:border-[var(--sc-primary-300,#8484b5)] hover:bg-gray-50"
             }`}
           >
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-teal-100 mb-3">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[var(--sc-primary-100,#d6d6e9)] mb-3">
               <svg
-                className="w-6 h-6 text-teal-600"
+                className="w-6 h-6 text-[var(--sc-primary,#323288)]"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -976,7 +980,11 @@ export default function CompanyProfilePage() {
             </p>
             {brandingSelection === "annix" && (
               <div className="absolute top-2 right-2">
-                <svg className="w-5 h-5 text-teal-500" fill="currentColor" viewBox="0 0 20 20">
+                <svg
+                  className="w-5 h-5 text-[var(--sc-primary,#323288)]"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
                   <path
                     fillRule="evenodd"
                     d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
@@ -996,8 +1004,8 @@ export default function CompanyProfilePage() {
             }}
             className={`relative flex flex-col items-center p-6 rounded-lg border-2 transition-all ${
               brandingSelection === "custom"
-                ? "border-teal-500 bg-teal-50 ring-2 ring-teal-500"
-                : "border-gray-200 hover:border-teal-300 hover:bg-gray-50"
+                ? "border-[var(--sc-primary,#323288)] bg-[var(--sc-primary-50,#eeeef6)] ring-2 ring-[var(--sc-primary,#323288)]"
+                : "border-gray-200 hover:border-[var(--sc-primary-300,#8484b5)] hover:bg-gray-50"
             }`}
           >
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-purple-100 mb-3">
@@ -1019,7 +1027,11 @@ export default function CompanyProfilePage() {
             <p className="mt-1 text-sm text-gray-500 text-center">White-label with your identity</p>
             {brandingSelection === "custom" && (
               <div className="absolute top-2 right-2">
-                <svg className="w-5 h-5 text-teal-500" fill="currentColor" viewBox="0 0 20 20">
+                <svg
+                  className="w-5 h-5 text-[var(--sc-primary,#323288)]"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
                   <path
                     fillRule="evenodd"
                     d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
@@ -1046,7 +1058,7 @@ export default function CompanyProfilePage() {
                   setWebsiteUrl(e.target.value);
                   setBrandingError("");
                 }}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] text-sm"
               />
             </div>
             <label className="flex items-start gap-3 cursor-pointer">
@@ -1057,7 +1069,7 @@ export default function CompanyProfilePage() {
                   setBrandingAuthorized(e.target.checked);
                   setBrandingError("");
                 }}
-                className="mt-0.5 h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
+                className="mt-0.5 h-4 w-4 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] border-gray-300 rounded"
               />
               <span className="text-sm text-gray-600">
                 I authorize ASCA to access my website to extract branding elements (logo, colors)
@@ -1176,7 +1188,7 @@ export default function CompanyProfilePage() {
                       setPrimaryColor(e.target.value);
                       setBrandingError("");
                     }}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                   />
                 </div>
               </div>
@@ -1202,7 +1214,7 @@ export default function CompanyProfilePage() {
                       setAccentColor(e.target.value);
                       setBrandingError("");
                     }}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                   />
                 </div>
               </div>
@@ -1219,7 +1231,7 @@ export default function CompanyProfilePage() {
           type="button"
           onClick={handleSaveBranding}
           disabled={brandingSaving || processing}
-          className="mt-4 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="mt-4 px-4 py-2 bg-[var(--sc-primary,#323288)] text-white text-sm font-medium rounded-md hover:bg-[var(--sc-primary-hover,#252560)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--sc-primary,#323288)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {savingLabel()}
         </button>
@@ -1370,7 +1382,7 @@ function AdminTransferSection() {
 
       {loadingPending ? (
         <div className="flex items-center gap-2 text-sm text-gray-500">
-          <div className="animate-spin rounded-full h-4 w-4 border-2 border-teal-500 border-t-transparent" />
+          <div className="animate-spin rounded-full h-4 w-4 border-2 border-[var(--sc-primary,#323288)] border-t-transparent" />
           Loading...
         </div>
       ) : pendingTransfer ? (
@@ -1424,7 +1436,7 @@ function AdminTransferSection() {
               type="button"
               onClick={handleResend}
               disabled={resending}
-              className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 bg-[var(--sc-primary,#323288)] text-white text-sm font-medium rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {resending ? "Sending..." : "Resend Email"}
             </button>
@@ -1461,7 +1473,7 @@ function AdminTransferSection() {
                 setSuccess("");
               }}
               placeholder="Enter the email of the new admin"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
             />
             <p className="mt-1 text-xs text-gray-500">
               The new admin must already be a team member of your company.
@@ -1481,7 +1493,7 @@ function AdminTransferSection() {
                 setError("");
                 setSuccess("");
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] bg-white"
             >
               <option value="__leave__">Leave the App</option>
               {nonAdminRoles.map((role) => (
@@ -1501,7 +1513,7 @@ function AdminTransferSection() {
             type="button"
             onClick={handleInitiate}
             disabled={initiating}
-            className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 bg-[var(--sc-primary,#323288)] text-white text-sm font-medium rounded-md hover:bg-[var(--sc-primary-hover,#252560)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--sc-primary,#323288)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {initiating ? "Sending..." : "Initiate Transfer"}
           </button>
@@ -1616,7 +1628,7 @@ function AppInfoSection() {
         {swStatus === "waiting" && (
           <button
             onClick={handleUpdate}
-            className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 transition-colors"
+            className="px-4 py-2 bg-[var(--sc-primary,#323288)] text-white text-sm font-medium rounded-md hover:bg-[var(--sc-primary-hover,#252560)] transition-colors"
           >
             Update Now
           </button>

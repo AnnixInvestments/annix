@@ -70,7 +70,7 @@ export function InventoryFilterBar({
               placeholder="Search items..."
               value={search}
               onChange={(e) => onSearch(e.target.value)}
-              className="block w-full pl-10 rounded-md bg-white border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+              className="block w-full pl-10 rounded-md bg-white border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
             />
           </div>
         </div>
@@ -78,7 +78,7 @@ export function InventoryFilterBar({
           <select
             value={categoryFilter}
             onChange={(e) => onCategoryChange(e.target.value)}
-            className="rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+            className="rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
           >
             <option value="">All Categories</option>
             {categories.map((cat) => (
@@ -115,12 +115,12 @@ export function InventoryFilterBar({
             onClick={onToggleListGroupByCategory}
             className={`inline-flex items-center px-3 py-2 rounded-md text-sm font-medium border transition-colors ${
               listGroupByCategory
-                ? "bg-teal-100 text-teal-800 border-teal-300"
+                ? "bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary-active,#1c1c48)] border-[var(--sc-primary-300,#8484b5)]"
                 : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
             }`}
           >
             <svg
-              className={`w-4 h-4 mr-1.5 ${listGroupByCategory ? "text-teal-600" : "text-gray-400"}`}
+              className={`w-4 h-4 mr-1.5 ${listGroupByCategory ? "text-[var(--sc-primary,#323288)]" : "text-gray-400"}`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -140,7 +140,7 @@ export function InventoryFilterBar({
             className="inline-flex items-center px-3 py-2 rounded-md text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isAutoCategorizing ? (
-              <div className="w-4 h-4 mr-1.5 border-2 border-gray-300 border-t-teal-600 rounded-full animate-spin" />
+              <div className="w-4 h-4 mr-1.5 border-2 border-gray-300 border-t-[var(--sc-primary,#323288)] rounded-full animate-spin" />
             ) : (
               <svg
                 className="w-4 h-4 mr-1.5 text-gray-400"
@@ -195,7 +195,7 @@ function ViewModeSwitcher({ viewMode, onChangeViewMode }: ViewModeSwitcherProps)
         onClick={() => onChangeViewMode("cards")}
         className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
           viewMode === "cards"
-            ? "bg-teal-600 text-white border-teal-600"
+            ? "bg-[var(--sc-primary,#323288)] text-white border-[var(--sc-primary,#323288)]"
             : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
         }`}
         title="Card view"
@@ -213,7 +213,7 @@ function ViewModeSwitcher({ viewMode, onChangeViewMode }: ViewModeSwitcherProps)
         onClick={() => onChangeViewMode("grouped")}
         className={`px-3 py-2 text-sm font-medium border-t border-r border-b ${
           viewMode === "grouped"
-            ? "bg-teal-600 text-white border-teal-600"
+            ? "bg-[var(--sc-primary,#323288)] text-white border-[var(--sc-primary,#323288)]"
             : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
         }`}
         title="Grouped view"
@@ -231,7 +231,7 @@ function ViewModeSwitcher({ viewMode, onChangeViewMode }: ViewModeSwitcherProps)
         onClick={() => onChangeViewMode("list")}
         className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
           viewMode === "list"
-            ? "bg-teal-600 text-white border-teal-600"
+            ? "bg-[var(--sc-primary,#323288)] text-white border-[var(--sc-primary,#323288)]"
             : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
         }`}
         title="List view"
@@ -263,7 +263,7 @@ function ThumbnailSizePicker({ thumbnailSize, onChangeThumbSize }: ThumbnailSize
           onClick={() => onChangeThumbSize(size)}
           className={`px-2.5 py-2 text-xs font-semibold transition-colors ${
             thumbnailSize === size
-              ? "bg-teal-600 text-white"
+              ? "bg-[var(--sc-primary,#323288)] text-white"
               : "bg-white text-gray-600 hover:bg-gray-50"
           } ${idx === 0 ? "rounded-l-md" : ""} ${idx === 3 ? "rounded-r-md" : ""} ${idx > 0 ? "border-l border-gray-300" : ""}`}
         >
@@ -298,7 +298,7 @@ function CardViewControls({
       <select
         value={cardGroupBy}
         onChange={(e) => onUpdateCardGroupBy(e.target.value as GroupByOption)}
-        className="rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+        className="rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
       >
         <option value="none">No Grouping</option>
         <option value="location">Group by Location</option>
@@ -311,7 +311,7 @@ function CardViewControls({
           const [field, dir] = e.target.value.split("-") as [SortField, SortDirection];
           onUpdateCardSort(field, dir);
         }}
-        className="rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+        className="rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
       >
         <option value="name-asc">Name A-Z</option>
         <option value="name-desc">Name Z-A</option>

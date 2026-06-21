@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, ReactNode, useContext, useMemo } from "react";
+import { CSSProperties, createContext, ReactNode, useContext, useMemo } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { useBranding } from "@/app/lib/query/hooks";
 
 interface BrandingColors {
   background: string;
@@ -22,15 +23,15 @@ interface StockControlBrandingContextType {
 }
 
 const DEFAULT_COLORS: BrandingColors = {
-  background: "#0d9488",
+  background: "#323288",
   text: "#FFFFFF",
-  accent: "#2dd4bf",
-  hover: "#0f766e",
-  active: "#115e59",
+  accent: "#FF8A00",
+  hover: darkenHex("#323288", 0.25),
+  active: darkenHex("#323288", 0.45),
   sidebar: "#FFFFFF",
   sidebarText: "#1f2937",
-  sidebarHover: "#f0fdfa",
-  sidebarActive: "#0d9488",
+  sidebarHover: lightenHex("#323288", 0.92),
+  sidebarActive: "#323288",
 };
 
 function darkenHex(hex: string, amount: number): string {
@@ -71,6 +72,36 @@ function customColors(primaryColor: string, accentColor: string): BrandingColors
   };
 }
 
+function globalColors(navbarColor: string, accentOrange: string): BrandingColors {
+  return {
+    background: navbarColor,
+    text: "#FFFFFF",
+    accent: accentOrange,
+    hover: darkenHex(navbarColor, 0.25),
+    active: darkenHex(navbarColor, 0.45),
+    sidebar: "#FFFFFF",
+    sidebarText: "#1f2937",
+    sidebarHover: lightenHex(navbarColor, 0.92),
+    sidebarActive: navbarColor,
+  };
+}
+
+function brandingCssVars(colors: BrandingColors): CSSProperties {
+  return {
+    "--sc-primary": colors.background,
+    "--sc-primary-hover": colors.hover,
+    "--sc-primary-active": colors.active,
+    "--sc-accent": colors.accent,
+    "--sc-text-on-primary": colors.text,
+    "--sc-primary-50": lightenHex(colors.background, 0.93),
+    "--sc-primary-100": lightenHex(colors.background, 0.86),
+    "--sc-primary-200": lightenHex(colors.background, 0.72),
+    "--sc-primary-300": lightenHex(colors.background, 0.55),
+    "--sc-primary-400": lightenHex(colors.background, 0.32),
+    "--sc-sidebar-hover": colors.sidebarHover,
+  } as CSSProperties;
+}
+
 const StockControlBrandingContext = createContext<StockControlBrandingContextType | undefined>(
   undefined,
 );
@@ -78,22 +109,37 @@ const StockControlBrandingContext = createContext<StockControlBrandingContextTyp
 export function StockControlBrandingProvider(props: { children: ReactNode }) {
   const { children } = props;
   const { profile } = useStockControlAuth();
+  const brandingQuery = useBranding("stock-control");
+  const branding = brandingQuery.data;
   const rawLogoUrl = profile ? profile.logoUrl : null;
   const rawHeroImageUrl = profile ? profile.heroImageUrl : null;
 
+  const brandingType = profile ? profile.brandingType : null;
+  const primaryColor = profile ? profile.primaryColor : null;
+  const accentColor = profile ? profile.accentColor : null;
+  const navbarColor = branding ? branding.navbarColor : null;
+  const accentOrange = branding ? branding.accentOrange : null;
+
   const colors = useMemo(() => {
-    if (profile?.brandingType === "custom" && profile.primaryColor && profile.accentColor) {
-      return customColors(profile.primaryColor, profile.accentColor);
+    if (brandingType === "custom" && primaryColor && accentColor) {
+      return customColors(primaryColor, accentColor);
+    }
+    if (navbarColor && accentOrange) {
+      return globalColors(navbarColor, accentOrange);
     }
     return DEFAULT_COLORS;
-  }, [profile?.brandingType, profile?.primaryColor, profile?.accentColor]);
+  }, [brandingType, primaryColor, accentColor, navbarColor, accentOrange]);
 
-  const logoUrl = profile?.brandingType === "custom" ? rawLogoUrl || null : null;
-  const heroImageUrl = profile?.brandingType === "custom" ? rawHeroImageUrl || null : null;
+  const cssVars = useMemo(() => brandingCssVars(colors), [colors]);
+
+  const logoUrl = brandingType === "custom" ? rawLogoUrl || null : null;
+  const heroImageUrl = brandingType === "custom" ? rawHeroImageUrl || null : null;
 
   return (
     <StockControlBrandingContext.Provider value={{ colors, logoUrl, heroImageUrl }}>
-      {children}
+      <div style={cssVars} className="contents">
+        {children}
+      </div>
     </StockControlBrandingContext.Provider>
   );
 }

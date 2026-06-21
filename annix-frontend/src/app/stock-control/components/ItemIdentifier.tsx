@@ -78,7 +78,7 @@ export function ItemIdentifier(props: ItemIdentifierProps) {
 
         {isAnalyzing && (
           <div className="flex flex-col items-center justify-center py-12">
-            <div className="w-16 h-16 border-4 border-teal-200 border-t-teal-600 rounded-full animate-spin mb-4" />
+            <div className="w-16 h-16 border-4 border-[var(--sc-primary-200,#adadcf)] border-t-[var(--sc-primary,#323288)] rounded-full animate-spin mb-4" />
             <p className="text-gray-600 dark:text-gray-400">Analyzing image...</p>
           </div>
         )}
@@ -111,7 +111,7 @@ export function ItemIdentifier(props: ItemIdentifierProps) {
                   <p className="text-sm text-gray-600 dark:text-gray-400">{result.rawAnalysis}</p>
                   <button
                     onClick={handleReset}
-                    className="mt-2 text-sm font-medium text-teal-600 hover:underline"
+                    className="mt-2 text-sm font-medium text-[var(--sc-primary,#323288)] hover:underline"
                   >
                     Take another photo
                   </button>
@@ -157,7 +157,7 @@ export function ItemIdentifier(props: ItemIdentifierProps) {
                         {onCreateNew && (
                           <button
                             onClick={() => onCreateNew(item)}
-                            className="px-3 py-1.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700"
+                            className="px-3 py-1.5 bg-[var(--sc-primary,#323288)] text-white text-sm font-medium rounded-lg hover:bg-[var(--sc-primary-hover,#252560)]"
                           >
                             Create Item
                           </button>

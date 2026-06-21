@@ -40,6 +40,7 @@ export class ChatController {
 
     const messages = await this.chatService.messages(
       req.user.companyId,
+      req.user.id,
       Number.isNaN(parsedAfterId) ? null : parsedAfterId,
       Number.isNaN(parsedConversationId) ? null : parsedConversationId,
     );

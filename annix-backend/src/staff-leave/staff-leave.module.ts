@@ -9,6 +9,8 @@ import { StockControlCompanyRepository } from "../stock-control/repositories/sto
 import { MongoStockControlCompanyRepository } from "../stock-control/repositories/stock-control-company.repository.mongo";
 import { StockControlProfileRepository } from "../stock-control/repositories/stock-control-profile.repository";
 import { MongoStockControlProfileRepository } from "../stock-control/repositories/stock-control-profile.repository.mongo";
+import { StockControlUserRepository } from "../stock-control/repositories/stock-control-user.repository";
+import { MongoStockControlUserRepository } from "../stock-control/repositories/stock-control-user.repository.mongo";
 import { StockControlCompanySchema } from "../stock-control/schemas/stock-control-company.schema";
 import { StockControlProfileSchema } from "../stock-control/schemas/stock-control-profile.schema";
 import { StockControlUserSchema } from "../stock-control/schemas/stock-control-user.schema";
@@ -46,6 +48,7 @@ import { MongoStaffLeaveRecordRepository } from "./staff-leave-record.repository
     repositoryProvider(StaffLeaveRecordRepository, MongoStaffLeaveRecordRepository),
     repositoryProvider(StockControlCompanyRepository, MongoStockControlCompanyRepository),
     repositoryProvider(StockControlProfileRepository, MongoStockControlProfileRepository),
+    repositoryProvider(StockControlUserRepository, MongoStockControlUserRepository),
   ],
   exports: [StaffLeaveService],
 })

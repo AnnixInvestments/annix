@@ -95,7 +95,7 @@ const TYPE_CONFIG: Record<
   },
   purchase_order: {
     label: "Purchase Order",
-    color: "bg-teal-100 text-teal-700",
+    color: "bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary-hover,#252560)]",
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -341,7 +341,7 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
           <div ref={resultsRef} className="max-h-[60vh] overflow-y-auto">
             {loading && (
               <div className="flex items-center justify-center py-8">
-                <div className="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                <div className="w-6 h-6 border-2 border-[var(--sc-primary,#323288)] border-t-transparent rounded-full animate-spin" />
                 <span className="ml-3 text-sm text-gray-500">Searching...</span>
               </div>
             )}
@@ -464,7 +464,7 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
                           onClick={() => navigateToResult(result)}
                           onMouseEnter={() => setSelectedIndex(currentIndex)}
                           className={`w-full flex items-center px-4 py-2.5 text-left transition-colors ${
-                            isSelected ? "bg-teal-50" : "hover:bg-gray-50"
+                            isSelected ? "bg-[var(--sc-primary-50,#eeeef6)]" : "hover:bg-gray-50"
                           }`}
                         >
                           <span

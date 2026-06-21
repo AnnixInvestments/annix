@@ -127,7 +127,7 @@ function PageAccessGuard({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={() => router.replace("/stock-control/portal/dashboard")}
-            className="mt-4 rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700"
+            className="mt-4 rounded-md bg-[var(--sc-primary,#323288)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)]"
           >
             Back to Dashboard
           </button>
@@ -252,7 +252,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading...</p>
         </div>
       </div>
@@ -272,7 +272,7 @@ export default function StockControlPortalLayout(props: { children: React.ReactN
     <Suspense
       fallback={
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mx-auto" />
         </div>
       }
     >

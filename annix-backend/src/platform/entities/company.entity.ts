@@ -116,6 +116,8 @@ export class Company {
 
   ownerUserId: number | null;
 
+  ownerCompanyId: number | null;
+
   moduleSubscriptions: CompanyModuleSubscription[];
 
   contacts: Contact[];

@@ -111,7 +111,7 @@ export default function InspectionCalendarPage() {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600" />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--sc-primary,#323288)]" />
           </div>
         ) : (
           <div className="p-4">
@@ -136,11 +136,13 @@ export default function InspectionCalendarPage() {
                     onClick={() => setSelectedDate(dateStr === selectedDate ? null : dateStr)}
                     className={`bg-white p-2 min-h-[80px] text-left transition-colors hover:bg-gray-50 ${
                       !day.isCurrentMonth ? "opacity-40" : ""
-                    } ${isSelected ? "ring-2 ring-teal-500 ring-inset" : ""}`}
+                    } ${isSelected ? "ring-2 ring-[var(--sc-primary,#323288)] ring-inset" : ""}`}
                   >
                     <span
                       className={`inline-flex items-center justify-center w-6 h-6 text-xs rounded-full ${
-                        isToday ? "bg-teal-600 text-white font-bold" : "text-gray-700 font-medium"
+                        isToday
+                          ? "bg-[var(--sc-primary,#323288)] text-white font-bold"
+                          : "text-gray-700 font-medium"
                       }`}
                     >
                       {day.date.day}
@@ -200,7 +202,7 @@ export default function InspectionCalendarPage() {
                       <div>
                         <Link
                           href={`/stock-control/portal/job-cards/${booking.jobCardId}`}
-                          className="text-sm font-medium text-teal-600 hover:text-teal-700"
+                          className="text-sm font-medium text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-hover,#252560)]"
                         >
                           {jobLabel}
                         </Link>

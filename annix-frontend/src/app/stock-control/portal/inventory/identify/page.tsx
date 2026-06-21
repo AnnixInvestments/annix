@@ -97,7 +97,7 @@ export default function IdentifyItemPage() {
           <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
             <Link
               href="/stock-control/portal/inventory"
-              className="hover:text-teal-600 transition-colors"
+              className="hover:text-[var(--sc-primary,#323288)] transition-colors"
             >
               Inventory
             </Link>

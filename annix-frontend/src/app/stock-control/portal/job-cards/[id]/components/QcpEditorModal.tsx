@@ -67,7 +67,8 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
   const [activities, setActivities] = useState<QcpActivity[]>(
     plan.activities.map((a) => {
       const rawDocumentation = (a as any).documentation;
-      const documentation = rawDocumentation || a.procedureRequired || null;
+      const procedureRequired = a.procedureRequired;
+      const documentation = rawDocumentation || procedureRequired || null;
       return {
         ...a,
         documentation,
@@ -319,7 +320,7 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
               type="button"
               onClick={saveOnly}
               disabled={isSaving}
-              className="rounded-md border border-teal-600 px-3 py-1.5 text-xs font-medium text-teal-700 hover:bg-teal-50 disabled:opacity-50"
+              className="rounded-md border border-[var(--sc-primary,#323288)] px-3 py-1.5 text-xs font-medium text-[var(--sc-primary-hover,#252560)] hover:bg-[var(--sc-primary-50,#eeeef6)] disabled:opacity-50"
             >
               Save
             </button>
@@ -328,7 +329,7 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
             type="button"
             onClick={saveAndDownload}
             disabled={isSaving}
-            className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+            className="rounded-md bg-[var(--sc-primary,#323288)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
           >
             {isSaving ? "Saving..." : readOnly ? "Download PDF" : "Save & Download PDF"}
           </button>

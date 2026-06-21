@@ -3,6 +3,7 @@
 import { toPairs as entries, keys } from "es-toolkit/compat";
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type {
   ImportMatchRow,
   ImportUploadResponse,
@@ -147,7 +148,8 @@ export default function ImportPage() {
         }
 
         const mappedCategory = cellAt(mapping.category);
-        const category = mappedCategory ?? acc.category ?? undefined;
+        const accCategory = acc.category;
+        const category = mappedCategory ?? accCategory ?? undefined;
         const item = {
           sku,
           name,
@@ -340,8 +342,8 @@ export default function ImportPage() {
               onClick={() => fileInputRef.current?.click()}
               className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${
                 isDragging
-                  ? "border-teal-500 bg-teal-50"
-                  : "border-gray-300 hover:border-teal-400 hover:bg-gray-50"
+                  ? "border-[var(--sc-primary,#323288)] bg-[var(--sc-primary-50,#eeeef6)]"
+                  : "border-gray-300 hover:border-[var(--sc-primary-400,#5b5b9c)] hover:bg-gray-50"
               }`}
             >
               <input
@@ -353,7 +355,7 @@ export default function ImportPage() {
               />
               {isUploading ? (
                 <div>
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mx-auto"></div>
                   <p className="mt-4 text-gray-600">Parsing file...</p>
                 </div>
               ) : (
@@ -404,7 +406,7 @@ export default function ImportPage() {
                 <button
                   onClick={handleMatchAndReview}
                   disabled={isMatching || previewRowCount === 0}
-                  className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] border border-transparent rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   {isMatching
                     ? "Matching inventory..."
@@ -477,15 +479,13 @@ export default function ImportPage() {
                       <label className="block text-sm font-medium text-amber-800 mb-1">
                         Actual Count Date
                       </label>
-                      <input
-                        type="date"
-                        value={stockTakeDate ?? ""}
-                        onChange={(e) => {
-                          const targetValue = e.target.value;
-                          setStockTakeDate(targetValue || null);
+                      <DateInput
+                        value={stockTakeDate}
+                        onChange={(value) => {
+                          setStockTakeDate(value ? value : null);
                         }}
-                        className="block w-48 px-3 py-1.5 text-sm border border-amber-300 rounded-md focus:ring-amber-500 focus:border-amber-500 text-amber-900"
-                        style={{ colorScheme: "light" }}
+                        ariaLabel="Actual Count Date"
+                        className="block w-48 px-3 py-1.5 text-sm border border-amber-300 rounded-md focus:ring-amber-500 focus:border-amber-500 text-amber-900 bg-white"
                       />
                       <p className="text-xs text-amber-600 mt-1">
                         The day you physically counted. Deliveries and issuances recorded after this
@@ -705,7 +705,7 @@ export default function ImportPage() {
                 </button>
                 <Link
                   href="/stock-control/portal/inventory"
-                  className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700"
+                  className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] border border-transparent rounded-md hover:bg-[var(--sc-primary-hover,#252560)]"
                 >
                   View Inventory
                 </Link>

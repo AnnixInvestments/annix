@@ -78,6 +78,41 @@ describe("RubberPricingService", () => {
     expect(service.cwPerM2(config, "plate", "Natural", agents, "Megum")).toBeCloseTo(expected, 6);
   });
 
+  it("drives C&W from a per-supplier recipe when present and fully resolvable", () => {
+    const recipeConfig = {
+      ...config,
+      plate: {
+        ...config.plate,
+        cwSupplierRecipes: { Rema: { Natural: ["AgentA", "AgentB"] } },
+      },
+    };
+    const agents = [
+      { name: "AgentA", salePerM2: 10 },
+      { name: "AgentB", salePerM2: 15 },
+    ];
+    const labour = service.labourStack(config, "plate").totalPerM2;
+    expect(service.cwPerM2(recipeConfig, "plate", "Natural", agents, "Rema")).toBeCloseTo(
+      labour + 25,
+      6,
+    );
+  });
+
+  it("falls back to the supplier baseline when a recipe product is unresolvable", () => {
+    const recipeConfig = {
+      ...config,
+      plate: {
+        ...config.plate,
+        cwSupplierRecipes: { Rema: { Natural: ["AgentA", "Missing"] } },
+      },
+    };
+    const agents = [{ name: "AgentA", salePerM2: 10 }];
+    const labour = service.labourStack(config, "plate").totalPerM2;
+    expect(service.cwPerM2(recipeConfig, "plate", "Natural", agents, "Rema")).toBeCloseTo(
+      labour + 194.2544,
+      2,
+    );
+  });
+
   it("matches the plate Rema-Natural sale + MPS price at 3mm (workbook B36 / B57)", () => {
     const result = service.computePricing(item({}), config, { family: "plate" });
     const at3mm = result.thicknesses.find((row) => row.thicknessMm === 3);

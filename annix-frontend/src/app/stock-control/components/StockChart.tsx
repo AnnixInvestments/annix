@@ -27,7 +27,7 @@ export function StockChart(props: StockChartProps) {
               </div>
               <div className="flex-1 h-6 bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-teal-500 rounded-full transition-all duration-300"
+                  className="h-full bg-[var(--sc-primary,#323288)] rounded-full transition-all duration-300"
                   style={{ width: `${widthPercent}%` }}
                 />
               </div>

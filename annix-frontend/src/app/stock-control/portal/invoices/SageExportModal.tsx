@@ -18,7 +18,7 @@ export default function StockControlSageExportModal(props: StockControlSageExpor
       csvFilename="sage-export.csv"
       excludeLabel="Exclude previously exported invoices"
       entityName="invoice"
-      accentColor="teal"
+      accentColor="orange"
       fetchPreview={(params) => stockControlApiClient.sageExportPreview(params)}
       exportCsv={(params) => stockControlApiClient.sageExportCsv(params)}
       formatPreview={(data) => {

@@ -305,7 +305,7 @@ export default function InvoiceDetailPage() {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading invoice...</p>
         </div>
       </div>
@@ -318,14 +318,11 @@ export default function InvoiceDetailPage() {
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Invoice</div>
           <p className="text-gray-600">
-            {(() => {
-              const msg = error ? error.message : null;
-              return msg ? msg : "Invoice not found";
-            })()}
+            {error ? "Something went wrong — please try again." : "Invoice not found"}
           </p>
           <Link
             href="/stock-control/portal/invoices"
-            className="mt-4 inline-block text-teal-600 hover:text-teal-800"
+            className="mt-4 inline-block text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
           >
             Back to Invoices
           </Link>
@@ -408,7 +405,7 @@ export default function InvoiceDetailPage() {
               type="button"
               onClick={handleResolveAndApprove}
               disabled={resolveAndApproveMutation.isPending}
-              className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50"
+              className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md bg-[var(--sc-primary,#323288)] text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
             >
               {resolveAndApproveMutation.isPending ? "Approving..." : "Resolve & Approve"}
             </button>
@@ -480,7 +477,7 @@ export default function InvoiceDetailPage() {
                     <div className="space-y-1">
                       <Link
                         href={`/stock-control/portal/deliveries/${invoice.deliveryNoteId}`}
-                        className="text-teal-600 hover:text-teal-800"
+                        className="text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                       >
                         {(() => {
                           const dnNum = invoice.deliveryNote
@@ -493,7 +490,7 @@ export default function InvoiceDetailPage() {
                         <div key={dn.id}>
                           <Link
                             href={`/stock-control/portal/deliveries/${dn.id}`}
-                            className="text-teal-600 hover:text-teal-800"
+                            className="text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                           >
                             {dn.deliveryNumber}
                           </Link>
@@ -564,7 +561,7 @@ export default function InvoiceDetailPage() {
                       return (
                         <tr
                           key={item.id}
-                          className={`${canEdit && !isEditing ? "cursor-pointer hover:bg-gray-50" : ""} ${isEditing ? "bg-teal-50" : ""}`}
+                          className={`${canEdit && !isEditing ? "cursor-pointer hover:bg-gray-50" : ""} ${isEditing ? "bg-[var(--sc-primary-50,#eeeef6)]" : ""}`}
                           onClick={() => {
                             if (canEdit && !isEditing && !editingItemId) startEditing(item);
                           }}
@@ -584,7 +581,7 @@ export default function InvoiceDetailPage() {
                                   }))
                                 }
                                 onClick={(e) => e.stopPropagation()}
-                                className="w-full px-2 py-1 text-sm border border-teal-300 rounded focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                                className="w-full px-2 py-1 text-sm border border-[var(--sc-primary-300,#8484b5)] rounded focus:ring-1 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                               />
                             ) : (
                               <div>{item.extractedDescription}</div>
@@ -614,7 +611,7 @@ export default function InvoiceDetailPage() {
                                   setEditValues((prev) => ({ ...prev, quantity: e.target.value }))
                                 }
                                 onClick={(e) => e.stopPropagation()}
-                                className="w-16 px-2 py-1 text-sm border border-teal-300 rounded text-right focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                                className="w-16 px-2 py-1 text-sm border border-[var(--sc-primary-300,#8484b5)] rounded text-right focus:ring-1 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                                 min={0}
                               />
                             ) : (
@@ -642,7 +639,7 @@ export default function InvoiceDetailPage() {
                                   setEditValues((prev) => ({ ...prev, unitType: e.target.value }))
                                 }
                                 onClick={(e) => e.stopPropagation()}
-                                className="w-20 px-1 py-1 text-sm border border-teal-300 rounded focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                                className="w-20 px-1 py-1 text-sm border border-[var(--sc-primary-300,#8484b5)] rounded focus:ring-1 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                               >
                                 {[
                                   "each",
@@ -688,7 +685,7 @@ export default function InvoiceDetailPage() {
                                   setEditValues((prev) => ({ ...prev, unitPrice: e.target.value }))
                                 }
                                 onClick={(e) => e.stopPropagation()}
-                                className="w-24 px-2 py-1 text-sm border border-teal-300 rounded text-right focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                                className="w-24 px-2 py-1 text-sm border border-[var(--sc-primary-300,#8484b5)] rounded text-right focus:ring-1 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                                 min={0}
                                 step="0.01"
                               />
@@ -713,10 +710,10 @@ export default function InvoiceDetailPage() {
                                   placeholder="Search stock items..."
                                   value={stockSearchQuery}
                                   onChange={(e) => setStockSearchQuery(e.target.value)}
-                                  className="w-full px-2 py-1 text-sm border border-teal-300 rounded focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                                  className="w-full px-2 py-1 text-sm border border-[var(--sc-primary-300,#8484b5)] rounded focus:ring-1 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                                 />
                                 {editStockItemId && (
-                                  <div className="mt-1 text-xs text-teal-700">
+                                  <div className="mt-1 text-xs text-[var(--sc-primary-hover,#252560)]">
                                     {(() => {
                                       const found = stockItems.find(
                                         (s) => s.id === editStockItemId,
@@ -749,7 +746,7 @@ export default function InvoiceDetailPage() {
                                             setEditStockItemId(s.id);
                                             setStockSearchQuery("");
                                           }}
-                                          className={`w-full text-left px-3 py-2 text-sm hover:bg-teal-50 ${editStockItemId === s.id ? "bg-teal-100" : ""}`}
+                                          className={`w-full text-left px-3 py-2 text-sm hover:bg-[var(--sc-primary-50,#eeeef6)] ${editStockItemId === s.id ? "bg-[var(--sc-primary-100,#d6d6e9)]" : ""}`}
                                         >
                                           <div className="font-medium">{s.name}</div>
                                           {s.sku && (
@@ -779,7 +776,7 @@ export default function InvoiceDetailPage() {
                                   type="button"
                                   onClick={() => saveItemEdit(item.id)}
                                   disabled={isSavingItem}
-                                  className="px-2 py-1 text-xs font-medium text-white bg-teal-600 rounded hover:bg-teal-700 disabled:opacity-50"
+                                  className="px-2 py-1 text-xs font-medium text-white bg-[var(--sc-primary,#323288)] rounded hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
                                 >
                                   {isSavingItem ? "..." : "Save"}
                                 </button>
@@ -863,7 +860,7 @@ export default function InvoiceDetailPage() {
               {isLinking && (
                 <div className="mb-3 flex items-center justify-center py-2">
                   <svg
-                    className="animate-spin h-5 w-5 text-teal-600 mr-2"
+                    className="animate-spin h-5 w-5 text-[var(--sc-primary,#323288)] mr-2"
                     fill="none"
                     viewBox="0 0 24 24"
                   >
@@ -881,7 +878,9 @@ export default function InvoiceDetailPage() {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     />
                   </svg>
-                  <span className="text-sm text-teal-700">Linking delivery note...</span>
+                  <span className="text-sm text-[var(--sc-primary-hover,#252560)]">
+                    Linking delivery note...
+                  </span>
                 </div>
               )}
 
@@ -895,7 +894,7 @@ export default function InvoiceDetailPage() {
                         type="button"
                         onClick={() => handleLinkDeliveryNote(dn.id)}
                         disabled={isLinking}
-                        className="w-full text-left p-2 rounded border text-xs border-gray-200 hover:border-teal-500 hover:bg-teal-50 transition-colors disabled:opacity-50"
+                        className="w-full text-left p-2 rounded border text-xs border-gray-200 hover:border-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-50,#eeeef6)] transition-colors disabled:opacity-50"
                       >
                         <div className="flex items-center justify-between">
                           <div>
@@ -904,7 +903,7 @@ export default function InvoiceDetailPage() {
                             <div className="text-gray-400 text-[10px]">{dn.matchReason}</div>
                           </div>
                           <svg
-                            className="w-4 h-4 text-teal-600 flex-shrink-0"
+                            className="w-4 h-4 text-[var(--sc-primary,#323288)] flex-shrink-0"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -939,7 +938,7 @@ export default function InvoiceDetailPage() {
                       }
                     }}
                     disabled={isLinking}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm"
+                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] text-sm"
                   >
                     <option value="">Select delivery note...</option>
                     {allDeliveryNotes.map((dn) => (
@@ -976,7 +975,7 @@ export default function InvoiceDetailPage() {
                 <button
                   onClick={handleReExtract}
                   disabled={isReExtracting}
-                  className="mt-3 w-full px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400"
+                  className="mt-3 w-full px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] border border-transparent rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400"
                 >
                   {isReExtracting ? "Extracting..." : "Re-extract Invoice Data"}
                 </button>
@@ -1065,7 +1064,7 @@ export default function InvoiceDetailPage() {
                   type="button"
                   onClick={handleApprove}
                   disabled={isApproving}
-                  className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400"
+                  className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] border border-transparent rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400"
                 >
                   {isApproving ? "Approving..." : "Approve & Update Prices"}
                 </button>

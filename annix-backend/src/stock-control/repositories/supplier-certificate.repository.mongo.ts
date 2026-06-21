@@ -10,6 +10,10 @@ import {
   SupplierCertificateRepository,
 } from "./supplier-certificate.repository";
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 @Injectable()
 export class MongoSupplierCertificateRepository
   extends MongoCrudRepository<SupplierCertificate>
@@ -56,7 +60,7 @@ export class MongoSupplierCertificateRepository
       query.jobCardId = filters.jobCardId;
     }
     if (filters?.batchNumber) {
-      query.batchNumber = { $regex: filters.batchNumber, $options: "i" };
+      query.batchNumber = { $regex: escapeRegex(filters.batchNumber.slice(0, 100)), $options: "i" };
     }
     if (filters?.certificateType) {
       query.certificateType = filters.certificateType.toUpperCase();

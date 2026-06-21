@@ -60,7 +60,7 @@ export function RequisitionTab({ requisition }: RequisitionTabProps) {
         </div>
         <Link
           href={`/stock-control/portal/requisitions/${requisition.id}`}
-          className="text-sm text-teal-600 hover:text-teal-800 font-medium"
+          className="text-sm text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] font-medium"
         >
           View full requisition
         </Link>
@@ -143,7 +143,7 @@ export function RequisitionTab({ requisition }: RequisitionTabProps) {
       <div className="border-t border-gray-200 px-4 py-4 sm:px-6">
         <Link
           href={`/stock-control/portal/requisitions/${requisition.id}`}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--sc-primary,#323288)]"
         >
           Open Requisition
         </Link>

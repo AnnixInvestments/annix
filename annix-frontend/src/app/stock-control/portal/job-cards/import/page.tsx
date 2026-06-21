@@ -138,11 +138,11 @@ const FIELD_COLORS: Record<
   { bg: string; border: string; text: string; headerBg: string; badge: string }
 > = {
   teal: {
-    bg: "bg-teal-50",
-    border: "border-teal-500",
-    text: "text-teal-700",
-    headerBg: "bg-teal-100",
-    badge: "bg-teal-600",
+    bg: "bg-[var(--sc-primary-50,#eeeef6)]",
+    border: "border-[var(--sc-primary,#323288)]",
+    text: "text-[var(--sc-primary-hover,#252560)]",
+    headerBg: "bg-[var(--sc-primary-100,#d6d6e9)]",
+    badge: "bg-[var(--sc-primary,#323288)]",
   },
   blue: {
     bg: "bg-blue-50",
@@ -1636,7 +1636,7 @@ export default function JobCardImportPage() {
                         );
                       }}
                       placeholder="e.g. 300"
-                      className="w-24 px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
+                      className="w-24 px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                     />
                     <span className="text-sm text-gray-500">um</span>
                   </div>
@@ -1653,7 +1653,7 @@ export default function JobCardImportPage() {
               <button
                 onClick={applyMicronsAndConfirm}
                 disabled={micronPrompts.some((p) => !p.microns.trim())}
-                className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 Confirm Import
               </button>
@@ -1711,8 +1711,8 @@ export default function JobCardImportPage() {
               onClick={() => fileInputRef.current?.click()}
               className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${
                 isDragging
-                  ? "border-teal-500 bg-teal-50"
-                  : "border-gray-300 hover:border-teal-400 hover:bg-gray-50"
+                  ? "border-[var(--sc-primary,#323288)] bg-[var(--sc-primary-50,#eeeef6)]"
+                  : "border-gray-300 hover:border-[var(--sc-primary-400,#5b5b9c)] hover:bg-gray-50"
               }`}
             >
               <input
@@ -1724,7 +1724,7 @@ export default function JobCardImportPage() {
               />
               {isUploading ? (
                 <div>
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mx-auto"></div>
                   <p className="mt-4 text-gray-600">
                     {drawingFiles.length > 0
                       ? "Nix is analysing engineering drawings..."
@@ -1777,7 +1777,7 @@ export default function JobCardImportPage() {
                   type="button"
                   onClick={() => drawingInputRef.current?.click()}
                   disabled={isUploading}
-                  className="px-4 py-2 text-sm font-medium text-teal-700 bg-teal-50 border border-teal-200 rounded-md hover:bg-teal-100 disabled:bg-gray-100 disabled:text-gray-400"
+                  className="px-4 py-2 text-sm font-medium text-[var(--sc-primary-hover,#252560)] bg-[var(--sc-primary-50,#eeeef6)] border border-[var(--sc-primary-200,#adadcf)] rounded-md hover:bg-[var(--sc-primary-100,#d6d6e9)] disabled:bg-gray-100 disabled:text-gray-400"
                 >
                   Select Drawing PDFs
                 </button>
@@ -1793,7 +1793,7 @@ export default function JobCardImportPage() {
 
       {step === "mapping" && (
         <div className="fixed inset-0 z-50 bg-white flex flex-col">
-          <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-teal-600 to-teal-700">
+          <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-[var(--sc-primary,#323288)] to-[var(--sc-primary-hover,#252560)]">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-white/20 rounded-lg">
                 <svg
@@ -1949,7 +1949,7 @@ export default function JobCardImportPage() {
                   <button
                     onClick={handleAutoDetect}
                     disabled={isAutoDetecting}
-                    className="px-3 py-1.5 text-xs font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:opacity-50 flex items-center gap-1.5"
+                    className="px-3 py-1.5 text-xs font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50 flex items-center gap-1.5"
                   >
                     {isAutoDetecting ? (
                       <>
@@ -2132,12 +2132,12 @@ export default function JobCardImportPage() {
                         if (e.key === "Enter") handleAddCustomField();
                       }}
                       placeholder="Field name..."
-                      className="flex-1 text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:border-teal-500 focus:ring-teal-500"
+                      className="flex-1 text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)]"
                     />
                     <button
                       onClick={handleAddCustomField}
                       disabled={!customFieldInput.trim()}
-                      className="px-3 py-1.5 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                      className="px-3 py-1.5 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-300 disabled:cursor-not-allowed"
                     >
                       Add
                     </button>
@@ -2263,7 +2263,7 @@ export default function JobCardImportPage() {
                   <button
                     onClick={handleSaveMapping}
                     disabled={isSavingMapping || !requiredMapped}
-                    className="flex-1 px-3 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    className="flex-1 px-3 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] border border-transparent rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
                     {isSavingMapping ? "Saving..." : "Continue"}
                   </button>
@@ -2301,7 +2301,7 @@ export default function JobCardImportPage() {
                 <h3 className="text-lg leading-6 font-medium text-gray-900">
                   Import Preview
                   {documentNumber && (
-                    <span className="ml-2 text-sm font-normal text-teal-700 bg-teal-50 px-2 py-0.5 rounded">
+                    <span className="ml-2 text-sm font-normal text-[var(--sc-primary-hover,#252560)] bg-[var(--sc-primary-50,#eeeef6)] px-2 py-0.5 rounded">
                       Doc: {documentNumber}
                     </span>
                   )}
@@ -2335,7 +2335,7 @@ export default function JobCardImportPage() {
                 <button
                   onClick={handleConfirmWithMicronCheck}
                   disabled={isConfirming || mappedRows.length === 0}
-                  className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] border border-transparent rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   {isConfirming
                     ? "Importing..."
@@ -2493,7 +2493,7 @@ export default function JobCardImportPage() {
                                 <div className="flex items-center gap-3">
                                   <button
                                     onClick={() => toggleJobExpanded(jobNumberKey)}
-                                    className="text-teal-600 hover:text-teal-800 font-medium"
+                                    className="text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] font-medium"
                                   >
                                     {lineCount} item{lineCount !== 1 ? "s" : ""}{" "}
                                     {isExpanded ? "[-]" : "[+]"}
@@ -2672,7 +2672,7 @@ export default function JobCardImportPage() {
                                           </td>
                                           <td className="px-3 py-1.5">
                                             {isCalculatingM2 ? (
-                                              <span className="inline-block h-3 w-3 rounded-full border-2 border-teal-400 border-t-transparent animate-spin" />
+                                              <span className="inline-block h-3 w-3 rounded-full border-2 border-[var(--sc-primary-400,#5b5b9c)] border-t-transparent animate-spin" />
                                             ) : (
                                               <input
                                                 type="number"
@@ -2824,7 +2824,7 @@ export default function JobCardImportPage() {
                                     };
                                   });
                                 }}
-                                className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                                className="h-4 w-4 rounded border-gray-300 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)]"
                               />
                             </td>
                             <td className="px-3 py-2 text-sm">
@@ -2902,7 +2902,7 @@ export default function JobCardImportPage() {
                     }
                   }}
                   disabled={isConfirmingDelivery}
-                  className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:opacity-50"
+                  className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] border border-transparent rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
                 >
                   {isConfirmingDelivery ? "Confirming..." : "Confirm Matches"}
                 </button>
@@ -2966,7 +2966,7 @@ export default function JobCardImportPage() {
                 </button>
                 <Link
                   href="/stock-control/portal/job-cards"
-                  className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700"
+                  className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] border border-transparent rounded-md hover:bg-[var(--sc-primary-hover,#252560)]"
                 >
                   View Job Cards
                 </Link>

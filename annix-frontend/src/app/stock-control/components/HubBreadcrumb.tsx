@@ -29,7 +29,7 @@ export function HubBreadcrumb() {
     <nav className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 mb-4">
       <Link
         href={breadcrumb.hubPath}
-        className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
+        className="hover:text-[var(--sc-primary,#323288)] dark:hover:text-[var(--sc-primary-400,#5b5b9c)] transition-colors"
       >
         {breadcrumb.groupName}
       </Link>

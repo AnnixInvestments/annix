@@ -1,4 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { ThrottlerGuard } from "@nestjs/throttler";
 import { SageExportService } from "../../sage-export/sage-export.service";
 import { IdempotencyService } from "../../shared/services/idempotency.service";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
@@ -70,6 +71,8 @@ describe("InvoicesController", () => {
       .overrideGuard(StockControlOnboardingGuard)
       .useValue({ canActivate: () => true })
       .overrideGuard(StockControlRoleGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(ThrottlerGuard)
       .useValue({ canActivate: () => true })
       .compile();
 
@@ -161,7 +164,7 @@ describe("InvoicesController", () => {
 
       await controller.sageExportCsv(mockReq(), filters, res);
 
-      const expectedContext = { companyId: 1, appKey: "stock-control" };
+      const expectedContext = { companyId: 1, appKey: "stock-control", userId: 10 };
       expect(sageAdapter.exportableInvoices).toHaveBeenCalledWith(filters, expectedContext);
       expect(sageExportService.generateCsv).toHaveBeenCalledWith(invoices);
       expect(sageAdapter.markExported).toHaveBeenCalledWith(entityIds, expectedContext);
@@ -243,14 +246,17 @@ describe("InvoicesController", () => {
 
       const result = await controller.create(dto, mockReq());
 
-      expect(invoiceService.create).toHaveBeenCalledWith(1, dto);
+      expect(invoiceService.create).toHaveBeenCalledWith(1, dto, 10);
       expect(result).toBe(created);
     });
   });
 
   describe("POST /:id/scan (uploadScan)", () => {
     it("should delegate to invoiceService.uploadScan", async () => {
-      const file = { buffer: Buffer.from("scan") } as Express.Multer.File;
+      const file = {
+        buffer: Buffer.from("scan"),
+        mimetype: "application/pdf",
+      } as Express.Multer.File;
       const expected = { status: "processing" };
       invoiceService.uploadScan.mockResolvedValue(expected as any);
 
@@ -355,7 +361,7 @@ describe("InvoicesController", () => {
 
       await controller.remove(mockReq(), 5);
 
-      expect(invoiceService.remove).toHaveBeenCalledWith(1, 5);
+      expect(invoiceService.remove).toHaveBeenCalledWith(1, 5, 10);
     });
   });
 });

@@ -97,7 +97,7 @@ export function ReturnLeftoverModal(props: ReturnLeftoverModalProps) {
                 step={1}
                 value={litresReturned || ""}
                 onChange={(e) => setLitresReturned(Math.floor(Number(e.target.value)))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                 placeholder="Enter litres to return"
               />
               {litresReturned > totalLitres && (
@@ -108,8 +108,8 @@ export function ReturnLeftoverModal(props: ReturnLeftoverModalProps) {
             </div>
 
             {litresReturned > 0 && litresReturned <= totalLitres && (
-              <div className="bg-teal-50 border border-teal-200 rounded-lg p-3">
-                <p className="text-sm text-teal-800">
+              <div className="bg-[var(--sc-primary-50,#eeeef6)] border border-[var(--sc-primary-200,#adadcf)] rounded-lg p-3">
+                <p className="text-sm text-[var(--sc-primary-active,#1c1c48)]">
                   Estimated cost reduction:{" "}
                   <span className="font-semibold">{formattedCostReduction}</span>
                 </p>
@@ -124,7 +124,7 @@ export function ReturnLeftoverModal(props: ReturnLeftoverModalProps) {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                 placeholder="Add any notes about the return..."
               />
             </div>
@@ -148,7 +148,7 @@ export function ReturnLeftoverModal(props: ReturnLeftoverModalProps) {
                 type="button"
                 onClick={handleSubmit}
                 disabled={!canSubmit}
-                className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-[var(--sc-primary,#323288)] text-white rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 {submitting ? "Returning..." : "Confirm Return"}
               </button>

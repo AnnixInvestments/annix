@@ -279,7 +279,10 @@ export default function CpoImportPage() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center space-x-2 text-sm text-gray-500 mb-1">
-            <Link href="/stock-control/portal/purchase-orders" className="hover:text-teal-600">
+            <Link
+              href="/stock-control/portal/purchase-orders"
+              className="hover:text-[var(--sc-primary,#323288)]"
+            >
               Purchase Orders
             </Link>
             <span>/</span>
@@ -295,12 +298,14 @@ export default function CpoImportPage() {
             {idx > 0 && <div className="w-8 h-px bg-gray-300 mr-4" />}
             <div
               className={`flex items-center space-x-2 ${
-                step === s ? "text-teal-700 font-medium" : "text-gray-400"
+                step === s ? "text-[var(--sc-primary-hover,#252560)] font-medium" : "text-gray-400"
               }`}
             >
               <span
                 className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
-                  step === s ? "bg-teal-600 text-white" : "bg-gray-200 text-gray-500"
+                  step === s
+                    ? "bg-[var(--sc-primary,#323288)] text-white"
+                    : "bg-gray-200 text-gray-500"
                 }`}
               >
                 {idx + 1}
@@ -331,7 +336,7 @@ export default function CpoImportPage() {
         >
           {isUploading ? (
             <div>
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mx-auto"></div>
               <p className="mt-4 text-gray-600">Processing {fileName}...</p>
             </div>
           ) : (
@@ -358,7 +363,7 @@ export default function CpoImportPage() {
               </p>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="mt-6 px-6 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 text-sm font-medium"
+                className="mt-6 px-6 py-2 bg-[var(--sc-primary,#323288)] text-white rounded-md hover:bg-[var(--sc-primary-hover,#252560)] text-sm font-medium"
               >
                 Choose File
               </button>
@@ -400,7 +405,7 @@ export default function CpoImportPage() {
                 <button
                   onClick={handleImport}
                   disabled={isImporting || previewRows.length === 0}
-                  className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:opacity-50"
+                  className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
                 >
                   {isImporting
                     ? "Importing..."
@@ -418,7 +423,7 @@ export default function CpoImportPage() {
                       <span className="text-sm font-medium text-gray-900">CPO {idx + 1}</span>
                       <button
                         onClick={() => addPreviewLineItem(idx)}
-                        className="text-xs font-medium text-teal-700 hover:text-teal-900"
+                        className="text-xs font-medium text-[var(--sc-primary-hover,#252560)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                       >
                         Add line item
                       </button>
@@ -616,7 +621,9 @@ export default function CpoImportPage() {
           <h2 className="mt-4 text-xl font-semibold text-gray-900">Import Complete</h2>
           <div className="mt-4 flex justify-center space-x-8 text-sm">
             <div>
-              <span className="text-2xl font-bold text-teal-600">{importResult.created}</span>
+              <span className="text-2xl font-bold text-[var(--sc-primary,#323288)]">
+                {importResult.created}
+              </span>
               <p className="text-gray-500">Created</p>
             </div>
             {importResult.updated > 0 && (
@@ -655,7 +662,7 @@ export default function CpoImportPage() {
           <div className="mt-8 flex justify-center space-x-4">
             <Link
               href="/stock-control/portal/purchase-orders"
-              className="px-6 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 text-sm font-medium"
+              className="px-6 py-2 bg-[var(--sc-primary,#323288)] text-white rounded-md hover:bg-[var(--sc-primary-hover,#252560)] text-sm font-medium"
             >
               View Purchase Orders
             </Link>

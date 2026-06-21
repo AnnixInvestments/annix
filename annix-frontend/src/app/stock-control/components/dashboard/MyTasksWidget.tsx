@@ -47,7 +47,7 @@ export function MyTasksWidget({ pendingApprovals, notifications }: MyTasksWidget
                   className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50 transition-colors"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-teal-700 truncate">
+                    <p className="text-sm font-medium text-[var(--sc-primary-hover,#252560)] truncate">
                       {jobCard.jobNumber}
                     </p>
                     <p className="text-xs text-gray-500 truncate">{jobCard.jobName}</p>
@@ -63,7 +63,7 @@ export function MyTasksWidget({ pendingApprovals, notifications }: MyTasksWidget
               {pendingApprovals.length > 5 && (
                 <Link
                   href="/stock-control/portal/job-cards"
-                  className="block text-center text-xs text-teal-600 hover:text-teal-800 py-1"
+                  className="block text-center text-xs text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] py-1"
                 >
                   View all {pendingApprovals.length} pending approvals
                 </Link>
@@ -102,7 +102,7 @@ export function MyTasksWidget({ pendingApprovals, notifications }: MyTasksWidget
               {unreadNotifications.length > 5 && (
                 <Link
                   href="/stock-control/portal/notifications"
-                  className="block text-center text-xs text-teal-600 hover:text-teal-800 py-1"
+                  className="block text-center text-xs text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] py-1"
                 >
                   View all {unreadNotifications.length} notifications
                 </Link>

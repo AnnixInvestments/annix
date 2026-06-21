@@ -48,7 +48,8 @@ function matchLabel(matchType: string): string {
 
 function matchColor(score: number): string {
   if (score >= 0.9) return "text-green-700 bg-green-50 border-green-200";
-  if (score >= 0.7) return "text-teal-700 bg-teal-50 border-teal-200";
+  if (score >= 0.7)
+    return "text-[var(--sc-primary-hover,#252560)] bg-[var(--sc-primary-50,#eeeef6)] border-[var(--sc-primary-200,#adadcf)]";
   return "text-amber-700 bg-amber-50 border-amber-200";
 }
 
@@ -123,7 +124,7 @@ export function DeliveryMatchReview(props: Props) {
 
           {isLoading && (
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600" />
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--sc-primary,#323288)]" />
               <span className="ml-3 text-gray-600">Analyzing matches...</span>
             </div>
           )}
@@ -168,7 +169,7 @@ export function DeliveryMatchReview(props: Props) {
                             <button
                               type="button"
                               onClick={() => handleClearOverride(match.description)}
-                              className="text-xs text-teal-600 hover:text-teal-800 underline"
+                              className="text-xs text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] underline"
                             >
                               Undo
                             </button>
@@ -228,7 +229,7 @@ export function DeliveryMatchReview(props: Props) {
               type="button"
               onClick={handleConfirm}
               disabled={isLoading}
-              className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
             >
               Confirm & Add to Stock
             </button>

@@ -50,7 +50,7 @@ export function CpoDataBookSection(props: CpoDataBookSectionProps) {
         <button
           onClick={() => handleCompile(false)}
           disabled={isCompiling}
-          className="rounded bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          className="rounded bg-[var(--sc-primary,#323288)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           {isCompiling ? "Compiling..." : "Compile Data Book"}
         </button>

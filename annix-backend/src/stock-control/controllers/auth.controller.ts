@@ -363,7 +363,7 @@ export class StockControlAuthController {
   @Patch("smtp-config")
   @ApiOperation({ summary: "Update SMTP configuration" })
   async updateSmtpConfig(@Req() req: any, @Body() body: SmtpConfigDto) {
-    return this.companyEmailService.updateSmtpConfig(req.user.companyId, body);
+    return this.companyEmailService.updateSmtpConfig(req.user.companyId, body, req.user.id);
   }
 
   @UseGuards(StockControlAuthGuard, StockControlRoleGuard)

@@ -121,7 +121,7 @@ export function AllocationModal(props: AllocationModalProps) {
                     return stockItemId ?? "";
                   })()}
                   onChange={handleChange}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${errors.stockItemId ? "border-red-500" : "border-gray-300"}`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] ${errors.stockItemId ? "border-red-500" : "border-gray-300"}`}
                 >
                   <option value="">Select an item...</option>
                   {stockItems.map((item) => (
@@ -136,8 +136,8 @@ export function AllocationModal(props: AllocationModalProps) {
               </div>
 
               {selectedItem && (
-                <div className="bg-teal-50 border border-teal-200 rounded-md p-3">
-                  <p className="text-sm text-teal-800">
+                <div className="bg-[var(--sc-primary-50,#eeeef6)] border border-[var(--sc-primary-200,#adadcf)] rounded-md p-3">
+                  <p className="text-sm text-[var(--sc-primary-active,#1c1c48)]">
                     Current SOH: <span className="font-semibold">{selectedItem.quantity}</span>{" "}
                     {selectedItem.unitOfMeasure}
                   </p>
@@ -153,7 +153,7 @@ export function AllocationModal(props: AllocationModalProps) {
                   onChange={handleChange}
                   min="1"
                   max={selectedItem ? selectedItem.quantity : undefined}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${errors.quantity ? "border-red-500" : "border-gray-300"}`}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] ${errors.quantity ? "border-red-500" : "border-gray-300"}`}
                 />
                 {errors.quantity && <p className="mt-1 text-sm text-red-600">{errors.quantity}</p>}
               </div>
@@ -165,7 +165,7 @@ export function AllocationModal(props: AllocationModalProps) {
                   value={form.notes}
                   onChange={handleChange}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                 />
               </div>
 
@@ -185,7 +185,7 @@ export function AllocationModal(props: AllocationModalProps) {
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700"
+                className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)]"
               >
                 Allocate
               </button>

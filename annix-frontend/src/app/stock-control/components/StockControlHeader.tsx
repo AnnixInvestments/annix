@@ -212,7 +212,7 @@ export function StockControlHeader() {
                         onClick={() => setMobileNavOpen(false)}
                         className={`flex items-center gap-2 px-4 py-3 text-sm font-medium ${
                           isActive(item.href)
-                            ? "bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300"
+                            ? "bg-[var(--sc-primary-50,#eeeef6)] dark:bg-[var(--sc-primary-active,#1c1c48)]/30 text-[var(--sc-primary-hover,#252560)] dark:text-[var(--sc-primary-300,#8484b5)]"
                             : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
                         }`}
                       >
@@ -234,7 +234,7 @@ export function StockControlHeader() {
                             onClick={() => setMobileNavOpen(false)}
                             className={`flex items-center gap-2 px-4 py-3 text-sm font-medium ${
                               isGroupActive(group.name)
-                                ? "bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300"
+                                ? "bg-[var(--sc-primary-50,#eeeef6)] dark:bg-[var(--sc-primary-active,#1c1c48)]/30 text-[var(--sc-primary-hover,#252560)] dark:text-[var(--sc-primary-300,#8484b5)]"
                                 : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
                             }`}
                           >
@@ -361,7 +361,7 @@ export function StockControlHeader() {
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setShowDropdown(!showDropdown)}
-                className="flex items-center justify-center w-9 h-9 rounded-full text-white font-semibold text-sm hover:ring-2 hover:ring-teal-300 transition-all"
+                className="flex items-center justify-center w-9 h-9 rounded-full text-white font-semibold text-sm hover:ring-2 hover:ring-[var(--sc-primary-300,#8484b5)] transition-all"
                 style={{ backgroundColor: colors.accent }}
               >
                 {userInitials}

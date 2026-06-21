@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import * as nodemailer from "nodemailer";
+import { AuditService } from "../../audit/audit.service";
+import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { EmailOptions, EmailService } from "../../email/email.service";
 import { nowMillis } from "../../lib/datetime";
 import { decrypt, encrypt } from "../../secure-documents/crypto.util";
@@ -35,6 +37,7 @@ export class CompanyEmailService {
     private readonly companyRepo: StockControlCompanyRepository,
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
+    private readonly auditService: AuditService,
   ) {}
 
   async sendEmail(companyId: number, options: EmailOptions): Promise<boolean> {
@@ -155,8 +158,14 @@ export class CompanyEmailService {
     };
   }
 
-  async updateSmtpConfig(companyId: number, dto: SmtpConfigDto): Promise<{ message: string }> {
+  async updateSmtpConfig(
+    companyId: number,
+    dto: SmtpConfigDto,
+    userId?: number,
+  ): Promise<{ message: string }> {
     const encryptionKey = this.configService.get<string>("DOCUMENT_ENCRYPTION_KEY");
+
+    const existing = await this.companyRepo.findById(companyId);
 
     const update: Partial<StockControlCompany> = {
       smtpHost: dto.smtpHost,
@@ -181,6 +190,33 @@ export class CompanyEmailService {
     }
 
     await this.companyRepo.updateById(companyId, update);
+
+    const passwordChanged = dto.smtpPass !== null && dto.smtpPass !== undefined;
+    this.auditService
+      .log({
+        entityType: "stock_control_company_smtp",
+        entityId: companyId,
+        action: AuditAction.UPDATE,
+        oldValues: {
+          companyId,
+          smtpHost: existing?.smtpHost ?? null,
+          smtpPort: existing?.smtpPort ?? null,
+          smtpUser: existing?.smtpUser ?? null,
+          smtpFromEmail: existing?.smtpFromEmail ?? null,
+          smtpPassSet: !!existing?.smtpPassEncrypted,
+        },
+        newValues: {
+          companyId,
+          userId: userId ?? null,
+          smtpHost: dto.smtpHost,
+          smtpPort: dto.smtpPort,
+          smtpUser: dto.smtpUser,
+          smtpFromEmail: dto.smtpFromEmail,
+          passwordChanged,
+        },
+      })
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
+
     return { message: "SMTP configuration updated" };
   }
 

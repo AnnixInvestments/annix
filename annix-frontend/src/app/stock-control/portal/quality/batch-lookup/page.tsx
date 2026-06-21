@@ -56,7 +56,7 @@ export default function BatchLookupPage() {
           <button
             onClick={handleSearch}
             disabled={!batchNumber.trim() || searchMutation.isPending}
-            className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+            className="rounded-md bg-[var(--sc-primary,#323288)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
           >
             {searchMutation.isPending ? "Searching..." : "Search"}
           </button>
@@ -130,7 +130,7 @@ export default function BatchLookupPage() {
                       <td className="whitespace-nowrap px-4 py-3 text-right text-sm">
                         <button
                           onClick={() => handleView(cert.id)}
-                          className="text-teal-600 hover:text-teal-800"
+                          className="text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                         >
                           View
                         </button>

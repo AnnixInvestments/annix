@@ -178,7 +178,7 @@ export function EnvironmentalTab(props: EnvironmentalTabProps) {
                 setEditing(null);
                 setFormOpen(true);
               }}
-              className="rounded-md bg-sky-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-800"
+              className="rounded-md bg-[var(--sc-primary,#323288)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)]"
             >
               + Add Record
             </button>
@@ -252,7 +252,7 @@ export function EnvironmentalTab(props: EnvironmentalTabProps) {
                             setEditing(rec);
                             setFormOpen(true);
                           }}
-                          className="text-xs text-teal-600 hover:text-teal-800 mr-3"
+                          className="text-xs text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] mr-3"
                         >
                           Edit
                         </button>

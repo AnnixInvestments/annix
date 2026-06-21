@@ -3,6 +3,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from "@nes
 import { RubberCureType, RubberPriceListItem } from "../entities/rubber-price-list-item.entity";
 import {
   DEFAULT_RUBBER_PRICING_CONFIG,
+  type RubberFamilyPricingConfig,
   RubberPriceFamily,
   RubberPricingConfig,
 } from "../entities/rubber-pricing-config";
@@ -105,7 +106,31 @@ export class RubberPriceListService {
   async configForCompany(companyId: number): Promise<RubberPricingConfig> {
     const company = await this.companyRepo.findById(companyId);
     const stored = company?.rubberPricingConfig;
-    return stored ?? DEFAULT_RUBBER_PRICING_CONFIG;
+    if (!stored) {
+      return DEFAULT_RUBBER_PRICING_CONFIG;
+    }
+    return this.withSupplierRecipes(stored);
+  }
+
+  private withSupplierRecipes(config: RubberPricingConfig): RubberPricingConfig {
+    const backfillFamily = (
+      family: RubberFamilyPricingConfig,
+      defaults: RubberFamilyPricingConfig,
+    ): RubberFamilyPricingConfig => {
+      if (family.cwSupplierRecipes != null) {
+        return family;
+      }
+      const seededDefaultRecipe =
+        family.cwRecipes != null
+          ? { [family.defaultBondingAgentSupplier]: family.cwRecipes }
+          : defaults.cwSupplierRecipes;
+      return { ...family, cwSupplierRecipes: seededDefaultRecipe };
+    };
+    return {
+      ...config,
+      plate: backfillFamily(config.plate, DEFAULT_RUBBER_PRICING_CONFIG.plate),
+      pipe: backfillFamily(config.pipe, DEFAULT_RUBBER_PRICING_CONFIG.pipe) as typeof config.pipe,
+    };
   }
 
   private async bondingAgentSalePrices(

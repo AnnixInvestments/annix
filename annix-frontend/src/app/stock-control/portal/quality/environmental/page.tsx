@@ -47,7 +47,7 @@ export default function EnvironmentalPage() {
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-600 mx-auto" />
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[var(--sc-primary,#323288)] mx-auto" />
               <p className="mt-3 text-sm text-gray-500">Loading records...</p>
             </div>
           </div>
@@ -117,7 +117,7 @@ export default function EnvironmentalPage() {
                     <td className="whitespace-nowrap px-4 py-3 text-sm">
                       <Link
                         href={`/stock-control/portal/job-cards/${rec.jobCardId}#quality`}
-                        className="text-teal-600 hover:text-teal-800 font-medium"
+                        className="text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] font-medium"
                       >
                         {jcLabel || `JC #${rec.jobCardId}`}
                       </Link>

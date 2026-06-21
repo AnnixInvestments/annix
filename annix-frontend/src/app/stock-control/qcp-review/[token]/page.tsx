@@ -302,7 +302,7 @@ export default function QcpReviewPage() {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
-          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-teal-600" />
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-[var(--sc-primary,#323288)]" />
           <p className="mt-3 text-sm text-gray-500">Loading review...</p>
         </div>
       </div>
@@ -390,7 +390,7 @@ export default function QcpReviewPage() {
                       type="button"
                       onClick={handleForward}
                       disabled={isForwarding || isFinalizing || !forwardEmail.trim()}
-                      className="w-full rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+                      className="w-full rounded-md bg-[var(--sc-primary,#323288)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
                     >
                       {isForwarding
                         ? "Sending..."

@@ -87,7 +87,7 @@ export function ImportPreview(props: ImportPreviewProps) {
         <button
           type="button"
           onClick={onConfirm}
-          className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700"
+          className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)]"
         >
           Confirm Import
         </button>

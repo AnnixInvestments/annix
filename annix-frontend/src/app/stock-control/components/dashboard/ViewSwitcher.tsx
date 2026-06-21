@@ -64,7 +64,7 @@ export function ViewSwitcher({ currentRole, activeView, onSwitch }: ViewSwitcher
         className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md shadow-sm transition-colors ${
           isViewingOwnDashboard
             ? "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
-            : "text-teal-700 bg-teal-50 border border-teal-300 hover:bg-teal-100"
+            : "text-[var(--sc-primary-hover,#252560)] bg-[var(--sc-primary-50,#eeeef6)] border border-[var(--sc-primary-300,#8484b5)] hover:bg-[var(--sc-primary-100,#d6d6e9)]"
         }`}
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -93,7 +93,7 @@ export function ViewSwitcher({ currentRole, activeView, onSwitch }: ViewSwitcher
                   onSwitch(currentRole);
                   close();
                 }}
-                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-teal-700 hover:bg-teal-50 transition-colors font-medium"
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[var(--sc-primary-hover,#252560)] hover:bg-[var(--sc-primary-50,#eeeef6)] transition-colors font-medium"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -117,7 +117,7 @@ export function ViewSwitcher({ currentRole, activeView, onSwitch }: ViewSwitcher
                 }}
                 className={`w-full flex items-center justify-between px-4 py-2 text-sm transition-colors ${
                   activeView === role.key
-                    ? "bg-teal-50 text-teal-700 font-medium"
+                    ? "bg-[var(--sc-primary-50,#eeeef6)] text-[var(--sc-primary-hover,#252560)] font-medium"
                     : "text-gray-700 hover:bg-gray-50"
                 }`}
               >
@@ -126,7 +126,7 @@ export function ViewSwitcher({ currentRole, activeView, onSwitch }: ViewSwitcher
                   {role.key === currentRole && <span className="text-xs text-gray-400">you</span>}
                   {activeView === role.key && (
                     <svg
-                      className="w-4 h-4 text-teal-600"
+                      className="w-4 h-4 text-[var(--sc-primary,#323288)]"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"

@@ -173,7 +173,7 @@ export function SmtpConfigSection() {
                   setSmtpSuccess("");
                 }}
                 placeholder="smtp.example.com"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] text-sm"
               />
             </div>
             <div>
@@ -189,7 +189,7 @@ export function SmtpConfigSection() {
                   setSmtpSuccess("");
                 }}
                 placeholder="587"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] text-sm"
               />
             </div>
             <div>
@@ -205,7 +205,7 @@ export function SmtpConfigSection() {
                   setSmtpSuccess("");
                 }}
                 placeholder="user@example.com"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] text-sm"
               />
             </div>
             <div>
@@ -222,7 +222,7 @@ export function SmtpConfigSection() {
                   setSmtpSuccess("");
                 }}
                 placeholder={smtpPassSet ? "********" : "Enter password"}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] text-sm"
               />
             </div>
             <div>
@@ -238,7 +238,7 @@ export function SmtpConfigSection() {
                   setSmtpSuccess("");
                 }}
                 placeholder="Company Name"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] text-sm"
               />
             </div>
             <div>
@@ -254,7 +254,7 @@ export function SmtpConfigSection() {
                   setSmtpSuccess("");
                 }}
                 placeholder="noreply@example.com"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] text-sm"
               />
             </div>
           </div>
@@ -268,7 +268,7 @@ export function SmtpConfigSection() {
                 {notificationEmails.map((email) => (
                   <span
                     key={email}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm bg-teal-50 text-teal-700 border border-teal-200"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm bg-[var(--sc-primary-50,#eeeef6)] text-[var(--sc-primary-hover,#252560)] border border-[var(--sc-primary-200,#adadcf)]"
                   >
                     {email}
                     <button
@@ -277,7 +277,7 @@ export function SmtpConfigSection() {
                         setNotificationEmails(notificationEmails.filter((e) => e !== email));
                         setSmtpSuccess("");
                       }}
-                      className="ml-1 text-teal-400 hover:text-red-500 transition-colors"
+                      className="ml-1 text-[var(--sc-primary-400,#5b5b9c)] hover:text-red-500 transition-colors"
                     >
                       <svg
                         className="w-3.5 h-3.5"
@@ -309,13 +309,13 @@ export function SmtpConfigSection() {
                   }
                 }}
                 placeholder="email@example.com"
-                className="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+                className="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] text-sm"
               />
               <button
                 type="button"
                 onClick={addNotificationEmail}
                 disabled={!isValidEmail(newNotificationEmail)}
-                className="px-3 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-2 bg-[var(--sc-primary,#323288)] text-white text-sm font-medium rounded-md hover:bg-[var(--sc-primary-hover,#252560)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--sc-primary,#323288)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Add
               </button>
@@ -334,7 +334,7 @@ export function SmtpConfigSection() {
               type="button"
               onClick={handleSave}
               disabled={smtpSaving}
-              className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 bg-[var(--sc-primary,#323288)] text-white text-sm font-medium rounded-md hover:bg-[var(--sc-primary-hover,#252560)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--sc-primary,#323288)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {smtpSaving ? "Saving..." : "Save"}
             </button>

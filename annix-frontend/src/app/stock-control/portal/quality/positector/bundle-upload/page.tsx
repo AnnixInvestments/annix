@@ -252,7 +252,7 @@ export default function BundleUploadPage() {
               onClick={() => fileInputRef.current?.click()}
               className={`cursor-pointer rounded-lg border-2 border-dashed py-16 text-center transition-colors ${
                 isDragOver
-                  ? "border-teal-500 bg-teal-50"
+                  ? "border-[var(--sc-primary,#323288)] bg-[var(--sc-primary-50,#eeeef6)]"
                   : "border-gray-300 hover:border-gray-400 hover:bg-gray-50"
               }`}
             >
@@ -286,7 +286,7 @@ export default function BundleUploadPage() {
           {viewMode === "analyzing" && (
             <div className="rounded-lg border border-gray-200 bg-white p-12 text-center shadow-sm">
               <svg
-                className="mx-auto h-12 w-12 text-teal-600 animate-spin"
+                className="mx-auto h-12 w-12 text-[var(--sc-primary,#323288)] animate-spin"
                 fill="none"
                 viewBox="0 0 24 24"
               >
@@ -315,7 +315,7 @@ export default function BundleUploadPage() {
           {viewMode === "importing" && (
             <div className="rounded-lg border border-gray-200 bg-white p-12 text-center shadow-sm">
               <svg
-                className="mx-auto h-12 w-12 text-teal-600 animate-spin"
+                className="mx-auto h-12 w-12 text-[var(--sc-primary,#323288)] animate-spin"
                 fill="none"
                 viewBox="0 0 24 24"
               >
@@ -438,7 +438,7 @@ export default function BundleUploadPage() {
                 </button>
                 <button
                   onClick={handleImport}
-                  className="rounded-md bg-teal-600 px-6 py-2 text-sm font-medium text-white hover:bg-teal-700"
+                  className="rounded-md bg-[var(--sc-primary,#323288)] px-6 py-2 text-sm font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)]"
                 >
                   Import All {reports.length} Reports
                 </button>
@@ -519,7 +519,7 @@ export default function BundleUploadPage() {
               <div className="flex items-center justify-end">
                 <button
                   onClick={handleReset}
-                  className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700"
+                  className="rounded-md bg-[var(--sc-primary,#323288)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)]"
                 >
                   Upload Another Bundle
                 </button>

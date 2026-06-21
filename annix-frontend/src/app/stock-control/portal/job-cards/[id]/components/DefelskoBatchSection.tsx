@@ -352,7 +352,7 @@ export function DefelskoBatchSection(props: DefelskoBatchSectionProps) {
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="rounded-md bg-teal-600 px-3 py-1 text-xs font-medium text-white hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            className="rounded-md bg-[var(--sc-primary,#323288)] px-3 py-1 text-xs font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
           >
             {isSaving ? "Saving..." : "Save"}
           </button>

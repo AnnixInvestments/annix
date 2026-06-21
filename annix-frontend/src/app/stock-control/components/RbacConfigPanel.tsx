@@ -108,7 +108,7 @@ export function RbacConfigPanel(props: RbacConfigPanelProps) {
                             checked={checked}
                             disabled={disabled}
                             onChange={() => handleToggle(item.key, role)}
-                            className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="h-4 w-4 rounded border-gray-300 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] disabled:opacity-50 disabled:cursor-not-allowed"
                           />
                         </td>
                       );
@@ -133,7 +133,7 @@ export function RbacConfigPanel(props: RbacConfigPanelProps) {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:opacity-50"
+            className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
           >
             {saving ? "Saving..." : "Save"}
           </button>

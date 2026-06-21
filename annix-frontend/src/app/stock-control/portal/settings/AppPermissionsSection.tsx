@@ -110,7 +110,7 @@ export function AppPermissionsSection() {
               <button
                 onClick={requestCamera}
                 disabled={requesting}
-                className="px-3 py-1.5 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {requesting ? "Requesting..." : "Request Access"}
               </button>

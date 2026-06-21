@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import type { InvoiceClarification, StockItem } from "@/app/lib/api/stockControlApi";
 
 interface InvoiceClarificationPopupProps {
@@ -83,14 +84,14 @@ export default function InvoiceClarificationPopup(props: InvoiceClarificationPop
     setIsSubmitting(false);
   };
 
-  return (
-    <div className="fixed inset-x-0 top-16 bottom-16 z-[9999] flex items-center justify-center px-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4 py-16">
       <div className="absolute inset-0 bg-black/10 backdrop-blur-md" />
 
       <div className="relative bg-white rounded-xl shadow-2xl max-w-2xl w-full overflow-hidden animate-in fade-in zoom-in duration-300 max-h-full flex flex-col">
-        <div className="px-4 py-3 flex items-center justify-between flex-shrink-0 bg-teal-700">
+        <div className="px-4 py-3 flex items-center justify-between flex-shrink-0 bg-[var(--sc-primary-hover,#252560)]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-teal-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-[var(--sc-primary,#323288)] flex items-center justify-center">
               <svg
                 className="w-6 h-6 text-white"
                 fill="none"
@@ -191,7 +192,7 @@ export default function InvoiceClarificationPopup(props: InvoiceClarificationPop
                         key={match.stockItemId}
                         onClick={() => handleSelectMatch(match.stockItemId)}
                         disabled={isSubmitting}
-                        className="w-full p-3 text-left bg-white border border-gray-200 rounded-lg hover:border-teal-500 hover:bg-teal-50 transition-colors disabled:opacity-50"
+                        className="w-full p-3 text-left bg-white border border-gray-200 rounded-lg hover:border-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-50,#eeeef6)] transition-colors disabled:opacity-50"
                       >
                         <div className="flex items-center justify-between">
                           <div>
@@ -230,7 +231,7 @@ export default function InvoiceClarificationPopup(props: InvoiceClarificationPop
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search by name or SKU..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:border-transparent text-sm"
                 />
                 {searchQuery && (
                   <div className="mt-2 max-h-48 overflow-y-auto border border-gray-200 rounded-lg">
@@ -254,7 +255,7 @@ export default function InvoiceClarificationPopup(props: InvoiceClarificationPop
 
               <button
                 onClick={() => setShowNewItemForm(true)}
-                className="w-full p-3 text-center border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-600 hover:border-teal-500 hover:text-teal-600 transition-colors"
+                className="w-full p-3 text-center border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-600 hover:border-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary,#323288)] transition-colors"
               >
                 + Create New Stock Item
               </button>
@@ -271,7 +272,7 @@ export default function InvoiceClarificationPopup(props: InvoiceClarificationPop
                     type="text"
                     value={newItemForm.sku}
                     onChange={(e) => setNewItemForm({ ...newItemForm, sku: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-teal-500 focus:border-teal-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                   />
                 </div>
                 <div>
@@ -280,7 +281,7 @@ export default function InvoiceClarificationPopup(props: InvoiceClarificationPop
                     type="text"
                     value={newItemForm.name}
                     onChange={(e) => setNewItemForm({ ...newItemForm, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-teal-500 focus:border-teal-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                   />
                 </div>
               </div>
@@ -290,7 +291,7 @@ export default function InvoiceClarificationPopup(props: InvoiceClarificationPop
                   type="text"
                   value={newItemForm.description}
                   onChange={(e) => setNewItemForm({ ...newItemForm, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-teal-500 focus:border-teal-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -300,7 +301,7 @@ export default function InvoiceClarificationPopup(props: InvoiceClarificationPop
                     type="text"
                     value={newItemForm.category}
                     onChange={(e) => setNewItemForm({ ...newItemForm, category: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-teal-500 focus:border-teal-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                   />
                 </div>
                 <div>
@@ -310,7 +311,7 @@ export default function InvoiceClarificationPopup(props: InvoiceClarificationPop
                     onChange={(e) =>
                       setNewItemForm({ ...newItemForm, unitOfMeasure: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-teal-500 focus:border-teal-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                   >
                     <option value="each">Each</option>
                     <option value="liters">Liters</option>
@@ -329,7 +330,7 @@ export default function InvoiceClarificationPopup(props: InvoiceClarificationPop
                 <button
                   onClick={handleCreateNewItem}
                   disabled={isSubmitting || !newItemForm.sku || !newItemForm.name}
-                  className="flex-1 py-2 px-3 rounded-lg font-medium text-white bg-teal-600 hover:bg-teal-700 transition-colors disabled:opacity-50 text-sm"
+                  className="flex-1 py-2 px-3 rounded-lg font-medium text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)] transition-colors disabled:opacity-50 text-sm"
                 >
                   {isSubmitting ? "Creating..." : "Create & Match"}
                 </button>
@@ -359,7 +360,7 @@ export default function InvoiceClarificationPopup(props: InvoiceClarificationPop
                 <button
                   onClick={handleConfirmPrice}
                   disabled={isSubmitting}
-                  className="flex-1 py-2 px-3 rounded-lg font-medium text-white bg-teal-600 hover:bg-teal-700 transition-colors disabled:opacity-50 text-sm"
+                  className="flex-1 py-2 px-3 rounded-lg font-medium text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)] transition-colors disabled:opacity-50 text-sm"
                 >
                   {isSubmitting ? "Confirming..." : "Apply New Price"}
                 </button>
@@ -368,8 +369,9 @@ export default function InvoiceClarificationPopup(props: InvoiceClarificationPop
           </div>
         </div>
 
-        <div className="h-1 flex-shrink-0 bg-teal-600" />
+        <div className="h-1 flex-shrink-0 bg-[var(--sc-primary,#323288)]" />
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

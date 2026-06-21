@@ -103,7 +103,8 @@ export default function NotificationsPage() {
       approval_completed: "bg-green-100 text-green-800",
       approval_rejected: "bg-red-100 text-red-800",
       step_completed: "bg-blue-100 text-blue-800",
-      dispatch_completed: "bg-teal-100 text-teal-800",
+      dispatch_completed:
+        "bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary-active,#1c1c48)]",
       file_closed: "bg-slate-100 text-slate-800",
       over_allocation_approval: "bg-orange-100 text-orange-800",
       background_step_required: "bg-amber-100 text-amber-800",
@@ -141,7 +142,7 @@ export default function NotificationsPage() {
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value as FilterType)}
-              className="text-sm border border-gray-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="text-sm border border-gray-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)]"
             >
               <option value="all">All Notifications</option>
               <option value="unread">Unread Only</option>
@@ -151,7 +152,7 @@ export default function NotificationsPage() {
             <button
               onClick={handleMarkAllAsRead}
               disabled={markAllAsRead.isPending}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-teal-600 hover:text-teal-700 disabled:opacity-50"
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
             >
               <CheckCheck className="h-4 w-4" />
               Mark all as read
@@ -175,7 +176,7 @@ export default function NotificationsPage() {
                   disabled={updatePrefs.isPending}
                   className="sr-only peer"
                 />
-                <div className="w-10 h-5 bg-gray-200 peer-focus:ring-2 peer-focus:ring-teal-300 rounded-full peer peer-checked:bg-teal-500 transition-colors" />
+                <div className="w-10 h-5 bg-gray-200 peer-focus:ring-2 peer-focus:ring-[var(--sc-primary-300,#8484b5)] rounded-full peer peer-checked:bg-[var(--sc-primary,#323288)] transition-colors" />
                 <div className="absolute left-0.5 top-0.5 bg-white w-4 h-4 rounded-full transition-transform peer-checked:translate-x-5" />
               </div>
               <div className="flex items-center gap-1.5">
@@ -194,7 +195,7 @@ export default function NotificationsPage() {
                   disabled={updatePrefs.isPending}
                   className="sr-only peer"
                 />
-                <div className="w-10 h-5 bg-gray-200 peer-focus:ring-2 peer-focus:ring-teal-300 rounded-full peer peer-checked:bg-teal-500 transition-colors" />
+                <div className="w-10 h-5 bg-gray-200 peer-focus:ring-2 peer-focus:ring-[var(--sc-primary-300,#8484b5)] rounded-full peer peer-checked:bg-[var(--sc-primary,#323288)] transition-colors" />
                 <div className="absolute left-0.5 top-0.5 bg-white w-4 h-4 rounded-full transition-transform peer-checked:translate-x-5" />
               </div>
               <div className="flex items-center gap-1.5">
@@ -209,7 +210,7 @@ export default function NotificationsPage() {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         {loading ? (
           <div className="p-8 text-center text-gray-500">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-teal-500 border-t-transparent mx-auto mb-3" />
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-[var(--sc-primary,#323288)] border-t-transparent mx-auto mb-3" />
             Loading notifications...
           </div>
         ) : notifications.length === 0 ? (
@@ -229,7 +230,7 @@ export default function NotificationsPage() {
                 key={notification.id}
                 onClick={() => handleNotificationClick(notification)}
                 className={`px-6 py-4 hover:bg-gray-50 cursor-pointer transition-colors ${
-                  !notification.readAt ? "bg-teal-50/50" : ""
+                  !notification.readAt ? "bg-[var(--sc-primary-50,#eeeef6)]/50" : ""
                 }`}
               >
                 <div className="flex items-start justify-between gap-4">
@@ -242,7 +243,7 @@ export default function NotificationsPage() {
                       </span>
                       {!notification.readAt && (
                         <span
-                          className="inline-flex h-2 w-2 rounded-full bg-teal-500"
+                          className="inline-flex h-2 w-2 rounded-full bg-[var(--sc-primary,#323288)]"
                           aria-label="Unread"
                         />
                       )}
@@ -253,7 +254,7 @@ export default function NotificationsPage() {
                     )}
                     <div className="flex items-center gap-3 mt-2">
                       {notification.senderName && (
-                        <span className="text-xs text-teal-600 font-medium">
+                        <span className="text-xs text-[var(--sc-primary,#323288)] font-medium">
                           From: {notification.senderName}
                         </span>
                       )}
@@ -279,7 +280,7 @@ export default function NotificationsPage() {
                                 value={bgNotes}
                                 onChange={(e) => setBgNotes(e.target.value)}
                                 placeholder="Notes (optional)"
-                                className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
+                                className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                               />
                               <button
                                 onClick={(e) => {
@@ -287,7 +288,7 @@ export default function NotificationsPage() {
                                   handleCompleteBackgroundStep(notification);
                                 }}
                                 disabled={completeBgStep.isPending}
-                                className="px-3 py-1 text-xs font-medium text-white bg-teal-600 rounded hover:bg-teal-700 disabled:opacity-50"
+                                className="px-3 py-1 text-xs font-medium text-white bg-[var(--sc-primary,#323288)] rounded hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
                               >
                                 {completeBgStep.isPending ? "..." : "Complete"}
                               </button>

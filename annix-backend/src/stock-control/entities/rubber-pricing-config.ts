@@ -24,6 +24,7 @@ export interface RubberFamilyPricingConfig {
   solution: RubberLabourComponentConfig;
   cwAgentBaselinePerM2: Record<string, number>;
   cwRecipes?: Record<string, string[]>;
+  cwSupplierRecipes?: Record<string, Record<string, string[]>>;
   defaultBondingAgentSupplier: string;
   cwAgentSupplierBaselines: Record<string, Record<string, number>>;
 }
@@ -110,6 +111,18 @@ export const DEFAULT_RUBBER_PRICING_CONFIG: RubberPricingConfig = {
       EPDM: ["Toluene", "Hero Line 105", "Herobond 400 Red"],
       Cured: ["Toluene", "Hero Line 105", "Herobond 400 Red"],
     },
+    cwSupplierRecipes: {
+      Impilo: {
+        Natural: ["Toluene", "Herobond 80", "Herobond 82", "Herobond 86"],
+        "Premium Natural": ["Toluene", "Herobond 80", "Herobond 82", "Herobond 86"],
+        Butyl: ["Toluene", "Hero Line 105", "Herobond 200"],
+        Nitrile: ["Toluene", "Hero Line 105", "Herobond 200"],
+        Neoprene: ["Toluene", "Hero Line 105", "Herobond 200"],
+        Chemical: ["Toluene", "Herobond 80", "Herobond 82", "Herobond 86", "Anchorcure/Ecorrcure"],
+        EPDM: ["Toluene", "Hero Line 105", "Herobond 400 Red"],
+        Cured: ["Toluene", "Hero Line 105", "Herobond 400 Red"],
+      },
+    },
     defaultBondingAgentSupplier: "Impilo",
     cwAgentSupplierBaselines: {
       "Ty-Ply": {
@@ -165,6 +178,15 @@ export const DEFAULT_RUBBER_PRICING_CONFIG: RubberPricingConfig = {
       Butyl: ["VS86", "VS05", "VS20", "Toluene"],
       Nitrile: ["VS05", "Ty-Ply 2033A", "Toluene"],
       EPDM: ["VS05", "VS54"],
+    },
+    cwSupplierRecipes: {
+      "Ty-Ply": {
+        Natural: ["VS86", "VS05", "VS20", "Toluene"],
+        "Premium Natural": ["VS86", "VS05", "VS20", "Toluene"],
+        Butyl: ["VS86", "VS05", "VS20", "Toluene"],
+        Nitrile: ["VS05", "Ty-Ply 2033A", "Toluene"],
+        EPDM: ["VS05", "VS54"],
+      },
     },
     defaultBondingAgentSupplier: "Ty-Ply",
     cwAgentSupplierBaselines: {

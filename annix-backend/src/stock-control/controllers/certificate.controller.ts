@@ -4,6 +4,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpException,
+  InternalServerErrorException,
   Logger,
   Param,
   Post,
@@ -16,6 +18,8 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
+import { isNumber } from "es-toolkit/compat";
 import type { Response } from "express";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
@@ -31,6 +35,8 @@ import {
 } from "../services/certificate.service";
 import { CertificateAnalysisService } from "../services/certificate-analysis.service";
 import { ScEmailAdapterService } from "../services/sc-email-adapter.service";
+
+const MAX_CERTIFICATE_FILE_BYTES = 25 * 1024 * 1024;
 
 @ApiTags("Stock Control - Certificates")
 @Controller("stock-control/certificates")
@@ -158,7 +164,10 @@ export class CertificateController {
       const msg = err instanceof Error ? err.message : String(err);
       const stack = err instanceof Error ? err.stack : "";
       this.logger.error(`Data book compile failed for JC ${jobCardId}: ${msg}`, stack);
-      throw err;
+      if (err instanceof HttpException) {
+        throw err;
+      }
+      throw new InternalServerErrorException("Failed to compile data book. Please try again.");
     }
   }
 
@@ -186,7 +195,10 @@ export class CertificateController {
       const msg = err instanceof Error ? err.message : String(err);
       const stack = err instanceof Error ? err.stack : "";
       this.logger.error(`Data book download failed for JC ${jobCardId}: ${msg}`, stack);
-      throw err;
+      if (err instanceof HttpException) {
+        throw err;
+      }
+      throw new InternalServerErrorException("Failed to download data book. Please try again.");
     }
   }
 
@@ -198,20 +210,35 @@ export class CertificateController {
 
   @Post("analyze")
   @StockControlRoles("quality", "manager", "admin")
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ upload: { ttl: 60000, limit: 10 } })
   @UseInterceptors(FileInterceptor("file"))
   @ApiOperation({
     summary: "Analyze a multi-page PDF/image to identify individual COC/COA certificates",
   })
-  async analyzeCertificates(@UploadedFile() file: Express.Multer.File) {
+  async analyzeCertificates(@Req() req: any, @UploadedFile() file: Express.Multer.File) {
     if (!file) {
       throw new BadRequestException("No file uploaded");
+    }
+    const mimetype = file.mimetype ?? "";
+    const isPdf = mimetype === "application/pdf";
+    const isImage = mimetype.startsWith("image/");
+    if (!isPdf && !isImage) {
+      throw new BadRequestException("File must be an image (JPEG, PNG) or PDF");
+    }
+    if (isNumber(file.size) && file.size > MAX_CERTIFICATE_FILE_BYTES) {
+      throw new BadRequestException("File is too large (max 25MB)");
     }
     try {
       return await this.certificateAnalysisService.analyze(file.buffer, file.mimetype);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Certificate analysis failed";
-      this.logger.error(`Certificate analysis failed: ${message}`);
-      throw new BadRequestException(`Analysis failed: ${message}`);
+      const message = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : "";
+      this.logger.error(
+        `Certificate analysis failed for company ${req.user?.companyId}: ${message}`,
+        stack,
+      );
+      throw new InternalServerErrorException("Certificate analysis failed. Please try again.");
     }
   }
 

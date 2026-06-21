@@ -91,7 +91,7 @@ const DEMO_JOB_CARDS: DemoJobCard[] = [
 
 const STATUS_PILL: Record<DemoJobCard["status"], string> = {
   draft: "bg-gray-100 text-gray-700",
-  active: "bg-teal-100 text-teal-800",
+  active: "bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary-active,#1c1c48)]",
   completed: "bg-emerald-100 text-emerald-800",
 };
 
@@ -121,7 +121,7 @@ export default function StockControlDemoPage() {
               <span className="inline-flex cursor-not-allowed items-center rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-400">
                 Import
               </span>
-              <span className="inline-flex cursor-not-allowed items-center rounded-md bg-teal-600/40 px-3 py-1.5 text-sm font-medium text-white">
+              <span className="inline-flex cursor-not-allowed items-center rounded-md bg-[var(--sc-primary,#323288)]/40 px-3 py-1.5 text-sm font-medium text-white">
                 + New Job Card
               </span>
             </div>
@@ -134,7 +134,7 @@ export default function StockControlDemoPage() {
                   key={tab}
                   className={`whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium ${
                     idx === 0
-                      ? "border-teal-500 text-teal-600"
+                      ? "border-[var(--sc-primary,#323288)] text-[var(--sc-primary,#323288)]"
                       : "border-transparent text-slate-500"
                   }`}
                 >
@@ -161,7 +161,9 @@ export default function StockControlDemoPage() {
               <tbody className="divide-y divide-slate-200 bg-white">
                 {DEMO_JOB_CARDS.map((jc) => (
                   <tr key={jc.jobNumber} className="hover:bg-slate-50">
-                    <td className="px-3 py-3 font-medium text-teal-700">{jc.jobNumber}</td>
+                    <td className="px-3 py-3 font-medium text-[var(--sc-primary-hover,#252560)]">
+                      {jc.jobNumber}
+                    </td>
                     <td className="px-3 py-3 text-slate-600">{jc.jcNumber}</td>
                     <td className="px-3 py-3 text-slate-900">{jc.jobName}</td>
                     <td className="hidden px-3 py-3 text-slate-600 md:table-cell">{jc.customer}</td>
@@ -213,18 +215,18 @@ export default function StockControlDemoPage() {
 
 function DemoBanner() {
   return (
-    <div className="border-b border-teal-700/40 bg-gradient-to-r from-teal-700 to-teal-800 text-white">
+    <div className="border-b border-[var(--sc-primary-hover,#252560)]/40 bg-gradient-to-r from-[var(--sc-primary-hover,#252560)] to-[var(--sc-primary-active,#1c1c48)] text-white">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
         <div className="flex items-center gap-2 text-sm">
           <Eye className="h-4 w-4" />
           <span className="font-semibold">Demo mode</span>
-          <span className="text-teal-100/90">
+          <span className="text-[var(--sc-primary-100,#d6d6e9)]/90">
             — sample data, no account required. Nothing here is saved.
           </span>
         </div>
         <Link
           href="/stock-control/register"
-          className="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-teal-800 hover:bg-teal-50"
+          className="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-[var(--sc-primary-active,#1c1c48)] hover:bg-[var(--sc-primary-50,#eeeef6)]"
         >
           Sign up free
           <ArrowRight className="h-3.5 w-3.5" />
@@ -236,7 +238,7 @@ function DemoBanner() {
 
 function SignupCta() {
   return (
-    <div className="mt-8 rounded-xl border border-teal-200 bg-gradient-to-br from-teal-50 to-white p-6 shadow-sm sm:p-8">
+    <div className="mt-8 rounded-xl border border-[var(--sc-primary-200,#adadcf)] bg-gradient-to-br from-[var(--sc-primary-50,#eeeef6)] to-white p-6 shadow-sm sm:p-8">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-center">
         <div>
           <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">
@@ -250,14 +252,14 @@ function SignupCta() {
         <div className="flex flex-wrap items-center gap-3 md:justify-end">
           <Link
             href="/stock-control/register"
-            className="inline-flex items-center gap-2 rounded-md bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-teal-700"
+            className="inline-flex items-center gap-2 rounded-md bg-[var(--sc-primary,#323288)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[var(--sc-primary-hover,#252560)]"
           >
             Sign up free
             <ArrowRight className="h-4 w-4" />
           </Link>
           <Link
             href="/stock-control"
-            className="inline-flex items-center rounded-md px-4 py-2.5 text-sm font-semibold text-teal-700 ring-1 ring-inset ring-teal-300 hover:bg-teal-50"
+            className="inline-flex items-center rounded-md px-4 py-2.5 text-sm font-semibold text-[var(--sc-primary-hover,#252560)] ring-1 ring-inset ring-[var(--sc-primary-300,#8484b5)] hover:bg-[var(--sc-primary-50,#eeeef6)]"
           >
             Back to overview
           </Link>

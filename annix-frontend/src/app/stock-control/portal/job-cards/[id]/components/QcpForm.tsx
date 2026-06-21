@@ -1054,7 +1054,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
                             type="button"
                             ref={idx === 0 && partyKey === "pls" ? line1InitialRef : undefined}
                             onClick={() => setInitialsTarget({ activityIdx: idx, party: partyKey })}
-                            className={`w-12 rounded border px-1 py-1 text-center text-xs ${line1InitialError && idx === 0 && partyKey === "pls" ? "border-2 border-red-500 bg-red-50 text-red-700 ring-2 ring-red-200" : signOff.initial ? "border-teal-300 bg-teal-50 font-medium text-teal-800" : "border-gray-300 text-gray-400 hover:border-teal-400 hover:bg-teal-50"}`}
+                            className={`w-12 rounded border px-1 py-1 text-center text-xs ${line1InitialError && idx === 0 && partyKey === "pls" ? "border-2 border-red-500 bg-red-50 text-red-700 ring-2 ring-red-200" : signOff.initial ? "border-[var(--sc-primary-300,#8484b5)] bg-[var(--sc-primary-50,#eeeef6)] font-medium text-[var(--sc-primary-active,#1c1c48)]" : "border-gray-300 text-gray-400 hover:border-[var(--sc-primary-400,#5b5b9c)] hover:bg-[var(--sc-primary-50,#eeeef6)]"}`}
                             title="Initial"
                           >
                             {initial || "init"}
@@ -1089,7 +1089,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
       <button
         type="button"
         onClick={addActivity}
-        className="text-xs font-medium text-teal-600 hover:text-teal-800"
+        className="text-xs font-medium text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
       >
         + Add Activity
       </button>
@@ -1143,7 +1143,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
                 <button
                   type="button"
                   onClick={() => handleApprovalSignOff(idx)}
-                  className="text-xs text-teal-600 hover:text-teal-800"
+                  className="text-xs text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                 >
                   Sign & approve
                 </button>
@@ -1267,7 +1267,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
           type="button"
           onClick={handleSave}
           disabled={isSaving}
-          className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+          className="rounded-md bg-[var(--sc-primary,#323288)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
         >
           {isSaving ? "Saving..." : isEditing ? "Update Plan" : "Create Plan"}
         </button>

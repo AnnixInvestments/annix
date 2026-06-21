@@ -20,7 +20,9 @@ export default function StockControlPortalError(props: {
   }, [error]);
 
   if (isChunkLoadError(error)) {
-    return <AppUpdateNotice brandButtonClass="bg-teal-600 hover:bg-teal-700" />;
+    return (
+      <AppUpdateNotice brandButtonClass="bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)]" />
+    );
   }
 
   return (
@@ -29,7 +31,7 @@ export default function StockControlPortalError(props: {
       error={error}
       reset={reset}
       backHref="/stock-control/portal/dashboard"
-      brandButtonClass="bg-teal-600 hover:bg-teal-700"
+      brandButtonClass="bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)]"
     />
   );
 }

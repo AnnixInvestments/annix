@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { DateInput } from "@/app/components/ui/DateInput";
 import { extractErrorMessage } from "@/app/lib/api/apiError";
 import { fromISO, now } from "@/app/lib/datetime";
@@ -93,7 +94,7 @@ export default function CalibrationPage() {
 
           <button
             onClick={() => setShowUploadModal(true)}
-            className="ml-auto rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700"
+            className="ml-auto rounded-md bg-[var(--sc-primary,#323288)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)]"
           >
             Upload Calibration Certificate
           </button>
@@ -118,7 +119,7 @@ export default function CalibrationPage() {
             </p>
             <button
               onClick={() => setShowUploadModal(true)}
-              className="mt-2 text-sm font-medium text-teal-600 hover:text-teal-700"
+              className="mt-2 text-sm font-medium text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-hover,#252560)]"
             >
               Upload your first calibration certificate
             </button>
@@ -194,7 +195,7 @@ export default function CalibrationPage() {
                       <td className="whitespace-nowrap px-4 py-3 text-right text-sm">
                         <button
                           onClick={() => handleView(cert.id)}
-                          className="mr-2 text-teal-600 hover:text-teal-800"
+                          className="mr-2 text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                         >
                           View
                         </button>
@@ -277,8 +278,8 @@ function UploadCalibrationCertificateModal({
     );
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/10 backdrop-blur-md p-4">
       <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">Upload Calibration Certificate</h2>
@@ -363,7 +364,7 @@ function UploadCalibrationCertificateModal({
                 const first = files ? files[0] : null;
                 setFile(first);
               }}
-              className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:rounded-md file:border-0 file:bg-teal-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-teal-700 hover:file:bg-teal-100"
+              className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:rounded-md file:border-0 file:bg-[var(--sc-primary-50,#eeeef6)] file:px-4 file:py-2 file:text-sm file:font-medium file:text-[var(--sc-primary-hover,#252560)] hover:file:bg-[var(--sc-primary-100,#d6d6e9)]"
             />
           </div>
         </div>
@@ -381,12 +382,13 @@ function UploadCalibrationCertificateModal({
               const uip = uploadMutation.isPending;
               return uip || !file || !equipmentName.trim() || !expiryDate;
             })()}
-            className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-md bg-[var(--sc-primary,#323288)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {uploadMutation.isPending ? "Uploading..." : "Upload"}
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

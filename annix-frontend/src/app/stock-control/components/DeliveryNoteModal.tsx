@@ -128,7 +128,7 @@ export function DeliveryNoteModal(props: DeliveryNoteModalProps) {
                     value={form.deliveryNumber}
                     onChange={handleChange}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                   />
                 </div>
                 <div>
@@ -141,7 +141,7 @@ export function DeliveryNoteModal(props: DeliveryNoteModalProps) {
                     value={form.supplierName}
                     onChange={handleChange}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                   />
                 </div>
               </div>
@@ -153,7 +153,7 @@ export function DeliveryNoteModal(props: DeliveryNoteModalProps) {
                   name="receivedBy"
                   value={form.receivedBy}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                 />
               </div>
 
@@ -164,7 +164,7 @@ export function DeliveryNoteModal(props: DeliveryNoteModalProps) {
                   value={form.notes}
                   onChange={handleChange}
                   rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                 />
               </div>
 
@@ -174,7 +174,7 @@ export function DeliveryNoteModal(props: DeliveryNoteModalProps) {
                   <button
                     type="button"
                     onClick={addLineItem}
-                    className="inline-flex items-center px-3 py-1 text-sm font-medium text-teal-700 bg-teal-50 rounded-md hover:bg-teal-100"
+                    className="inline-flex items-center px-3 py-1 text-sm font-medium text-[var(--sc-primary-hover,#252560)] bg-[var(--sc-primary-50,#eeeef6)] rounded-md hover:bg-[var(--sc-primary-100,#d6d6e9)]"
                   >
                     <svg
                       className="w-4 h-4 mr-1"
@@ -208,7 +208,7 @@ export function DeliveryNoteModal(props: DeliveryNoteModalProps) {
                               handleLineItemChange(index, "stockItemId", e.target.value)
                             }
                             required
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] text-sm"
                           >
                             <option value="">Select stock item...</option>
                             {stockItems.map((item) => (
@@ -228,7 +228,7 @@ export function DeliveryNoteModal(props: DeliveryNoteModalProps) {
                             min="1"
                             required
                             placeholder="Qty"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] text-sm"
                           />
                         </div>
                         {form.items.length > 1 && (
@@ -270,7 +270,7 @@ export function DeliveryNoteModal(props: DeliveryNoteModalProps) {
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700"
+                className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)]"
               >
                 Create Delivery Note
               </button>

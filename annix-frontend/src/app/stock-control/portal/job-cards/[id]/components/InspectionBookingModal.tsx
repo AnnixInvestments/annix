@@ -169,14 +169,14 @@ export function InspectionBookingModal(props: InspectionBookingModalProps) {
             <div className="flex gap-2 mt-1">
               <button
                 onClick={() => setView("form")}
-                className={`text-xs font-medium px-2 py-0.5 rounded ${view === "form" ? "bg-teal-100 text-teal-800" : "text-gray-500 hover:text-gray-700"}`}
+                className={`text-xs font-medium px-2 py-0.5 rounded ${view === "form" ? "bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary-active,#1c1c48)]" : "text-gray-500 hover:text-gray-700"}`}
               >
                 Book New
               </button>
               {activeBookings.length > 0 && (
                 <button
                   onClick={() => setView("existing")}
-                  className={`text-xs font-medium px-2 py-0.5 rounded ${view === "existing" ? "bg-teal-100 text-teal-800" : "text-gray-500 hover:text-gray-700"}`}
+                  className={`text-xs font-medium px-2 py-0.5 rounded ${view === "existing" ? "bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary-active,#1c1c48)]" : "text-gray-500 hover:text-gray-700"}`}
                 >
                   Existing ({activeBookings.length})
                 </button>
@@ -248,7 +248,7 @@ export function InspectionBookingModal(props: InspectionBookingModalProps) {
                   setEndSlot(null);
                 }}
                 min={DateTime.now().toISODate() || ""}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:ring-teal-500"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)]"
               />
             </div>
 
@@ -266,7 +266,7 @@ export function InspectionBookingModal(props: InspectionBookingModalProps) {
                         disabled={isOccupied}
                         className={`px-1 py-1.5 text-xs rounded transition-colors ${
                           isSelected
-                            ? "bg-teal-600 text-white"
+                            ? "bg-[var(--sc-primary,#323288)] text-white"
                             : isOccupied
                               ? "bg-red-100 text-red-400 cursor-not-allowed line-through"
                               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -297,7 +297,7 @@ export function InspectionBookingModal(props: InspectionBookingModalProps) {
                         onClick={() => handleEndSelect(slot)}
                         className={`px-3 py-1.5 text-xs rounded transition-colors ${
                           isSelected
-                            ? "bg-teal-600 text-white"
+                            ? "bg-[var(--sc-primary,#323288)] text-white"
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         }`}
                       >
@@ -319,7 +319,7 @@ export function InspectionBookingModal(props: InspectionBookingModalProps) {
                   value={inspectorEmail}
                   onChange={(e) => setInspectorEmail(e.target.value)}
                   placeholder="inspector@example.com"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:ring-teal-500"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)]"
                 />
               </div>
               <div>
@@ -331,7 +331,7 @@ export function InspectionBookingModal(props: InspectionBookingModalProps) {
                   value={inspectorName}
                   onChange={(e) => setInspectorName(e.target.value)}
                   placeholder="John Smith"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:ring-teal-500"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)]"
                 />
               </div>
             </div>
@@ -345,7 +345,7 @@ export function InspectionBookingModal(props: InspectionBookingModalProps) {
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
                 placeholder="Any special requirements..."
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:ring-teal-500"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)]"
               />
             </div>
           </div>
@@ -370,7 +370,7 @@ export function InspectionBookingModal(props: InspectionBookingModalProps) {
               <button
                 onClick={handleSubmit}
                 disabled={!canSubmit}
-                className="px-4 py-2 text-sm font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--sc-primary,#323288)] text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
                 {isSubmitting ? "Booking..." : "Book Inspection"}
               </button>

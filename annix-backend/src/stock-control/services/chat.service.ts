@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from "@nestjs/common";
+import { ForbiddenException, Inject, Injectable, Logger } from "@nestjs/common";
 import { now } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { ChatConversation } from "../entities/chat-conversation.entity";
@@ -6,6 +6,7 @@ import { ChatMessage } from "../entities/chat-message.entity";
 import { ChatConversationRepository } from "../repositories/chat-conversation.repository";
 import { ChatConversationParticipantRepository } from "../repositories/chat-conversation-participant.repository";
 import { ChatMessageRepository } from "../repositories/chat-message.repository";
+import { StockControlUserRepository } from "../repositories/stock-control-user.repository";
 
 @Injectable()
 export class ChatService {
@@ -15,16 +16,28 @@ export class ChatService {
     private readonly chatRepo: ChatMessageRepository,
     private readonly conversationRepo: ChatConversationRepository,
     private readonly participantRepo: ChatConversationParticipantRepository,
+    private readonly userRepo: StockControlUserRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {}
 
+  private async assertParticipant(conversationId: number, userId: number): Promise<void> {
+    const isParticipant = await this.participantRepo.isParticipant(conversationId, userId);
+    if (!isParticipant) {
+      throw new ForbiddenException("You are not a participant of this conversation");
+    }
+  }
+
   async messages(
     companyId: number,
+    userId: number,
     afterId: number | null,
     conversationId: number | null = null,
     limit: number = 50,
   ): Promise<ChatMessage[]> {
+    if (conversationId !== null) {
+      await this.assertParticipant(conversationId, userId);
+    }
     return this.chatRepo.findMessages(companyId, afterId, conversationId, limit);
   }
 
@@ -36,6 +49,10 @@ export class ChatService {
     imageUrl: string | null,
     conversationId: number | null = null,
   ): Promise<ChatMessage> {
+    if (conversationId !== null) {
+      await this.assertParticipant(conversationId, senderId);
+    }
+
     const saved = await this.chatRepo.create({
       companyId,
       senderId,
@@ -91,6 +108,14 @@ export class ChatService {
     name: string | null,
   ): Promise<ChatConversation> {
     const allParticipantIds = Array.from(new Set([createdById, ...participantUserIds]));
+
+    const companyUsers = await this.userRepo.findIdsByIdsForCompany(allParticipantIds, companyId);
+    const companyUserIds = new Set(companyUsers.map((user) => user.id));
+    const foreignParticipantIds = allParticipantIds.filter((id) => !companyUserIds.has(id));
+    if (foreignParticipantIds.length > 0) {
+      throw new ForbiddenException("All participants must belong to your company");
+    }
+
     const type = allParticipantIds.length === 2 ? "direct" : "group";
 
     if (type === "direct") {
@@ -122,6 +147,7 @@ export class ChatService {
   }
 
   async markRead(conversationId: number, userId: number): Promise<void> {
+    await this.assertParticipant(conversationId, userId);
     await this.participantRepo.touchLastReadAt(conversationId, userId, now().toJSDate());
   }
 

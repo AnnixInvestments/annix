@@ -142,7 +142,7 @@ export default function DispatchTab(props: DispatchTabProps) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mx-auto" />
           <p className="mt-4 text-gray-600">Loading dispatch data...</p>
         </div>
       </div>
@@ -190,7 +190,7 @@ export default function DispatchTab(props: DispatchTabProps) {
       <div className="bg-white shadow rounded-lg p-4 sm:p-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-            <FileText className="w-5 h-5 mr-2 text-teal-600" />
+            <FileText className="w-5 h-5 mr-2 text-[var(--sc-primary,#323288)]" />
             Customer Delivery Note (CDN)
           </h2>
           {progress.hasCdn && (
@@ -235,7 +235,7 @@ export default function DispatchTab(props: DispatchTabProps) {
                   className="flex items-center space-x-3 flex-1 cursor-pointer"
                   onClick={() => setShowCdnPreview(cdn)}
                 >
-                  <FileText className="w-8 h-8 text-teal-600" />
+                  <FileText className="w-8 h-8 text-[var(--sc-primary,#323288)]" />
                   <div>
                     <p className="text-sm font-medium text-gray-900">{cdn.originalFilename}</p>
                     <p className="text-xs text-gray-500">
@@ -244,7 +244,7 @@ export default function DispatchTab(props: DispatchTabProps) {
                       {cdn.createdAt ? ` | ${formatDateLongZA(cdn.createdAt)}` : ""}
                     </p>
                     {cdn.lineMatches && cdn.lineMatches.length > 0 && (
-                      <p className="text-xs text-teal-600 mt-1">
+                      <p className="text-xs text-[var(--sc-primary,#323288)] mt-1">
                         {cdn.lineMatches.length} line items matched
                       </p>
                     )}
@@ -338,7 +338,7 @@ export default function DispatchTab(props: DispatchTabProps) {
       <div className="bg-white shadow rounded-lg p-4 sm:p-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-            <Camera className="w-5 h-5 mr-2 text-teal-600" />
+            <Camera className="w-5 h-5 mr-2 text-[var(--sc-primary,#323288)]" />
             Load Photos
           </h2>
           {progress.hasLoadPhotos && (

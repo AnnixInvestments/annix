@@ -11,21 +11,12 @@ import { repositoryProvider } from "../lib/persistence/repository-provider";
 import { MetricsModule } from "../metrics/metrics.module";
 import { NbOdLookupModule } from "../nb-od-lookup/nb-od-lookup.module";
 import { NixModule } from "../nix/nix.module";
-import { NixLearningRepository } from "../nix/nix-learning.repository";
-import { MongoNixLearningRepository } from "../nix/nix-learning.repository.mongo";
-import { NixLearningSchema } from "../nix/schemas/nix-learning.schema";
 import { PipeScheduleModule } from "../pipe-schedule/pipe-schedule.module";
-import { CompanyRepository } from "../platform/company.repository";
-import { MongoCompanyRepository } from "../platform/company.repository.mongo";
-import { CompanySchema } from "../platform/schemas/company.schema";
 import { AppRepository, UserAppAccessRepository } from "../rbac/rbac.repository";
 import { MongoAppRepository, MongoUserAppAccessRepository } from "../rbac/rbac.repository.mongo";
 import { AppSchema } from "../rbac/schemas/app.schema";
 import { UserAppAccessSchema } from "../rbac/schemas/user-app-access.schema";
-import { RubberRollStockRepository } from "../rubber-lining/repositories/rubber-roll-stock.repository";
-import { MongoRubberRollStockRepository } from "../rubber-lining/repositories/rubber-roll-stock.repository.mongo";
 import { RubberLiningModule } from "../rubber-lining/rubber-lining.module";
-import { RubberRollStockSchema } from "../rubber-lining/schemas/rubber-roll-stock.schema";
 import { SageExportModule } from "../sage-export/sage-export.module";
 import { SharedModule } from "../shared/shared.module";
 import { StaffLeaveModule } from "../staff-leave/staff-leave.module";
@@ -502,12 +493,9 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       },
       { name: "WorkflowStepAssignment", schema: WorkflowStepAssignmentSchema },
       { name: "WorkflowStepConfig", schema: WorkflowStepConfigSchema },
-      { name: "Company", schema: CompanySchema },
       { name: "User", schema: UserSchema },
       { name: "App", schema: AppSchema },
       { name: "UserAppAccess", schema: UserAppAccessSchema },
-      { name: "NixLearning", schema: NixLearningSchema },
-      { name: "RubberRollStock", schema: RubberRollStockSchema },
       { name: "CalibrationCertificate", schema: CalibrationCertificateSchema },
       { name: "QcBatchAssignment", schema: QcBatchAssignmentSchema },
       { name: "QcBlastProfile", schema: QcBlastProfileSchema },
@@ -528,7 +516,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>("JWT_SECRET", "stock-control-jwt-secret"),
+        secret: configService.getOrThrow<string>("JWT_SECRET"),
         signOptions: { expiresIn: "8h" },
       }),
     }),
@@ -757,12 +745,9 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     ),
     repositoryProvider(WorkflowStepAssignmentRepository, MongoWorkflowStepAssignmentRepository),
     repositoryProvider(WorkflowStepConfigRepository, MongoWorkflowStepConfigRepository),
-    repositoryProvider(CompanyRepository, MongoCompanyRepository),
     repositoryProvider(UserRepository, MongoUserRepository),
     repositoryProvider(AppRepository, MongoAppRepository),
     repositoryProvider(UserAppAccessRepository, MongoUserAppAccessRepository),
-    repositoryProvider(NixLearningRepository, MongoNixLearningRepository),
-    repositoryProvider(RubberRollStockRepository, MongoRubberRollStockRepository),
     repositoryProvider(CalibrationCertificateRepository, MongoCalibrationCertificateRepository),
     repositoryProvider(QcBatchAssignmentRepository, MongoQcBatchAssignmentRepository),
     repositoryProvider(QcBlastProfileRepository, MongoQcBlastProfileRepository),

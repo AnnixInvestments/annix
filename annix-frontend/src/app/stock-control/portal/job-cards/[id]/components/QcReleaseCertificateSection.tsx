@@ -134,7 +134,7 @@ export function QcReleaseCertificateSection({ jobCardId }: QcReleaseCertificateS
             setEditingCert(null);
             setViewMode("create");
           }}
-          className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
+          className="rounded-md bg-[var(--sc-primary,#323288)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)]"
         >
           + New Certificate
         </button>
@@ -204,7 +204,7 @@ export function QcReleaseCertificateSection({ jobCardId }: QcReleaseCertificateS
                   <button
                     type="button"
                     onClick={() => handleEdit(cert)}
-                    className="text-sm text-teal-600 hover:text-teal-800"
+                    className="text-sm text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                   >
                     Edit
                   </button>

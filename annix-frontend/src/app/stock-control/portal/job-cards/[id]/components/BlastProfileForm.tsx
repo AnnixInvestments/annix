@@ -273,7 +273,9 @@ export default function BlastProfileForm(props: BlastProfileFormProps) {
       </div>
 
       {specValue > 0 && (
-        <p className="text-sm font-medium text-teal-700 mb-3">Spec Target: {specValue} μm</p>
+        <p className="text-sm font-medium text-[var(--sc-primary-hover,#252560)] mb-3">
+          Spec Target: {specValue} μm
+        </p>
       )}
 
       <div className="mb-4">

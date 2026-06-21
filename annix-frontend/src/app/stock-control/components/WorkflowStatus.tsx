@@ -235,14 +235,14 @@ function StepNode(props: StepNodeProps) {
         state === "completed"
           ? "bg-green-500 cursor-pointer hover:bg-green-600 hover:ring-2 hover:ring-green-200"
           : state === "current"
-            ? "bg-teal-100 border-2 border-teal-500 animate-pulse"
+            ? "bg-[var(--sc-primary-100,#d6d6e9)] border-2 border-[var(--sc-primary,#323288)] animate-pulse"
             : state === "rejected"
               ? "bg-red-100 border-2 border-red-500 cursor-pointer hover:bg-red-200"
               : "bg-gray-100 border-2 border-gray-300"
       }`}
     >
       {state === "completed" && <Check className="h-4 w-4 text-white" />}
-      {state === "current" && <Clock className="h-4 w-4 text-teal-600" />}
+      {state === "current" && <Clock className="h-4 w-4 text-[var(--sc-primary,#323288)]" />}
       {state === "rejected" && <X className="h-4 w-4 text-red-600" />}
       {state === "pending" && <Circle className="h-3 w-3 text-gray-400" />}
     </button>
@@ -1400,7 +1400,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                         state === "completed"
                           ? "text-green-700"
                           : state === "current"
-                            ? "text-teal-600"
+                            ? "text-[var(--sc-primary,#323288)]"
                             : state === "rejected"
                               ? "text-red-600"
                               : "text-gray-400"
@@ -1849,7 +1849,7 @@ function MobileTransitMap(props: MobileTransitMapProps) {
                       state === "completed"
                         ? "text-green-700"
                         : state === "current"
-                          ? "text-teal-600"
+                          ? "text-[var(--sc-primary,#323288)]"
                           : state === "rejected"
                             ? "text-red-600"
                             : "text-gray-500"
@@ -2242,7 +2242,7 @@ export function CompactWorkflowStepper(props: CompactWorkflowStepperProps) {
                   isCompleted
                     ? "bg-green-500"
                     : isCurrent
-                      ? "bg-teal-500 ring-2 ring-teal-200"
+                      ? "bg-[var(--sc-primary,#323288)] ring-2 ring-[var(--sc-primary-200,#adadcf)]"
                       : "bg-gray-300"
                 }`}
               />

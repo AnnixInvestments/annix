@@ -325,7 +325,7 @@ export function PullTestForm(props: PullTestFormProps) {
           <button
             type="button"
             onClick={addSolution}
-            className="rounded-md bg-teal-600 px-3 py-1 text-xs font-medium text-white hover:bg-teal-700"
+            className="rounded-md bg-[var(--sc-primary,#323288)] px-3 py-1 text-xs font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)]"
           >
             Add Solution
           </button>
@@ -428,7 +428,7 @@ export function PullTestForm(props: PullTestFormProps) {
           <button
             type="button"
             onClick={addAreaReading}
-            className="rounded-md bg-teal-600 px-3 py-1 text-xs font-medium text-white hover:bg-teal-700"
+            className="rounded-md bg-[var(--sc-primary,#323288)] px-3 py-1 text-xs font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)]"
           >
             Add Reading
           </button>

@@ -51,13 +51,13 @@ function MessageBubble({
     <div className={`flex gap-2 ${isMe ? "flex-row-reverse" : ""}`}>
       <div className="flex-shrink-0 mt-1">
         <div
-          className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-semibold ${isMe ? "bg-teal-100 text-teal-700" : "bg-gray-200 text-gray-600"}`}
+          className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-semibold ${isMe ? "bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary-hover,#252560)]" : "bg-gray-200 text-gray-600"}`}
         >
           {senderInitials(msg.senderName)}
         </div>
       </div>
       <div
-        className={`max-w-[75%] rounded-lg px-3 py-2 text-sm ${isMe ? "bg-teal-600 text-white" : "bg-white border border-gray-200 text-gray-900"}`}
+        className={`max-w-[75%] rounded-lg px-3 py-2 text-sm ${isMe ? "bg-[var(--sc-primary,#323288)] text-white" : "bg-white border border-gray-200 text-gray-900"}`}
       >
         <div
           className={`text-xs font-semibold mb-0.5 flex items-center gap-1 ${isMe ? "opacity-80" : "text-gray-500"}`}
@@ -166,13 +166,13 @@ function MessageInput({
           onKeyDown={onKeyDown}
           placeholder={editingId ? "Edit message..." : "Type a message..."}
           maxLength={500}
-          className={`flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${editingId ? "border-amber-400" : "border-gray-300"}`}
+          className={`flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)] ${editingId ? "border-amber-400" : "border-gray-300"}`}
         />
         <button
           type="button"
           onClick={onSend}
           disabled={!text.trim() || sending}
-          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:bg-gray-300 transition-colors"
+          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--sc-primary,#323288)] text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-300 transition-colors"
           aria-label="Send message"
         >
           <Send className="h-4 w-4" />
@@ -221,7 +221,7 @@ export function ChatPanel() {
       <button
         type="button"
         onClick={open}
-        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-teal-600 text-white shadow-lg hover:bg-teal-700 transition-colors"
+        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--sc-primary,#323288)] text-white shadow-lg hover:bg-[var(--sc-primary-hover,#252560)] transition-colors"
       >
         <MessageCircle className="h-6 w-6" />
         {totalUnread > 0 && (
@@ -235,13 +235,13 @@ export function ChatPanel() {
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col w-80 sm:w-96 h-[480px] rounded-xl bg-white shadow-2xl border border-gray-200 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 bg-teal-600 text-white">
+      <div className="flex items-center justify-between px-4 py-3 bg-[var(--sc-primary,#323288)] text-white">
         <div className="flex items-center gap-2">
           {(state.view === "conversation" || state.view === "new-conversation") && (
             <button
               type="button"
               onClick={() => navigateTo("conversations")}
-              className="p-0.5 rounded hover:bg-teal-700 transition-colors"
+              className="p-0.5 rounded hover:bg-[var(--sc-primary-hover,#252560)] transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
             </button>
@@ -259,7 +259,7 @@ export function ChatPanel() {
         <button
           type="button"
           onClick={close}
-          className="p-1 rounded hover:bg-teal-700 transition-colors"
+          className="p-1 rounded hover:bg-[var(--sc-primary-hover,#252560)] transition-colors"
         >
           <X className="h-4 w-4" />
         </button>
@@ -270,7 +270,7 @@ export function ChatPanel() {
           <div className="flex border-b bg-white">
             <button
               type="button"
-              className="flex-1 px-3 py-2 text-xs font-semibold text-teal-700 border-b-2 border-teal-600"
+              className="flex-1 px-3 py-2 text-xs font-semibold text-[var(--sc-primary-hover,#252560)] border-b-2 border-[var(--sc-primary,#323288)]"
             >
               General
             </button>
@@ -342,7 +342,7 @@ export function ChatPanel() {
             </button>
             <button
               type="button"
-              className="flex-1 px-3 py-2 text-xs font-semibold text-teal-700 border-b-2 border-teal-600"
+              className="flex-1 px-3 py-2 text-xs font-semibold text-[var(--sc-primary-hover,#252560)] border-b-2 border-[var(--sc-primary,#323288)]"
             >
               Direct
             </button>
@@ -353,10 +353,12 @@ export function ChatPanel() {
               onClick={openNewConversation}
               className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 border-b border-gray-100 transition-colors"
             >
-              <div className="h-9 w-9 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center">
+              <div className="h-9 w-9 rounded-full bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary,#323288)] flex items-center justify-center">
                 <Plus className="h-4 w-4" />
               </div>
-              <span className="text-sm font-medium text-teal-700">New message</span>
+              <span className="text-sm font-medium text-[var(--sc-primary-hover,#252560)]">
+                New message
+              </span>
             </button>
             {state.conversations.length === 0 && (
               <p className="text-sm text-gray-400 text-center py-8">No conversations yet</p>
@@ -439,7 +441,7 @@ export function ChatPanel() {
               value={state.searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search team members..."
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)]"
             />
             {state.selectedUserIds.length > 1 && (
               <input
@@ -448,7 +450,7 @@ export function ChatPanel() {
                 onChange={(e) => setGroupName(e.target.value)}
                 placeholder="Group name (optional)"
                 maxLength={100}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sc-primary,#323288)]"
               />
             )}
           </div>
@@ -460,10 +462,10 @@ export function ChatPanel() {
                   type="button"
                   key={member.id}
                   onClick={() => toggleUserSelection(member.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 border-b border-gray-100 transition-colors text-left ${isSelected ? "bg-teal-50" : "hover:bg-gray-100"}`}
+                  className={`w-full flex items-center gap-3 px-4 py-3 border-b border-gray-100 transition-colors text-left ${isSelected ? "bg-[var(--sc-primary-50,#eeeef6)]" : "hover:bg-gray-100"}`}
                 >
                   <div
-                    className={`h-5 w-5 rounded border flex items-center justify-center flex-shrink-0 ${isSelected ? "bg-teal-600 border-teal-600 text-white" : "border-gray-300"}`}
+                    className={`h-5 w-5 rounded border flex items-center justify-center flex-shrink-0 ${isSelected ? "bg-[var(--sc-primary,#323288)] border-[var(--sc-primary,#323288)] text-white" : "border-gray-300"}`}
                   >
                     {isSelected && <Check className="h-3 w-3" />}
                   </div>
@@ -486,7 +488,7 @@ export function ChatPanel() {
               type="button"
               onClick={createConversation}
               disabled={state.selectedUserIds.length === 0}
-              className="w-full py-2 rounded-lg bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 disabled:bg-gray-300 transition-colors"
+              className="w-full py-2 rounded-lg bg-[var(--sc-primary,#323288)] text-white text-sm font-semibold hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-300 transition-colors"
             >
               {state.selectedUserIds.length <= 1
                 ? "Start conversation"

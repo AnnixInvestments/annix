@@ -36,11 +36,11 @@ export function PushNotificationBanner() {
   }
 
   return (
-    <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 flex items-center justify-between gap-4">
+    <div className="bg-[var(--sc-primary-50,#eeeef6)] border border-[var(--sc-primary-200,#adadcf)] rounded-lg p-4 flex items-center justify-between gap-4">
       <div className="flex items-center gap-3">
-        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center">
+        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[var(--sc-primary-100,#d6d6e9)] flex items-center justify-center">
           <svg
-            className="w-5 h-5 text-teal-600"
+            className="w-5 h-5 text-[var(--sc-primary,#323288)]"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -54,8 +54,10 @@ export function PushNotificationBanner() {
           </svg>
         </div>
         <div>
-          <p className="text-sm font-medium text-teal-800">Enable Push Notifications</p>
-          <p className="text-xs text-teal-600">
+          <p className="text-sm font-medium text-[var(--sc-primary-active,#1c1c48)]">
+            Enable Push Notifications
+          </p>
+          <p className="text-xs text-[var(--sc-primary,#323288)]">
             Get instant alerts for approvals, dispatches, and more
           </p>
         </div>
@@ -67,14 +69,14 @@ export function PushNotificationBanner() {
             localStorage.setItem(DISMISS_KEY, String(nowMillis()));
             setDismissed(true);
           }}
-          className="text-sm text-teal-600 hover:text-teal-800 px-3 py-1.5"
+          className="text-sm text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] px-3 py-1.5"
         >
           Not now
         </button>
         <button
           type="button"
           onClick={requestPermissionAndSubscribe}
-          className="text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 px-4 py-1.5 rounded-md"
+          className="text-sm font-medium text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)] px-4 py-1.5 rounded-md"
         >
           Enable
         </button>

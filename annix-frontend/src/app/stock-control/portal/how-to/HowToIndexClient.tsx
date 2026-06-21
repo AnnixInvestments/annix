@@ -19,7 +19,8 @@ interface StockControlHowToIndexClientProps {
 export default function HowToIndexClient(props: StockControlHowToIndexClientProps) {
   const { user } = useStockControlAuth();
   const { effectiveRole } = useViewAs();
-  const role = effectiveRole || user?.role || null;
+  const userRole = user?.role;
+  const role = effectiveRole || userRole || null;
 
   return (
     <SharedHowToIndexClient

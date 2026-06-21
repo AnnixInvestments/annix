@@ -301,7 +301,7 @@ export function QcReleaseCertificateForm({
         <button
           type="button"
           onClick={() => onChange(autoFillInspector())}
-          className="text-xs text-teal-600 hover:text-teal-800"
+          className="text-xs text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
         >
           Auto-fill
         </button>
@@ -436,7 +436,7 @@ export function QcReleaseCertificateForm({
         <button
           type="button"
           onClick={addSolution}
-          className="text-xs font-medium text-teal-600 hover:text-teal-800"
+          className="text-xs font-medium text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
         >
           + Add Solution
         </button>
@@ -526,7 +526,7 @@ export function QcReleaseCertificateForm({
         <button
           type="button"
           onClick={addCureCycle}
-          className="text-xs font-medium text-teal-600 hover:text-teal-800"
+          className="text-xs font-medium text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
         >
           + Add Cure Cycle
         </button>
@@ -649,7 +649,7 @@ export function QcReleaseCertificateForm({
                 <button
                   type="button"
                   onClick={() => setFinalApprovalName(autoFillInspector())}
-                  className="whitespace-nowrap text-xs text-teal-600 hover:text-teal-800"
+                  className="whitespace-nowrap text-xs text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                 >
                   Auto-fill
                 </button>
@@ -678,7 +678,7 @@ export function QcReleaseCertificateForm({
               <button
                 type="button"
                 onClick={() => setShowSignaturePad(true)}
-                className="text-xs text-teal-600 hover:text-teal-800"
+                className="text-xs text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
               >
                 Change signature
               </button>
@@ -700,7 +700,7 @@ export function QcReleaseCertificateForm({
             <button
               type="button"
               onClick={() => setShowSignaturePad(true)}
-              className="mt-2 rounded border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500 hover:border-teal-400 hover:text-teal-600"
+              className="mt-2 rounded border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500 hover:border-[var(--sc-primary-400,#5b5b9c)] hover:text-[var(--sc-primary,#323288)]"
             >
               Add signature
             </button>
@@ -720,7 +720,7 @@ export function QcReleaseCertificateForm({
           type="button"
           onClick={handleSave}
           disabled={isSaving}
-          className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+          className="rounded-md bg-[var(--sc-primary,#323288)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
         >
           {isSaving ? "Saving..." : isEditing ? "Update Certificate" : "Create Certificate"}
         </button>

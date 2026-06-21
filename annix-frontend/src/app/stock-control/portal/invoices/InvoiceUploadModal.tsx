@@ -223,7 +223,7 @@ export default function InvoiceUploadModal(props: InvoiceUploadModalProps) {
               setPreviewUrl(null);
               setAnalysisResult(null);
             }}
-            className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md cursor-pointer border-teal-500 bg-teal-50"
+            className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md cursor-pointer border-[var(--sc-primary,#323288)] bg-[var(--sc-primary-50,#eeeef6)]"
           >
             {previewUrl ? (
               <div className="text-center">
@@ -233,12 +233,14 @@ export default function InvoiceUploadModal(props: InvoiceUploadModalProps) {
                   className="mx-auto h-32 object-contain mb-2"
                 />
                 <p className="text-sm text-gray-600">{selectedFile.name}</p>
-                <p className="text-xs text-teal-600 mt-1">Click or drop to change</p>
+                <p className="text-xs text-[var(--sc-primary,#323288)] mt-1">
+                  Click or drop to change
+                </p>
               </div>
             ) : (
               <div className="text-center">
                 <svg
-                  className="mx-auto h-12 w-12 text-teal-500"
+                  className="mx-auto h-12 w-12 text-[var(--sc-primary,#323288)]"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -252,7 +254,9 @@ export default function InvoiceUploadModal(props: InvoiceUploadModalProps) {
                 </svg>
                 <p className="text-sm text-gray-600 mt-2">{selectedFile.name}</p>
                 <p className="text-xs text-gray-500">{(selectedFile.size / 1024).toFixed(1)} KB</p>
-                <p className="text-xs text-teal-600 mt-1">Click or drop to change</p>
+                <p className="text-xs text-[var(--sc-primary,#323288)] mt-1">
+                  Click or drop to change
+                </p>
               </div>
             )}
           </div>
@@ -261,7 +265,7 @@ export default function InvoiceUploadModal(props: InvoiceUploadModalProps) {
             type="button"
             onClick={handleAnalyze}
             disabled={isAnalyzing}
-            className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isAnalyzing ? (
               <>
@@ -342,7 +346,7 @@ export default function InvoiceUploadModal(props: InvoiceUploadModalProps) {
             <select
               value={form.deliveryNoteId}
               onChange={(e) => handleDeliveryNoteChange(parseInt(e.target.value, 10) || 0)}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
             >
               <option value={0}>No delivery note (upload unlinked)</option>
               {deliveryNotes.map((dn) => (
@@ -367,7 +371,7 @@ export default function InvoiceUploadModal(props: InvoiceUploadModalProps) {
                 type="text"
                 value={form.invoiceNumber}
                 onChange={(e) => setForm({ ...form, invoiceNumber: e.target.value })}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                 placeholder="INV-12345"
               />
             </div>
@@ -376,7 +380,7 @@ export default function InvoiceUploadModal(props: InvoiceUploadModalProps) {
               <DateInput
                 value={form.invoiceDate}
                 onChange={(value) => setForm({ ...form, invoiceDate: value })}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
               />
             </div>
           </div>
@@ -389,7 +393,7 @@ export default function InvoiceUploadModal(props: InvoiceUploadModalProps) {
               type="text"
               value={form.supplierName}
               onChange={(e) => setForm({ ...form, supplierName: e.target.value })}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
               placeholder={
                 form.deliveryNoteId ? "Auto-filled from delivery note" : "Enter supplier name"
               }

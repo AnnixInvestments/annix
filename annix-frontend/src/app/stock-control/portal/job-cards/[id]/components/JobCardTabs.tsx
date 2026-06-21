@@ -98,7 +98,7 @@ export function JobCardTabs({ tabs, activeTab, onTabChange }: JobCardTabsProps) 
               onKeyDown={(e) => handleKeyDown(e, index)}
               className={`whitespace-nowrap py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
                 isActive
-                  ? "border-teal-500 text-teal-600"
+                  ? "border-[var(--sc-primary,#323288)] text-[var(--sc-primary,#323288)]"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
             >
@@ -106,7 +106,9 @@ export function JobCardTabs({ tabs, activeTab, onTabChange }: JobCardTabsProps) 
               {tab.badge !== null && tab.badge !== undefined && (
                 <span
                   className={`ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                    isActive ? "bg-teal-100 text-teal-800" : "bg-gray-100 text-gray-600"
+                    isActive
+                      ? "bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary-active,#1c1c48)]"
+                      : "bg-gray-100 text-gray-600"
                   }`}
                 >
                   {tab.badge}

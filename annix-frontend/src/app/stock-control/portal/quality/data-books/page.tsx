@@ -74,7 +74,7 @@ export default function DataBooksPage() {
           <button
             onClick={handleSearch}
             disabled={!jobCardId || searchMutation.isPending}
-            className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+            className="rounded-md bg-[var(--sc-primary,#323288)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
           >
             {searchMutation.isPending ? "Loading..." : "Search"}
           </button>
@@ -112,7 +112,7 @@ export default function DataBooksPage() {
                   <button
                     onClick={handleCompile}
                     disabled={compileMutation.isPending}
-                    className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+                    className="rounded-md bg-[var(--sc-primary,#323288)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
                   >
                     {compileMutation.isPending
                       ? "Compiling..."

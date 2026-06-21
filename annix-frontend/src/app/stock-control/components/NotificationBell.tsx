@@ -130,7 +130,8 @@ export function NotificationBell() {
       approval_completed: "bg-green-100 text-green-800",
       approval_rejected: "bg-red-100 text-red-800",
       step_completed: "bg-blue-100 text-blue-800",
-      dispatch_completed: "bg-teal-100 text-teal-800",
+      dispatch_completed:
+        "bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary-active,#1c1c48)]",
       file_closed: "bg-slate-100 text-slate-800",
       job_cards_imported: "bg-indigo-100 text-indigo-800",
       background_step_required: "bg-amber-100 text-amber-800",
@@ -152,7 +153,7 @@ export function NotificationBell() {
       >
         <Bell className="h-5 w-5 text-white" />
         {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full border-2 border-teal-700">
+          <span className="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full border-2 border-[var(--sc-primary-hover,#252560)]">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
@@ -166,7 +167,7 @@ export function NotificationBell() {
               <button
                 onClick={handleMarkAllAsRead}
                 disabled={isLoading}
-                className="text-sm text-teal-600 hover:text-teal-700 flex items-center space-x-1"
+                className="text-sm text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-hover,#252560)] flex items-center space-x-1"
               >
                 <CheckCheck className="h-4 w-4" />
                 <span>Mark all read</span>
@@ -207,7 +208,7 @@ export function NotificationBell() {
                         )}
                         <div className="flex items-center gap-2 mt-1">
                           {notification.senderName && (
-                            <span className="text-xs text-teal-600">
+                            <span className="text-xs text-[var(--sc-primary,#323288)]">
                               From: {notification.senderName}
                             </span>
                           )}
@@ -227,7 +228,7 @@ export function NotificationBell() {
                                   value={bgNotes}
                                   onChange={(e) => setBgNotes(e.target.value)}
                                   placeholder="Notes (optional)"
-                                  className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
+                                  className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                                 />
                                 <button
                                   onClick={(e) => {
@@ -235,7 +236,7 @@ export function NotificationBell() {
                                     handleCompleteBackgroundStep(notification);
                                   }}
                                   disabled={bgSaving}
-                                  className="px-2 py-1 text-xs font-medium text-white bg-teal-600 rounded hover:bg-teal-700 disabled:opacity-50"
+                                  className="px-2 py-1 text-xs font-medium text-white bg-[var(--sc-primary,#323288)] rounded hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
                                 >
                                   {bgSaving ? "..." : "Done"}
                                 </button>
@@ -285,7 +286,7 @@ export function NotificationBell() {
                 router.push("/stock-control/portal/notifications");
                 close();
               }}
-              className="text-sm text-teal-600 hover:text-teal-700 w-full text-center"
+              className="text-sm text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-hover,#252560)] w-full text-center"
             >
               View all notifications
             </button>

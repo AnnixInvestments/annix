@@ -158,7 +158,7 @@ export default function ReportsPage() {
   const renderLoading = () => (
     <div className="flex items-center justify-center py-12">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mx-auto"></div>
         <p className="mt-4 text-gray-600">Loading report...</p>
       </div>
     </div>
@@ -243,7 +243,7 @@ export default function ReportsPage() {
               const customerName = job.customerName;
               return (
                 <tr key={job.jobCardId} className="hover:bg-gray-50">
-                  <td className="whitespace-nowrap px-3 py-4 text-sm font-medium text-teal-700 sm:px-6">
+                  <td className="whitespace-nowrap px-3 py-4 text-sm font-medium text-[var(--sc-primary-hover,#252560)] sm:px-6">
                     {job.jobNumber}
                   </td>
                   <td className="hidden px-3 py-4 text-sm text-gray-900 break-words sm:table-cell sm:px-6">
@@ -403,7 +403,7 @@ export default function ReportsPage() {
             <DateInput
               value={movementFilters.startDate}
               onChange={(value) => setMovementFilters({ ...movementFilters, startDate: value })}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm sm:w-auto"
             />
           </div>
           <div>
@@ -411,7 +411,7 @@ export default function ReportsPage() {
             <DateInput
               value={movementFilters.endDate}
               onChange={(value) => setMovementFilters({ ...movementFilters, endDate: value })}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm sm:w-auto"
             />
           </div>
           <div>
@@ -421,7 +421,7 @@ export default function ReportsPage() {
               onChange={(e) =>
                 setMovementFilters({ ...movementFilters, movementType: e.target.value })
               }
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm sm:w-auto"
             >
               <option value="">All Types</option>
               <option value="delivery">Delivery</option>
@@ -440,7 +440,7 @@ export default function ReportsPage() {
                   stockItemId: parseInt(e.target.value, 10) || 0,
                 })
               }
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm sm:w-auto"
             >
               <option value={0}>All Items</option>
               {stockItems.map((item) => (
@@ -603,7 +603,7 @@ export default function ReportsPage() {
               <DateInput
                 value={rawStartDate || ""}
                 onChange={(value) => setStaffFilters({ ...staffFilters, startDate: value })}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm sm:w-auto"
               />
             </div>
             <div>
@@ -611,7 +611,7 @@ export default function ReportsPage() {
               <DateInput
                 value={rawEndDate || ""}
                 onChange={(value) => setStaffFilters({ ...staffFilters, endDate: value })}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm sm:w-auto"
               />
             </div>
             <div>
@@ -624,7 +624,7 @@ export default function ReportsPage() {
                     departmentId: e.target.value ? Number(e.target.value) : undefined,
                   })
                 }
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm sm:w-auto"
               >
                 <option value="">All Departments</option>
                 {departments.map((dept) => (
@@ -644,7 +644,7 @@ export default function ReportsPage() {
                     staffMemberId: e.target.value ? Number(e.target.value) : undefined,
                   })
                 }
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm sm:w-auto"
               >
                 <option value="">All Staff</option>
                 {staffMembers.map((staff) => (
@@ -664,7 +664,7 @@ export default function ReportsPage() {
                     stockItemId: e.target.value ? Number(e.target.value) : undefined,
                   })
                 }
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm sm:w-auto"
               >
                 <option value="">All Items</option>
                 {stockItems.map((item) => (
@@ -1070,7 +1070,7 @@ export default function ReportsPage() {
               onClick={() => setActiveTab(tab)}
               className={`whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium sm:py-4 ${
                 activeTab === tab
-                  ? "border-teal-500 text-teal-600"
+                  ? "border-[var(--sc-primary,#323288)] text-[var(--sc-primary,#323288)]"
                   : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
               }`}
             >
@@ -1086,7 +1086,7 @@ export default function ReportsPage() {
             <button
               type="button"
               onClick={handleExportCSV}
-              className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-colors"
+              className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--sc-primary,#323288)] transition-colors"
             >
               <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path

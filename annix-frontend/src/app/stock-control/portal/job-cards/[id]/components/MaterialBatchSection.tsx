@@ -545,7 +545,7 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
             type="button"
             onClick={handleSave}
             disabled={isSaving}
-            className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+            className="rounded-md bg-[var(--sc-primary,#323288)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
           >
             {isSaving ? "Saving..." : "Save"}
           </button>
@@ -620,7 +620,7 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
                         value={entry.value}
                         onChange={(e) => updateRubberField(entry.fieldKey, e.target.value)}
                         placeholder="Enter batch/roll number"
-                        className="flex-1 rounded border border-gray-300 px-2 py-1 text-xs text-gray-900 placeholder-gray-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                        className="flex-1 rounded border border-gray-300 px-2 py-1 text-xs text-gray-900 placeholder-gray-400 focus:border-[var(--sc-primary,#323288)] focus:ring-1 focus:ring-[var(--sc-primary,#323288)]"
                       />
                       <CertLinkStatus
                         fieldKey={entry.fieldKey}
@@ -640,7 +640,8 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
                   <div className="space-y-1.5">
                     {offcutsUsed.map((offcut, idx) => {
                       const sourceRollNumber = offcut.sourceRollNumber;
-                      const rollDisplay = sourceRollNumber || offcut.rollNumber || "—";
+                      const offcutRollNumber = offcut.rollNumber;
+                      const rollDisplay = sourceRollNumber || offcutRollNumber || "—";
                       const sourceJobCard = offcut.sourceJobCard;
                       const jobNumber = sourceJobCard ? sourceJobCard.jobNumber : null;
                       const sourceRef = jobNumber
@@ -750,7 +751,7 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
                                 placeholder={
                                   partCount === 1 ? "Enter batch number" : `${placeholderLabel}`
                                 }
-                                className="flex-1 min-w-0 rounded border border-gray-300 px-2 py-1 text-xs text-gray-900 placeholder-gray-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                className="flex-1 min-w-0 rounded border border-gray-300 px-2 py-1 text-xs text-gray-900 placeholder-gray-400 focus:border-[var(--sc-primary,#323288)] focus:ring-1 focus:ring-[var(--sc-primary,#323288)]"
                               />
                               <CertLinkStatus
                                 fieldKey={field.fieldKey}

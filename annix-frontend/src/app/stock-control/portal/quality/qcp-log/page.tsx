@@ -58,13 +58,21 @@ function SortIcon(props: { active: boolean; direction: SortDir }) {
   }
   if (props.direction === "asc") {
     return (
-      <svg className="ml-1 inline h-3 w-3 text-teal-600" viewBox="0 0 12 12" fill="currentColor">
+      <svg
+        className="ml-1 inline h-3 w-3 text-[var(--sc-primary,#323288)]"
+        viewBox="0 0 12 12"
+        fill="currentColor"
+      >
         <path d="M6 1.5L9.5 5.5H2.5L6 1.5Z" />
       </svg>
     );
   }
   return (
-    <svg className="ml-1 inline h-3 w-3 text-teal-600" viewBox="0 0 12 12" fill="currentColor">
+    <svg
+      className="ml-1 inline h-3 w-3 text-[var(--sc-primary,#323288)]"
+      viewBox="0 0 12 12"
+      fill="currentColor"
+    >
       <path d="M6 10.5L2.5 6.5H9.5L6 10.5Z" />
     </svg>
   );
@@ -168,12 +176,12 @@ export default function QcpLogPage() {
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Search by QCP or job number..."
-          className="w-72 rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+          className="w-72 rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[var(--sc-primary,#323288)] focus:outline-none focus:ring-1 focus:ring-[var(--sc-primary,#323288)]"
         />
         <button
           type="button"
           onClick={handleSearch}
-          className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700"
+          className="rounded-md bg-[var(--sc-primary,#323288)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)]"
         >
           Search
         </button>
@@ -275,7 +283,7 @@ export default function QcpLogPage() {
                       <button
                         type="button"
                         onClick={() => handleViewPdf(plan)}
-                        className="text-teal-600 hover:text-teal-800"
+                        className="text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                       >
                         View
                       </button>

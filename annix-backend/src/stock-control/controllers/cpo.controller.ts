@@ -129,6 +129,7 @@ export class CpoController {
       req.user.companyId,
       dto.rows,
       req.user.name || null,
+      req.user.id,
     );
     return result;
   }
@@ -199,7 +200,12 @@ export class CpoController {
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: UpdateCpoStatusDto,
   ) {
-    return this.cpoService.updateStatus(req.user.companyId, id, dto.status as CpoStatus);
+    return this.cpoService.updateStatus(
+      req.user.companyId,
+      id,
+      dto.status as CpoStatus,
+      req.user.id,
+    );
   }
 
   @Put(":id/coating-specs")
@@ -210,7 +216,12 @@ export class CpoController {
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: UpdateCpoDetailsDto,
   ) {
-    return this.cpoService.updateCoatingSpecs(req.user.companyId, id, dto.coatingSpecs ?? null);
+    return this.cpoService.updateCoatingSpecs(
+      req.user.companyId,
+      id,
+      dto.coatingSpecs ?? null,
+      req.user.id,
+    );
   }
 
   @Get(":id/calloff-records")
@@ -272,7 +283,7 @@ export class CpoController {
   @Delete(":id")
   @ApiOperation({ summary: "Delete a CPO" })
   async deleteCpo(@Req() req: any, @Param("id", ParseIntPipe) id: number) {
-    await this.cpoService.deleteCpo(req.user.companyId, id);
+    await this.cpoService.deleteCpo(req.user.companyId, id, req.user.id);
     return { deleted: true };
   }
 }

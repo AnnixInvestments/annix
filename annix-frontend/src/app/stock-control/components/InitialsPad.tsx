@@ -38,7 +38,8 @@ export function InitialsPad(props: InitialsPadProps) {
   const currentValue = props.currentValue;
   const saved = savedInitials();
   const [mode, setMode] = useState<"type" | "draw">(saved?.imageDataUrl ? "draw" : "type");
-  const [text, setText] = useState(currentValue || saved?.text || "");
+  const savedText = saved?.text;
+  const [text, setText] = useState(currentValue || savedText || "");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasDrawn, setHasDrawn] = useState(false);
@@ -145,7 +146,9 @@ export function InitialsPad(props: InitialsPadProps) {
       const canvas = canvasRef.current;
       if (!canvas || !hasDrawn) return;
       const dataUrl = canvas.toDataURL("image/png");
-      const trimmed = text.trim() || saved?.text || "init";
+      const typedTrimmed = text.trim();
+      const savedTextValue = saved?.text;
+      const trimmed = typedTrimmed || savedTextValue || "init";
       const toSave: SavedInitials = { text: trimmed, imageDataUrl: dataUrl };
       persistInitials(toSave);
       props.onSave(trimmed, dataUrl);
@@ -182,14 +185,14 @@ export function InitialsPad(props: InitialsPadProps) {
           <button
             type="button"
             onClick={() => setMode("type")}
-            className={`flex-1 rounded-l-md px-3 py-1.5 text-xs font-medium ${mode === "type" ? "bg-teal-600 text-white" : "bg-gray-50 text-gray-600 hover:bg-gray-100"}`}
+            className={`flex-1 rounded-l-md px-3 py-1.5 text-xs font-medium ${mode === "type" ? "bg-[var(--sc-primary,#323288)] text-white" : "bg-gray-50 text-gray-600 hover:bg-gray-100"}`}
           >
             Type
           </button>
           <button
             type="button"
             onClick={() => setMode("draw")}
-            className={`flex-1 rounded-r-md px-3 py-1.5 text-xs font-medium ${mode === "draw" ? "bg-teal-600 text-white" : "bg-gray-50 text-gray-600 hover:bg-gray-100"}`}
+            className={`flex-1 rounded-r-md px-3 py-1.5 text-xs font-medium ${mode === "draw" ? "bg-[var(--sc-primary,#323288)] text-white" : "bg-gray-50 text-gray-600 hover:bg-gray-100"}`}
           >
             <span className="inline-flex items-center gap-1">
               <Pencil className="h-3 w-3" /> Draw
@@ -206,7 +209,7 @@ export function InitialsPad(props: InitialsPadProps) {
               maxLength={5}
               autoFocus
               placeholder="e.g. AB"
-              className="w-full rounded border border-gray-300 px-3 py-2 text-center text-lg font-bold tracking-widest focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+              className="w-full rounded border border-gray-300 px-3 py-2 text-center text-lg font-bold tracking-widest focus:border-[var(--sc-primary,#323288)] focus:ring-1 focus:ring-[var(--sc-primary,#323288)]"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && canSave) handleSave();
               }}
@@ -268,7 +271,7 @@ export function InitialsPad(props: InitialsPadProps) {
             type="button"
             onClick={handleSave}
             disabled={!canSave}
-            className="rounded-md bg-teal-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+            className="rounded-md bg-[var(--sc-primary,#323288)] px-4 py-1.5 text-xs font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
             Save
           </button>

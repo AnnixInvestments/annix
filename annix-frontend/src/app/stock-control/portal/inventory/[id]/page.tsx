@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
@@ -221,7 +222,7 @@ export default function InventoryDetailPage() {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading item details...</p>
         </div>
       </div>
@@ -236,7 +237,7 @@ export default function InventoryDetailPage() {
           <p className="text-gray-600">{error || "Item not found"}</p>
           <Link
             href="/stock-control/portal/inventory"
-            className="mt-4 inline-block text-teal-600 hover:text-teal-800"
+            className="mt-4 inline-block text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
           >
             Back to Inventory
           </Link>
@@ -289,7 +290,7 @@ export default function InventoryDetailPage() {
                 setAdjustForm({ movementType: "in", quantity: 0, notes: "" });
                 setShowAdjustModal(true);
               }}
-              className="inline-flex items-center px-4 py-2 border border-teal-600 rounded-md shadow-sm text-sm font-medium text-teal-600 bg-white hover:bg-teal-50"
+              className="inline-flex items-center px-4 py-2 border border-[var(--sc-primary,#323288)] rounded-md shadow-sm text-sm font-medium text-[var(--sc-primary,#323288)] bg-white hover:bg-[var(--sc-primary-50,#eeeef6)]"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -304,7 +305,7 @@ export default function InventoryDetailPage() {
           )}
           <button
             onClick={openEditModal}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700"
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)]"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -488,7 +489,7 @@ export default function InventoryDetailPage() {
                         </div>
                         <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-teal-500 rounded-full transition-all duration-300"
+                            className="h-full bg-[var(--sc-primary,#323288)] rounded-full transition-all duration-300"
                             style={{ width: `${widthPct}%` }}
                           />
                         </div>
@@ -516,7 +517,7 @@ export default function InventoryDetailPage() {
               )}
               {uploadPhotoMutation.isPending ? (
                 <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <div className="w-4 h-4 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-[var(--sc-primary,#323288)] border-t-transparent rounded-full animate-spin" />
                   Uploading...
                 </div>
               ) : (
@@ -655,235 +656,250 @@ export default function InventoryDetailPage() {
         )}
       </div>
 
-      {showAdjustModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen px-4">
-            <div
-              className="fixed inset-0 bg-black/10 backdrop-blur-md transition-opacity"
-              onClick={() => setShowAdjustModal(false)}
-            ></div>
-            <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Adjust Stock</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Movement Type</label>
-                  <select
-                    value={adjustForm.movementType}
-                    onChange={(e) =>
-                      setAdjustForm({
-                        ...adjustForm,
-                        movementType: e.target.value as "in" | "out" | "adjustment",
-                      })
-                    }
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
-                  >
-                    <option value="in">Stock In</option>
-                    <option value="out">Stock Out</option>
-                    <option value="adjustment">Set Absolute</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    {adjustForm.movementType === "adjustment" ? "New Quantity" : "Quantity"}
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={adjustForm.quantity}
-                    onChange={(e) =>
-                      setAdjustForm({ ...adjustForm, quantity: parseInt(e.target.value, 10) || 0 })
-                    }
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
-                  />
-                  {item && adjustForm.movementType !== "adjustment" && (
-                    <p className="mt-1 text-xs text-gray-500">
-                      Current SOH: {item.quantity} | After:{" "}
-                      {adjustForm.movementType === "in"
-                        ? item.quantity + adjustForm.quantity
-                        : Math.max(0, item.quantity - adjustForm.quantity)}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Notes</label>
-                  <textarea
-                    value={adjustForm.notes}
-                    onChange={(e) => setAdjustForm({ ...adjustForm, notes: e.target.value })}
-                    rows={3}
-                    placeholder="Reason for adjustment..."
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
-                  />
-                </div>
-              </div>
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowAdjustModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleAdjust}
-                  disabled={createManualAdjustmentMutation.isPending}
-                  className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                >
-                  {createManualAdjustmentMutation.isPending ? "Adjusting..." : "Apply Adjustment"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen px-4">
-            <div
-              className="fixed inset-0 bg-black/10 backdrop-blur-md transition-opacity"
-              onClick={() => setShowModal(false)}
-            ></div>
-            <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Edit Stock Item</h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+      {showAdjustModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] overflow-y-auto">
+            <div className="flex items-center justify-center min-h-screen px-4">
+              <div
+                className="fixed inset-0 bg-black/10 backdrop-blur-md transition-opacity"
+                onClick={() => setShowAdjustModal(false)}
+              ></div>
+              <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Adjust Stock</h3>
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">SKU</label>
-                    <input
-                      type="text"
-                      value={modalForm.sku}
-                      onChange={(e) => setModalForm({ ...modalForm, sku: e.target.value })}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Name</label>
-                    <input
-                      type="text"
-                      value={modalForm.name}
-                      onChange={(e) => setModalForm({ ...modalForm, name: e.target.value })}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Description</label>
-                  <textarea
-                    value={modalForm.description}
-                    onChange={(e) => setModalForm({ ...modalForm, description: e.target.value })}
-                    rows={2}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Category</label>
-                    <input
-                      type="text"
-                      value={modalForm.category}
-                      onChange={(e) => setModalForm({ ...modalForm, category: e.target.value })}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Unit of Measure
-                    </label>
-                    <input
-                      type="text"
-                      value={modalForm.unitOfMeasure}
+                    <label className="block text-sm font-medium text-gray-700">Movement Type</label>
+                    <select
+                      value={adjustForm.movementType}
                       onChange={(e) =>
-                        setModalForm({ ...modalForm, unitOfMeasure: e.target.value })
-                      }
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Cost per Unit</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={modalForm.costPerUnit}
-                      onChange={(e) =>
-                        setModalForm({ ...modalForm, costPerUnit: parseFloat(e.target.value) || 0 })
-                      }
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Quantity</label>
-                    <input
-                      type="number"
-                      value={modalForm.quantity}
-                      onChange={(e) =>
-                        setModalForm({ ...modalForm, quantity: parseInt(e.target.value, 10) || 0 })
-                      }
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Min Stock Level
-                    </label>
-                    <input
-                      type="number"
-                      value={modalForm.minStockLevel}
-                      onChange={(e) =>
-                        setModalForm({
-                          ...modalForm,
-                          minStockLevel: parseInt(e.target.value, 10) || 0,
+                        setAdjustForm({
+                          ...adjustForm,
+                          movementType: e.target.value as "in" | "out" | "adjustment",
                         })
                       }
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
+                    >
+                      <option value="in">Stock In</option>
+                      <option value="out">Stock Out</option>
+                      <option value="adjustment">Set Absolute</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      {adjustForm.movementType === "adjustment" ? "New Quantity" : "Quantity"}
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={adjustForm.quantity}
+                      onChange={(e) =>
+                        setAdjustForm({
+                          ...adjustForm,
+                          quantity: parseInt(e.target.value, 10) || 0,
+                        })
+                      }
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
+                    />
+                    {item && adjustForm.movementType !== "adjustment" && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Current SOH: {item.quantity} | After:{" "}
+                        {adjustForm.movementType === "in"
+                          ? item.quantity + adjustForm.quantity
+                          : Math.max(0, item.quantity - adjustForm.quantity)}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Notes</label>
+                    <textarea
+                      value={adjustForm.notes}
+                      onChange={(e) => setAdjustForm({ ...adjustForm, notes: e.target.value })}
+                      rows={3}
+                      placeholder="Reason for adjustment..."
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Location</label>
-                  {(() => {
-                    const rawLocationId = modalForm.locationId;
-                    return (
-                      <select
-                        value={rawLocationId ?? ""}
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    onClick={() => setShowAdjustModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleAdjust}
+                    disabled={createManualAdjustmentMutation.isPending}
+                    className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] border border-transparent rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    {createManualAdjustmentMutation.isPending ? "Adjusting..." : "Apply Adjustment"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {showModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] overflow-y-auto">
+            <div className="flex items-center justify-center min-h-screen px-4">
+              <div
+                className="fixed inset-0 bg-black/10 backdrop-blur-md transition-opacity"
+                onClick={() => setShowModal(false)}
+              ></div>
+              <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Edit Stock Item</h3>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">SKU</label>
+                      <input
+                        type="text"
+                        value={modalForm.sku}
+                        onChange={(e) => setModalForm({ ...modalForm, sku: e.target.value })}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Name</label>
+                      <input
+                        type="text"
+                        value={modalForm.name}
+                        onChange={(e) => setModalForm({ ...modalForm, name: e.target.value })}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Description</label>
+                    <textarea
+                      value={modalForm.description}
+                      onChange={(e) => setModalForm({ ...modalForm, description: e.target.value })}
+                      rows={2}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Category</label>
+                      <input
+                        type="text"
+                        value={modalForm.category}
+                        onChange={(e) => setModalForm({ ...modalForm, category: e.target.value })}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Unit of Measure
+                      </label>
+                      <input
+                        type="text"
+                        value={modalForm.unitOfMeasure}
+                        onChange={(e) =>
+                          setModalForm({ ...modalForm, unitOfMeasure: e.target.value })
+                        }
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Cost per Unit
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={modalForm.costPerUnit}
                         onChange={(e) =>
                           setModalForm({
                             ...modalForm,
-                            locationId: e.target.value ? parseInt(e.target.value, 10) : null,
+                            costPerUnit: parseFloat(e.target.value) || 0,
                           })
                         }
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
-                      >
-                        <option value="">No location</option>
-                        {locations.map((loc) => (
-                          <option key={loc.id} value={loc.id}>
-                            {loc.name}
-                          </option>
-                        ))}
-                      </select>
-                    );
-                  })()}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Quantity</label>
+                      <input
+                        type="number"
+                        value={modalForm.quantity}
+                        onChange={(e) =>
+                          setModalForm({
+                            ...modalForm,
+                            quantity: parseInt(e.target.value, 10) || 0,
+                          })
+                        }
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Min Stock Level
+                      </label>
+                      <input
+                        type="number"
+                        value={modalForm.minStockLevel}
+                        onChange={(e) =>
+                          setModalForm({
+                            ...modalForm,
+                            minStockLevel: parseInt(e.target.value, 10) || 0,
+                          })
+                        }
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Location</label>
+                    {(() => {
+                      const rawLocationId = modalForm.locationId;
+                      return (
+                        <select
+                          value={rawLocationId ?? ""}
+                          onChange={(e) =>
+                            setModalForm({
+                              ...modalForm,
+                              locationId: e.target.value ? parseInt(e.target.value, 10) : null,
+                            })
+                          }
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
+                        >
+                          <option value="">No location</option>
+                          {locations.map((loc) => (
+                            <option key={loc.id} value={loc.id}>
+                              {loc.name}
+                            </option>
+                          ))}
+                        </select>
+                      );
+                    })()}
+                  </div>
+                </div>
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={updateStockItemMutation.isPending}
+                    className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] border border-transparent rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    {updateStockItemMutation.isPending ? "Saving..." : "Update"}
+                  </button>
                 </div>
               </div>
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={updateStockItemMutation.isPending}
-                  className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                >
-                  {updateStockItemMutation.isPending ? "Saving..." : "Update"}
-                </button>
-              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
       <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
     </div>
   );

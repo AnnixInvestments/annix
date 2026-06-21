@@ -157,7 +157,7 @@ export function SignaturePad(props: SignaturePadProps) {
             <button
               type="button"
               onClick={useExisting}
-              className="px-4 py-2 text-sm bg-teal-600 text-white rounded-md hover:bg-teal-700"
+              className="px-4 py-2 text-sm bg-[var(--sc-primary,#323288)] text-white rounded-md hover:bg-[var(--sc-primary-hover,#252560)]"
             >
               Use This Signature
             </button>
@@ -203,7 +203,7 @@ export function SignaturePad(props: SignaturePadProps) {
             <button
               type="button"
               onClick={() => setShowDrawPad(false)}
-              className="px-4 py-2 text-sm text-teal-600 hover:text-teal-700 border border-teal-300 rounded-md"
+              className="px-4 py-2 text-sm text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-hover,#252560)] border border-[var(--sc-primary-300,#8484b5)] rounded-md"
             >
               Use Saved
             </button>
@@ -219,7 +219,7 @@ export function SignaturePad(props: SignaturePadProps) {
             type="button"
             onClick={handleSave}
             disabled={!hasSignature}
-            className="px-4 py-2 text-sm bg-teal-600 text-white rounded-md hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-sm bg-[var(--sc-primary,#323288)] text-white rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
             Save Signature
           </button>

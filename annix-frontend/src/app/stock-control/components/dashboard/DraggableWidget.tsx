@@ -36,7 +36,7 @@ export function DraggableWidget(props: DraggableWidgetProps) {
         </div>
       )}
       {isEditMode && (
-        <div className="absolute inset-0 border-2 border-dashed border-teal-300 rounded-lg pointer-events-none z-10" />
+        <div className="absolute inset-0 border-2 border-dashed border-[var(--sc-primary-300,#8484b5)] rounded-lg pointer-events-none z-10" />
       )}
       {children}
     </div>

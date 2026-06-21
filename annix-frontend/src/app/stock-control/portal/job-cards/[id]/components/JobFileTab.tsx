@@ -98,7 +98,7 @@ export function JobFileTab(props: JobFileTabProps) {
         onDragLeave={onDragLeave}
         className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
           isDragging
-            ? "border-teal-400 bg-teal-50"
+            ? "border-[var(--sc-primary-400,#5b5b9c)] bg-[var(--sc-primary-50,#eeeef6)]"
             : "border-gray-300 bg-gray-50 hover:border-gray-400"
         }`}
       >
@@ -215,7 +215,7 @@ export function JobFileTab(props: JobFileTabProps) {
                       <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => onView(file)}
-                          className="p-1.5 text-gray-400 hover:text-teal-600 transition-colors"
+                          className="p-1.5 text-gray-400 hover:text-[var(--sc-primary,#323288)] transition-colors"
                           title="View"
                         >
                           <Eye className="h-4 w-4" />
@@ -303,7 +303,7 @@ export function JobFileTab(props: JobFileTabProps) {
                         </p>
                         <button
                           onClick={() => onDownload(viewingFile.file)}
-                          className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                          className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md bg-[var(--sc-primary,#323288)] text-white hover:bg-[var(--sc-primary-hover,#252560)] transition-colors"
                         >
                           <Download className="h-4 w-4 mr-2" />
                           Download File

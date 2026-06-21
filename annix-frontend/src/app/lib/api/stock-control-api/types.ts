@@ -347,6 +347,10 @@ export interface RubberFamilyPricingConfig {
   finishing: RubberLabourComponentConfig;
   solution: RubberLabourComponentConfig;
   cwAgentBaselinePerM2: Record<string, number>;
+  cwRecipes?: Record<string, string[]>;
+  cwSupplierRecipes?: Record<string, Record<string, string[]>>;
+  defaultBondingAgentSupplier?: string;
+  cwAgentSupplierBaselines?: Record<string, Record<string, number>>;
 }
 
 export interface RubberPipePricingConfig extends RubberFamilyPricingConfig {

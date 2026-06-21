@@ -102,7 +102,7 @@ export function HeaderViewSwitcher() {
                     setViewAsUser(null);
                     close();
                   }}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-teal-700 hover:bg-teal-50 transition-colors font-medium"
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[var(--sc-primary-hover,#252560)] hover:bg-[var(--sc-primary-50,#eeeef6)] transition-colors font-medium"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path

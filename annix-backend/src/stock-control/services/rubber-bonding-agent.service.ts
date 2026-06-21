@@ -1,4 +1,8 @@
-import { RUBBER_BONDING_AGENTS, type RubberBondingAgentSeed } from "@annix/product-data/rubber";
+import {
+  lookupRubberBondingCoverage,
+  RUBBER_BONDING_AGENTS,
+  type RubberBondingAgentSeed,
+} from "@annix/product-data/rubber";
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import {
   RubberBondingAgent,
@@ -175,6 +179,43 @@ export class RubberBondingAgentService {
     }, Promise.resolve());
     await this.createSequentially(companyId, unmatched);
     return { updated: matched.length, created: unmatched.length };
+  }
+
+  async enrichCoverage(
+    companyId: number,
+  ): Promise<{ enriched: number; checked: number; unmatched: string[] }> {
+    const agents = await this.agentRepo.findAllForCompany(companyId);
+    const missing = agents.filter(
+      (agent) =>
+        agent.coverageBasis !== "none" &&
+        agent.areaCoverPerLitre == null &&
+        agent.gramsPerM2 == null,
+    );
+    const enriched = await missing.reduce<Promise<RubberBondingAgent[]>>(
+      async (accumulator, agent) => {
+        const done = await accumulator;
+        const reference = lookupRubberBondingCoverage(agent.name);
+        if (!reference) {
+          return done;
+        }
+        const saved = await this.agentRepo.save({
+          ...agent,
+          coverageBasis: reference.coverageBasis,
+          areaCoverPerLitre: reference.areaCoverPerLitre,
+          gramsPerM2: reference.gramsPerM2,
+        });
+        return [...done, saved];
+      },
+      Promise.resolve([]),
+    );
+    const enrichedKeys = new Set(enriched.map((agent) => agent.id));
+    const unmatched = missing
+      .filter((agent) => !enrichedKeys.has(agent.id))
+      .map((agent) => agent.name);
+    this.logger.log(
+      `Enriched coverage for ${enriched.length}/${missing.length} bonding agent(s) from datasheets`,
+    );
+    return { enriched: enriched.length, checked: missing.length, unmatched };
   }
 
   private seedToInput(seed: RubberBondingAgentSeed): RubberBondingAgentInput {

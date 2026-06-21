@@ -52,17 +52,17 @@ const FEATURES = [
 
 export default function StockControlLanding() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-teal-900 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-[var(--sc-primary-active,#1c1c48)] to-slate-900">
       <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:px-8">
         <div className="text-center">
-          <span className="inline-flex items-center gap-2 rounded-full bg-teal-500/15 px-3 py-1 text-xs font-medium text-teal-200 ring-1 ring-inset ring-teal-400/30">
+          <span className="inline-flex items-center gap-2 rounded-full bg-[var(--sc-primary,#323288)]/15 px-3 py-1 text-xs font-medium text-[var(--sc-primary-200,#adadcf)] ring-1 ring-inset ring-[var(--sc-primary-400,#5b5b9c)]/30">
             <Sparkles className="h-3.5 w-3.5" />
             Now with AI-assisted document extraction
           </span>
           <h1 className="mt-6 text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl">
             ASCA Stock Control
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-lg text-teal-100/90">
+          <p className="mx-auto mt-5 max-w-2xl text-lg text-[var(--sc-primary-100,#d6d6e9)]/90">
             Built for industrial fabricators. Run job cards, stock, QC, deliveries, customer
             purchase orders, and your data books from one place — with Sage, Nix AI, and your QCPs
             wired in.
@@ -77,13 +77,13 @@ export default function StockControlLanding() {
             </Link>
             <Link
               href="/stock-control/register"
-              className="inline-flex items-center rounded-md bg-teal-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-teal-400"
+              className="inline-flex items-center rounded-md bg-[var(--sc-primary,#323288)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[var(--sc-primary-400,#5b5b9c)]"
             >
               Sign up free
             </Link>
             <Link
               href="/stock-control/login"
-              className="inline-flex items-center rounded-md px-5 py-2.5 text-sm font-semibold text-teal-100 ring-1 ring-inset ring-teal-300/30 hover:bg-white/5"
+              className="inline-flex items-center rounded-md px-5 py-2.5 text-sm font-semibold text-[var(--sc-primary-100,#d6d6e9)] ring-1 ring-inset ring-[var(--sc-primary-300,#8484b5)]/30 hover:bg-white/5"
             >
               Existing customer? Log in
             </Link>
@@ -98,11 +98,13 @@ export default function StockControlLanding() {
                 key={feature.title}
                 className="rounded-xl bg-white/5 p-6 ring-1 ring-inset ring-white/10 backdrop-blur-sm"
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-teal-500/15 text-teal-300 ring-1 ring-inset ring-teal-400/30">
+                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-[var(--sc-primary,#323288)]/15 text-[var(--sc-primary-300,#8484b5)] ring-1 ring-inset ring-[var(--sc-primary-400,#5b5b9c)]/30">
                   <Icon className="h-5 w-5" />
                 </div>
                 <h3 className="mt-4 text-base font-semibold text-white">{feature.title}</h3>
-                <p className="mt-1.5 text-sm leading-6 text-teal-100/80">{feature.body}</p>
+                <p className="mt-1.5 text-sm leading-6 text-[var(--sc-primary-100,#d6d6e9)]/80">
+                  {feature.body}
+                </p>
               </div>
             );
           })}
@@ -114,7 +116,7 @@ export default function StockControlLanding() {
               <h2 className="text-2xl font-bold text-white sm:text-3xl">
                 See it before you sign up
               </h2>
-              <p className="mt-3 text-base text-teal-100/80">
+              <p className="mt-3 text-base text-[var(--sc-primary-100,#d6d6e9)]/80">
                 The demo shows a real job-cards view, populated with sample data so you can click
                 around without an account. No card, no email — just a look.
               </p>
@@ -122,7 +124,7 @@ export default function StockControlLanding() {
             <div className="flex md:justify-end">
               <Link
                 href="/stock-control/demo"
-                className="inline-flex items-center gap-2 rounded-md bg-teal-500 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-teal-400"
+                className="inline-flex items-center gap-2 rounded-md bg-[var(--sc-primary,#323288)] px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[var(--sc-primary-400,#5b5b9c)]"
               >
                 Open the demo
                 <ArrowRight className="h-4 w-4" />
@@ -131,7 +133,7 @@ export default function StockControlLanding() {
           </div>
         </div>
 
-        <p className="mt-12 text-center text-xs text-teal-200/60">
+        <p className="mt-12 text-center text-xs text-[var(--sc-primary-200,#adadcf)]/60">
           Part of the Annix platform · ASCA, AU Rubber, RFQ, Annix Sentinel, FieldFlow, Annix Orbit.
         </p>
       </div>

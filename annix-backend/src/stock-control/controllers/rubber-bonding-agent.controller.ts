@@ -77,6 +77,12 @@ export class RubberBondingAgentController {
     return this.agentService.seedFromProductData(req.user.companyId);
   }
 
+  @Post("enrich-coverage")
+  @ApiOperation({ summary: "Backfill missing coverage from manufacturer datasheets" })
+  async enrichCoverage(@Req() req: any) {
+    return this.agentService.enrichCoverage(req.user.companyId);
+  }
+
   @Patch(":id")
   @ApiOperation({ summary: "Update a rubber bonding agent" })
   async update(

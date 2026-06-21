@@ -280,7 +280,7 @@ export default function DftReadingForm(props: DftReadingFormProps) {
             type="button"
             className={`flex-1 px-4 py-2 text-sm font-medium transition-colors capitalize ${
               coatType === type
-                ? "bg-teal-600 text-white"
+                ? "bg-[var(--sc-primary,#323288)] text-white"
                 : "bg-white text-gray-700 hover:bg-gray-50"
             }`}
             onClick={() => setCoatType(type)}

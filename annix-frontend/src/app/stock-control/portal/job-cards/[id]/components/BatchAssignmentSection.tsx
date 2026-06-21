@@ -359,7 +359,7 @@ export function BatchAssignmentSection(props: BatchAssignmentSectionProps) {
                 checked={appliedAll || applyingAll}
                 onChange={handleApplyDefelskoBatches}
                 disabled={applyingAll || appliedAll}
-                className="rounded border-gray-300 text-teal-600 focus:ring-teal-500 h-3.5 w-3.5"
+                className="rounded border-gray-300 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] h-3.5 w-3.5"
               />
               <span className="text-[10px] text-gray-600">
                 {applyingAll ? "Applying..." : "Apply Defelsko batches to all items"}
@@ -409,7 +409,7 @@ export function BatchAssignmentSection(props: BatchAssignmentSectionProps) {
                       <button
                         onClick={() => handleOpenAddForm(field.fieldKey)}
                         disabled={addForm !== null}
-                        className="rounded bg-teal-600 px-2 py-0.5 text-[10px] font-medium text-white hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        className="rounded bg-[var(--sc-primary,#323288)] px-2 py-0.5 text-[10px] font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed"
                       >
                         + Add Batch
                       </button>
@@ -429,7 +429,7 @@ export function BatchAssignmentSection(props: BatchAssignmentSectionProps) {
                         <div key={batchNum} className="rounded bg-white border border-gray-200 p-2">
                           <div className="flex items-center justify-between mb-1">
                             <div className="flex items-center gap-2">
-                              <span className="inline-flex items-center rounded-full bg-teal-100 px-2 py-0.5 text-[10px] font-medium text-teal-800">
+                              <span className="inline-flex items-center rounded-full bg-[var(--sc-primary-100,#d6d6e9)] px-2 py-0.5 text-[10px] font-medium text-[var(--sc-primary-active,#1c1c48)]">
                                 {isNA ? "N/A" : batchNum}
                               </span>
                               <span className="text-[10px] text-gray-500">
@@ -480,7 +480,7 @@ export function BatchAssignmentSection(props: BatchAssignmentSectionProps) {
                 )}
 
                 {isFormOpenForField && addForm && (
-                  <div className="rounded bg-white border border-teal-200 p-3 mt-2">
+                  <div className="rounded bg-white border border-[var(--sc-primary-200,#adadcf)] p-3 mt-2">
                     <div className="space-y-3">
                       <div className="flex items-center gap-3">
                         <label className="flex items-center gap-1.5 cursor-pointer">
@@ -494,7 +494,7 @@ export function BatchAssignmentSection(props: BatchAssignmentSectionProps) {
                                 batchNumber: e.target.checked ? "N/A" : "",
                               })
                             }
-                            className="rounded border-gray-300 text-teal-600 focus:ring-teal-500 h-4 w-4"
+                            className="rounded border-gray-300 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] h-4 w-4"
                           />
                           <span className="text-xs text-gray-700">N/A</span>
                         </label>
@@ -515,7 +515,7 @@ export function BatchAssignmentSection(props: BatchAssignmentSectionProps) {
                               })
                             }
                             placeholder="e.g. B241"
-                            className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                            className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-[var(--sc-primary,#323288)] focus:ring-1 focus:ring-[var(--sc-primary,#323288)]"
                           />
                         </div>
                       )}
@@ -542,7 +542,7 @@ export function BatchAssignmentSection(props: BatchAssignmentSectionProps) {
                                   type="checkbox"
                                   checked={isSelected}
                                   onChange={() => handleToggleItem(li.id)}
-                                  className="rounded border-gray-300 text-teal-600 focus:ring-teal-500 h-4 w-4"
+                                  className="rounded border-gray-300 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] h-4 w-4"
                                 />
                                 <span className="text-xs text-gray-800">{desc}</span>
                                 <span className="text-[10px] text-gray-400 ml-auto">
@@ -558,7 +558,7 @@ export function BatchAssignmentSection(props: BatchAssignmentSectionProps) {
                         <button
                           onClick={handleSave}
                           disabled={isSaving}
-                          className="rounded bg-teal-600 px-4 py-2 text-xs font-medium text-white hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                          className="rounded bg-[var(--sc-primary,#323288)] px-4 py-2 text-xs font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed"
                         >
                           {isSaving ? "Saving..." : "Save"}
                         </button>

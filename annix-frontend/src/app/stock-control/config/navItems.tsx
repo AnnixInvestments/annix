@@ -873,6 +873,40 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     ),
   },
   {
+    key: "labour",
+    href: "/stock-control/portal/admin/labour",
+    label: "Labour & Curing",
+    defaultRoles: ["admin"],
+    group: "Resources",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4z"
+        />
+      </svg>
+    ),
+  },
+  {
+    key: "blasting",
+    href: "/stock-control/portal/admin/blasting",
+    label: "Blasting",
+    defaultRoles: ["admin"],
+    group: "Resources",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M13 10V3L4 14h7v7l9-11h-7z"
+        />
+      </svg>
+    ),
+  },
+  {
     key: "rubber-quote",
     href: "/stock-control/portal/rubber-quote",
     label: "Rubber Quote",

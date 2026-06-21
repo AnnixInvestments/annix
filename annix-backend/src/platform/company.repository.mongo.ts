@@ -23,18 +23,38 @@ export class MongoCompanyRepository
     companyType: CompanyType,
     namePattern: string | null,
     limit: number,
+    ownerCompanyId?: number,
   ): Promise<Company[]> {
     const query: Record<string, unknown> = { companyType };
     if (namePattern) {
       const fragment = namePattern.replace(/^%/, "").replace(/%$/, "");
       query.name = { $regex: escapeRegExp(fragment), $options: "i" };
     }
+    if (ownerCompanyId !== undefined) {
+      query.$or = [
+        { ownerCompanyId },
+        { ownerCompanyId: null },
+        { ownerCompanyId: { $exists: false } },
+      ];
+    }
     const documents = await this.documents.find(query).sort({ name: 1 }).limit(limit).lean().exec();
     return this.toDomainList(documents);
   }
 
-  async findOneByIdAndType(id: number, companyType: CompanyType): Promise<Company | null> {
-    const document = await this.documents.findOne({ _id: id, companyType }).lean().exec();
+  async findOneByIdAndType(
+    id: number,
+    companyType: CompanyType,
+    ownerCompanyId?: number,
+  ): Promise<Company | null> {
+    const query: Record<string, unknown> = { _id: id, companyType };
+    if (ownerCompanyId !== undefined) {
+      query.$or = [
+        { ownerCompanyId },
+        { ownerCompanyId: null },
+        { ownerCompanyId: { $exists: false } },
+      ];
+    }
+    const document = await this.documents.findOne(query).lean().exec();
     return this.toDomain(document);
   }
 

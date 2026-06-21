@@ -499,6 +499,7 @@ import { WebsitePagesService } from "./website-pages.service";
     RubberAccountingService,
     RubberCompanyDirectorService,
     RubberStatementReconciliationService,
+    RubberRollStockRepository,
   ],
 })
 export class RubberLiningModule {}

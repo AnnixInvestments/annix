@@ -106,28 +106,43 @@ export class RubberPricingService {
     agents?: RubberBondingAgentSalePrice[] | null,
     bondingAgentSupplier?: string | null,
   ): number {
-    const baseline = bondingType ? (familyConfig.cwAgentBaselinePerM2[bondingType] ?? 0) : 0;
     if (!bondingType) {
       return 0;
     }
+    const baseline = familyConfig.cwAgentBaselinePerM2[bondingType] ?? 0;
     const supplier = bondingAgentSupplier ?? familyConfig.defaultBondingAgentSupplier;
     const supplierBaselines = familyConfig.cwAgentSupplierBaselines[supplier];
     const supplierBaseline = supplierBaselines ? supplierBaselines[bondingType] : undefined;
+    const supplierRecipe = familyConfig.cwSupplierRecipes?.[supplier]?.[bondingType];
+    const recipe = supplierRecipe ?? familyConfig.cwRecipes?.[bondingType];
+    const recipeSum = this.recipeAgentSum(recipe, agents);
+    if (supplierRecipe != null && supplierRecipe.length > 0 && recipeSum != null) {
+      return recipeSum;
+    }
     if (supplierBaseline != null) {
       return supplierBaseline;
     }
-    if (!agents || agents.length === 0) {
-      return baseline;
+    if (recipeSum != null) {
+      return recipeSum;
     }
-    const recipe = familyConfig.cwRecipes?.[bondingType];
+    return baseline;
+  }
+
+  private recipeAgentSum(
+    recipe: string[] | undefined,
+    agents?: RubberBondingAgentSalePrice[] | null,
+  ): number | null {
     if (!recipe || recipe.length === 0) {
-      return baseline;
+      return null;
+    }
+    if (!agents || agents.length === 0) {
+      return null;
     }
     const priceByName = new Map(agents.map((agent) => [agent.name, agent.salePerM2]));
     const resolved = recipe.map((name) => priceByName.get(name));
     const allResolvable = resolved.every((sale) => sale != null && sale > 0);
     if (!allResolvable) {
-      return baseline;
+      return null;
     }
     return resolved.reduce<number>((total, sale) => total + (sale ?? 0), 0);
   }

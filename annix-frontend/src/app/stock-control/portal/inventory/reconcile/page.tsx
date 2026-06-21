@@ -285,7 +285,9 @@ export default function ReconcilePage() {
             onDragLeave={() => setIsDragging(false)}
             onClick={() => fileInputRef.current?.click()}
             className={`border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition-colors ${
-              isDragging ? "border-teal-500 bg-teal-50" : "border-gray-300 hover:border-teal-400"
+              isDragging
+                ? "border-[var(--sc-primary,#323288)] bg-[var(--sc-primary-50,#eeeef6)]"
+                : "border-gray-300 hover:border-[var(--sc-primary-400,#5b5b9c)]"
             }`}
           >
             <input
@@ -322,7 +324,7 @@ export default function ReconcilePage() {
               type="button"
               onClick={() => handleAnalyze()}
               disabled={!file || isAnalyzing}
-              className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               {isAnalyzing ? "Analysing…" : "Analyse & Reconcile"}
             </button>
@@ -494,7 +496,7 @@ function ReconciliationResult(props: ResultProps) {
               type="checkbox"
               checked={props.issuesOnly}
               onChange={props.onToggleIssuesOnly}
-              className="h-4 w-4 rounded border-gray-300 text-teal-600"
+              className="h-4 w-4 rounded border-gray-300 text-[var(--sc-primary,#323288)]"
             />
             Show only items with discrepancies
           </label>
@@ -659,7 +661,7 @@ function DocumentVerificationTable(props: {
           <button
             type="button"
             onClick={props.onCreateAllDeliveries}
-            className="shrink-0 rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
+            className="shrink-0 rounded-md bg-[var(--sc-primary,#323288)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)]"
           >
             Create all missing ({props.pendingMissingCount})
           </button>
@@ -730,7 +732,7 @@ function DocumentVerificationTable(props: {
                             })
                           }
                           disabled={creating}
-                          className="rounded bg-teal-600 px-2 py-0.5 text-[11px] font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+                          className="rounded bg-[var(--sc-primary,#323288)] px-2 py-0.5 text-[11px] font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
                         >
                           {creating ? "Creating…" : "Create delivery"}
                         </button>
@@ -1071,7 +1073,7 @@ function IssuanceFixModal(props: IssuanceFixModalProps) {
                     name="issuance-mode"
                     checked={mode === value}
                     onChange={() => setMode(value)}
-                    className="h-4 w-4 text-teal-600"
+                    className="h-4 w-4 text-[var(--sc-primary,#323288)]"
                   />
                   {label}
                 </label>

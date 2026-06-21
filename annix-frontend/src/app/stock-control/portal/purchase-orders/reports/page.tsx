@@ -71,7 +71,10 @@ export default function CpoReportsPage() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center space-x-2 text-sm text-gray-500 mb-1">
-            <Link href="/stock-control/portal/purchase-orders" className="hover:text-teal-600">
+            <Link
+              href="/stock-control/portal/purchase-orders"
+              className="hover:text-[var(--sc-primary,#323288)]"
+            >
               Purchase Orders
             </Link>
             <span>/</span>
@@ -82,7 +85,7 @@ export default function CpoReportsPage() {
         <button
           onClick={handleExportCsv}
           disabled={exportCsv.isPending}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50"
+          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
         >
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
@@ -109,7 +112,7 @@ export default function CpoReportsPage() {
             onClick={() => setActiveTab(tab.key)}
             className={`px-3 py-2 text-sm font-medium rounded-md ${
               activeTab === tab.key
-                ? "bg-teal-100 text-teal-800"
+                ? "bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary-active,#1c1c48)]"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
@@ -126,7 +129,7 @@ export default function CpoReportsPage() {
 
       {isLoading ? (
         <div className="flex items-center justify-center min-h-48">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600" />
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--sc-primary,#323288)]" />
         </div>
       ) : (
         <>
@@ -168,7 +171,7 @@ export default function CpoReportsPage() {
                           <td className="px-6 py-3 whitespace-nowrap">
                             <Link
                               href={`/stock-control/portal/purchase-orders/${cpo.cpoId}`}
-                              className="text-teal-600 font-medium hover:underline"
+                              className="text-[var(--sc-primary,#323288)] font-medium hover:underline"
                             >
                               {cpo.cpoNumber}
                             </Link>
@@ -205,7 +208,7 @@ export default function CpoReportsPage() {
                             <div className="flex items-center space-x-2">
                               <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
                                 <div
-                                  className={`h-full rounded-full ${cpo.percentComplete >= 100 ? "bg-blue-500" : "bg-teal-500"}`}
+                                  className={`h-full rounded-full ${cpo.percentComplete >= 100 ? "bg-blue-500" : "bg-[var(--sc-primary,#323288)]"}`}
                                   style={{ width: `${cpo.percentComplete}%` }}
                                 />
                               </div>
@@ -285,7 +288,7 @@ export default function CpoReportsPage() {
                             <td className="px-6 py-3 whitespace-nowrap">
                               <Link
                                 href={`/stock-control/portal/purchase-orders/${row.cpoId}`}
-                                className="text-teal-600 font-medium hover:underline"
+                                className="text-[var(--sc-primary,#323288)] font-medium hover:underline"
                               >
                                 {row.cpoNumber}
                               </Link>

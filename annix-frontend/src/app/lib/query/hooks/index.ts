@@ -1199,6 +1199,8 @@ export {
   useRegisterPasskey,
   useRenamePasskey,
 } from "./passkey/usePasskeys";
+export type { InspectionBookingDetails } from "./public/usePublicInspectionBooking";
+export { usePublicInspectionBooking } from "./public/usePublicInspectionBooking";
 export type { PublicStats, UpcomingRfq } from "./public/usePublicStats";
 export { usePublicStats } from "./public/usePublicStats";
 export type { B16RatingResponse } from "./reference/useB16Rating";
@@ -1424,6 +1426,7 @@ export {
   useDownloadStockItemQrPdf,
   useEndPositectorStreamingSession,
   useEnrichPaintPriceSpecs,
+  useEnrichRubberBondingCoverage,
   useImportBundlePdf,
   useImportJob,
   useImportPaintPriceList,

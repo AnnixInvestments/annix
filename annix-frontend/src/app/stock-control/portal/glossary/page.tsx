@@ -118,7 +118,7 @@ export default function GlossaryPage() {
               aria-checked={!hideTooltips}
               onClick={toggleTooltips}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                !hideTooltips ? "bg-teal-600" : "bg-gray-300"
+                !hideTooltips ? "bg-[var(--sc-primary,#323288)]" : "bg-gray-300"
               }`}
             >
               <span
@@ -151,7 +151,7 @@ export default function GlossaryPage() {
             placeholder="Search terms..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
           />
         </div>
       </div>
@@ -162,7 +162,7 @@ export default function GlossaryPage() {
           onClick={() => setActiveCategory(null)}
           className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
             !activeCategory
-              ? "bg-teal-100 text-teal-800"
+              ? "bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary-active,#1c1c48)]"
               : "bg-gray-100 text-gray-600 hover:bg-gray-200"
           }`}
         >
@@ -175,7 +175,7 @@ export default function GlossaryPage() {
             onClick={() => setActiveCategory(cat)}
             className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
               activeCategory === cat
-                ? "bg-teal-100 text-teal-800"
+                ? "bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary-active,#1c1c48)]"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
@@ -197,7 +197,7 @@ export default function GlossaryPage() {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-teal-100 text-teal-800">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary-active,#1c1c48)]">
                       {t.abbreviation}
                     </span>
                     <span className="font-medium text-gray-900 text-sm">{t.term}</span>
@@ -276,7 +276,7 @@ export default function GlossaryPage() {
                     type="text"
                     value={editForm.term}
                     onChange={(e) => setEditForm((f) => ({ ...f, term: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--sc-primary,#323288)]"
                   />
                 </div>
                 <div>
@@ -290,7 +290,7 @@ export default function GlossaryPage() {
                       }))
                     }
                     rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--sc-primary,#323288)]"
                   />
                 </div>
                 <div>
@@ -299,7 +299,7 @@ export default function GlossaryPage() {
                     type="text"
                     value={editForm.category}
                     onChange={(e) => setEditForm((f) => ({ ...f, category: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--sc-primary,#323288)]"
                   />
                 </div>
               </div>
@@ -315,7 +315,7 @@ export default function GlossaryPage() {
                   type="button"
                   onClick={handleSave}
                   disabled={upsertTerm.isPending}
-                  className="px-4 py-2 text-sm text-white bg-teal-600 hover:bg-teal-700 rounded-lg disabled:opacity-50"
+                  className="px-4 py-2 text-sm text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)] rounded-lg disabled:opacity-50"
                 >
                   {upsertTerm.isPending ? "Saving..." : "Save"}
                 </button>

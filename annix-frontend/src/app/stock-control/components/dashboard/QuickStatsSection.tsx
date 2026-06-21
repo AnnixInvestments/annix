@@ -16,7 +16,7 @@ export function QuickStatsSection(props: QuickStatsSectionProps) {
     <Link
       key="items"
       href="/stock-control/portal/inventory"
-      className="bg-white shadow-sm border border-gray-200 rounded-lg p-3 sm:p-4 hover:ring-2 hover:ring-teal-500 transition-all"
+      className="bg-white shadow-sm border border-gray-200 rounded-lg p-3 sm:p-4 hover:ring-2 hover:ring-[var(--sc-primary,#323288)] transition-all"
     >
       <p className="text-xs font-medium text-gray-500">Items</p>
       <p className="text-xl sm:text-2xl font-semibold text-gray-900">{stats.totalItems}</p>
@@ -37,7 +37,7 @@ export function QuickStatsSection(props: QuickStatsSectionProps) {
     <Link
       key="active-jobs"
       href="/stock-control/portal/job-cards"
-      className="bg-white shadow-sm border border-gray-200 rounded-lg p-3 sm:p-4 hover:ring-2 hover:ring-teal-500 transition-all"
+      className="bg-white shadow-sm border border-gray-200 rounded-lg p-3 sm:p-4 hover:ring-2 hover:ring-[var(--sc-primary,#323288)] transition-all"
     >
       <p className="text-xs font-medium text-gray-500">Active Jobs</p>
       <p className="text-xl sm:text-2xl font-semibold text-gray-900">{stats.activeJobs}</p>

@@ -25,6 +25,11 @@ export class MongoChatConversationParticipantRepository
     return participantRows.map((p) => p.conversationId as number);
   }
 
+  async isParticipant(conversationId: number, userId: number): Promise<boolean> {
+    const count = await this.documents.countDocuments({ conversationId, userId }).exec();
+    return count > 0;
+  }
+
   async findForUser(userId: number): Promise<ChatConversationParticipant[]> {
     const docs = await this.documents.find({ userId }).lean().exec();
     return this.toDomainList(docs);

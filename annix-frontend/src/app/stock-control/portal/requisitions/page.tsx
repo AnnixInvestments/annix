@@ -13,7 +13,7 @@ export default function RequisitionsPage() {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading requisitions...</p>
         </div>
       </div>
@@ -25,7 +25,7 @@ export default function RequisitionsPage() {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{error.message}</p>
+          <p className="text-gray-600">Something went wrong — please try again.</p>
         </div>
       </div>
     );
@@ -111,7 +111,7 @@ export default function RequisitionsPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Link
                         href={`/stock-control/portal/requisitions/${req.id}`}
-                        className="text-sm font-medium text-teal-700 hover:text-teal-900"
+                        className="text-sm font-medium text-[var(--sc-primary-hover,#252560)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                       >
                         {req.requisitionNumber}
                       </Link>
@@ -132,7 +132,7 @@ export default function RequisitionsPage() {
                         ) : req.jobCard ? (
                           <Link
                             href={`/stock-control/portal/job-cards/${req.jobCardId}`}
-                            className="text-teal-700 hover:text-teal-900"
+                            className="text-[var(--sc-primary-hover,#252560)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                           >
                             {req.jobCard.jobNumber}
                           </Link>

@@ -71,7 +71,7 @@ export function WidgetVisibilityToggle({
                     {widget.label}
                   </span>
                   <div
-                    className={`relative w-9 h-5 rounded-full transition-colors ${isHidden ? "bg-gray-300" : "bg-teal-500"}`}
+                    className={`relative w-9 h-5 rounded-full transition-colors ${isHidden ? "bg-gray-300" : "bg-[var(--sc-primary,#323288)]"}`}
                   >
                     <div
                       className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${isHidden ? "left-0.5" : "left-4"}`}

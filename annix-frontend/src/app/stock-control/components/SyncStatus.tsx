@@ -48,7 +48,7 @@ export function SyncStatus() {
             : status.isSyncing
               ? "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200"
               : totalPending > 0
-                ? "bg-teal-100 dark:bg-teal-900/30 text-teal-800 dark:text-teal-200"
+                ? "bg-[var(--sc-primary-100,#d6d6e9)] dark:bg-[var(--sc-primary-active,#1c1c48)]/30 text-[var(--sc-primary-active,#1c1c48)] dark:text-[var(--sc-primary-200,#adadcf)]"
                 : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
         }`}
       >
@@ -64,7 +64,7 @@ export function SyncStatus() {
           </>
         ) : totalPending > 0 ? (
           <>
-            <div className="w-2 h-2 rounded-full bg-teal-500" />
+            <div className="w-2 h-2 rounded-full bg-[var(--sc-primary,#323288)]" />
             <span>{totalPending} pending</span>
           </>
         ) : null}
@@ -121,7 +121,7 @@ export function SyncStatus() {
                 <button
                   onClick={handleSync}
                   disabled={!status.isOnline || status.isSyncing}
-                  className="w-full px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="w-full px-4 py-2 bg-[var(--sc-primary,#323288)] text-white text-sm font-medium rounded-lg hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {status.isSyncing ? "Syncing..." : "Sync Now"}
                 </button>

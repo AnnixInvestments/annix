@@ -278,7 +278,7 @@ export function WorkflowActionsBar(props: WorkflowActionsBarProps) {
                     onTabChange("coating");
                     onScrollToElement("stock-decision");
                   }}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-[var(--sc-primary,#323288)] text-white hover:bg-[var(--sc-primary-hover,#252560)] transition-colors"
                 >
                   Stock Assessment
                 </button>
@@ -290,7 +290,7 @@ export function WorkflowActionsBar(props: WorkflowActionsBarProps) {
                       `/stock-control/portal/requisitions/${requisition.id}?fromJobCard=${jobId}&completeStep=${bg.stepKey}`,
                     )
                   }
-                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-[var(--sc-primary,#323288)] text-white hover:bg-[var(--sc-primary-hover,#252560)] transition-colors"
                 >
                   View Requisition
                 </button>
@@ -301,7 +301,7 @@ export function WorkflowActionsBar(props: WorkflowActionsBarProps) {
                       onTabChange("stock-issues");
                       onScrollToElement("stock-allocation-section");
                     }}
-                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-[var(--sc-primary,#323288)] text-white hover:bg-[var(--sc-primary-hover,#252560)] transition-colors"
                   >
                     <svg
                       className="w-4 h-4 mr-1"
@@ -392,7 +392,7 @@ export function WorkflowActionsBar(props: WorkflowActionsBarProps) {
                     onTabChange("quality");
                     onScrollToElement("qa-review-section");
                   }}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-[var(--sc-primary,#323288)] text-white hover:bg-[var(--sc-primary-hover,#252560)] transition-colors"
                 >
                   QA Review
                 </button>
@@ -403,7 +403,7 @@ export function WorkflowActionsBar(props: WorkflowActionsBarProps) {
                     onTabChange("quality");
                     onScrollToElement("qa-review-section");
                   }}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-[var(--sc-primary,#323288)] text-white hover:bg-[var(--sc-primary-hover,#252560)] transition-colors"
                 >
                   View QA Repairs
                 </button>
@@ -434,7 +434,7 @@ export function WorkflowActionsBar(props: WorkflowActionsBarProps) {
                     onTabChange("quality");
                     onScrollToElement("qa-final-photos-section");
                   }}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-[var(--sc-primary,#323288)] text-white hover:bg-[var(--sc-primary-hover,#252560)] transition-colors"
                 >
                   Upload Final Photos
                 </button>
@@ -442,7 +442,7 @@ export function WorkflowActionsBar(props: WorkflowActionsBarProps) {
                 <button
                   key={bg.stepKey}
                   onClick={onShowInspectionModal}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-[var(--sc-primary,#323288)] text-white hover:bg-[var(--sc-primary-hover,#252560)] transition-colors"
                 >
                   Book Inspection
                 </button>
@@ -453,7 +453,7 @@ export function WorkflowActionsBar(props: WorkflowActionsBarProps) {
                     onTabChange("quality");
                     onScrollToElement("data-book-section");
                   }}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-[var(--sc-primary,#323288)] text-white hover:bg-[var(--sc-primary-hover,#252560)] transition-colors"
                 >
                   Review Data Book
                 </button>

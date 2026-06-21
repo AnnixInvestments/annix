@@ -135,7 +135,7 @@ export function InventoryListView(props: InventoryListViewProps) {
                     type="checkbox"
                     checked={items.length > 0 && items.every((item) => selectedIds.has(item.id))}
                     onChange={onToggleSelectAll}
-                    className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                    className="h-4 w-4 rounded border-gray-300 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)]"
                   />
                 </th>
                 <th
@@ -426,7 +426,7 @@ function ListTableRow({
           type="checkbox"
           checked={isSelected}
           onChange={() => onToggleSelect(item.id)}
-          className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+          className="h-4 w-4 rounded border-gray-300 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)]"
         />
       </td>
       <td className="hidden sm:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
@@ -439,7 +439,7 @@ function ListTableRow({
         <div className="flex items-center space-x-2">
           <Link
             href={`/stock-control/portal/inventory/${item.id}`}
-            className="text-sm font-medium text-teal-700 hover:text-teal-900 break-words"
+            className="text-sm font-medium text-[var(--sc-primary-hover,#252560)] hover:text-[var(--sc-primary-active,#1c1c48)] break-words"
           >
             {item.name}
           </Link>
@@ -483,8 +483,10 @@ function ListTableRow({
           min={0}
           value={minLevel}
           onChange={(e) => onMinLevelChange(item.id, parseInt(e.target.value, 10) || 0)}
-          className={`w-16 rounded-md shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm text-right ${
-            hasPendingMinLevel ? "border-teal-500 bg-teal-50" : "border-gray-300"
+          className={`w-16 rounded-md shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm text-right ${
+            hasPendingMinLevel
+              ? "border-[var(--sc-primary,#323288)] bg-[var(--sc-primary-50,#eeeef6)]"
+              : "border-gray-300"
           }`}
         />
       </td>
@@ -496,7 +498,7 @@ function ListTableRow({
             step="0.01"
             value={price}
             onChange={(e) => onPriceChange(item.id, parseFloat(e.target.value) || 0)}
-            className={`w-24 rounded-md shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm text-right ${
+            className={`w-24 rounded-md shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm text-right ${
               hasPendingPrice ? "border-green-500 bg-green-50" : "border-gray-300"
             }`}
           />
@@ -510,7 +512,7 @@ function ListTableRow({
           onChange={(e) =>
             onLocationChange(item.id, e.target.value ? parseInt(e.target.value, 10) : null)
           }
-          className={`w-full rounded-md shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm ${
+          className={`w-full rounded-md shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm ${
             hasPendingLocation ? "border-blue-500 bg-blue-50" : "border-gray-300"
           }`}
         >
@@ -525,7 +527,7 @@ function ListTableRow({
       <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-right text-sm">
         <button
           onClick={() => onEdit(item)}
-          className="text-teal-600 hover:text-teal-900 mr-2 lg:mr-3"
+          className="text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] mr-2 lg:mr-3"
         >
           Edit
         </button>
@@ -578,7 +580,7 @@ function PaginationFooter({
               onClick={() => onChangePageSize(size)}
               className={`px-2 py-1 text-sm rounded-md ${
                 pageSize === size
-                  ? "bg-teal-600 text-white"
+                  ? "bg-[var(--sc-primary,#323288)] text-white"
                   : "border text-gray-600 hover:text-gray-900 hover:bg-gray-100"
               }`}
             >

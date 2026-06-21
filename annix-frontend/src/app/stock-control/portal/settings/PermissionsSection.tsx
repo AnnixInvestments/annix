@@ -343,7 +343,7 @@ export function PermissionsSection({
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className="px-2 py-1 text-[10px] text-white bg-teal-600 rounded hover:bg-teal-700 disabled:opacity-50"
+                className="px-2 py-1 text-[10px] text-white bg-[var(--sc-primary,#323288)] rounded hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
               >
                 {saving ? "Saving..." : "Save"}
               </button>
@@ -371,12 +371,12 @@ export function PermissionsSection({
                         if (e.key === "Enter") handleSaveRoleLabel(role.id);
                         else if (e.key === "Escape") setEditingRoleId(null);
                       }}
-                      className="px-2 py-1 text-xs border border-teal-500 rounded focus:outline-none"
+                      className="px-2 py-1 text-xs border border-[var(--sc-primary,#323288)] rounded focus:outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => handleSaveRoleLabel(role.id)}
-                      className="text-[10px] text-teal-600 hover:text-teal-800"
+                      className="text-[10px] text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                     >
                       Save
                     </button>
@@ -396,7 +396,9 @@ export function PermissionsSection({
                     type="button"
                     onClick={() => setSelectedRole(role.key)}
                     className={`px-3 py-1 text-xs font-medium rounded-l-md whitespace-nowrap transition-colors ${
-                      isActive ? "bg-teal-600 text-white" : "text-gray-600 hover:bg-gray-100"
+                      isActive
+                        ? "bg-[var(--sc-primary,#323288)] text-white"
+                        : "text-gray-600 hover:bg-gray-100"
                     } ${isSystem ? "rounded-r-md" : ""}`}
                   >
                     {role.label}
@@ -412,7 +414,7 @@ export function PermissionsSection({
                         title="Rename role"
                         className={`px-1.5 py-1 text-xs transition-colors ${
                           isActive
-                            ? "bg-teal-600 text-white hover:bg-teal-700"
+                            ? "bg-[var(--sc-primary,#323288)] text-white hover:bg-[var(--sc-primary-hover,#252560)]"
                             : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
                         }`}
                       >
@@ -436,7 +438,7 @@ export function PermissionsSection({
                         title="Delete role"
                         className={`px-1.5 py-1 text-xs rounded-r-md transition-colors ${
                           isActive
-                            ? "bg-teal-600 text-white hover:bg-red-600"
+                            ? "bg-[var(--sc-primary,#323288)] text-white hover:bg-red-600"
                             : "text-gray-400 hover:text-red-600 hover:bg-gray-100"
                         }`}
                       >
@@ -470,12 +472,12 @@ export function PermissionsSection({
                     else if (e.key === "Escape") setShowAddRole(false);
                   }}
                   placeholder="New role name"
-                  className="px-2 py-1 text-xs border border-teal-500 rounded focus:outline-none"
+                  className="px-2 py-1 text-xs border border-[var(--sc-primary,#323288)] rounded focus:outline-none"
                 />
                 <button
                   type="button"
                   onClick={handleAddRole}
-                  className="text-[10px] text-teal-600 hover:text-teal-800"
+                  className="text-[10px] text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                 >
                   Add
                 </button>
@@ -494,7 +496,7 @@ export function PermissionsSection({
               <button
                 type="button"
                 onClick={() => setShowAddRole(true)}
-                className="ml-1 px-2 py-1 text-[10px] text-teal-600 hover:text-teal-800 font-medium whitespace-nowrap"
+                className="ml-1 px-2 py-1 text-[10px] text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] font-medium whitespace-nowrap"
               >
                 + Add Role
               </button>
@@ -514,7 +516,7 @@ export function PermissionsSection({
                 onClick={() => setActiveTab("pages")}
                 className={`pb-2 border-b-2 transition-colors ${
                   activeTab === "pages"
-                    ? "border-teal-600 text-teal-700"
+                    ? "border-[var(--sc-primary,#323288)] text-[var(--sc-primary-hover,#252560)]"
                     : "border-transparent text-gray-500 hover:text-gray-700"
                 }`}
               >
@@ -525,7 +527,7 @@ export function PermissionsSection({
                 onClick={() => setActiveTab("actions")}
                 className={`pb-2 border-b-2 transition-colors ${
                   activeTab === "actions"
-                    ? "border-teal-600 text-teal-700"
+                    ? "border-[var(--sc-primary,#323288)] text-[var(--sc-primary-hover,#252560)]"
                     : "border-transparent text-gray-500 hover:text-gray-700"
                 }`}
               >
@@ -574,7 +576,7 @@ export function PermissionsSection({
                       <button
                         type="button"
                         onClick={() => toggleNavGroup(group.items)}
-                        className="text-[10px] font-medium text-teal-600 hover:text-teal-800"
+                        className="text-[10px] font-medium text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                       >
                         {allOn ? "Clear all" : someOn ? "Select all" : "Select all"}
                       </button>
@@ -595,7 +597,7 @@ export function PermissionsSection({
                                 checked={enabled}
                                 disabled={item.immutable}
                                 onChange={() => toggleNavItem(item.key)}
-                                className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                                className="rounded border-gray-300 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)]"
                               />
                               <span className="text-gray-700">{item.label}</span>
                               {item.immutable && (
@@ -652,7 +654,7 @@ export function PermissionsSection({
                       <button
                         type="button"
                         onClick={() => toggleActionGroup(group.keys)}
-                        className="text-[10px] font-medium text-teal-600 hover:text-teal-800"
+                        className="text-[10px] font-medium text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                       >
                         {allOn ? "Clear all" : "Select all"}
                       </button>
@@ -672,7 +674,7 @@ export function PermissionsSection({
                                 type="checkbox"
                                 checked={enabled}
                                 onChange={() => toggleAction(key)}
-                                className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                                className="rounded border-gray-300 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)]"
                               />
                               <span className="text-gray-700">{label}</span>
                             </label>

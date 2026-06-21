@@ -140,11 +140,13 @@ export function QaFinalPhotosSection(props: QaFinalPhotosSectionProps) {
   return (
     <div
       id="qa-final-photos-section"
-      className="rounded-lg border border-teal-200 bg-white shadow-sm"
+      className="rounded-lg border border-[var(--sc-primary-200,#adadcf)] bg-white shadow-sm"
     >
-      <div className="border-b border-teal-200 bg-teal-50 px-5 py-3">
-        <h3 className="text-sm font-semibold text-teal-900">Final Job Photos</h3>
-        <p className="text-xs text-teal-700 mt-0.5">
+      <div className="border-b border-[var(--sc-primary-200,#adadcf)] bg-[var(--sc-primary-50,#eeeef6)] px-5 py-3">
+        <h3 className="text-sm font-semibold text-[var(--sc-primary-active,#1c1c48)]">
+          Final Job Photos
+        </h3>
+        <p className="text-xs text-[var(--sc-primary-hover,#252560)] mt-0.5">
           Upload final photos of the completed job for the data book. These photos are part of the
           official record.
         </p>
@@ -233,7 +235,7 @@ export function QaFinalPhotosSection(props: QaFinalPhotosSectionProps) {
                   setIsSaved(false);
                 }
               }}
-              className="rounded border-gray-300 text-teal-600 focus:ring-teal-500 h-4 w-4"
+              className="rounded border-gray-300 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] h-4 w-4"
             />
             <span className="text-sm text-gray-700">No Photos to Upload</span>
           </label>
@@ -244,7 +246,7 @@ export function QaFinalPhotosSection(props: QaFinalPhotosSectionProps) {
             <button
               onClick={handleSave}
               disabled={!canSave || isSaving}
-              className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              className="rounded-md bg-[var(--sc-primary,#323288)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
             >
               {isSaving ? "Saving..." : "Save Photos"}
             </button>

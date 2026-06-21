@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { DateInput } from "@/app/components/ui/DateInput";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
@@ -272,7 +273,9 @@ export default function StaffLeavePage() {
               >
                 <span
                   className={`inline-flex items-center justify-center w-6 h-6 text-xs rounded-full ${
-                    day.isToday ? "bg-teal-600 text-white font-bold" : "text-gray-700"
+                    day.isToday
+                      ? "bg-[var(--sc-primary,#323288)] text-white font-bold"
+                      : "text-gray-700"
                   }`}
                 >
                   {day.date.day}
@@ -311,251 +314,259 @@ export default function StaffLeavePage() {
         </div>
       </div>
 
-      {showRecordModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">Record Leave</h3>
-            </div>
-            <div className="px-6 py-4 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Leave Type</label>
-                <div className="flex gap-2">
+      {showRecordModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/10 backdrop-blur-md p-4">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Record Leave</h3>
+              </div>
+              <div className="px-6 py-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Leave Type</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setLeaveType("sick")}
+                      className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-colors ${
+                        leaveType === "sick"
+                          ? "bg-red-50 border-red-300 text-red-700"
+                          : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      Sick
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLeaveType("holiday")}
+                      className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-colors ${
+                        leaveType === "holiday"
+                          ? "bg-blue-50 border-blue-300 text-blue-700"
+                          : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      Holiday
+                    </button>
+                  </div>
+                </div>
+
+                {leaveType === "sick" && (
                   <button
                     type="button"
-                    onClick={() => setLeaveType("sick")}
-                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-colors ${
-                      leaveType === "sick"
-                        ? "bg-red-50 border-red-300 text-red-700"
-                        : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-                    }`}
+                    onClick={handleSickToday}
+                    className="w-full py-2 px-3 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg text-sm text-red-700 transition-colors"
                   >
-                    Sick
+                    Mark Sick Today Only
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setLeaveType("holiday")}
-                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-colors ${
-                      leaveType === "holiday"
-                        ? "bg-blue-50 border-blue-300 text-blue-700"
-                        : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-                    }`}
-                  >
-                    Holiday
-                  </button>
-                </div>
-              </div>
+                )}
 
-              {leaveType === "sick" && (
-                <button
-                  type="button"
-                  onClick={handleSickToday}
-                  className="w-full py-2 px-3 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg text-sm text-red-700 transition-colors"
-                >
-                  Mark Sick Today Only
-                </button>
-              )}
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                  <DateInput
-                    value={startDate}
-                    onChange={(value) => setStartDate(value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 [color-scheme:light] dark:[color-scheme:dark]"
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Start Date
+                    </label>
+                    <DateInput
+                      value={startDate}
+                      onChange={(value) => setStartDate(value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] [color-scheme:light] dark:[color-scheme:dark]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                    <DateInput
+                      value={endDate}
+                      onChange={(value) => setEndDate(value)}
+                      min={startDate}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] [color-scheme:light] dark:[color-scheme:dark]"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                  <DateInput
-                    value={endDate}
-                    onChange={(value) => setEndDate(value)}
-                    min={startDate}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 [color-scheme:light] dark:[color-scheme:dark]"
-                  />
-                </div>
-              </div>
 
-              {leaveType === "sick" && (
+                {leaveType === "sick" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Sick Note (optional)
+                    </label>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*,.pdf"
+                      capture="environment"
+                      onChange={(e) => {
+                        const files = e.target.files;
+                        const picked = files ? files[0] : null;
+                        setSickNoteFile(picked || null);
+                      }}
+                      className="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[var(--sc-primary-50,#eeeef6)] file:text-[var(--sc-primary-hover,#252560)] hover:file:bg-[var(--sc-primary-100,#d6d6e9)]"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Take a photo or upload your sick note
+                    </p>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Sick Note (optional)
+                    Notes (optional)
                   </label>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*,.pdf"
-                    capture="environment"
-                    onChange={(e) => {
-                      const files = e.target.files;
-                      const picked = files ? files[0] : null;
-                      setSickNoteFile(picked || null);
-                    }}
-                    className="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
+                    placeholder="Any additional notes..."
                   />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Take a photo or upload your sick note
-                  </p>
                 </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Notes (optional)
-                </label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                  placeholder="Any additional notes..."
-                />
               </div>
-            </div>
-            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setShowRecordModal(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveLeave}
-                disabled={saving || uploadingNote || !startDate || !endDate}
-                className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {saving ? "Saving..." : uploadingNote ? "Uploading note..." : "Save"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {viewingRecord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Leave Details</h3>
-              <button
-                type="button"
-                onClick={() => setViewingRecord(null)}
-                className="p-1 hover:bg-gray-100 rounded"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-            <div className="px-6 py-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`px-2 py-1 rounded text-xs font-medium ${leaveTypeBadgeColor(viewingRecord.leaveType)}`}
-                >
-                  {leaveTypeLabel(viewingRecord.leaveType)}
-                </span>
-                <span className="text-sm text-gray-700 font-medium">
-                  {viewingRecord.userName ? viewingRecord.userName : "Unknown User"}
-                </span>
-              </div>
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">Dates:</span> {viewingRecord.startDate} to{" "}
-                {viewingRecord.endDate}
-              </div>
-              {viewingRecord.notes && (
-                <div className="text-sm text-gray-600">
-                  <span className="font-medium">Notes:</span> {viewingRecord.notes}
-                </div>
-              )}
-              {viewingRecord.sickNoteUrl && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-700">Sick Note</p>
-                  {loadingSickNote && <p className="text-sm text-gray-500">Loading sick note...</p>}
-                  {sickNoteViewUrl && (
-                    <div className="flex gap-2">
-                      <a
-                        href={sickNoteViewUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-teal-700 bg-teal-50 rounded-lg hover:bg-teal-100 transition-colors"
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                          />
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                          />
-                        </svg>
-                        View
-                      </a>
-                      <a
-                        href={sickNoteViewUrl}
-                        download={
-                          viewingRecord.sickNoteOriginalFilename
-                            ? viewingRecord.sickNoteOriginalFilename
-                            : "sick-note"
-                        }
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                          />
-                        </svg>
-                        Download
-                      </a>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="px-6 py-4 border-t border-gray-200 flex justify-between">
-              {(viewingRecord.userId === (user ? user.id : null) || isAdmin) && (
+              <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => handleDeleteRecord(viewingRecord)}
-                  className="px-4 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100"
+                  onClick={() => setShowRecordModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
                 >
-                  Delete
+                  Cancel
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setViewingRecord(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 ml-auto"
-              >
-                Close
-              </button>
+                <button
+                  type="button"
+                  onClick={handleSaveLeave}
+                  disabled={saving || uploadingNote || !startDate || !endDate}
+                  className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-lg hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {saving ? "Saving..." : uploadingNote ? "Uploading note..." : "Save"}
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
+
+      {viewingRecord &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/10 backdrop-blur-md p-4">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">Leave Details</h3>
+                <button
+                  type="button"
+                  onClick={() => setViewingRecord(null)}
+                  className="p-1 hover:bg-gray-100 rounded"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+              <div className="px-6 py-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`px-2 py-1 rounded text-xs font-medium ${leaveTypeBadgeColor(viewingRecord.leaveType)}`}
+                  >
+                    {leaveTypeLabel(viewingRecord.leaveType)}
+                  </span>
+                  <span className="text-sm text-gray-700 font-medium">
+                    {viewingRecord.userName ? viewingRecord.userName : "Unknown User"}
+                  </span>
+                </div>
+                <div className="text-sm text-gray-600">
+                  <span className="font-medium">Dates:</span> {viewingRecord.startDate} to{" "}
+                  {viewingRecord.endDate}
+                </div>
+                {viewingRecord.notes && (
+                  <div className="text-sm text-gray-600">
+                    <span className="font-medium">Notes:</span> {viewingRecord.notes}
+                  </div>
+                )}
+                {viewingRecord.sickNoteUrl && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-gray-700">Sick Note</p>
+                    {loadingSickNote && (
+                      <p className="text-sm text-gray-500">Loading sick note...</p>
+                    )}
+                    {sickNoteViewUrl && (
+                      <div className="flex gap-2">
+                        <a
+                          href={sickNoteViewUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-[var(--sc-primary-hover,#252560)] bg-[var(--sc-primary-50,#eeeef6)] rounded-lg hover:bg-[var(--sc-primary-100,#d6d6e9)] transition-colors"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                            />
+                          </svg>
+                          View
+                        </a>
+                        <a
+                          href={sickNoteViewUrl}
+                          download={
+                            viewingRecord.sickNoteOriginalFilename
+                              ? viewingRecord.sickNoteOriginalFilename
+                              : "sick-note"
+                          }
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                            />
+                          </svg>
+                          Download
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="px-6 py-4 border-t border-gray-200 flex justify-between">
+                {(viewingRecord.userId === (user ? user.id : null) || isAdmin) && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteRecord(viewingRecord)}
+                    className="px-4 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100"
+                  >
+                    Delete
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setViewingRecord(null)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 ml-auto"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

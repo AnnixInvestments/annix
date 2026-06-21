@@ -9,9 +9,12 @@ import { NotificationsModule } from "../notifications/notifications.module";
 import { StockControlAuthGuard } from "../stock-control/guards/stock-control-auth.guard";
 import { StockControlProfileRepository } from "../stock-control/repositories/stock-control-profile.repository";
 import { MongoStockControlProfileRepository } from "../stock-control/repositories/stock-control-profile.repository.mongo";
+import { StockControlUserRepository } from "../stock-control/repositories/stock-control-user.repository";
+import { MongoStockControlUserRepository } from "../stock-control/repositories/stock-control-user.repository.mongo";
 import { StockItemRepository } from "../stock-control/repositories/stock-item.repository";
 import { MongoStockItemRepository } from "../stock-control/repositories/stock-item.repository.mongo";
 import { StockControlProfileSchema } from "../stock-control/schemas/stock-control-profile.schema";
+import { StockControlUserSchema } from "../stock-control/schemas/stock-control-user.schema";
 import { StockItemSchema } from "../stock-control/schemas/stock-item.schema";
 import { StorageModule } from "../storage/storage.module";
 import { DemoSeedController } from "./controllers/demo-seed.controller";
@@ -178,6 +181,7 @@ const mongooseFeatures = [
     { name: "StockHoldItem", schema: StockHoldItemSchema },
     { name: "StockItem", schema: StockItemSchema },
     { name: "StockControlProfile", schema: StockControlProfileSchema },
+    { name: "StockControlUser", schema: StockControlUserSchema },
   ]),
 ];
 
@@ -269,6 +273,7 @@ const mongooseFeatures = [
     repositoryProvider(StockHoldItemRepository, MongoStockHoldItemRepository),
     repositoryProvider(StockItemRepository, MongoStockItemRepository),
     repositoryProvider(StockControlProfileRepository, MongoStockControlProfileRepository),
+    repositoryProvider(StockControlUserRepository, MongoStockControlUserRepository),
   ],
   exports: [
     StockManagementLicenseService,

@@ -4,6 +4,7 @@ import { Camera, CheckCircle, FileText, ImageIcon, Trash2, Truck, Upload, X } fr
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { CdnLineMatch, DispatchCdn, DispatchLoadPhoto } from "@/app/lib/api/stockControlApi";
 import { formatDateLongZA } from "@/app/lib/datetime";
 import {
@@ -121,7 +122,7 @@ export default function DispatchPage() {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mx-auto" />
           <p className="mt-4 text-gray-600">Loading dispatch data...</p>
         </div>
       </div>
@@ -136,7 +137,7 @@ export default function DispatchPage() {
           <p className="text-gray-600">{error || "Job card not found"}</p>
           <Link
             href="/stock-control/portal/job-cards"
-            className="mt-4 inline-block text-teal-600 hover:text-teal-800"
+            className="mt-4 inline-block text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
           >
             Back to Job Cards
           </Link>
@@ -199,7 +200,7 @@ export default function DispatchPage() {
       <div className="bg-white shadow rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-            <FileText className="w-5 h-5 mr-2 text-teal-600" />
+            <FileText className="w-5 h-5 mr-2 text-[var(--sc-primary,#323288)]" />
             Customer Delivery Note (CDN)
           </h2>
           {progress.hasCdn && (
@@ -244,7 +245,7 @@ export default function DispatchPage() {
                   className="flex items-center space-x-3 flex-1 cursor-pointer"
                   onClick={() => setShowCdnPreview(cdn)}
                 >
-                  <FileText className="w-8 h-8 text-teal-600" />
+                  <FileText className="w-8 h-8 text-[var(--sc-primary,#323288)]" />
                   <div>
                     <p className="text-sm font-medium text-gray-900">{cdn.originalFilename}</p>
                     <p className="text-xs text-gray-500">
@@ -253,7 +254,7 @@ export default function DispatchPage() {
                       {cdn.createdAt ? ` | ${formatDateLongZA(cdn.createdAt)}` : ""}
                     </p>
                     {cdn.lineMatches && cdn.lineMatches.length > 0 && (
-                      <p className="text-xs text-teal-600 mt-1">
+                      <p className="text-xs text-[var(--sc-primary,#323288)] mt-1">
                         {cdn.lineMatches.length} line items matched
                       </p>
                     )}
@@ -345,7 +346,7 @@ export default function DispatchPage() {
       <div className="bg-white shadow rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-            <Camera className="w-5 h-5 mr-2 text-teal-600" />
+            <Camera className="w-5 h-5 mr-2 text-[var(--sc-primary,#323288)]" />
             Load Photos
           </h2>
           {progress.hasLoadPhotos && (
@@ -437,76 +438,80 @@ export default function DispatchPage() {
         </div>
       )}
 
-      {showCdnPreview && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-screen items-center justify-center p-4">
-            <div
-              className="fixed inset-0 bg-black/10 backdrop-blur-md"
-              onClick={() => setShowCdnPreview(null)}
-            />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
-              <div className="flex items-center justify-between p-4 border-b">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {showCdnPreview.originalFilename}
-                  {showCdnPreview.cdnNumber ? ` (CDN #${showCdnPreview.cdnNumber})` : ""}
-                </h3>
-                <button
-                  onClick={() => setShowCdnPreview(null)}
-                  className="p-1 hover:bg-gray-100 rounded-full"
-                >
-                  <X className="h-5 w-5 text-gray-500" />
-                </button>
+      {showCdnPreview &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] overflow-y-auto">
+            <div className="flex min-h-screen items-center justify-center p-4">
+              <div
+                className="fixed inset-0 bg-black/10 backdrop-blur-md"
+                onClick={() => setShowCdnPreview(null)}
+              />
+              <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+                <div className="flex items-center justify-between p-4 border-b">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {showCdnPreview.originalFilename}
+                    {showCdnPreview.cdnNumber ? ` (CDN #${showCdnPreview.cdnNumber})` : ""}
+                  </h3>
+                  <button
+                    onClick={() => setShowCdnPreview(null)}
+                    className="p-1 hover:bg-gray-100 rounded-full"
+                  >
+                    <X className="h-5 w-5 text-gray-500" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-auto p-4">
+                  {showCdnPreview.mimeType === "application/pdf" ? (
+                    <iframe
+                      src={showCdnPreview.filePath}
+                      className="w-full min-h-[70vh]"
+                      title={showCdnPreview.originalFilename}
+                    />
+                  ) : (
+                    <img
+                      src={showCdnPreview.filePath}
+                      alt={showCdnPreview.originalFilename}
+                      className="max-w-full mx-auto"
+                    />
+                  )}
+                </div>
               </div>
-              <div className="flex-1 overflow-auto p-4">
-                {showCdnPreview.mimeType === "application/pdf" ? (
-                  <iframe
-                    src={showCdnPreview.filePath}
-                    className="w-full min-h-[70vh]"
-                    title={showCdnPreview.originalFilename}
-                  />
-                ) : (
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {showPhotoPreview &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] overflow-y-auto">
+            <div className="flex min-h-screen items-center justify-center p-4">
+              <div
+                className="fixed inset-0 bg-black/10 backdrop-blur-md"
+                onClick={() => setShowPhotoPreview(null)}
+              />
+              <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+                <div className="flex items-center justify-between p-4 border-b">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {showPhotoPreview.originalFilename}
+                  </h3>
+                  <button
+                    onClick={() => setShowPhotoPreview(null)}
+                    className="p-1 hover:bg-gray-100 rounded-full"
+                  >
+                    <X className="h-5 w-5 text-gray-500" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-auto p-4">
                   <img
-                    src={showCdnPreview.filePath}
-                    alt={showCdnPreview.originalFilename}
+                    src={showPhotoPreview.filePath}
+                    alt={showPhotoPreview.originalFilename}
                     className="max-w-full mx-auto"
                   />
-                )}
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {showPhotoPreview && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-screen items-center justify-center p-4">
-            <div
-              className="fixed inset-0 bg-black/10 backdrop-blur-md"
-              onClick={() => setShowPhotoPreview(null)}
-            />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
-              <div className="flex items-center justify-between p-4 border-b">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {showPhotoPreview.originalFilename}
-                </h3>
-                <button
-                  onClick={() => setShowPhotoPreview(null)}
-                  className="p-1 hover:bg-gray-100 rounded-full"
-                >
-                  <X className="h-5 w-5 text-gray-500" />
-                </button>
-              </div>
-              <div className="flex-1 overflow-auto p-4">
-                <img
-                  src={showPhotoPreview.filePath}
-                  alt={showPhotoPreview.originalFilename}
-                  className="max-w-full mx-auto"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

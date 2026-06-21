@@ -51,6 +51,7 @@ export {
   useCommitRubberBondingAgentImport,
   useCreateRubberBondingAgent,
   useDeleteRubberBondingAgent,
+  useEnrichRubberBondingCoverage,
   useImportRubberBondingAgents,
   useRubberBondingAgents,
   useSeedRubberBondingAgents,

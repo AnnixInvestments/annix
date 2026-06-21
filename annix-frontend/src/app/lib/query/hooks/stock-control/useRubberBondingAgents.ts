@@ -57,6 +57,16 @@ export function useSeedRubberBondingAgents() {
   });
 }
 
+export function useEnrichRubberBondingCoverage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => stockControlApiClient.enrichRubberBondingCoverage(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: stockControlKeys.rubberBondingAgents.all });
+    },
+  });
+}
+
 export function useImportRubberBondingAgents() {
   return useMutation({
     mutationFn: (file: File) => stockControlApiClient.importRubberBondingAgents(file),

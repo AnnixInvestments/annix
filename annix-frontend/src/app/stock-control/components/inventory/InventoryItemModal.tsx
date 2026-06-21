@@ -49,7 +49,7 @@ export function InventoryItemModal(props: InventoryItemModalProps) {
                   onChange={(e) =>
                     onUpdateState({ modalForm: { ...modalForm, sku: e.target.value } })
                   }
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                 />
               </div>
               <div>
@@ -60,7 +60,7 @@ export function InventoryItemModal(props: InventoryItemModalProps) {
                   onChange={(e) =>
                     onUpdateState({ modalForm: { ...modalForm, name: e.target.value } })
                   }
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                 />
               </div>
             </div>
@@ -74,7 +74,7 @@ export function InventoryItemModal(props: InventoryItemModalProps) {
                   })
                 }
                 rows={2}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -86,7 +86,7 @@ export function InventoryItemModal(props: InventoryItemModalProps) {
                   onChange={(e) =>
                     onUpdateState({ modalForm: { ...modalForm, category: e.target.value } })
                   }
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                 />
               </div>
               <div>
@@ -99,7 +99,7 @@ export function InventoryItemModal(props: InventoryItemModalProps) {
                       modalForm: { ...modalForm, unitOfMeasure: e.target.value },
                     })
                   }
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                 />
               </div>
             </div>
@@ -118,7 +118,7 @@ export function InventoryItemModal(props: InventoryItemModalProps) {
                       },
                     })
                   }
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                 />
               </div>
               <div>
@@ -134,7 +134,7 @@ export function InventoryItemModal(props: InventoryItemModalProps) {
                       },
                     })
                   }
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                 />
               </div>
               <div>
@@ -150,7 +150,7 @@ export function InventoryItemModal(props: InventoryItemModalProps) {
                       },
                     })
                   }
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                 />
               </div>
             </div>
@@ -166,7 +166,7 @@ export function InventoryItemModal(props: InventoryItemModalProps) {
                     },
                   })
                 }
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
               >
                 <option value="">No location</option>
                 {locations.map((loc) => (
@@ -193,7 +193,7 @@ export function InventoryItemModal(props: InventoryItemModalProps) {
             <button
               onClick={onSave}
               disabled={isSaving}
-              className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] border border-transparent rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               {isSaving ? "Saving..." : editingItem ? "Update" : "Create"}
             </button>
@@ -250,7 +250,7 @@ function PhotoField({ photoPreview, onUpdateState }: PhotoFieldProps) {
           </div>
         )}
         <div className="flex-1">
-          <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-teal-700 bg-teal-50 border border-teal-200 rounded-md hover:bg-teal-100 transition-colors">
+          <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-[var(--sc-primary-hover,#252560)] bg-[var(--sc-primary-50,#eeeef6)] border border-[var(--sc-primary-200,#adadcf)] rounded-md hover:bg-[var(--sc-primary-100,#d6d6e9)] transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"

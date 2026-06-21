@@ -1,5 +1,6 @@
 import { BadRequestException, InternalServerErrorException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
+import { ThrottlerGuard } from "@nestjs/throttler";
 import { RubberCocExtractionService } from "../../rubber-lining/rubber-coc-extraction.service";
 import { IdempotencyService } from "../../shared/services/idempotency.service";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
@@ -50,6 +51,8 @@ describe("DeliveriesController", () => {
       .overrideGuard(StockControlOnboardingGuard)
       .useValue({ canActivate: () => true })
       .overrideGuard(StockControlRoleGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(ThrottlerGuard)
       .useValue({ canActivate: () => true })
       .compile();
 

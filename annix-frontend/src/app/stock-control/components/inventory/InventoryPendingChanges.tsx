@@ -99,18 +99,21 @@ function SelectionBanner({
   onPrintSelected,
 }: SelectionBannerProps) {
   return (
-    <div className="bg-teal-50 border border-teal-200 rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-      <span className="text-sm font-medium text-teal-800">
+    <div className="bg-[var(--sc-primary-50,#eeeef6)] border border-[var(--sc-primary-200,#adadcf)] rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      <span className="text-sm font-medium text-[var(--sc-primary-active,#1c1c48)]">
         {selectedCount} item{selectedCount !== 1 ? "s" : ""} selected
       </span>
       <div className="flex items-center gap-3">
-        <button onClick={onClear} className="text-sm text-teal-700 hover:text-teal-900">
+        <button
+          onClick={onClear}
+          className="text-sm text-[var(--sc-primary-hover,#252560)] hover:text-[var(--sc-primary-active,#1c1c48)]"
+        >
           Clear
         </button>
         <button
           onClick={onPrintSelected}
           disabled={isPrintingLabels}
-          className="inline-flex items-center px-3 py-1.5 border border-transparent rounded-md text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50"
+          className="inline-flex items-center px-3 py-1.5 border border-transparent rounded-md text-sm font-medium text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
         >
           <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path

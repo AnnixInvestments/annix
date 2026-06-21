@@ -122,7 +122,7 @@ export default function CustomerDeliveriesPage() {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading customer delivery notes...</p>
         </div>
       </div>
@@ -130,12 +130,11 @@ export default function CustomerDeliveriesPage() {
   }
 
   if (error && deliveries.length === 0) {
-    const errorMsg = error.message;
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{errorMsg}</p>
+          <p className="text-gray-600">Something went wrong — please try again.</p>
         </div>
       </div>
     );
@@ -149,11 +148,11 @@ export default function CustomerDeliveriesPage() {
       onDrop={handleDrop}
     >
       {(isDragOver || isAnalyzing) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-teal-600/20 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--sc-primary,#323288)]/20 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl p-8 text-center max-w-md mx-4">
             {isAnalyzing ? (
               <>
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto" />
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mx-auto" />
                 <p className="mt-4 text-lg font-medium text-gray-900">Analyzing document...</p>
                 <p className="mt-1 text-sm text-gray-500">
                   Nix is extracting information from your document
@@ -162,7 +161,7 @@ export default function CustomerDeliveriesPage() {
             ) : (
               <>
                 <svg
-                  className="mx-auto h-12 w-12 text-teal-600"
+                  className="mx-auto h-12 w-12 text-[var(--sc-primary,#323288)]"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -212,7 +211,9 @@ export default function CustomerDeliveriesPage() {
               <p className="mt-3 text-sm text-gray-600">
                 This page is for <span className="font-semibold">Customer Delivery Notes</span>{" "}
                 (outgoing deliveries to customers). Supplier documents should be uploaded on the{" "}
-                <span className="font-semibold text-teal-700">Supplier &gt; Delivery Notes</span>{" "}
+                <span className="font-semibold text-[var(--sc-primary-hover,#252560)]">
+                  Supplier &gt; Delivery Notes
+                </span>{" "}
                 page instead.
               </p>
             </div>
@@ -225,7 +226,7 @@ export default function CustomerDeliveriesPage() {
               </button>
               <Link
                 href="/stock-control/portal/deliveries"
-                className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)] transition-colors"
               >
                 Go to Supplier Delivery Notes
               </Link>
@@ -242,7 +243,7 @@ export default function CustomerDeliveriesPage() {
         <div className="flex gap-3">
           <Link
             href="/stock-control/portal/deliveries/scan"
-            className="inline-flex items-center px-4 py-2 border border-teal-600 rounded-md shadow-sm text-sm font-medium text-teal-700 bg-white hover:bg-teal-50"
+            className="inline-flex items-center px-4 py-2 border border-[var(--sc-primary,#323288)] rounded-md shadow-sm text-sm font-medium text-[var(--sc-primary-hover,#252560)] bg-white hover:bg-[var(--sc-primary-50,#eeeef6)]"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -326,7 +327,7 @@ export default function CustomerDeliveriesPage() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <Link
                       href={`/stock-control/portal/deliveries/${delivery.id}`}
-                      className="text-sm font-medium text-teal-700 hover:text-teal-900"
+                      className="text-sm font-medium text-[var(--sc-primary-hover,#252560)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                     >
                       {delivery.deliveryNumber}
                     </Link>

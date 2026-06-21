@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type { StaffMember } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
@@ -203,7 +204,7 @@ export default function StaffPage() {
           </button>
           <button
             onClick={openCreateModal}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700"
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)]"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -237,7 +238,7 @@ export default function StaffPage() {
             placeholder="Search by name, employee number, or department..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
           />
         </div>
         <div className="flex items-center space-x-2">
@@ -245,7 +246,7 @@ export default function StaffPage() {
             onClick={() => setShowActiveOnly(true)}
             className={`px-3 py-2 text-sm font-medium rounded-md ${
               showActiveOnly
-                ? "bg-teal-100 text-teal-800"
+                ? "bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary-active,#1c1c48)]"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
@@ -255,7 +256,7 @@ export default function StaffPage() {
             onClick={() => setShowActiveOnly(false)}
             className={`px-3 py-2 text-sm font-medium rounded-md ${
               !showActiveOnly
-                ? "bg-teal-100 text-teal-800"
+                ? "bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary-active,#1c1c48)]"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
@@ -267,7 +268,7 @@ export default function StaffPage() {
       <div className="bg-white shadow rounded-lg overflow-x-auto">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--sc-primary,#323288)]"></div>
           </div>
         ) : staffMembers.length === 0 ? (
           <div className="text-center py-12">
@@ -299,7 +300,7 @@ export default function StaffPage() {
                       type="checkbox"
                       checked={selectedIds.size === activeStaffCount && activeStaffCount > 0}
                       onChange={toggleSelectAll}
-                      className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
+                      className="h-4 w-4 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] border-gray-300 rounded"
                     />
                   </th>
                   <th
@@ -346,7 +347,7 @@ export default function StaffPage() {
                           type="checkbox"
                           checked={selectedIds.has(member.id)}
                           onChange={() => toggleSelectMember(member.id)}
-                          className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
+                          className="h-4 w-4 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] border-gray-300 rounded"
                         />
                       )}
                     </td>
@@ -405,7 +406,7 @@ export default function StaffPage() {
                     <td className="space-x-1 px-3 py-4 whitespace-nowrap text-right text-sm font-medium sm:space-x-2 sm:px-6">
                       <button
                         onClick={() => openEditModal(member)}
-                        className="text-teal-600 hover:text-teal-900"
+                        className="text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                       >
                         Edit
                       </button>
@@ -438,143 +439,151 @@ export default function StaffPage() {
         )}
       </div>
 
-      {isDownloadingPdf && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
-            <div className="flex flex-col items-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mb-4"></div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Generating ID Cards</h3>
-              <p className="text-sm text-gray-500 text-center">
-                Please wait while we prepare your PDF. This may take a moment...
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showLimitWarning && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
-            <div className="flex flex-col items-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-yellow-100 mb-4">
-                <svg
-                  className="h-6 w-6 text-yellow-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                  />
-                </svg>
+      {isDownloadingPdf &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/10 backdrop-blur-md">
+            <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+              <div className="flex flex-col items-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mb-4"></div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Generating ID Cards</h3>
+                <p className="text-sm text-gray-500 text-center">
+                  Please wait while we prepare your PDF. This may take a moment...
+                </p>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Too Many Selected</h3>
-              <p className="text-sm text-gray-500 text-center mb-4">
-                You have selected {selectedIds.size} staff members. Please select a maximum of 8 at
-                a time (1 page).
-              </p>
-              <button
-                onClick={() => setShowLimitWarning(false)}
-                className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700"
-              >
-                OK
-              </button>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
 
-      {showModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen px-4">
-            <div
-              className="fixed inset-0 bg-black/10 backdrop-blur-md transition-opacity"
-              onClick={() => setShowModal(false)}
-            ></div>
-            <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
-                {editingMember ? "Edit Staff Member" : "Add Staff Member"}
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Name *</label>
-                  <input
-                    type="text"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
-                    placeholder="Full name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Employee Number</label>
-                  <input
-                    type="text"
-                    value={form.employeeNumber}
-                    onChange={(e) => setForm({ ...form, employeeNumber: e.target.value })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
-                    placeholder="Optional"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Department</label>
-                  <select
-                    value={form.departmentId ? form.departmentId : ""}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        departmentId: e.target.value ? parseInt(e.target.value, 10) : null,
-                      })
-                    }
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+      {showLimitWarning &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/10 backdrop-blur-md">
+            <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+              <div className="flex flex-col items-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-yellow-100 mb-4">
+                  <svg
+                    className="h-6 w-6 text-yellow-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
-                    <option value="">No department</option>
-                    {departments.map((dept) => (
-                      <option key={dept.id} value={dept.id}>
-                        {dept.name}
-                      </option>
-                    ))}
-                  </select>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
+                  </svg>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Photo</label>
-                  <PhotoCapture
-                    onCapture={(file) => setCapturedFile(file)}
-                    currentPhotoUrl={
-                      capturedFile
-                        ? URL.createObjectURL(capturedFile)
-                        : editingMember
-                          ? editingMember.photoUrl
-                            ? editingMember.photoUrl
-                            : undefined
-                          : undefined
-                    }
-                  />
-                </div>
-              </div>
-              <div className="mt-6 flex justify-end space-x-3">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Too Many Selected</h3>
+                <p className="text-sm text-gray-500 text-center mb-4">
+                  You have selected {selectedIds.size} staff members. Please select a maximum of 8
+                  at a time (1 page).
+                </p>
                 <button
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  onClick={() => setShowLimitWarning(false)}
+                  className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] border border-transparent rounded-md hover:bg-[var(--sc-primary-hover,#252560)]"
                 >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={isSaving || !form.name.trim()}
-                  className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                >
-                  {isSaving ? "Saving..." : editingMember ? "Update" : "Create"}
+                  OK
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
+
+      {showModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] overflow-y-auto">
+            <div className="flex items-center justify-center min-h-screen px-4">
+              <div
+                className="fixed inset-0 bg-black/10 backdrop-blur-md transition-opacity"
+                onClick={() => setShowModal(false)}
+              ></div>
+              <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  {editingMember ? "Edit Staff Member" : "Add Staff Member"}
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Name *</label>
+                    <input
+                      type="text"
+                      value={form.name}
+                      onChange={(e) => setForm({ ...form, name: e.target.value })}
+                      required
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
+                      placeholder="Full name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Employee Number
+                    </label>
+                    <input
+                      type="text"
+                      value={form.employeeNumber}
+                      onChange={(e) => setForm({ ...form, employeeNumber: e.target.value })}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
+                      placeholder="Optional"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Department</label>
+                    <select
+                      value={form.departmentId ? form.departmentId : ""}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          departmentId: e.target.value ? parseInt(e.target.value, 10) : null,
+                        })
+                      }
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
+                    >
+                      <option value="">No department</option>
+                      {departments.map((dept) => (
+                        <option key={dept.id} value={dept.id}>
+                          {dept.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Photo</label>
+                    <PhotoCapture
+                      onCapture={(file) => setCapturedFile(file)}
+                      currentPhotoUrl={
+                        capturedFile
+                          ? URL.createObjectURL(capturedFile)
+                          : editingMember
+                            ? editingMember.photoUrl
+                              ? editingMember.photoUrl
+                              : undefined
+                            : undefined
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={isSaving || !form.name.trim()}
+                    className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] border border-transparent rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    {isSaving ? "Saving..." : editingMember ? "Update" : "Create"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
       <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
     </div>
   );

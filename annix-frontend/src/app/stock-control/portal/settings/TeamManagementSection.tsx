@@ -201,7 +201,7 @@ export function TeamManagementSection({ companyRoles, locations }: TeamManagemen
           <button
             type="button"
             onClick={() => setShowInviteForm(!showInviteForm)}
-            className="px-2.5 py-1 bg-teal-600 text-white text-xs font-medium rounded hover:bg-teal-700 transition-colors"
+            className="px-2.5 py-1 bg-[var(--sc-primary,#323288)] text-white text-xs font-medium rounded hover:bg-[var(--sc-primary-hover,#252560)] transition-colors"
           >
             + Invite
           </button>
@@ -221,12 +221,12 @@ export function TeamManagementSection({ companyRoles, locations }: TeamManagemen
                     setInviteEmail(e.target.value);
                     setInviteError("");
                   }}
-                  className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                  className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                 />
                 <select
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value)}
-                  className="px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                  className="px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                 >
                   {assignableRoles.map((r) => (
                     <option key={r.key} value={r.key}>
@@ -238,7 +238,7 @@ export function TeamManagementSection({ companyRoles, locations }: TeamManagemen
                   type="button"
                   onClick={handleInvite}
                   disabled={inviteSending}
-                  className="px-2.5 py-1 bg-teal-600 text-white text-xs font-medium rounded hover:bg-teal-700 disabled:opacity-50 transition-colors"
+                  className="px-2.5 py-1 bg-[var(--sc-primary,#323288)] text-white text-xs font-medium rounded hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50 transition-colors"
                 >
                   {inviteSending ? "..." : "Send"}
                 </button>
@@ -308,7 +308,7 @@ export function TeamManagementSection({ companyRoles, locations }: TeamManagemen
                             <select
                               value={member.role}
                               onChange={(e) => handleRoleChange(member.id, e.target.value)}
-                              className="rounded border border-gray-200 px-1 py-0.5 text-xs bg-transparent focus:border-teal-500 focus:outline-none focus:ring-teal-500"
+                              className="rounded border border-gray-200 px-1 py-0.5 text-xs bg-transparent focus:border-[var(--sc-primary,#323288)] focus:outline-none focus:ring-[var(--sc-primary,#323288)]"
                             >
                               {assignableRoles.map((r) => (
                                 <option key={r.key} value={r.key}>
@@ -369,7 +369,7 @@ export function TeamManagementSection({ companyRoles, locations }: TeamManagemen
                               type="button"
                               onClick={() => handleSendAppLink(member.id)}
                               disabled={sendingAppLinkId === member.id}
-                              className="text-[10px] font-medium text-teal-600 hover:text-teal-800 disabled:opacity-50"
+                              className="text-[10px] font-medium text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] disabled:opacity-50"
                             >
                               {sendingAppLinkId === member.id ? "..." : "Send Link"}
                             </button>
@@ -409,7 +409,7 @@ export function TeamManagementSection({ companyRoles, locations }: TeamManagemen
                           <button
                             type="button"
                             onClick={() => handleResendInvitation(inv.id)}
-                            className="text-[10px] font-medium text-teal-600 hover:text-teal-800"
+                            className="text-[10px] font-medium text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                           >
                             Resend
                           </button>

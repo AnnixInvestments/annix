@@ -194,9 +194,11 @@ export default function StockManagementPreviewIndexPage() {
         </p>
       </header>
 
-      <section className="rounded-lg border border-teal-200 bg-teal-50 p-4">
-        <h2 className="text-base font-semibold text-teal-900">Load demo data</h2>
-        <p className="mt-1 text-sm text-teal-800">
+      <section className="rounded-lg border border-[var(--sc-primary-200,#adadcf)] bg-[var(--sc-primary-50,#eeeef6)] p-4">
+        <h2 className="text-base font-semibold text-[var(--sc-primary-active,#1c1c48)]">
+          Load demo data
+        </h2>
+        <p className="mt-1 text-sm text-[var(--sc-primary-active,#1c1c48)]">
           Creates 4 consumables, 3 paints, and 3 rubber rolls with categories, compounds, and FIFO
           legacy batches for your current company. <strong>Idempotent</strong> — running it twice
           will skip items that already exist (by SKU).
@@ -206,12 +208,12 @@ export default function StockManagementPreviewIndexPage() {
             type="button"
             onClick={handleSeed}
             disabled={isSeeding}
-            className="rounded-md bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
+            className="rounded-md bg-[var(--sc-primary,#323288)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
           >
             {isSeeding ? "Seeding…" : "Load demo data"}
           </button>
           {seedResult ? (
-            <span className="text-sm text-teal-900">
+            <span className="text-sm text-[var(--sc-primary-active,#1c1c48)]">
               Created {seedResult.productsCreated} products, skipped {seedResult.productsSkipped} ·{" "}
               {seedResult.categoriesCreated} categories · {seedResult.compoundsCreated} compounds ·{" "}
               {seedResult.batchesCreated} FIFO batches
@@ -258,7 +260,7 @@ export default function StockManagementPreviewIndexPage() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="block rounded-lg border border-gray-200 bg-white p-4 shadow-sm hover:border-teal-400 hover:shadow"
+                  className="block rounded-lg border border-gray-200 bg-white p-4 shadow-sm hover:border-[var(--sc-primary-400,#5b5b9c)] hover:shadow"
                 >
                   <div className="font-semibold text-gray-900">{link.title}</div>
                   <div className="mt-1 text-xs text-gray-600">{link.description}</div>

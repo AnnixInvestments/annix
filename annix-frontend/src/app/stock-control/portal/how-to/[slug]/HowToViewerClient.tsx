@@ -18,7 +18,8 @@ interface StockControlHowToViewerClientProps {
 export default function HowToViewerClient(props: StockControlHowToViewerClientProps) {
   const { user } = useStockControlAuth();
   const { effectiveRole } = useViewAs();
-  const role = effectiveRole || user?.role || null;
+  const userRole = user?.role;
+  const role = effectiveRole || userRole || null;
 
   return (
     <SharedHowToViewerClient

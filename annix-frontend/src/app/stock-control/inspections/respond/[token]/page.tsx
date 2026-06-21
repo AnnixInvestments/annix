@@ -3,27 +3,9 @@
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DateInput } from "@/app/components/ui/DateInput";
-// eslint-disable-next-line no-restricted-imports -- Token-based public inspection response page; requires new unauthenticated hooks for inspection booking and response flows. Tracked as tech debt.
+import { usePublicInspectionBooking } from "@/app/lib/query/hooks";
+// eslint-disable-next-line no-restricted-imports -- Token-based public inspection response page; the accept/propose POST actions are unauthenticated mutations not yet wrapped in shared hooks. Tracked as tech debt.
 import { browserBaseUrl } from "@/lib/api-config";
-
-interface BookingDetails {
-  booking: {
-    id: number;
-    inspectionDate: string;
-    startTime: string;
-    endTime: string;
-    inspectorEmail: string;
-    inspectorName: string | null;
-    notes: string | null;
-    status: string;
-    bookedByName: string | null;
-    proposedDate: string | null;
-    proposedStartTime: string | null;
-    proposedEndTime: string | null;
-  };
-  jobCard: { id: number; jobName: string | null; jcNumber: string | null } | null;
-  company: { name: string };
-}
 
 type Mode = "choose" | "propose" | "done";
 
@@ -31,8 +13,11 @@ export default function InspectionRespondPage() {
   const params = useParams<{ token: string }>();
   const token = params.token;
 
-  const [details, setDetails] = useState<BookingDetails | null>(null);
-  const [loading, setLoading] = useState(true);
+  const bookingQuery = usePublicInspectionBooking(token);
+  const details = bookingQuery.data ? bookingQuery.data : null;
+  const loading = bookingQuery.isPending;
+  const loadError = bookingQuery.error;
+
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("choose");
   const [submitting, setSubmitting] = useState(false);
@@ -43,40 +28,21 @@ export default function InspectionRespondPage() {
   const [resultMessage, setResultMessage] = useState("");
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await fetch(
-          `${browserBaseUrl()}/stock-control/public/inspection-bookings/${token}`,
-        );
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          const bodyMessage = body.message;
-          throw new Error(bodyMessage ? bodyMessage : `Failed to load booking (${res.status})`);
-        }
-        const data = (await res.json()) as BookingDetails;
-        setDetails(data);
-        if (
-          data.booking.status === "accepted" ||
-          data.booking.status === "completed" ||
-          data.booking.status === "proposed"
-        ) {
-          setMode("done");
-          const msg =
-            data.booking.status === "proposed"
-              ? "Your proposed time has been sent. The QA team will confirm."
-              : data.booking.status === "accepted"
-                ? "You have accepted this inspection slot."
-                : "This inspection is already complete.";
-          setResultMessage(msg);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load");
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [token]);
+    if (!details) {
+      return;
+    }
+    const status = details.booking.status;
+    if (status === "accepted" || status === "completed" || status === "proposed") {
+      setMode("done");
+      const msg =
+        status === "proposed"
+          ? "Your proposed time has been sent. The QA team will confirm."
+          : status === "accepted"
+            ? "You have accepted this inspection slot."
+            : "This inspection is already complete.";
+      setResultMessage(msg);
+    }
+  }, [details]);
 
   const handleAccept = async () => {
     setSubmitting(true);
@@ -139,11 +105,13 @@ export default function InspectionRespondPage() {
     return <div className="max-w-xl mx-auto p-6 text-sm text-gray-500">Loading...</div>;
   }
 
-  if (error && !details) {
+  if (loadError && !details) {
+    const loadErrorMessage =
+      loadError instanceof Error ? loadError.message : "Unable to load this inspection booking.";
     return (
       <div className="max-w-xl mx-auto p-6">
         <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {error}
+          {loadErrorMessage}
         </div>
       </div>
     );
@@ -275,7 +243,7 @@ export default function InspectionRespondPage() {
                 type="button"
                 onClick={handlePropose}
                 disabled={submitting}
-                className="flex-1 px-4 py-2 rounded-md bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 disabled:bg-gray-400"
+                className="flex-1 px-4 py-2 rounded-md bg-[var(--sc-primary,#323288)] text-white text-sm font-medium hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400"
               >
                 {submitting ? "..." : "Send Proposal"}
               </button>

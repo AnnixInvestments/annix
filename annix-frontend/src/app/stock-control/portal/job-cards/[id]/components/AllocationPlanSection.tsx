@@ -165,7 +165,7 @@ export function AllocationPlanSection(props: AllocationPlanSectionProps) {
       <div className="bg-white shadow rounded-lg p-6">
         <div className="flex items-center justify-center py-12">
           <svg
-            className="animate-spin h-8 w-8 text-teal-600"
+            className="animate-spin h-8 w-8 text-[var(--sc-primary,#323288)]"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -237,7 +237,7 @@ export function AllocationPlanSection(props: AllocationPlanSectionProps) {
           type="button"
           onClick={handleAllocateSelected}
           disabled={allocating || !hasSelectedItems}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--sc-primary,#323288)] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {allocating ? "Allocating..." : "Allocate Selected"}
         </button>

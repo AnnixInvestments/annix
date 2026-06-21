@@ -587,7 +587,7 @@ export default function PositectorBlePage() {
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
+              <span className="rounded-full bg-[var(--sc-primary-100,#d6d6e9)] px-2.5 py-0.5 text-xs font-medium text-[var(--sc-primary-active,#1c1c48)]">
                 {(() => {
                   const entityType = session.config.entityType;
                   const label = ENTITY_TYPE_LABELS[entityType];

@@ -466,7 +466,7 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
               type="button"
               onClick={handleGenerate}
               disabled={isGenerating || selectedKeys.size === 0}
-              className="rounded-md bg-teal-600 px-4 py-2 text-xs font-medium text-white hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="rounded-md bg-[var(--sc-primary,#323288)] px-4 py-2 text-xs font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               {isGenerating ? "Generating..." : "Generate Release Documents"}
             </button>
@@ -505,7 +505,7 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
                     <button
                       type="button"
                       onClick={() => handleRegenerate(release)}
-                      className="rounded-md border border-teal-600 px-2.5 py-1 text-xs font-medium text-teal-600 hover:bg-teal-50"
+                      className="rounded-md border border-[var(--sc-primary,#323288)] px-2.5 py-1 text-xs font-medium text-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-50,#eeeef6)]"
                     >
                       Re-Gen
                     </button>

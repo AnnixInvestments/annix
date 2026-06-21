@@ -93,7 +93,7 @@ function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
   if (active) {
     return (
       <svg
-        className="h-3 w-3 text-teal-600"
+        className="h-3 w-3 text-[var(--sc-primary,#323288)]"
         fill="currentColor"
         viewBox="0 0 20 20"
         aria-hidden="true"
@@ -397,7 +397,7 @@ export default function JobCardsPage() {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading job cards...</p>
         </div>
       </div>
@@ -409,7 +409,7 @@ export default function JobCardsPage() {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{error.message}</p>
+          <p className="text-gray-600">Something went wrong — please try again.</p>
         </div>
       </div>
     );
@@ -424,10 +424,10 @@ export default function JobCardsPage() {
       onDragLeave={handleImportDragLeave}
     >
       {isDragging && (
-        <div className="absolute inset-0 z-40 bg-teal-50 bg-opacity-90 border-2 border-dashed border-teal-500 rounded-lg flex items-center justify-center">
+        <div className="absolute inset-0 z-40 bg-[var(--sc-primary-50,#eeeef6)] bg-opacity-90 border-2 border-dashed border-[var(--sc-primary,#323288)] rounded-lg flex items-center justify-center">
           <div className="text-center">
             <svg
-              className="mx-auto h-16 w-16 text-teal-500"
+              className="mx-auto h-16 w-16 text-[var(--sc-primary,#323288)]"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -439,8 +439,12 @@ export default function JobCardsPage() {
                 d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
               />
             </svg>
-            <p className="mt-2 text-lg font-medium text-teal-700">Drop file to import job cards</p>
-            <p className="text-sm text-teal-600">Supports Excel, CSV, and PDF files</p>
+            <p className="mt-2 text-lg font-medium text-[var(--sc-primary-hover,#252560)]">
+              Drop file to import job cards
+            </p>
+            <p className="text-sm text-[var(--sc-primary,#323288)]">
+              Supports Excel, CSV, and PDF files
+            </p>
           </div>
         </div>
       )}
@@ -526,7 +530,7 @@ export default function JobCardsPage() {
           </button>
           <button
             onClick={() => setShowCreateForm(true)}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700"
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)]"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -622,7 +626,7 @@ export default function JobCardsPage() {
                 onClick={() => setActiveTab(tab)}
                 className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm capitalize ${
                   activeTab === tab
-                    ? "border-teal-500 text-teal-600"
+                    ? "border-[var(--sc-primary,#323288)] text-[var(--sc-primary,#323288)]"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
@@ -649,7 +653,7 @@ export default function JobCardsPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search job cards..."
-              className="pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-teal-500 focus:border-teal-500 w-64"
+              className="pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] w-64"
             />
           </div>
         </div>
@@ -771,13 +775,13 @@ export default function JobCardsPage() {
                     <td className="px-3 py-3 whitespace-nowrap">
                       <Link
                         href={`/stock-control/portal/job-cards/${job.id}`}
-                        className="text-sm font-medium text-teal-700 hover:text-teal-900 truncate block"
+                        className="text-sm font-medium text-[var(--sc-primary-hover,#252560)] hover:text-[var(--sc-primary-active,#1c1c48)] truncate block"
                       >
                         {job.jobNumber}
                         {job.jtDnNumber ? ` / ${job.jtDnNumber}` : ""}
                       </Link>
                       {job.parentJobCardId ? (
-                        <span className="ml-1.5 inline-flex px-1.5 py-0.5 text-[10px] font-medium rounded bg-indigo-50 text-indigo-600">
+                        <span className="ml-1.5 inline-flex px-1.5 py-0.5 text-[10px] font-medium rounded bg-[var(--sc-primary-50,#eeeef6)] text-[var(--sc-primary,#323288)]">
                           Delivery
                         </span>
                       ) : null}
@@ -788,7 +792,7 @@ export default function JobCardsPage() {
                         if (parentId || childCount === 0) return null;
                         return (
                           <span
-                            className="ml-1.5 inline-flex px-1.5 py-0.5 text-[10px] font-medium rounded bg-teal-50 text-teal-700"
+                            className="ml-1.5 inline-flex px-1.5 py-0.5 text-[10px] font-medium rounded bg-[var(--sc-primary-50,#eeeef6)] text-[var(--sc-primary-hover,#252560)]"
                             title="Line items live on the linked delivery job cards"
                           >
                             {childCount} delivery JC{childCount === 1 ? "" : "s"}
@@ -960,12 +964,12 @@ export default function JobCardsPage() {
                 onClick={() => modalFileInputRef.current?.click()}
                 className={`mb-6 border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
                   isModalDragging
-                    ? "border-teal-500 bg-teal-50"
-                    : "border-gray-300 hover:border-teal-400 hover:bg-gray-50"
+                    ? "border-[var(--sc-primary,#323288)] bg-[var(--sc-primary-50,#eeeef6)]"
+                    : "border-gray-300 hover:border-[var(--sc-primary-400,#5b5b9c)] hover:bg-gray-50"
                 }`}
               >
                 <svg
-                  className={`mx-auto h-10 w-10 ${isModalDragging ? "text-teal-500" : "text-gray-400"}`}
+                  className={`mx-auto h-10 w-10 ${isModalDragging ? "text-[var(--sc-primary,#323288)]" : "text-gray-400"}`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -1000,7 +1004,7 @@ export default function JobCardsPage() {
                       type="text"
                       value={createForm.jobNumber}
                       onChange={(e) => setCreateForm({ ...createForm, jobNumber: e.target.value })}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                     />
                   </div>
                   <div>
@@ -1009,7 +1013,7 @@ export default function JobCardsPage() {
                       type="text"
                       value={createForm.jobName}
                       onChange={(e) => setCreateForm({ ...createForm, jobName: e.target.value })}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                     />
                   </div>
                 </div>
@@ -1020,7 +1024,7 @@ export default function JobCardsPage() {
                       type="text"
                       value={createForm.jcNumber}
                       onChange={(e) => setCreateForm({ ...createForm, jcNumber: e.target.value })}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                     />
                   </div>
                   <div>
@@ -1029,7 +1033,7 @@ export default function JobCardsPage() {
                       type="text"
                       value={createForm.pageNumber}
                       onChange={(e) => setCreateForm({ ...createForm, pageNumber: e.target.value })}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                     />
                   </div>
                 </div>
@@ -1039,7 +1043,7 @@ export default function JobCardsPage() {
                     type="text"
                     value={createForm.customerName}
                     onChange={(e) => setCreateForm({ ...createForm, customerName: e.target.value })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                   />
                 </div>
                 <div>
@@ -1048,7 +1052,7 @@ export default function JobCardsPage() {
                     value={createForm.description}
                     onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
                     rows={3}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                   />
                 </div>
                 <div className="border-t border-gray-200 pt-3">
@@ -1085,7 +1089,7 @@ export default function JobCardsPage() {
                             onChange={(e) =>
                               setCreateForm({ ...createForm, poNumber: e.target.value })
                             }
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                           />
                         </div>
                         <div>
@@ -1098,7 +1102,7 @@ export default function JobCardsPage() {
                             onChange={(e) =>
                               setCreateForm({ ...createForm, reference: e.target.value })
                             }
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                           />
                         </div>
                       </div>
@@ -1113,7 +1117,7 @@ export default function JobCardsPage() {
                             onChange={(e) =>
                               setCreateForm({ ...createForm, siteLocation: e.target.value })
                             }
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                           />
                         </div>
                         <div>
@@ -1126,7 +1130,7 @@ export default function JobCardsPage() {
                             onChange={(e) =>
                               setCreateForm({ ...createForm, contactPerson: e.target.value })
                             }
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                           />
                         </div>
                       </div>
@@ -1139,7 +1143,7 @@ export default function JobCardsPage() {
                             setCreateForm({ ...createForm, dueDate: e.target.value })
                           }
                           placeholder="e.g. 2025-03-15"
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                         />
                       </div>
                       <div>
@@ -1148,7 +1152,7 @@ export default function JobCardsPage() {
                           value={createForm.notes}
                           onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })}
                           rows={2}
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                         />
                       </div>
                     </div>
@@ -1170,7 +1174,7 @@ export default function JobCardsPage() {
                     const rawJobName = createForm.jobName;
                     return jobPending || !rawJobNumber || !rawJobName;
                   })()}
-                  className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] border border-transparent rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   {createJobCard.isPending ? "Creating..." : "Create Job Card"}
                 </button>

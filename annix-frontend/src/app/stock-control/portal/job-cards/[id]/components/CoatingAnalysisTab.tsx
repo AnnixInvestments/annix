@@ -113,7 +113,7 @@ function EditableM2Field({
           type="number"
           step="0.01"
           min="0"
-          className="w-20 px-1 py-0.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-500"
+          className="w-20 px-1 py-0.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[var(--sc-primary,#323288)]"
           value={inputVal}
           onChange={(e) => setInputVal(e.target.value)}
           onKeyDown={(e) => {
@@ -133,7 +133,7 @@ function EditableM2Field({
       <span className="font-medium text-gray-500">{label}: </span>
       <button
         type="button"
-        className="text-gray-900 hover:text-teal-600 hover:underline cursor-pointer"
+        className="text-gray-900 hover:text-[var(--sc-primary,#323288)] hover:underline cursor-pointer"
         onClick={() => {
           setInputVal(String(value || 0));
           setEditing(true);
@@ -337,7 +337,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                       <td className="hidden sm:table-cell py-2 pr-4 text-right text-gray-700">
                         {m2 > 0 ? m2.toFixed(2) : "—"}
                       </td>
-                      <td className="py-2 pr-4 text-right font-semibold text-teal-700">
+                      <td className="py-2 pr-4 text-right font-semibold text-[var(--sc-primary-hover,#252560)]">
                         {m2 > 0 ? (m2 * qty).toFixed(2) : "—"}
                       </td>
                     </tr>
@@ -349,7 +349,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                   <td colSpan={5} className="py-2 pr-4 text-right font-medium text-gray-600">
                     Total m²
                   </td>
-                  <td className="py-2 pr-4 text-right font-bold text-teal-800">
+                  <td className="py-2 pr-4 text-right font-bold text-[var(--sc-primary-active,#1c1c48)]">
                     {totalM2.toFixed(2)}
                   </td>
                 </tr>
@@ -403,7 +403,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                 <button
                   onClick={onRunAnalysis}
                   disabled={isAnalysing}
-                  className="text-xs text-teal-600 hover:text-teal-800 disabled:text-gray-400"
+                  className="text-xs text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] disabled:text-gray-400"
                 >
                   {isAnalysing ? "Analysing..." : "Re-analyse"}
                 </button>
@@ -436,7 +436,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                             });
                             onCoatingAnalysisChange(updated);
                           }}
-                          className="text-sm border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-teal-500 uppercase"
+                          className="text-sm border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-[var(--sc-primary,#323288)] uppercase"
                         >
                           <option value="">Select...</option>
                           <option value="sa3_blast">SA3 BLAST</option>
@@ -469,7 +469,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                             });
                             onCoatingAnalysisChange(updated);
                           }}
-                          className="text-sm border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-teal-500 uppercase"
+                          className="text-sm border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-[var(--sc-primary,#323288)] uppercase"
                         >
                           <option value="">Select...</option>
                           <option value="sa3_blast">SA3 BLAST</option>
@@ -601,7 +601,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                                     coatRoleLabel,
                                   );
                                 }}
-                                className="text-xs border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-teal-500 disabled:bg-gray-100"
+                                className="text-xs border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-[var(--sc-primary,#323288)] disabled:bg-gray-100"
                                 title="Assign a preferred paint to this coat"
                               >
                                 <option value="" disabled>
@@ -639,7 +639,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                   })}
                   <div className="flex items-center justify-between pt-1">
                     <span className="text-sm font-medium text-gray-600">Total Litres Required</span>
-                    <span className="text-lg font-bold text-teal-800">
+                    <span className="text-lg font-bold text-[var(--sc-primary-active,#1c1c48)]">
                       {totalLitres.toFixed(1)} L
                     </span>
                   </div>
@@ -752,7 +752,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                           <button
                             onClick={() => runPackOptions({})}
                             disabled={packOptionsPending}
-                            className="px-3 py-1 text-xs font-medium rounded-md border border-teal-300 text-teal-700 hover:bg-teal-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            className="px-3 py-1 text-xs font-medium rounded-md border border-[var(--sc-primary-300,#8484b5)] text-[var(--sc-primary-hover,#252560)] hover:bg-[var(--sc-primary-50,#eeeef6)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             title="Show the cheapest pack combinations to buy for each paint"
                           >
                             {packOptionsPending ? "Loading..." : "Pack options"}
@@ -762,7 +762,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                           <button
                             onClick={handleSavePmEdits}
                             disabled={isSavingPmEdits}
-                            className="px-3 py-1 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                            className="px-3 py-1 text-xs font-medium rounded-md bg-[var(--sc-primary,#323288)] text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                           >
                             {isSavingPmEdits ? "Saving..." : "Save Changes"}
                           </button>
@@ -795,7 +795,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                                           Number.parseFloat(e.target.value) || 0,
                                         )
                                       }
-                                      className="w-16 mx-1 px-1 py-0.5 text-sm text-right border border-gray-300 rounded focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                                      className="w-16 mx-1 px-1 py-0.5 text-sm text-right border border-gray-300 rounded focus:ring-1 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                                     />
                                   ) : (
                                     <span className="mx-1">{item.required.toFixed(1)}</span>
@@ -885,12 +885,12 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                                               [product]: parsed,
                                             }));
                                           }}
-                                          className="w-20 px-1 py-0.5 text-xs text-right border border-gray-300 rounded focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                                          className="w-20 px-1 py-0.5 text-xs text-right border border-gray-300 rounded focus:ring-1 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                                         />
                                         <button
                                           onClick={() => runPackOptions(packLitres)}
                                           disabled={packOptionsPending}
-                                          className="px-2 py-0.5 text-xs font-medium rounded border border-teal-300 text-teal-700 hover:bg-teal-50 disabled:opacity-50"
+                                          className="px-2 py-0.5 text-xs font-medium rounded border border-[var(--sc-primary-300,#8484b5)] text-[var(--sc-primary-hover,#252560)] hover:bg-[var(--sc-primary-50,#eeeef6)] disabled:opacity-50"
                                         >
                                           {packOptionsPending ? "..." : "Recalculate"}
                                         </button>
@@ -898,7 +898,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                                     </div>
                                     {best !== null && best.length > 0 ? (
                                       <div className="mb-2">
-                                        <p className="text-xs font-semibold text-teal-700 mb-1">
+                                        <p className="text-xs font-semibold text-[var(--sc-primary-hover,#252560)] mb-1">
                                           Recommended (cheapest)
                                         </p>
                                         <ul className="space-y-0.5">
@@ -918,7 +918,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                                         {bestTotalCost !== null && (
                                           <p className="mt-1 text-xs text-gray-700">
                                             Total:{" "}
-                                            <span className="font-bold text-teal-800">
+                                            <span className="font-bold text-[var(--sc-primary-active,#1c1c48)]">
                                               {money(bestTotalCost)}
                                             </span>
                                             {bestTotalLitres !== null && (
@@ -1038,7 +1038,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
       {coatingAnalysis && coatingAnalysis.status === "pending" && (
         <div className="mt-6 pt-4 border-t border-gray-200">
           <div className="flex items-center space-x-2 text-sm text-gray-500">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-teal-600"></div>
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[var(--sc-primary,#323288)]"></div>
             <span>Nix is analysing the coating specification...</span>
           </div>
         </div>
@@ -1057,7 +1057,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                 <button
                   onClick={onRunAnalysis}
                   disabled={isAnalysing}
-                  className="text-sm text-teal-600 hover:text-teal-800 disabled:text-gray-400"
+                  className="text-sm text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] disabled:text-gray-400"
                 >
                   {isAnalysing ? "Analysing..." : "Retry"}
                 </button>
@@ -1076,7 +1076,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
             <button
               onClick={onRunAnalysis}
               disabled={isAnalysing}
-              className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-gray-300 disabled:text-gray-500"
+              className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-300 disabled:text-gray-500"
             >
               {isAnalysing
                 ? "Analysing..."
@@ -1121,7 +1121,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                     href={sourceFileUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-1 inline-block text-xs text-teal-600 hover:text-teal-800"
+                    className="mt-1 inline-block text-xs text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                   >
                     Open in new tab
                   </a>
@@ -1149,7 +1149,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                     <select
                       value={correctionField}
                       onChange={(e) => setCorrectionField(e.target.value)}
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                     >
                       <option value="coatingSpec">Coating Specification</option>
                       <option value="rubberSpec">Rubber / Lining Specification</option>
@@ -1165,7 +1165,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                       onChange={(e) => setCorrectionValue(e.target.value)}
                       rows={4}
                       placeholder="e.g. EXT : BLAST & PAINT PENGUARD EXPRESS MIO BUFF @ 240-250um + HARDTOP XP RED @ 70-85um"
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                     />
                   </div>
                   <button
@@ -1246,7 +1246,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
               <div
                 className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
                   isDraggingTds
-                    ? "border-teal-500 bg-teal-50"
+                    ? "border-[var(--sc-primary,#323288)] bg-[var(--sc-primary-50,#eeeef6)]"
                     : "border-gray-300 hover:border-gray-400"
                 }`}
                 onDragOver={(e) => {
@@ -1278,7 +1278,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                 {tdsFile ? (
                   <div className="space-y-1">
                     <svg
-                      className="mx-auto h-8 w-8 text-teal-500"
+                      className="mx-auto h-8 w-8 text-[var(--sc-primary,#323288)]"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -1302,7 +1302,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                 ) : (
                   <label className="cursor-pointer">
                     <svg
-                      className={`mx-auto h-10 w-10 ${isDraggingTds ? "text-teal-500" : "text-gray-400"}`}
+                      className={`mx-auto h-10 w-10 ${isDraggingTds ? "text-[var(--sc-primary,#323288)]" : "text-gray-400"}`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -1315,7 +1315,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                       />
                     </svg>
                     <p
-                      className={`mt-1 text-sm ${isDraggingTds ? "text-teal-600 font-medium" : "text-gray-600"}`}
+                      className={`mt-1 text-sm ${isDraggingTds ? "text-[var(--sc-primary,#323288)] font-medium" : "text-gray-600"}`}
                     >
                       {isDraggingTds ? "Drop file here" : "Upload Technical Data Sheet (PDF)"}
                     </p>
@@ -1354,7 +1354,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                 <button
                   onClick={onTdsUpload}
                   disabled={!tdsFile || isUploadingTds}
-                  className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                  className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
                   {isUploadingTds ? "Processing..." : "Accept & Save"}
                 </button>

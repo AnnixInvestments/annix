@@ -100,7 +100,7 @@ export default function InventoryPage() {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading inventory...</p>
         </div>
       </div>
@@ -108,12 +108,11 @@ export default function InventoryPage() {
   }
 
   if (error && items.length === 0 && groupedData.length === 0) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to load inventory";
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{errorMessage}</p>
+          <p className="text-gray-600">Something went wrong — please try again.</p>
         </div>
       </div>
     );
@@ -320,7 +319,7 @@ export default function InventoryPage() {
                   </button>
                   <button
                     onClick={handlePrintPreviewPrint}
-                    className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700"
+                    className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)]"
                   >
                     Print
                   </button>

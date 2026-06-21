@@ -226,7 +226,7 @@ export function WorkflowPreviewSection() {
             <button
               type="button"
               onClick={handleRefresh}
-              className="px-2 py-1 text-[10px] text-teal-600 hover:text-teal-800 font-medium"
+              className="px-2 py-1 text-[10px] text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] font-medium"
             >
               Refresh
             </button>
@@ -273,7 +273,7 @@ export function WorkflowPreviewSection() {
                     type="button"
                     onClick={handleNext}
                     disabled={clampedPosition >= maxPosition}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-[var(--sc-primary,#323288)] text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                   >
                     Next
                     <svg

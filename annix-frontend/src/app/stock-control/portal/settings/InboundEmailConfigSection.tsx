@@ -182,7 +182,7 @@ export function InboundEmailConfigSection() {
                   setSuccess("");
                 }}
                 placeholder="imap.example.com"
-                className="mt-0.5 block w-full px-2 py-1 border border-gray-300 rounded text-xs placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                className="mt-0.5 block w-full px-2 py-1 border border-gray-300 rounded text-xs placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
               />
             </div>
             <div>
@@ -201,7 +201,7 @@ export function InboundEmailConfigSection() {
                   setSuccess("");
                 }}
                 placeholder="993"
-                className="mt-0.5 block w-full px-2 py-1 border border-gray-300 rounded text-xs placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                className="mt-0.5 block w-full px-2 py-1 border border-gray-300 rounded text-xs placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
               />
             </div>
             <div>
@@ -220,7 +220,7 @@ export function InboundEmailConfigSection() {
                   setSuccess("");
                 }}
                 placeholder="documents@example.com"
-                className="mt-0.5 block w-full px-2 py-1 border border-gray-300 rounded text-xs placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                className="mt-0.5 block w-full px-2 py-1 border border-gray-300 rounded text-xs placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
               />
             </div>
             <div>
@@ -239,7 +239,7 @@ export function InboundEmailConfigSection() {
                   setSuccess("");
                 }}
                 placeholder={emailPassSet ? "********" : "Enter password"}
-                className="mt-0.5 block w-full px-2 py-1 border border-gray-300 rounded text-xs placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                className="mt-0.5 block w-full px-2 py-1 border border-gray-300 rounded text-xs placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
               />
             </div>
             <div>
@@ -258,7 +258,7 @@ export function InboundEmailConfigSection() {
                   setSuccess("");
                 }}
                 placeholder="mail.example.com"
-                className="mt-0.5 block w-full px-2 py-1 border border-gray-300 rounded text-xs placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                className="mt-0.5 block w-full px-2 py-1 border border-gray-300 rounded text-xs placeholder-gray-400 focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
               />
             </div>
             <div className="flex items-end gap-4 pb-0.5">
@@ -270,7 +270,7 @@ export function InboundEmailConfigSection() {
                     setTlsEnabled(e.target.checked);
                     setSuccess("");
                   }}
-                  className="rounded border-gray-300 text-teal-600 focus:ring-teal-500 w-3.5 h-3.5"
+                  className="rounded border-gray-300 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] w-3.5 h-3.5"
                 />
                 TLS
               </label>
@@ -282,7 +282,7 @@ export function InboundEmailConfigSection() {
                     setEnabled(e.target.checked);
                     setSuccess("");
                   }}
-                  className="rounded border-gray-300 text-teal-600 focus:ring-teal-500 w-3.5 h-3.5"
+                  className="rounded border-gray-300 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] w-3.5 h-3.5"
                 />
                 <span className="font-medium">Active</span>
               </label>
@@ -303,7 +303,7 @@ export function InboundEmailConfigSection() {
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="px-2.5 py-1 bg-teal-600 text-white text-xs font-medium rounded hover:bg-teal-700 disabled:opacity-50 transition-colors"
+              className="px-2.5 py-1 bg-[var(--sc-primary,#323288)] text-white text-xs font-medium rounded hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50 transition-colors"
             >
               {saving ? "..." : "Save"}
             </button>

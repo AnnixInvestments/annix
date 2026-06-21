@@ -386,7 +386,7 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
                               e.target.checked ? new Set(missingItems.map((m) => m.id)) : new Set(),
                             )
                           }
-                          className="h-4 w-4 rounded border-gray-300 text-teal-600"
+                          className="h-4 w-4 rounded border-gray-300 text-[var(--sc-primary,#323288)]"
                         />
                         Select all ({missingItems.length})
                       </label>
@@ -416,7 +416,7 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
                                 type="checkbox"
                                 checked={selectedZeroIds.has(m.id)}
                                 onChange={() => toggleZeroId(m.id)}
-                                className="h-4 w-4 rounded border-gray-300 text-teal-600"
+                                className="h-4 w-4 rounded border-gray-300 text-[var(--sc-primary,#323288)]"
                               />
                             </td>
                             <td className="px-2 py-1.5 font-mono text-gray-600">{m.sku}</td>
@@ -447,7 +447,7 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
                   type="button"
                   onClick={() => doSubmit(Array.from(selectedZeroIds))}
                   disabled={isSubmitting}
-                  className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+                  className="rounded-md bg-[var(--sc-primary,#323288)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
                 >
                   {isSubmitting
                     ? "Importing…"
@@ -495,7 +495,7 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
                   type="button"
                   onClick={saveNewLocation}
                   disabled={isCreatingLocation || newLocationName.trim() === ""}
-                  className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+                  className="rounded-md bg-[var(--sc-primary,#323288)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
                 >
                   {isCreatingLocation ? "Adding…" : "Add location"}
                 </button>
@@ -526,7 +526,7 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
                 type="button"
                 onClick={handleSubmit}
                 disabled={isSubmitting || loadingMissing || rows.length === 0}
-                className="px-4 py-1.5 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="px-4 py-1.5 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 {isSubmitting
                   ? "Importing..."
@@ -559,7 +559,7 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
                   onClick={() => setFilterMode(mode)}
                   className={`px-2.5 py-1 text-xs rounded-md font-medium ${
                     filterMode === mode
-                      ? "bg-teal-100 text-teal-800"
+                      ? "bg-[var(--sc-primary-100,#d6d6e9)] text-[var(--sc-primary-active,#1c1c48)]"
                       : "text-gray-500 hover:bg-gray-100"
                   }`}
                 >
@@ -781,7 +781,7 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
           <button
             type="button"
             onClick={addRow}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-teal-700 bg-teal-50 border border-teal-200 rounded-md hover:bg-teal-100 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--sc-primary-hover,#252560)] bg-[var(--sc-primary-50,#eeeef6)] border border-[var(--sc-primary-200,#adadcf)] rounded-md hover:bg-[var(--sc-primary-100,#d6d6e9)] transition-colors"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path

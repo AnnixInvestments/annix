@@ -47,10 +47,10 @@ export function InventoryImportOverlay({
   return (
     <>
       {isDragging && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-teal-600/20 backdrop-blur-sm pointer-events-none">
-          <div className="bg-white rounded-2xl shadow-2xl p-12 text-center border-2 border-dashed border-teal-500">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--sc-primary,#323288)]/20 backdrop-blur-sm pointer-events-none">
+          <div className="bg-white rounded-2xl shadow-2xl p-12 text-center border-2 border-dashed border-[var(--sc-primary,#323288)]">
             <svg
-              className="mx-auto h-16 w-16 text-teal-500"
+              className="mx-auto h-16 w-16 text-[var(--sc-primary,#323288)]"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -71,7 +71,7 @@ export function InventoryImportOverlay({
       {importStep === "parsing" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
           <div className="bg-white rounded-lg shadow-xl p-8 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mx-auto"></div>
             <p className="mt-4 text-gray-700 font-medium">Parsing {importFileName}...</p>
           </div>
         </div>
@@ -96,7 +96,7 @@ export function InventoryImportOverlay({
       {importStep === "importing" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
           <div className="bg-white rounded-lg shadow-xl p-8 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mx-auto"></div>
             <p className="mt-4 text-gray-700 font-medium">Importing items...</p>
           </div>
         </div>
@@ -110,7 +110,7 @@ export function InventoryImportOverlay({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
           <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
             <div className="flex flex-col items-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mb-4"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mb-4"></div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">Generating Labels</h3>
               <p className="text-sm text-gray-500 text-center">
                 Please wait while we prepare your PDF. This may take a moment...
@@ -210,7 +210,7 @@ function ImportPreviewModal({
               <button
                 onClick={onConfirmImport}
                 disabled={!canConfirm}
-                className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-gray-400"
+                className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400"
               >
                 Confirm Import ({nonBlankRowCount} rows)
               </button>
@@ -402,7 +402,7 @@ function ImportResultModal({ importResult, onDismiss }: ImportResultModalProps) 
           )}
           <button
             onClick={onDismiss}
-            className="w-full px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700"
+            className="w-full px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)]"
           >
             Done
           </button>

@@ -256,11 +256,12 @@ export default function DeliveriesPage() {
     const supplierName = delivery.supplierName;
     const extracted = delivery.extractedData as Record<string, unknown> | null;
     if (!extracted) return null;
+    const extractedDeliveryNoteNumber = extracted.deliveryNoteNumber as string;
+    const deliveryNumber = delivery.deliveryNumber;
     return {
       documentType:
         (extracted.documentType as AnalyzedDeliveryNoteData["documentType"]) || "SUPPLIER_DELIVERY",
-      deliveryNoteNumber:
-        (extracted.deliveryNoteNumber as string) || delivery.deliveryNumber || null,
+      deliveryNoteNumber: extractedDeliveryNoteNumber || deliveryNumber || null,
       invoiceNumber: (extracted.invoiceNumber as string) || null,
       deliveryDate: (extracted.deliveryDate as string) || null,
       purchaseOrderNumber: (extracted.purchaseOrderNumber as string) || null,
@@ -300,7 +301,7 @@ export default function DeliveriesPage() {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading delivery notes...</p>
         </div>
       </div>
@@ -312,7 +313,7 @@ export default function DeliveriesPage() {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{error.message}</p>
+          <p className="text-gray-600">Something went wrong — please try again.</p>
         </div>
       </div>
     );
@@ -359,7 +360,7 @@ export default function DeliveriesPage() {
           )}
           <Link
             href="/stock-control/portal/deliveries/scan"
-            className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-teal-600 rounded-md shadow-sm text-xs sm:text-sm font-medium text-teal-700 bg-white hover:bg-teal-50"
+            className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-[var(--sc-primary,#323288)] rounded-md shadow-sm text-xs sm:text-sm font-medium text-[var(--sc-primary-hover,#252560)] bg-white hover:bg-[var(--sc-primary-50,#eeeef6)]"
           >
             <svg
               className="w-4 h-4 mr-1 sm:mr-2"
@@ -384,7 +385,7 @@ export default function DeliveriesPage() {
           </Link>
           <button
             onClick={openCreateModal}
-            className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-transparent rounded-md shadow-sm text-xs sm:text-sm font-medium text-white bg-teal-600 hover:bg-teal-700"
+            className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-transparent rounded-md shadow-sm text-xs sm:text-sm font-medium text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)]"
           >
             <svg
               className="w-4 h-4 mr-1 sm:mr-2"
@@ -423,7 +424,7 @@ export default function DeliveriesPage() {
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           placeholder="Search by delivery number or supplier..."
-          className="w-full sm:max-w-md rounded-md border-gray-300 pl-9 pr-3 py-2 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm"
+          className="w-full sm:max-w-md rounded-md border-gray-300 pl-9 pr-3 py-2 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] text-sm"
         />
       </div>
 
@@ -464,7 +465,7 @@ export default function DeliveriesPage() {
                       deliveries.filter(needsStockLink).every((d) => selectedIds.has(d.id))
                     }
                     onChange={toggleSelectAll}
-                    className="h-4 w-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
+                    className="h-4 w-4 text-[var(--sc-primary,#323288)] border-gray-300 rounded focus:ring-[var(--sc-primary,#323288)]"
                   />
                 </th>
                 <th
@@ -514,14 +515,14 @@ export default function DeliveriesPage() {
                         type="checkbox"
                         checked={selectedIds.has(delivery.id)}
                         onChange={() => toggleSelection(delivery.id)}
-                        className="h-4 w-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
+                        className="h-4 w-4 text-[var(--sc-primary,#323288)] border-gray-300 rounded focus:ring-[var(--sc-primary,#323288)]"
                       />
                     ) : null}
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4">
                     <Link
                       href={`/stock-control/portal/deliveries/${delivery.id}`}
-                      className="text-xs sm:text-sm font-medium text-teal-700 hover:text-teal-900 break-all"
+                      className="text-xs sm:text-sm font-medium text-[var(--sc-primary-hover,#252560)] hover:text-[var(--sc-primary-active,#1c1c48)] break-all"
                     >
                       {delivery.deliveryNumber}
                     </Link>
@@ -678,7 +679,7 @@ export default function DeliveriesPage() {
                       onChange={(e) =>
                         setCreateForm({ ...createForm, deliveryNumber: e.target.value })
                       }
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                     />
                   </div>
                   <div>
@@ -689,7 +690,7 @@ export default function DeliveriesPage() {
                       onChange={(e) =>
                         setCreateForm({ ...createForm, supplierName: e.target.value })
                       }
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                     />
                   </div>
                 </div>
@@ -699,7 +700,7 @@ export default function DeliveriesPage() {
                     <DateInput
                       value={createForm.receivedDate}
                       onChange={(value) => setCreateForm({ ...createForm, receivedDate: value })}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                     />
                   </div>
                   <div>
@@ -708,7 +709,7 @@ export default function DeliveriesPage() {
                       type="text"
                       value={createForm.receivedBy}
                       onChange={(e) => setCreateForm({ ...createForm, receivedBy: e.target.value })}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                     />
                   </div>
                 </div>
@@ -718,7 +719,7 @@ export default function DeliveriesPage() {
                     value={createForm.notes}
                     onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })}
                     rows={2}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                   />
                 </div>
 
@@ -727,7 +728,7 @@ export default function DeliveriesPage() {
                     <label className="block text-sm font-medium text-gray-700">Items</label>
                     <button
                       onClick={addFormItem}
-                      className="text-sm text-teal-600 hover:text-teal-800"
+                      className="text-sm text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                     >
                       + Add Item
                     </button>
@@ -740,7 +741,7 @@ export default function DeliveriesPage() {
                           onChange={(e) =>
                             updateFormItem(index, "stockItemId", parseInt(e.target.value, 10) || 0)
                           }
-                          className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                          className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                         >
                           <option value={0}>Select item...</option>
                           {stockItems.map((item) => (
@@ -760,7 +761,7 @@ export default function DeliveriesPage() {
                               parseInt(e.target.value, 10) || 1,
                             )
                           }
-                          className="w-24 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                          className="w-24 rounded-md border-gray-300 shadow-sm focus:border-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)] sm:text-sm"
                           placeholder="Qty"
                         />
                         {formItems.length > 1 && (
@@ -803,7 +804,7 @@ export default function DeliveriesPage() {
                     const rawSupplierName = createForm.supplierName;
                     return createPending || !rawDeliveryNumber || !rawSupplierName;
                   })()}
-                  className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] border border-transparent rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   {createMutation.isPending ? "Creating..." : "Create Delivery Note"}
                 </button>

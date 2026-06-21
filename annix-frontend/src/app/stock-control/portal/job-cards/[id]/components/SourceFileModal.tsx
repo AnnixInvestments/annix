@@ -39,7 +39,7 @@ export function SourceFileModal(props: SourceFileModalProps) {
             <a
               href={sourceFileUrl}
               download={downloadName}
-              className="px-3 py-1.5 text-sm font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700"
+              className="px-3 py-1.5 text-sm font-medium rounded-md bg-[var(--sc-primary,#323288)] text-white hover:bg-[var(--sc-primary-hover,#252560)]"
             >
               Download
             </a>
@@ -81,7 +81,7 @@ export function SourceFileModal(props: SourceFileModalProps) {
               <a
                 href={sourceFileUrl}
                 download={downloadName}
-                className="px-4 py-2 text-sm font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700"
+                className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--sc-primary,#323288)] text-white hover:bg-[var(--sc-primary-hover,#252560)]"
               >
                 Download File
               </a>

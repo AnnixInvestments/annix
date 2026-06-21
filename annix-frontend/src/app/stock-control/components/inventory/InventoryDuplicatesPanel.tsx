@@ -79,7 +79,8 @@ export function InventoryDuplicatesPanel(props: Props) {
 
   const scoreColor = (score: number) => {
     if (score >= 0.9) return "text-green-700 bg-green-50";
-    if (score >= 0.7) return "text-teal-700 bg-teal-50";
+    if (score >= 0.7)
+      return "text-[var(--sc-primary-hover,#252560)] bg-[var(--sc-primary-50,#eeeef6)]";
     if (score >= 0.5) return "text-amber-700 bg-amber-50";
     return "text-red-700 bg-red-50";
   };
@@ -189,7 +190,7 @@ export function InventoryDuplicatesPanel(props: Props) {
                                 targetId: group.canonicalItem.id,
                               })
                             }
-                            className="px-3 py-1.5 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700"
+                            className="px-3 py-1.5 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)]"
                           >
                             Merge Group
                           </button>
@@ -216,7 +217,7 @@ export function InventoryDuplicatesPanel(props: Props) {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-100">
-                            <tr className="bg-teal-50/30">
+                            <tr className="bg-[var(--sc-primary-50,#eeeef6)]/30">
                               <td className="px-4 py-2 text-sm font-mono text-gray-900">
                                 {group.canonicalItem.sku}
                               </td>
@@ -230,7 +231,7 @@ export function InventoryDuplicatesPanel(props: Props) {
                                 {rawCategory || "-"}
                               </td>
                               <td className="px-4 py-2 text-center">
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-teal-50 text-teal-700">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[var(--sc-primary-50,#eeeef6)] text-[var(--sc-primary-hover,#252560)]">
                                   Primary
                                 </span>
                               </td>
@@ -306,7 +307,7 @@ export function InventoryDuplicatesPanel(props: Props) {
                         key={item.id}
                         className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors ${
                           isSelected
-                            ? "border-teal-500 bg-teal-50"
+                            ? "border-[var(--sc-primary,#323288)] bg-[var(--sc-primary-50,#eeeef6)]"
                             : "border-gray-200 hover:border-gray-300"
                         }`}
                       >
@@ -315,7 +316,7 @@ export function InventoryDuplicatesPanel(props: Props) {
                           name="mergeTarget"
                           checked={isSelected}
                           onChange={() => setMergeConfirm({ ...mergeConfirm, targetId: item.id })}
-                          className="h-4 w-4 text-teal-600"
+                          className="h-4 w-4 text-[var(--sc-primary,#323288)]"
                         />
                         <div className="ml-3 flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
@@ -341,7 +342,7 @@ export function InventoryDuplicatesPanel(props: Props) {
                   type="button"
                   onClick={() => handleMerge(mergeConfirm.group, mergeConfirm.targetId)}
                   disabled={isMerging}
-                  className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:opacity-50"
+                  className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
                 >
                   {isMerging ? "Merging..." : "Merge Items"}
                 </button>

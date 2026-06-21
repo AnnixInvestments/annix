@@ -193,7 +193,7 @@ export default function OnboardingPage() {
             <button
               type="submit"
               disabled={!formValid || completeOnboarding.isPending}
-              className="inline-flex items-center rounded-md bg-teal-600 px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+              className="inline-flex items-center rounded-md bg-[var(--sc-primary,#323288)] px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-[var(--sc-primary-hover,#252560)] disabled:cursor-not-allowed disabled:bg-gray-400"
             >
               {completeOnboarding.isPending ? "Saving…" : "Complete setup"}
             </button>
@@ -224,7 +224,7 @@ function Field(props: {
         onChange={(e) => props.onChange(e.target.value)}
         placeholder={props.placeholder}
         required={props.required}
-        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[var(--sc-primary,#323288)] focus:outline-none focus:ring-1 focus:ring-[var(--sc-primary,#323288)]"
       />
     </label>
   );

@@ -240,7 +240,7 @@ export function QcMeasurementChecklist(props: QcMeasurementChecklistProps) {
                       {uploadId && (
                         <button
                           onClick={() => handleViewPdf(uploadId, uploadFilename)}
-                          className="text-sm text-teal-600 hover:text-teal-800"
+                          className="text-sm text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                         >
                           View PDF
                         </button>

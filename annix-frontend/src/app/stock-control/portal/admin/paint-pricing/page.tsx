@@ -212,7 +212,7 @@ function decimal(value: number, places: number): string {
 }
 
 const INPUT_CLASS =
-  "w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-teal-500 focus:border-teal-500";
+  "w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]";
 
 const TH_CLASS =
   "px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide whitespace-nowrap";
@@ -234,9 +234,9 @@ const FROZEN_TD_FIRST = `${TD_CLASS} sticky left-0 z-10 bg-white w-40 min-w-[10r
 
 const FROZEN_TD_SECOND = `${TD_CLASS} sticky left-[10rem] z-10 bg-white w-56 min-w-[14rem]`;
 
-const FROZEN_TD_FIRST_EDIT = `${TD_CLASS} sticky left-0 z-10 bg-teal-50 w-40 min-w-[10rem]`;
+const FROZEN_TD_FIRST_EDIT = `${TD_CLASS} sticky left-0 z-10 bg-[var(--sc-primary-50,#eeeef6)] w-40 min-w-[10rem]`;
 
-const FROZEN_TD_SECOND_EDIT = `${TD_CLASS} sticky left-[10rem] z-10 bg-teal-50 w-56 min-w-[14rem]`;
+const FROZEN_TD_SECOND_EDIT = `${TD_CLASS} sticky left-[10rem] z-10 bg-[var(--sc-primary-50,#eeeef6)] w-56 min-w-[14rem]`;
 
 const FROZEN_TD_FIRST_NEW = `${TD_CLASS} sticky left-0 z-10 bg-gray-50 w-40 min-w-[10rem]`;
 
@@ -763,7 +763,7 @@ export default function PaintPricingPage() {
             type="button"
             onClick={handleSaveConfig}
             disabled={saveConfig.isPending}
-            className="inline-flex items-center justify-center rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+            className="inline-flex items-center justify-center rounded-md bg-[var(--sc-primary,#323288)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
           >
             {saveConfig.isPending ? "Saving…" : "Save settings"}
           </button>
@@ -808,7 +808,7 @@ export default function PaintPricingPage() {
             <button
               type="button"
               onClick={addTier}
-              className="text-sm font-medium text-teal-600 hover:text-teal-700"
+              className="text-sm font-medium text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-hover,#252560)]"
             >
               + Add tier
             </button>
@@ -942,13 +942,13 @@ export default function PaintPricingPage() {
                 onChange={(e) => setBulkUpliftValue(e.target.value)}
                 disabled={bulkUpliftPending || !hasRows}
                 aria-label="Bulk uplift percentage"
-                className="w-20 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-teal-500 focus:border-teal-500 disabled:opacity-50"
+                className="w-20 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)] disabled:opacity-50"
               />
               <button
                 type="button"
                 onClick={handleBulkUplift}
                 disabled={bulkUpliftPending || !hasRows}
-                className="inline-flex items-center justify-center rounded-md bg-teal-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+                className="inline-flex items-center justify-center rounded-md bg-[var(--sc-primary,#323288)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
               >
                 {bulkUpliftPending ? "Applying…" : "Apply to all"}
               </button>
@@ -965,7 +965,7 @@ export default function PaintPricingPage() {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={importPending}
-              className="inline-flex items-center justify-center rounded-md border border-teal-600 px-4 py-2 text-sm font-medium text-teal-700 hover:bg-teal-50 disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-md border border-[var(--sc-primary,#323288)] px-4 py-2 text-sm font-medium text-[var(--sc-primary-hover,#252560)] hover:bg-[var(--sc-primary-50,#eeeef6)] disabled:opacity-50"
             >
               {importPending ? "Reading…" : "Upload supplier price list"}
             </button>
@@ -1064,7 +1064,7 @@ export default function PaintPricingPage() {
                 const editGenericType = item.genericType;
                 if (isEditing) {
                   return (
-                    <tr key={item.id} className="bg-teal-50/40">
+                    <tr key={item.id} className="bg-[var(--sc-primary-50,#eeeef6)]/40">
                       <td className={FROZEN_TD_FIRST_EDIT}>
                         <input
                           type="text"
@@ -1087,7 +1087,7 @@ export default function PaintPricingPage() {
                           checked={rowDraft.preferred}
                           onChange={(e) => setRowPreferred(e.target.checked)}
                           aria-label="Preferred"
-                          className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                          className="rounded border-gray-300 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)]"
                         />
                       </td>
                       <td className={TD_CLASS}>
@@ -1237,7 +1237,7 @@ export default function PaintPricingPage() {
                             type="button"
                             onClick={() => handleSaveEdit(item.id)}
                             disabled={updateItem.isPending}
-                            className="text-sm font-medium text-teal-600 hover:text-teal-700 disabled:opacity-50"
+                            className="text-sm font-medium text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
                           >
                             Save
                           </button>
@@ -1282,7 +1282,7 @@ export default function PaintPricingPage() {
                           checked={item.preferred === true}
                           onChange={(e) => handleTogglePreferred(item, e.target.checked)}
                           aria-label="Preferred"
-                          className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                          className="rounded border-gray-300 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)]"
                         />
                       </td>
                       <td className={TD_CLASS}>{paintTypeDisplay}</td>
@@ -1326,7 +1326,7 @@ export default function PaintPricingPage() {
                               type="button"
                               onClick={() => toggleExpanded(item.id)}
                               aria-label={`${isExpanded ? "Hide" : "Show"} all ${packCount} packs`}
-                              className="inline-flex items-center gap-0.5 rounded-full border border-teal-200 bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700 hover:bg-teal-100"
+                              className="inline-flex items-center gap-0.5 rounded-full border border-[var(--sc-primary-200,#adadcf)] bg-[var(--sc-primary-50,#eeeef6)] px-2 py-0.5 text-xs font-medium text-[var(--sc-primary-hover,#252560)] hover:bg-[var(--sc-primary-100,#d6d6e9)]"
                             >
                               <span>{isExpanded ? "▴" : "▾"}</span>
                               <span>{packCount} packs</span>
@@ -1390,7 +1390,7 @@ export default function PaintPricingPage() {
                           <button
                             type="button"
                             onClick={() => startEdit(row)}
-                            className="text-sm font-medium text-teal-600 hover:text-teal-700"
+                            className="text-sm font-medium text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-hover,#252560)]"
                           >
                             Edit
                           </button>
@@ -1434,7 +1434,7 @@ export default function PaintPricingPage() {
                                   <span className="w-32">{money(variant.costPerLitre)} / L</span>
                                   <span className="w-32">Kit {variantKitDisplay}</span>
                                   {isPricingPack ? (
-                                    <span className="rounded-full bg-teal-100 px-2 py-0.5 text-xs font-medium text-teal-700">
+                                    <span className="rounded-full bg-[var(--sc-primary-100,#d6d6e9)] px-2 py-0.5 text-xs font-medium text-[var(--sc-primary-hover,#252560)]">
                                       pricing
                                     </span>
                                   ) : null}
@@ -1482,7 +1482,7 @@ export default function PaintPricingPage() {
                     checked={newDraft.preferred}
                     onChange={(e) => setNewPreferred(e.target.checked)}
                     aria-label="Preferred"
-                    className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                    className="rounded border-gray-300 text-[var(--sc-primary,#323288)] focus:ring-[var(--sc-primary,#323288)]"
                   />
                 </td>
                 <td className={TD_CLASS}>
@@ -1608,7 +1608,7 @@ export default function PaintPricingPage() {
                     type="button"
                     onClick={handleAdd}
                     disabled={createItem.isPending}
-                    className="inline-flex items-center justify-center rounded-md bg-teal-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+                    className="inline-flex items-center justify-center rounded-md bg-[var(--sc-primary,#323288)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
                   >
                     {createItem.isPending ? "Adding…" : "Add paint"}
                   </button>

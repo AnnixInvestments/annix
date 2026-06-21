@@ -270,7 +270,7 @@ function validMicronsOverride(microns: string): number | null {
 }
 
 const INPUT_CLASS =
-  "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500";
+  "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]";
 
 export default function PaintQuotePage() {
   const catalogQuery = usePaintQuoteCatalog();
@@ -915,7 +915,7 @@ export default function PaintQuotePage() {
                                   <span className="text-gray-400">—</span>
                                 )}
                               </div>
-                              <div className="text-right text-teal-700 whitespace-nowrap shrink-0">
+                              <div className="text-right text-[var(--sc-primary-hover,#252560)] whitespace-nowrap shrink-0">
                                 {coatPrice != null ? (
                                   <span>{formatZar(coatPrice)} / m²</span>
                                 ) : (

@@ -1,4 +1,6 @@
-import { Injectable, type OnModuleInit } from "@nestjs/common";
+import { Injectable, Logger, type OnModuleInit } from "@nestjs/common";
+import { AuditService } from "../../audit/audit.service";
+import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { now } from "../../lib/datetime";
 import type { SageExportFilterDto } from "../../sage-export/dto/sage-export.dto";
 import type { SageExportLineItem } from "../../sage-export/interfaces/sage-invoice";
@@ -17,9 +19,12 @@ const DEFAULT_ACCOUNT_CODE = "5000";
 
 @Injectable()
 export class SageInvoiceAdapterService implements SageInvoiceAdapter, OnModuleInit {
+  private readonly logger = new Logger(SageInvoiceAdapterService.name);
+
   constructor(
     private readonly invoiceRepo: SupplierInvoiceRepository,
     private readonly sageAdapterRegistry: SageAdapterRegistry,
+    private readonly auditService: AuditService,
   ) {}
 
   onModuleInit() {
@@ -55,6 +60,21 @@ export class SageInvoiceAdapterService implements SageInvoiceAdapter, OnModuleIn
     await this.invoiceRepo.updateManyByIdsForCompany(entityIds, context.companyId!, {
       exportedToSageAt: now().toJSDate(),
     });
+
+    this.auditService
+      .log({
+        entityType: "supplier_invoice_sage_export",
+        entityId: context.companyId ?? 0,
+        action: AuditAction.DOWNLOAD,
+        newValues: {
+          companyId: context.companyId ?? null,
+          userId: context.userId ?? null,
+          appKey: context.appKey,
+          exportedInvoiceIds: entityIds,
+          exportedCount: entityIds.length,
+        },
+      })
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
   }
 
   async previewCount(

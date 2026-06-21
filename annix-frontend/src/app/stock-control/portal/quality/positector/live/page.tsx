@@ -291,7 +291,7 @@ export default function PositectorLiveStreamingPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
+                    <span className="rounded-full bg-[var(--sc-primary-100,#d6d6e9)] px-2.5 py-0.5 text-xs font-medium text-[var(--sc-primary-active,#1c1c48)]">
                       {sessionEntityLabel}
                     </span>
                     <span className="text-xs text-gray-500">Job Card #{sessionJobCardId}</span>

@@ -150,7 +150,7 @@ export default function DeliveryDetailPage() {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--sc-primary,#323288)] mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading delivery note...</p>
         </div>
       </div>
@@ -165,7 +165,7 @@ export default function DeliveryDetailPage() {
           <p className="text-gray-600">{queryErrorMessage || "Delivery note not found"}</p>
           <Link
             href="/stock-control/portal/deliveries"
-            className="mt-4 inline-block text-teal-600 hover:text-teal-800"
+            className="mt-4 inline-block text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
           >
             Back to Deliveries
           </Link>
@@ -298,14 +298,14 @@ export default function DeliveryDetailPage() {
                       type="text"
                       value={numberDraft}
                       onChange={(e) => setNumberDraft(e.target.value)}
-                      className="w-40 px-2 py-1 text-sm border border-teal-300 rounded focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                      className="w-40 px-2 py-1 text-sm border border-[var(--sc-primary-300,#8484b5)] rounded focus:ring-1 focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
                       aria-label="Delivery number"
                     />
                     <button
                       type="button"
                       onClick={saveDeliveryNumber}
                       disabled={updateDeliveryMutation.isPending}
-                      className="px-2 py-1 text-xs font-medium text-white bg-teal-600 rounded hover:bg-teal-700 disabled:opacity-50"
+                      className="px-2 py-1 text-xs font-medium text-white bg-[var(--sc-primary,#323288)] rounded hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
                     >
                       {updateDeliveryMutation.isPending ? "..." : "Save"}
                     </button>
@@ -324,7 +324,7 @@ export default function DeliveryDetailPage() {
                       <button
                         type="button"
                         onClick={startEditingNumber}
-                        className="text-gray-400 hover:text-teal-600"
+                        className="text-gray-400 hover:text-[var(--sc-primary,#323288)]"
                         title="Edit delivery number"
                         aria-label="Edit delivery number"
                       >
@@ -398,7 +398,7 @@ export default function DeliveryDetailPage() {
                 href={delivery.photoUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700"
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)]"
               >
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -527,7 +527,7 @@ export default function DeliveryDetailPage() {
                         {first.stockItem ? (
                           <Link
                             href={`/stock-control/portal/inventory/${first.stockItem.id}`}
-                            className="text-teal-700 hover:text-teal-900"
+                            className="text-[var(--sc-primary-hover,#252560)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                           >
                             {stockName}
                           </Link>
@@ -553,7 +553,7 @@ export default function DeliveryDetailPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
                         {totalQty}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-teal-700">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-[var(--sc-primary-hover,#252560)]">
                         {totalLitres ? `${totalLitres.toFixed(1)}L` : "-"}
                       </td>
                     </tr>
@@ -571,7 +571,7 @@ export default function DeliveryDetailPage() {
               <button
                 onClick={handleLinkToStock}
                 disabled={linkToStockMutation.isPending}
-                className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {linkToStockMutation.isPending ? (
                   <>
@@ -701,7 +701,7 @@ export default function DeliveryDetailPage() {
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
                           {qty || "-"} {uom}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-right font-semibold text-teal-700">
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-right font-semibold text-[var(--sc-primary-hover,#252560)]">
                           {totalL ? `${totalL.toFixed(1)}L` : "-"}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-gray-600">

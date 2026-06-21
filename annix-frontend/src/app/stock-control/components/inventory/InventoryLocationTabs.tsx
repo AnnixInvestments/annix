@@ -26,7 +26,7 @@ export function InventoryLocationTabs({
         onClick={() => onLocationChange("")}
         className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
           locationFilter === ""
-            ? "bg-teal-600 text-white shadow-sm"
+            ? "bg-[var(--sc-primary,#323288)] text-white shadow-sm"
             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
         }`}
       >
@@ -41,7 +41,7 @@ export function InventoryLocationTabs({
             onClick={() => onLocationChange(String(loc.id))}
             className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
               locationFilter === loc.id
-                ? "bg-teal-600 text-white shadow-sm"
+                ? "bg-[var(--sc-primary,#323288)] text-white shadow-sm"
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
@@ -54,7 +54,7 @@ export function InventoryLocationTabs({
         onClick={() => onLocationChange("uncategorized")}
         className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
           locationFilter === "uncategorized"
-            ? "bg-teal-600 text-white shadow-sm"
+            ? "bg-[var(--sc-primary,#323288)] text-white shadow-sm"
             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
         }`}
       >

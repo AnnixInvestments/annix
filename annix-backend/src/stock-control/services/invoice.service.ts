@@ -11,6 +11,8 @@ import { SupplierInvoiceRepository } from "../repositories/supplier-invoice.repo
 import { SupplierInvoiceItemRepository } from "../repositories/supplier-invoice-item.repository";
 import { InvoiceExtractionService } from "./invoice-extraction.service";
 
+const MAX_BULK_REEXTRACT = 50;
+
 export interface CreateInvoiceDto {
   deliveryNoteId?: number | null;
   invoiceNumber: string;
@@ -58,7 +60,11 @@ export class InvoiceService {
     private readonly auditService: AuditService,
   ) {}
 
-  async create(companyId: number, dto: CreateInvoiceDto): Promise<SupplierInvoice> {
+  async create(
+    companyId: number,
+    dto: CreateInvoiceDto,
+    userId?: number,
+  ): Promise<SupplierInvoice> {
     const deliveryNote = dto.deliveryNoteId
       ? await this.deliveryNoteRepo.findOneForCompany(dto.deliveryNoteId, companyId)
       : null;
@@ -69,7 +75,7 @@ export class InvoiceService {
 
     const supplierName = dto.supplierName || deliveryNote?.supplierName || dto.supplierName;
 
-    return this.invoiceRepo.create({
+    const created = await this.invoiceRepo.create({
       companyId,
       deliveryNoteId: dto.deliveryNoteId || null,
       invoiceNumber: dto.invoiceNumber,
@@ -77,6 +83,23 @@ export class InvoiceService {
       invoiceDate: dto.invoiceDate ? fromISO(dto.invoiceDate).toJSDate() : null,
       extractionStatus: InvoiceExtractionStatus.PENDING,
     });
+
+    this.auditService
+      .log({
+        entityType: "supplier_invoice",
+        entityId: created.id,
+        action: AuditAction.CREATE,
+        newValues: {
+          companyId,
+          userId: userId ?? null,
+          invoiceNumber: created.invoiceNumber,
+          supplierName: created.supplierName,
+          deliveryNoteId: created.deliveryNoteId,
+        },
+      })
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
+
+    return created;
   }
 
   async findAll(
@@ -371,25 +394,47 @@ export class InvoiceService {
     return { items, totalOldValue, totalNewValue };
   }
 
-  async remove(companyId: number, id: number): Promise<void> {
+  async remove(companyId: number, id: number, userId?: number): Promise<void> {
     const invoice = await this.findById(companyId, id);
     await this.invoiceRepo.remove(invoice);
+
+    this.auditService
+      .log({
+        entityType: "supplier_invoice",
+        entityId: id,
+        action: AuditAction.DELETE,
+        oldValues: {
+          companyId,
+          invoiceNumber: invoice.invoiceNumber,
+          supplierName: invoice.supplierName,
+          extractionStatus: invoice.extractionStatus,
+        },
+        newValues: { userId: userId ?? null },
+      })
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
   }
 
   async reExtractAllFailed(companyId: number): Promise<{ triggered: number; failed: string[] }> {
-    const failedInvoices = await this.invoiceRepo.findFailedForCompany(companyId);
+    const allFailed = await this.invoiceRepo.findFailedForCompany(companyId);
+    const extractable = allFailed.filter((inv) => inv.scanUrl);
+
+    if (extractable.length > MAX_BULK_REEXTRACT) {
+      this.logger.warn(
+        `re-extract-all-failed for company ${companyId} truncated from ${extractable.length} to ${MAX_BULK_REEXTRACT}`,
+      );
+    }
+
+    const failedInvoices = extractable.slice(0, MAX_BULK_REEXTRACT);
 
     const results = await Promise.allSettled(
-      failedInvoices
-        .filter((inv) => inv.scanUrl)
-        .map(async (inv) => {
-          const s3Key = this.extractS3Key(inv.scanUrl!);
-          const fileBuffer = await this.storageService.download(s3Key);
-          const imageBase64 = fileBuffer.toString("base64");
-          const mediaType = this.mimeFromPath(s3Key);
-          await this.extractionService.extractFromImage(inv.id, imageBase64, mediaType);
-          return inv.invoiceNumber;
-        }),
+      failedInvoices.map(async (inv) => {
+        const s3Key = this.extractS3Key(inv.scanUrl!);
+        const fileBuffer = await this.storageService.download(s3Key);
+        const imageBase64 = fileBuffer.toString("base64");
+        const mediaType = this.mimeFromPath(s3Key);
+        await this.extractionService.extractFromImage(inv.id, imageBase64, mediaType);
+        return inv.invoiceNumber;
+      }),
     );
 
     const triggered = results.filter((r) => r.status === "fulfilled").length;

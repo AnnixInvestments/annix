@@ -102,7 +102,7 @@ export default function InboundEmailsPage() {
           type="button"
           onClick={handleFileHeld}
           disabled={reprocessSkipped.isPending}
-          className="shrink-0 inline-flex items-center justify-center rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+          className="shrink-0 inline-flex items-center justify-center rounded-md bg-[var(--sc-primary,#323288)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] disabled:opacity-50"
         >
           {reprocessSkipped.isPending ? "Filing…" : "File held documents"}
         </button>
@@ -126,7 +126,7 @@ export default function InboundEmailsPage() {
               setStatusFilter(e.target.value);
               setPage(1);
             }}
-            className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+            className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
           >
             <option value="">All Statuses</option>
             <option value="completed">Completed</option>
@@ -352,7 +352,7 @@ function AttachmentRow({
               onReclassify(attachment.id, e.target.value);
             }
           }}
-          className="px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+          className="px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-[var(--sc-primary,#323288)] focus:border-[var(--sc-primary,#323288)]"
         >
           <option value="">Reclassify...</option>
           {DOCUMENT_TYPES.map((dt) => (
