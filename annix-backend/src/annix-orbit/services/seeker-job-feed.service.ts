@@ -13,11 +13,13 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { DateTime, fromJSDate, nowMillis } from "../../lib/datetime";
+import { dialCodeForCountry, formatInternationalPhone } from "../../lib/dial-codes";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { UserRepository } from "../../user/user.repository";
 import { WhatsAppConversationRepository } from "../../whatsapp/repositories/whatsapp-conversation.repository";
 import { WhatsAppMessageRepository } from "../../whatsapp/repositories/whatsapp-message.repository";
+import { normalizeWaId } from "../../whatsapp/wa-id";
 import { IndividualDocumentKind } from "../entities/annix-orbit-individual-document.entity";
 import { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch, MatchDetails } from "../entities/candidate-job-match.entity";
@@ -700,6 +702,13 @@ export class SeekerJobFeedService {
       // seekers who registered a phone on their CV but never set a profile one.
       const profilePhone = whatsapp ? whatsapp.contactPhone : null;
       const cvPhone = row.extractedData ? row.extractedData.phone : null;
+      const dialCode = dialCodeForCountry(
+        row.targetCountries && row.targetCountries.length > 0 ? row.targetCountries[0] : null,
+      );
+      const e164 =
+        whatsapp && whatsapp.whatsappPhone
+          ? whatsapp.whatsappPhone
+          : normalizeWaId(profilePhone ?? cvPhone, dialCode);
       return {
         id: row.id,
         userId: whatsapp ? whatsapp.userId : null,
@@ -714,7 +723,7 @@ export class SeekerJobFeedService {
         whatsappOptIn: whatsapp ? whatsapp.whatsappOptIn : false,
         whatsappConsentRequestedAt: whatsapp ? whatsapp.whatsappConsentRequestedAt : null,
         whatsappPhone: whatsapp ? whatsapp.whatsappPhone : null,
-        contactPhone: profilePhone ?? cvPhone,
+        contactPhone: formatInternationalPhone(e164),
         whatsappDeliveryStatus: whatsapp ? whatsapp.whatsappDeliveryStatus : null,
         whatsappDeliveryDetail: whatsapp ? whatsapp.whatsappDeliveryDetail : null,
       };
@@ -822,6 +831,19 @@ export class SeekerJobFeedService {
     const analysis = candidate.matchAnalysis;
     const profileHasCv = seekerProfile ? seekerProfile.cvFilePath != null : false;
 
+    const detailDialCode = dialCodeForCountry(
+      candidate.targetCountries && candidate.targetCountries.length > 0
+        ? candidate.targetCountries[0]
+        : null,
+    );
+    const detailE164 =
+      seekerUser && seekerUser.whatsappPhone
+        ? seekerUser.whatsappPhone
+        : normalizeWaId(
+            (seekerProfile ? seekerProfile.phone : null) ?? (extracted ? extracted.phone : null),
+            detailDialCode,
+          );
+
     return {
       id: candidate.id,
       userId: seekerUser ? seekerUser.id : null,
@@ -838,7 +860,7 @@ export class SeekerJobFeedService {
         ? seekerUser.whatsappConsentRequestedAt.toISOString()
         : null,
       whatsappPhone: seekerUser ? (seekerUser.whatsappPhone ?? null) : null,
-      contactPhone: seekerProfile?.phone ?? null,
+      contactPhone: formatInternationalPhone(detailE164),
       whatsappDeliveryStatus: consentDelivery ? consentDelivery.status : null,
       whatsappDeliveryDetail: consentDelivery ? consentDelivery.detail : null,
       popiaConsent: candidate.popiaConsent,

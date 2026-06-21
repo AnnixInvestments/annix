@@ -37,3 +37,22 @@ export function dialCodeForCountry(iso: string | null | undefined): string {
   }
   return DIAL_CODES[key] ?? "27";
 }
+
+const DIAL_CODES_BY_LENGTH_DESC = [...new Set(Object.values(DIAL_CODES))].sort(
+  (a, b) => b.length - a.length,
+);
+
+export function formatInternationalPhone(e164: string | null | undefined): string | null {
+  if (e164 === null || e164 === undefined || e164 === "") {
+    return null;
+  }
+  const digits = e164.replace(/\D/g, "");
+  if (digits === "") {
+    return null;
+  }
+  const dial = DIAL_CODES_BY_LENGTH_DESC.find((code) => digits.startsWith(code));
+  if (dial) {
+    return `+${dial} ${digits.slice(dial.length)}`;
+  }
+  return `+${digits}`;
+}

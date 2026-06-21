@@ -41,6 +41,17 @@ import { SeekerTelemetryService } from "./seeker-telemetry.service";
 
 type CredentialPhotoMediaType = "image/jpeg" | "image/png" | "image/webp";
 
+function coerceOverallScore(value: unknown): number | null {
+  if (isNumber(value) && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number.parseFloat(value.replace(/[^0-9.-]/g, ""));
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
 function credentialPhotoMediaType(mimeType: string): CredentialPhotoMediaType | null {
   if (mimeType === "image/jpeg" || mimeType === "image/png" || mimeType === "image/webp") {
     return mimeType;
@@ -261,9 +272,11 @@ export class NixSeekerAssistService {
         return parseNixJson<NixSeekerCvAssessmentResponse>(aiResult.content);
       });
 
-      if (isNumber(result.overallScore)) {
+      const overallScore = coerceOverallScore(result.overallScore);
+      if (overallScore !== null) {
+        result.overallScore = overallScore;
         try {
-          profile.careerScore = result.overallScore;
+          profile.careerScore = overallScore;
           profile.careerScoreGeneratedAt = now().toJSDate();
           await this.profileRepo.save(profile);
         } catch (saveError) {
@@ -271,7 +284,7 @@ export class NixSeekerAssistService {
           this.logger.warn(`Failed to persist career score: ${message}`);
         }
         await this.seekerTelemetry.record(candidateId, SEEKER_EVENTS.careerScoreGenerated, {
-          metadata: { score: result.overallScore },
+          metadata: { score: overallScore },
         });
       }
 

@@ -1,8 +1,10 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { now } from "../../lib/datetime";
+import { UserRepository } from "../../user/user.repository";
 import { SeekerTestParticipant } from "../entities/seeker-test-participant.entity";
 import { SeekerWorkflowProgress } from "../entities/seeker-workflow-progress.entity";
 import { SEEKER_EVENT_TO_STEP, SEEKER_WORKFLOW_STEPS } from "../lib/seeker-testing.constants";
+import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import { CandidateRepository } from "../repositories/candidate.repository";
 import { SeekerTestEventRepository } from "../repositories/seeker-test-event.repository";
 import { SeekerTestParticipantRepository } from "../repositories/seeker-test-participant.repository";
@@ -27,16 +29,39 @@ export class SeekerWorkflowProgressService {
     private readonly progress: SeekerWorkflowProgressRepository,
     private readonly steps: SeekerWorkflowStepRepository,
     private readonly candidates: CandidateRepository,
+    private readonly profiles: AnnixOrbitProfileRepository,
+    private readonly users: UserRepository,
   ) {}
 
-  private async registeredAtForCandidate(candidateId: number): Promise<Date | null> {
-    try {
-      const candidate = await this.candidates.findById(candidateId);
-      const createdAt = candidate ? candidate.createdAt : null;
-      return createdAt ? new Date(createdAt) : null;
-    } catch {
-      return null;
+  // Some steps fire telemetry before the seeker's Candidate row exists (the
+  // Candidate is upserted later from extracted CV data), so those events carry a
+  // null candidateId and reconcile drops them. Derive those steps from durable
+  // profile state instead — the same approach used for registered_account.
+  private async derivedSteps(candidateId: number): Promise<Map<string, Date>> {
+    const derived = new Map<string, Date>();
+    const candidate = await this.candidates.findById(candidateId).catch(() => null);
+    if (candidate?.createdAt) {
+      derived.set("registered_account", new Date(candidate.createdAt));
     }
+    const email = candidate?.email ?? null;
+    if (!email) {
+      return derived;
+    }
+    const user = await this.users.findOneByEmailCaseInsensitive(email).catch(() => null);
+    if (!user) {
+      return derived;
+    }
+    const profile = await this.profiles.findByUserId(user.id).catch(() => null);
+    if (!profile) {
+      return derived;
+    }
+    if (profile.onboardingCompletedAt) {
+      derived.set("completed_profile", new Date(profile.onboardingCompletedAt));
+    }
+    if (profile.cvUploadedAt) {
+      derived.set("uploaded_cv", new Date(profile.cvUploadedAt));
+    }
+    return derived;
   }
 
   private async activePhaseId(): Promise<string | null> {
@@ -77,12 +102,15 @@ export class SeekerWorkflowProgressService {
   private async reconcileCandidate(
     candidateId: number,
     phaseId: string,
-    candidateEvents: { eventName: string; ts: Date }[],
+    candidateEvents: { eventName: string; ts: Date; ok?: boolean }[],
   ): Promise<void> {
     const participant = await this.ensureParticipant(candidateId, phaseId);
     const participantId = String(participant.id);
 
     const firstTsByStep = candidateEvents.reduce<Map<string, Date>>((acc, event) => {
+      if (event.ok === false) {
+        return acc;
+      }
       const stepKey = SEEKER_EVENT_TO_STEP[event.eventName];
       if (!stepKey) {
         return acc;
@@ -94,12 +122,15 @@ export class SeekerWorkflowProgressService {
       return acc;
     }, new Map());
 
-    // Every tracked candidate is, by definition, registered — derive the
-    // registered_account step + registeredAt from the candidate's creation time.
-    const registeredAt = await this.registeredAtForCandidate(candidateId);
-    if (registeredAt && !firstTsByStep.has("registered_account")) {
-      firstTsByStep.set("registered_account", registeredAt);
-    }
+    // Steps whose telemetry can fire before the Candidate row exists (registered,
+    // completed_profile, uploaded_cv) are derived from durable state so they are
+    // not lost to null-candidateId orphan events.
+    const derived = await this.derivedSteps(candidateId);
+    Array.from(derived.entries()).forEach(([stepKey, ts]) => {
+      if (!firstTsByStep.has(stepKey)) {
+        firstTsByStep.set(stepKey, ts);
+      }
+    });
 
     await Array.from(firstTsByStep.entries()).reduce(async (prev, [stepKey, ts]) => {
       await prev;
