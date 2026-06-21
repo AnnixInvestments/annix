@@ -15,7 +15,7 @@ import type {
 import { now } from "@/app/lib/datetime";
 import { useAuCmsTestimonial } from "@/app/lib/query/hooks";
 import { auCmsKeys } from "@/app/lib/query/keys/auCmsKeys";
-import { MarketingBrandSwitcher } from "../../../MarketingBrandSwitcher";
+import { AuCmsHeader } from "../../AuCmsHeader";
 
 const SOURCE_OPTIONS: { value: TestimonialSource; label: string }[] = [
   { value: "google", label: "Google review" },
@@ -127,23 +127,36 @@ export default function AuMarketingTestimonialEditorPage() {
   };
 
   return (
-    <div className="px-6 py-4 max-w-3xl">
-      <div className="mb-4 flex items-center justify-between">
-        <MarketingBrandSwitcher active="au" />
-        <Link
-          href="/admin/portal/marketing/au/testimonials"
-          className="text-sm font-medium text-gray-500 hover:text-gray-700"
-        >
-          ← Back to testimonials
-        </Link>
-      </div>
-
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">
-        {isNew ? "New Testimonial" : "Edit Testimonial"}
-      </h1>
-      <p className="text-sm text-gray-500 mb-6">
-        Quotes added here appear on auind.co.za/testimonials and emit Review JSON-LD for Google.
-      </p>
+    <div className="mx-auto max-w-3xl space-y-6 p-6">
+      <AuCmsHeader
+        title={isNew ? "New Testimonial" : "Edit Testimonial"}
+        subtitle="Quotes added here appear on auind.co.za/testimonials and emit Review JSON-LD for Google."
+        actions={
+          <>
+            <Link
+              href="/admin/portal/marketing/au/testimonials"
+              className="inline-flex items-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+            >
+              ← Back to testimonials
+            </Link>
+            <button
+              type="button"
+              onClick={() => router.push("/admin/portal/marketing/au/testimonials")}
+              className="inline-flex items-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="inline-flex items-center rounded-lg bg-yellow-500 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-600 disabled:opacity-50"
+            >
+              {saving ? "Saving..." : isNew ? "Create testimonial" : "Save changes"}
+            </button>
+          </>
+        }
+      />
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-5">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -250,22 +263,6 @@ export default function AuMarketingTestimonialEditorPage() {
             </label>
           </div>
         </div>
-      </div>
-
-      <div className="mt-6 flex items-center justify-between">
-        <button
-          onClick={() => router.push("/admin/portal/marketing/au/testimonials")}
-          className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="px-6 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50 transition-colors font-medium text-sm"
-        >
-          {saving ? "Saving..." : isNew ? "Create testimonial" : "Save changes"}
-        </button>
       </div>
     </div>
   );

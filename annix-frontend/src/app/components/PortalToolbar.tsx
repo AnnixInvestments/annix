@@ -22,6 +22,7 @@ export interface NavItem {
   featureFlag?: string;
   // Stable anchor an in-app assistant can point at (rendered as data-nix-target).
   navTarget?: string;
+  subItems?: { href: string; label: string }[];
 }
 
 export interface UserInfo {
@@ -281,6 +282,72 @@ export default function PortalToolbar(props: PortalToolbarProps) {
             <div className="hidden xl:ml-6 xl:flex xl:items-center xl:space-x-0.5">
               {visibleNavItems.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                const subItems = item.subItems;
+                if (subItems && subItems.length > 0) {
+                  return (
+                    <div key={item.href} className="relative group">
+                      <Link
+                        href={item.href}
+                        data-nix-target={item.navTarget}
+                        className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap"
+                        style={{
+                          color: navForeground,
+                          backgroundColor: isActive ? navActive : "transparent",
+                        }}
+                      >
+                        <svg
+                          className="w-5 h-5 mr-1.5 flex-shrink-0"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d={item.icon}
+                          />
+                        </svg>
+                        {item.label}
+                      </Link>
+                      <div className="absolute left-0 top-full pt-1 z-50 hidden min-w-[10rem] group-hover:block">
+                        <div
+                          className="overflow-hidden rounded-md py-1 shadow-lg"
+                          style={{ backgroundColor: navBg }}
+                        >
+                          {subItems.map((sub) => {
+                            const subHref = sub.href;
+                            const subActive =
+                              pathname === subHref || pathname.startsWith(`${subHref}/`);
+                            return (
+                              <Link
+                                key={sub.href}
+                                href={sub.href}
+                                className="block whitespace-nowrap px-4 py-2 text-sm transition-colors"
+                                style={{
+                                  color: navForeground,
+                                  backgroundColor: subActive ? navActive : "transparent",
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (!subActive) {
+                                    e.currentTarget.style.backgroundColor = navHover;
+                                  }
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (!subActive) {
+                                    e.currentTarget.style.backgroundColor = "transparent";
+                                  }
+                                }}
+                              >
+                                {sub.label}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
                 return (
                   <Tooltip key={item.href} text={getNavTooltip(item.label)} position="bottom">
                     <Link
@@ -620,36 +687,63 @@ export default function PortalToolbar(props: PortalToolbarProps) {
               {visibleNavItems.map((item) => {
                 const href = item.href;
                 const isActive = pathname === href || pathname.startsWith(`${href}/`);
+                const subItems = item.subItems;
                 return (
-                  <Link
-                    key={href}
-                    href={href}
-                    data-nix-target={item.navTarget}
-                    onClick={() => setIsMobileNavOpen(false)}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors"
-                    style={{
-                      color: navForeground,
-                      backgroundColor: isActive ? navActive : "transparent",
-                    }}
-                  >
-                    <svg
-                      className="w-5 h-5 flex-shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+                  <div key={href} className="flex flex-col">
+                    <Link
+                      href={href}
+                      data-nix-target={item.navTarget}
+                      onClick={() => setIsMobileNavOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors"
+                      style={{
+                        color: navForeground,
+                        backgroundColor: isActive ? navActive : "transparent",
+                      }}
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d={item.icon}
-                      />
-                    </svg>
-                    <span className="flex flex-col leading-tight">
-                      <span className="text-sm font-medium">{item.label}</span>
-                      {item.sublabel && <span className="text-xs opacity-80">{item.sublabel}</span>}
-                    </span>
-                  </Link>
+                      <svg
+                        className="w-5 h-5 flex-shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d={item.icon}
+                        />
+                      </svg>
+                      <span className="flex flex-col leading-tight">
+                        <span className="text-sm font-medium">{item.label}</span>
+                        {item.sublabel && (
+                          <span className="text-xs opacity-80">{item.sublabel}</span>
+                        )}
+                      </span>
+                    </Link>
+                    {subItems && subItems.length > 0 && (
+                      <div className="flex flex-col gap-1 pl-11 pb-1">
+                        {subItems.map((sub) => {
+                          const subHref = sub.href;
+                          const subActive =
+                            pathname === subHref || pathname.startsWith(`${subHref}/`);
+                          return (
+                            <Link
+                              key={sub.href}
+                              href={sub.href}
+                              onClick={() => setIsMobileNavOpen(false)}
+                              className="rounded-md px-3 py-2 text-sm transition-colors"
+                              style={{
+                                color: navForeground,
+                                backgroundColor: subActive ? navActive : "transparent",
+                              }}
+                            >
+                              {sub.label}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>

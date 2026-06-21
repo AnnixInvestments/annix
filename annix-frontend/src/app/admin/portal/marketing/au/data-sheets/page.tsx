@@ -16,7 +16,7 @@ import type { CompoundDataSheetDto } from "@/app/lib/api/auRubberApi";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { useAuCmsDataSheets } from "@/app/lib/query/hooks";
 import { auCmsKeys } from "@/app/lib/query/keys/auCmsKeys";
-import { MarketingBrandSwitcher } from "../../MarketingBrandSwitcher";
+import { AuCmsHeader } from "../AuCmsHeader";
 
 const ITEMS_PER_PAGE = 25;
 
@@ -75,42 +75,36 @@ export default function AuMarketingDataSheetsListPage() {
   };
 
   return (
-    <div className="px-6 py-4">
+    <div className="mx-auto max-w-5xl space-y-6 p-6">
       {ConfirmDialog}
-      <div className="mb-4 flex items-center justify-between">
-        <MarketingBrandSwitcher active="au" />
-        <Link
-          href="/admin/portal/marketing/au"
-          className="text-sm font-medium text-gray-500 hover:text-gray-700"
-        >
-          ← Back to pages
-        </Link>
-      </div>
-
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Technical Data Sheets</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Manage the rubber compound data sheets shown on the AU Industries website
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <a
-            href="/au-industries/technical-data-sheets"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
-          >
-            View Live Page
-          </a>
-          <Link
-            href="/admin/portal/marketing/au/data-sheets/new"
-            className="inline-flex items-center px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors font-medium text-sm"
-          >
-            New Data Sheet
-          </Link>
-        </div>
-      </div>
+      <AuCmsHeader
+        title="Technical Data Sheets"
+        subtitle="Manage the rubber compound data sheets shown on the AU Industries website"
+        actions={
+          <>
+            <Link
+              href="/admin/portal/marketing/au"
+              className="inline-flex items-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+            >
+              ← Back to pages
+            </Link>
+            <a
+              href="/au-industries/technical-data-sheets"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+            >
+              View Live Page
+            </a>
+            <Link
+              href="/admin/portal/marketing/au/data-sheets/new"
+              className="inline-flex items-center rounded-lg bg-yellow-500 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-600"
+            >
+              New Data Sheet
+            </Link>
+          </>
+        }
+      />
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-4">
         <div className="p-4 border-b border-gray-200">

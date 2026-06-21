@@ -10,7 +10,7 @@ import { auCmsAdminApi } from "@/app/lib/api/auCmsAdminApi";
 import type { CompoundSpecDto, CreateCompoundDataSheetDto } from "@/app/lib/api/auRubberApi";
 import { useAuCmsDataSheet } from "@/app/lib/query/hooks";
 import { auCmsKeys } from "@/app/lib/query/keys/auCmsKeys";
-import { MarketingBrandSwitcher } from "../../../MarketingBrandSwitcher";
+import { AuCmsHeader } from "../../AuCmsHeader";
 
 const CATEGORIES = [
   "Natural Rubber Lining",
@@ -206,20 +206,36 @@ export default function AuMarketingDataSheetEditorPage() {
   const labelClass = "block text-sm font-medium text-gray-700 mb-1";
 
   return (
-    <div className="px-6 py-4 max-w-3xl">
-      <div className="mb-4 flex items-center justify-between">
-        <MarketingBrandSwitcher active="au" />
-        <Link
-          href="/admin/portal/marketing/au/data-sheets"
-          className="text-sm font-medium text-gray-500 hover:text-gray-700"
-        >
-          ← Back to data sheets
-        </Link>
-      </div>
-
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">
-        {isNew ? "New Data Sheet" : "Edit Data Sheet"}
-      </h1>
+    <div className="mx-auto max-w-3xl space-y-6 p-6">
+      <AuCmsHeader
+        title={isNew ? "New Data Sheet" : "Edit Data Sheet"}
+        subtitle="Manage a rubber compound data sheet shown on the AU Industries website"
+        actions={
+          <>
+            <Link
+              href="/admin/portal/marketing/au/data-sheets"
+              className="inline-flex items-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+            >
+              ← Back to data sheets
+            </Link>
+            <button
+              type="button"
+              onClick={() => router.push("/admin/portal/marketing/au/data-sheets")}
+              className="inline-flex items-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="inline-flex items-center rounded-lg bg-yellow-500 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-600 disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save Data Sheet"}
+            </button>
+          </>
+        }
+      />
 
       <div className="space-y-5 bg-white rounded-lg border border-gray-200 p-6">
         <div>
@@ -470,24 +486,6 @@ export default function AuMarketingDataSheetEditorPage() {
               onChange={(e) => update("metaDescription", e.target.value)}
             />
           </div>
-        </div>
-
-        <div className="flex items-center gap-3 pt-2">
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="inline-flex items-center px-5 py-2.5 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors font-medium text-sm disabled:opacity-50"
-          >
-            {saving ? "Saving..." : "Save Data Sheet"}
-          </button>
-          <button
-            type="button"
-            onClick={() => router.push("/admin/portal/marketing/au/data-sheets")}
-            className="inline-flex items-center px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
-          >
-            Cancel
-          </button>
         </div>
       </div>
     </div>

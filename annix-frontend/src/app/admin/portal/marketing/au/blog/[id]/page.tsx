@@ -12,7 +12,7 @@ import type { CreateBlogPostDto, UpdateBlogPostDto } from "@/app/lib/api/auRubbe
 import { now } from "@/app/lib/datetime";
 import { useAuCmsBlogPost } from "@/app/lib/query/hooks";
 import { auCmsKeys } from "@/app/lib/query/keys/auCmsKeys";
-import { MarketingBrandSwitcher } from "../../../MarketingBrandSwitcher";
+import { AuCmsHeader } from "../../AuCmsHeader";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
 
@@ -155,26 +155,41 @@ export default function AuMarketingBlogEditorPage() {
     }
   };
 
+  const slugForUrl = slug ? slug : "your-slug";
+
   return (
-    <div className="px-6 py-4 max-w-5xl">
-      <div className="mb-4 flex items-center justify-between">
-        <MarketingBrandSwitcher active="au" />
-        <Link
-          href="/admin/portal/marketing/au/blog"
-          className="text-sm font-medium text-gray-500 hover:text-gray-700"
-        >
-          ← Back to blog
-        </Link>
-      </div>
+    <div className="mx-auto max-w-5xl space-y-6 p-6">
+      <AuCmsHeader
+        title={isNew ? "New Blog Post" : "Edit Blog Post"}
+        subtitle={`Markdown content with embedded images. Live URL is /blog/${slugForUrl}.`}
+        actions={
+          <>
+            <Link
+              href="/admin/portal/marketing/au/blog"
+              className="inline-flex items-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+            >
+              ← Back to blog
+            </Link>
+            <button
+              type="button"
+              onClick={() => router.push("/admin/portal/marketing/au/blog")}
+              className="inline-flex items-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="inline-flex items-center rounded-lg bg-yellow-500 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-600 disabled:opacity-50"
+            >
+              {saving ? "Saving..." : isNew ? "Create post" : "Save changes"}
+            </button>
+          </>
+        }
+      />
 
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">
-        {isNew ? "New Blog Post" : "Edit Blog Post"}
-      </h1>
-      <p className="text-sm text-gray-500 mb-6">
-        Markdown content with embedded images. Live URL is /blog/{slug || "your-slug"}.
-      </p>
-
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-5 mb-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-5">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <Field label="Title" required>
             <input
@@ -249,7 +264,7 @@ export default function AuMarketingBlogEditorPage() {
               placeholder="https://... or upload below"
               className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
             />
-            <label className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm cursor-pointer whitespace-nowrap">
+            <label className="px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm cursor-pointer whitespace-nowrap">
               {uploading ? "Uploading..." : "Upload"}
               <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
             </label>
@@ -267,27 +282,11 @@ export default function AuMarketingBlogEditorPage() {
         </label>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <label className="block text-sm font-medium text-gray-700 mb-2">Body (markdown)</label>
         <div data-color-mode="light">
           <MDEditor value={content} onChange={(val) => setContent(val || "")} height={500} />
         </div>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <button
-          onClick={() => router.push("/admin/portal/marketing/au/blog")}
-          className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="px-6 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50 transition-colors font-medium text-sm"
-        >
-          {saving ? "Saving..." : isNew ? "Create post" : "Save changes"}
-        </button>
       </div>
     </div>
   );
