@@ -7,7 +7,11 @@ import { notFound } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { BlockRenderer } from "@/app/lib/cms/render/BlockRenderer";
-import { faqJsonLdFromBlocks } from "@/app/lib/cms/render/jsonLd";
+import {
+  breadcrumbJsonLd,
+  faqJsonLdFromBlocks,
+  serviceJsonLdFromBlocks,
+} from "@/app/lib/cms/render/jsonLd";
 import { type CaseStudy, caseStudiesForService } from "../caseStudies";
 import { SERVICE_FAQS } from "../serviceFaqs";
 import { ServicePageBody } from "./ServicePageBody";
@@ -110,6 +114,20 @@ export default async function AuIndustriesSlugPage(props: PageProps) {
 
   if (blocksMode && publishedBlocks) {
     const faqJsonLd = faqJsonLdFromBlocks(publishedBlocks);
+    const headersList = await headers();
+    const host = (headersList.get("host") ?? "").toLowerCase();
+    const protocol = headersList.get("x-forwarded-proto") ?? "https";
+    const origin = `${protocol}://${host}`;
+    const pageUrl = `${origin}/${slug}`;
+    const serviceJsonLd = serviceJsonLdFromBlocks(publishedBlocks, {
+      name: page.title,
+      url: pageUrl,
+      description: page.metaDescription,
+    });
+    const breadcrumb = breadcrumbJsonLd([
+      { name: "Home", url: origin },
+      { name: page.title, url: pageUrl },
+    ]);
     return (
       <div>
         {faqJsonLd && (
@@ -119,6 +137,16 @@ export default async function AuIndustriesSlugPage(props: PageProps) {
             dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
           />
         )}
+        <script
+          type="application/ld+json"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD must be inline JSON for Google to parse
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD must be inline JSON for Google to parse
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
+        />
         {heroImageUrl && (
           <div className="relative h-64 md:h-80">
             <Image

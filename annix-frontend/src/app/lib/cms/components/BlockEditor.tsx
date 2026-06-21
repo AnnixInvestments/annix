@@ -8,7 +8,9 @@ import {
 } from "@annix/product-data/cms";
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
-import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import { auCmsAdminApi } from "@/app/lib/api/auCmsAdminApi";
+import { BlockRenderer } from "@/app/lib/cms/render/BlockRenderer";
+import { ImageField } from "./ImageField";
 
 interface BlockEditorProps {
   pageId: string;
@@ -26,6 +28,7 @@ export function BlockEditor(props: BlockEditorProps) {
   const [blocks, setBlocks] = useState<CmsBlock[]>(props.initialBlocks);
   const [addType, setAddType] = useState<CmsBlockType>("richText");
   const [busy, setBusy] = useState(false);
+  const [mode, setMode] = useState<"edit" | "preview">("edit");
 
   const updateBlock = (index: number, next: CmsBlock) => {
     setBlocks((current) => current.map((block, idx) => (idx === index ? next : block)));
@@ -55,7 +58,7 @@ export function BlockEditor(props: BlockEditorProps) {
   const saveDraft = async () => {
     setBusy(true);
     try {
-      await auRubberApiClient.saveWebsiteDraftBlocks(props.pageId, blocks);
+      await auCmsAdminApi.saveWebsiteDraftBlocks(props.pageId, blocks);
       showToast("Block draft saved", "success");
     } catch {
       showToast("Failed to save block draft", "error");
@@ -67,8 +70,8 @@ export function BlockEditor(props: BlockEditorProps) {
   const publish = async () => {
     setBusy(true);
     try {
-      await auRubberApiClient.saveWebsiteDraftBlocks(props.pageId, blocks);
-      await auRubberApiClient.publishWebsiteBlocks(props.pageId);
+      await auCmsAdminApi.saveWebsiteDraftBlocks(props.pageId, blocks);
+      await auCmsAdminApi.publishWebsiteBlocks(props.pageId);
       showToast("Blocks published to the live page", "success");
     } catch {
       showToast("Failed to publish blocks", "error");
@@ -79,67 +82,104 @@ export function BlockEditor(props: BlockEditorProps) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-gray-500">
-        Build the page from content blocks. Save Draft stores your changes; Publish pushes them to
-        the live page (only when "Use blocks for the live page" is ticked above).
-      </p>
-
-      {blocks.map((block, index) => (
-        <div key={`block-${index}`} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-semibold text-gray-800 uppercase tracking-wide">
-              {blockLabel(block.type)}
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => moveBlock(index, -1)}
-                disabled={index === 0}
-                className="px-2 py-1 text-xs border border-gray-300 rounded disabled:opacity-40"
-              >
-                ↑
-              </button>
-              <button
-                type="button"
-                onClick={() => moveBlock(index, 1)}
-                disabled={index === blocks.length - 1}
-                className="px-2 py-1 text-xs border border-gray-300 rounded disabled:opacity-40"
-              >
-                ↓
-              </button>
-              <button
-                type="button"
-                onClick={() => removeBlock(index)}
-                className="px-2 py-1 text-xs text-red-600 border border-red-300 rounded hover:bg-red-50"
-              >
-                Remove
-              </button>
-            </div>
-          </div>
-          <BlockFields block={block} onChange={(next) => updateBlock(index, next)} />
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-gray-500">
+          Build the page from content blocks. Save Draft stores your changes; Publish pushes them to
+          the live page (only when "Use blocks for the live page" is ticked above).
+        </p>
+        <div className="inline-flex shrink-0 rounded-lg border border-gray-300 p-0.5">
+          <button
+            type="button"
+            onClick={() => setMode("edit")}
+            className={
+              mode === "edit"
+                ? "rounded-md bg-[#323288] px-3 py-1.5 text-sm font-semibold text-white"
+                : "rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100"
+            }
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("preview")}
+            className={
+              mode === "preview"
+                ? "rounded-md bg-[#323288] px-3 py-1.5 text-sm font-semibold text-white"
+                : "rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100"
+            }
+          >
+            Preview
+          </button>
         </div>
-      ))}
-
-      <div className="flex items-center gap-3 flex-wrap">
-        <select
-          value={addType}
-          onChange={(e) => setAddType(e.target.value as CmsBlockType)}
-          className={`${inputClass} max-w-xs`}
-        >
-          {CMS_BLOCK_TYPES.map((meta) => (
-            <option key={meta.type} value={meta.type}>
-              {meta.label}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          onClick={addBlock}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-        >
-          Add block
-        </button>
       </div>
+
+      {mode === "preview" ? (
+        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+          <BlockRenderer blocks={blocks} />
+        </div>
+      ) : (
+        <>
+          {blocks.map((block, index) => (
+            <div
+              key={`block-${index}`}
+              className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-semibold text-gray-800 uppercase tracking-wide">
+                  {blockLabel(block.type)}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => moveBlock(index, -1)}
+                    disabled={index === 0}
+                    className="px-2 py-1 text-xs border border-gray-300 rounded disabled:opacity-40"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveBlock(index, 1)}
+                    disabled={index === blocks.length - 1}
+                    className="px-2 py-1 text-xs border border-gray-300 rounded disabled:opacity-40"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeBlock(index)}
+                    className="px-2 py-1 text-xs text-red-600 border border-red-300 rounded hover:bg-red-50"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+              <BlockFields block={block} onChange={(next) => updateBlock(index, next)} />
+            </div>
+          ))}
+
+          <div className="flex items-center gap-3 flex-wrap">
+            <select
+              value={addType}
+              onChange={(e) => setAddType(e.target.value as CmsBlockType)}
+              className={`${inputClass} max-w-xs`}
+            >
+              {CMS_BLOCK_TYPES.map((meta) => (
+                <option key={meta.type} value={meta.type}>
+                  {meta.label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={addBlock}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              Add block
+            </button>
+          </div>
+        </>
+      )}
 
       <div className="flex items-center gap-3 pt-2 border-t border-gray-200">
         <button
@@ -218,11 +258,10 @@ function BlockFields(props: { block: CmsBlock; onChange: (next: CmsBlock) => voi
             className={inputClass}
           />
         </Field>
-        <Field label="Image URL">
-          <input
+        <Field label="Image">
+          <ImageField
             value={strValue(block.imageUrl)}
-            onChange={(e) => props.onChange({ ...block, imageUrl: orNull(e.target.value) })}
-            className={inputClass}
+            onChange={(url) => props.onChange({ ...block, imageUrl: orNull(url) })}
           />
         </Field>
         <CtaFields
@@ -355,6 +394,17 @@ function BlockFields(props: { block: CmsBlock; onChange: (next: CmsBlock) => voi
                   props.onChange({ ...block, items });
                 }}
                 className={inputClass}
+              />
+            </Field>
+            <Field label="Image (optional)">
+              <ImageField
+                value={strValue(item.imageUrl)}
+                onChange={(url) => {
+                  const items = block.items.map((it, i) =>
+                    i === idx ? { ...it, imageUrl: orNull(url) } : it,
+                  );
+                  props.onChange({ ...block, items });
+                }}
               />
             </Field>
             <button
@@ -557,16 +607,13 @@ function BlockFields(props: { block: CmsBlock; onChange: (next: CmsBlock) => voi
         </Field>
         {block.images.map((image, idx) => (
           <div key={`img-${idx}`} className="border border-gray-200 rounded p-3 mb-2 bg-white">
-            <Field label="Image URL">
-              <input
+            <Field label="Image">
+              <ImageField
                 value={image.url}
-                onChange={(e) => {
-                  const images = block.images.map((im, i) =>
-                    i === idx ? { ...im, url: e.target.value } : im,
-                  );
+                onChange={(url) => {
+                  const images = block.images.map((im, i) => (i === idx ? { ...im, url } : im));
                   props.onChange({ ...block, images });
                 }}
-                className={inputClass}
               />
             </Field>
             <Field label="Alt text">
@@ -623,11 +670,10 @@ function BlockFields(props: { block: CmsBlock; onChange: (next: CmsBlock) => voi
             className={`${inputClass} font-mono`}
           />
         </Field>
-        <Field label="Image URL">
-          <input
+        <Field label="Image">
+          <ImageField
             value={strValue(block.imageUrl)}
-            onChange={(e) => props.onChange({ ...block, imageUrl: orNull(e.target.value) })}
-            className={inputClass}
+            onChange={(url) => props.onChange({ ...block, imageUrl: orNull(url) })}
           />
         </Field>
         <label className="flex items-center gap-2 text-sm text-gray-700">

@@ -63,6 +63,6 @@ import { SocialPublishingService } from "./social/social-publishing.service";
     repositoryProvider(MarketingSiteContentRepository, MongoMarketingSiteContentRepository),
     repositoryProvider(SocialCredentialRepository, MongoSocialCredentialRepository),
   ],
-  exports: [MarketingSiteContentService],
+  exports: [MarketingSiteContentService, LinkedInOAuthService],
 })
 export class MarketingModule {}

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { fromMillis, nowMillis } from "../lib/datetime";
+import { LinkedInOAuthService } from "../marketing/social/linkedin-oauth.service";
 
 export interface LinkedInFeedPost {
   id: string;
@@ -37,20 +38,15 @@ export class LinkedInFeedService {
   private cache: CachedFeed | null = null;
   private inFlight: Promise<LinkedInFeedPost[]> | null = null;
 
-  private token(): string {
-    return process.env.AU_LINKEDIN_ACCESS_TOKEN ?? "";
-  }
+  constructor(private readonly oauthService: LinkedInOAuthService) {}
 
   private orgUrn(): string {
     return process.env.AU_LINKEDIN_ORG_URN ?? "";
   }
 
-  isConfigured(): boolean {
-    return this.token().length > 0 && this.orgUrn().length > 0;
-  }
-
   async feed(): Promise<LinkedInFeedPost[]> {
-    if (!this.isConfigured()) {
+    const orgUrn = this.orgUrn();
+    if (orgUrn.length === 0) {
       return [];
     }
     const cached = this.cache;
@@ -60,7 +56,7 @@ export class LinkedInFeedService {
     if (this.inFlight) {
       return this.inFlight;
     }
-    this.inFlight = this.refresh()
+    this.inFlight = this.refresh(orgUrn)
       .then((posts) => {
         this.cache = { posts, fetchedAtMillis: nowMillis() };
         return posts;
@@ -75,11 +71,13 @@ export class LinkedInFeedService {
     return this.inFlight;
   }
 
-  private async refresh(): Promise<LinkedInFeedPost[]> {
-    const token = this.token();
-    const author = this.orgUrn();
+  private async refresh(orgUrn: string): Promise<LinkedInFeedPost[]> {
+    const token = await this.oauthService.validAccessToken();
+    if (!token) {
+      throw new Error("LinkedIn is not connected.");
+    }
     const url = `https://api.linkedin.com/rest/posts?q=author&author=${encodeURIComponent(
-      author,
+      orgUrn,
     )}&count=${MAX_POSTS}&sortBy=LAST_MODIFIED`;
     const response = await fetch(url, {
       headers: {

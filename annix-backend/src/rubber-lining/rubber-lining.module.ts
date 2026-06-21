@@ -5,6 +5,7 @@ import { EmailModule } from "../email/email.module";
 import { FeatureFlagsModule } from "../feature-flags/feature-flags.module";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
 import { LicensingModule } from "../licensing";
+import { MarketingModule } from "../marketing/marketing.module";
 import { MetricsModule } from "../metrics/metrics.module";
 import { NixModule } from "../nix/nix.module";
 import { RbacModule } from "../rbac/rbac.module";
@@ -238,6 +239,7 @@ import { WebsitePagesService } from "./website-pages.service";
     EmailModule,
     FeatureFlagsModule,
     LicensingModule,
+    MarketingModule,
     MetricsModule,
     NixModule,
     RbacModule,

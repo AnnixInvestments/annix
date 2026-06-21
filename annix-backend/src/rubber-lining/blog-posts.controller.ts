@@ -11,16 +11,12 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
-import { FeatureLicenseGuard, RequireFeature } from "../licensing";
 import { BlogPostsService, CreateBlogPostDto, UpdateBlogPostDto } from "./blog-posts.service";
-import { AU_RUBBER_FEATURES, AU_RUBBER_MODULE_KEY } from "./config/au-rubber-licensing";
 import { BlogPost } from "./entities/blog-post.entity";
-import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
 
 @ApiTags("AU Rubber Blog Posts")
 @Controller("rubber-lining/blog-posts")
-@UseGuards(AdminAuthGuard, AuRubberAccessGuard, FeatureLicenseGuard)
-@RequireFeature(AU_RUBBER_MODULE_KEY, AU_RUBBER_FEATURES.WEBSITE_CMS)
+@UseGuards(AdminAuthGuard)
 @ApiBearerAuth()
 export class BlogPostsController {
   constructor(private readonly blogPostsService: BlogPostsService) {}

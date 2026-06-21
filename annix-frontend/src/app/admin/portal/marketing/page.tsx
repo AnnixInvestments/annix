@@ -34,6 +34,7 @@ import {
   useSaveMarketingDraft,
   useTranslateMarketing,
 } from "@/app/lib/query/hooks";
+import { MarketingBrandSwitcher } from "./MarketingBrandSwitcher";
 
 type Mutator = (draft: MarketingSiteContent) => void;
 
@@ -1070,6 +1071,9 @@ export default function MarketingCmsPage() {
     <div className="mx-auto max-w-5xl space-y-6 p-6">
       <div className="sticky top-0 z-10 -mx-6 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-gray-50 px-6 py-3">
         <div>
+          <div className="mb-2">
+            <MarketingBrandSwitcher active="annix" />
+          </div>
           <h1 className="text-xl font-bold text-gray-900">Marketing Site CMS</h1>
           <p className="text-xs text-gray-500">
             {lastPublishedAt

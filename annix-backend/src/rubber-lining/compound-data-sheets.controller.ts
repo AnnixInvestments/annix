@@ -23,21 +23,17 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
-import { FeatureLicenseGuard, RequireFeature } from "../licensing";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import {
   CompoundDataSheetsService,
   CreateCompoundDataSheetDto,
   UpdateCompoundDataSheetDto,
 } from "./compound-data-sheets.service";
-import { AU_RUBBER_FEATURES, AU_RUBBER_MODULE_KEY } from "./config/au-rubber-licensing";
 import { CompoundDataSheet } from "./entities/compound-data-sheet.entity";
-import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
 
 @ApiTags("AU Rubber Compound Data Sheets")
 @Controller("rubber-lining/data-sheets")
-@UseGuards(AdminAuthGuard, AuRubberAccessGuard, FeatureLicenseGuard)
-@RequireFeature(AU_RUBBER_MODULE_KEY, AU_RUBBER_FEATURES.WEBSITE_CMS)
+@UseGuards(AdminAuthGuard)
 @ApiBearerAuth()
 export class CompoundDataSheetsController {
   constructor(

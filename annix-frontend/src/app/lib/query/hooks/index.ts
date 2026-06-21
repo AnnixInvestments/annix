@@ -879,6 +879,16 @@ export {
   useUploadTenderDocument,
   useVatAssessment,
 } from "./annix-sentinel/useAnnixSentinel";
+export {
+  useAuCmsBlogPost,
+  useAuCmsBlogPosts,
+  useAuCmsDataSheet,
+  useAuCmsDataSheets,
+  useAuCmsTestimonial,
+  useAuCmsTestimonials,
+  useAuCmsWebsitePage,
+  useAuCmsWebsitePages,
+} from "./au-cms/useAuCms";
 export type {
   AuIndustriesNavPage,
   AuIndustriesPage,
