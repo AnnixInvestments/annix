@@ -295,6 +295,7 @@ describe("StockControlAuthService", () => {
       structuralSteelLossFactorPct: 30,
       paintPricingConfig: null,
       rubberPricingConfig: null,
+      actionPermissions: null,
       qcEnabled: false,
       messagingEnabled: false,
       staffLeaveEnabled: false,

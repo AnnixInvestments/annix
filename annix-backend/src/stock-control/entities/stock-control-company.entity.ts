@@ -64,6 +64,7 @@ export class StockControlCompany {
   paintPricingConfig: PaintPricingConfig | null;
 
   rubberPricingConfig: RubberPricingConfig | null;
+  actionPermissions: Record<string, string[]> | null;
 
   qcEnabled: boolean;
 

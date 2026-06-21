@@ -13,6 +13,33 @@ import { ActionPermissionService } from "../services/action-permission.service";
 export const STOCK_CONTROL_ROLES_KEY = "stockControlRoles";
 export const PERMISSION_KEY = "actionPermissionKey";
 
+export const STOCK_CONTROL_ROLE_RANK: Record<string, number> = {
+  viewer: 0,
+  quality: 1,
+  storeman: 2,
+  accounts: 3,
+  manager: 4,
+  admin: 5,
+};
+
+export const roleSatisfiesRequirement = (userRole: string, requiredRoles: string[]): boolean => {
+  if (requiredRoles.includes(userRole)) {
+    return true;
+  }
+
+  const userRank = STOCK_CONTROL_ROLE_RANK[userRole];
+  if (userRank == null) {
+    return false;
+  }
+
+  const requiredRanks = requiredRoles.map((role) => STOCK_CONTROL_ROLE_RANK[role]);
+  if (requiredRanks.some((rank) => rank == null)) {
+    return false;
+  }
+
+  return userRank > Math.max(...(requiredRanks as number[]));
+};
+
 export const StockControlRoles = (...roles: string[]) =>
   SetMetadata(STOCK_CONTROL_ROLES_KEY, roles);
 
@@ -65,7 +92,7 @@ export class StockControlRoleGuard implements CanActivate {
       }
     }
 
-    if (!requiredRoles.includes(user.role)) {
+    if (!roleSatisfiesRequirement(user.role, requiredRoles)) {
       throw new ForbiddenException(
         `Insufficient permissions. Required: ${requiredRoles.join(" or ")}`,
       );

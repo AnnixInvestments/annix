@@ -1,6 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { AuditService } from "../../audit/audit.service";
 import { StockControlActionPermissionRepository } from "../repositories/stock-control-action-permission.repository";
+import { StockControlCompanyRepository } from "../repositories/stock-control-company.repository";
 import {
   ACTION_PERMISSION_LABELS,
   ActionPermissionService,
@@ -17,7 +18,16 @@ describe("ActionPermissionService", () => {
     create: jest.fn().mockImplementation((data) => Promise.resolve(data)),
   };
 
-  const createdRows = () => mockRepo.create.mock.calls.map(([row]) => row);
+  const mockCompanyRepo = {
+    findById: jest.fn(),
+    updateById: jest.fn().mockResolvedValue(undefined),
+  };
+
+  const savedPermissions = () => {
+    const calls = mockCompanyRepo.updateById.mock.calls;
+    const last = calls[calls.length - 1];
+    return last ? (last[1].actionPermissions as Record<string, string[]>) : {};
+  };
 
   const mockAuditService = {
     log: jest.fn().mockResolvedValue(undefined),
@@ -28,6 +38,7 @@ describe("ActionPermissionService", () => {
       providers: [
         ActionPermissionService,
         { provide: StockControlActionPermissionRepository, useValue: mockRepo },
+        { provide: StockControlCompanyRepository, useValue: mockCompanyRepo },
         { provide: AuditService, useValue: mockAuditService },
       ],
     }).compile();
@@ -35,6 +46,11 @@ describe("ActionPermissionService", () => {
     service = module.get<ActionPermissionService>(ActionPermissionService);
     jest.clearAllMocks();
     mockRepo.findManyWhere.mockResolvedValue([]);
+    mockCompanyRepo.findById.mockResolvedValue(null);
+    mockCompanyRepo.updateById.mockImplementation((id: number, updates) => {
+      mockCompanyRepo.findById.mockResolvedValue({ id, ...updates });
+      return Promise.resolve(undefined);
+    });
   });
 
   it("should be defined", () => {
@@ -217,16 +233,23 @@ describe("ActionPermissionService", () => {
       mockRepo.findForCompany.mockResolvedValue([]);
     });
 
-    it("should delete existing permissions and insert new ones", async () => {
-      const existingRow = { id: 7, companyId: 1, actionKey: "job-cards.create", role: "manager" };
-      mockRepo.findManyWhere.mockResolvedValueOnce([existingRow]);
+    it("should atomically persist the whole map onto the company doc", async () => {
       const config = { "job-cards.create": ["viewer", "admin"] };
 
       await service.updatePermissions(1, config);
 
-      expect(mockRepo.findManyWhere).toHaveBeenCalledWith({ companyId: 1 });
-      expect(mockRepo.remove).toHaveBeenCalledWith(existingRow);
-      expect(mockRepo.create).toHaveBeenCalled();
+      expect(mockCompanyRepo.updateById).toHaveBeenCalledWith(1, {
+        actionPermissions: expect.objectContaining({
+          "job-cards.create": expect.arrayContaining(["viewer", "admin"]),
+        }),
+      });
+    });
+
+    it("should not delete-and-recreate per-row documents", async () => {
+      await service.updatePermissions(1, { "job-cards.create": ["admin"] });
+
+      expect(mockRepo.remove).not.toHaveBeenCalled();
+      expect(mockRepo.create).not.toHaveBeenCalled();
     });
 
     it("should always force admin into every action", async () => {
@@ -234,9 +257,7 @@ describe("ActionPermissionService", () => {
 
       await service.updatePermissions(1, config);
 
-      const roles = createdRows()
-        .filter((e: any) => e.actionKey === "job-cards.create")
-        .map((e: any) => e.role);
+      const roles = savedPermissions()["job-cards.create"];
 
       expect(roles).toContain("admin");
       expect(roles).toContain("viewer");
@@ -247,17 +268,17 @@ describe("ActionPermissionService", () => {
 
       await service.updatePermissions(1, config);
 
-      const adminEntries = createdRows().filter(
-        (e: any) => e.actionKey === "job-cards.create" && e.role === "admin",
+      const adminEntries = savedPermissions()["job-cards.create"].filter(
+        (role) => role === "admin",
       );
 
       expect(adminEntries).toHaveLength(1);
     });
 
-    it("should scope delete to the correct companyId", async () => {
+    it("should scope the write to the correct companyId", async () => {
       await service.updatePermissions(99, { "job-cards.create": ["admin"] });
 
-      expect(mockRepo.findManyWhere).toHaveBeenCalledWith({ companyId: 99 });
+      expect(mockCompanyRepo.updateById).toHaveBeenCalledWith(99, expect.anything());
     });
 
     it("should allow granting viewer access to specific actions when admin configures it", async () => {
@@ -266,17 +287,59 @@ describe("ActionPermissionService", () => {
         "job-cards.create": ["manager", "admin"],
       };
 
-      await service.updatePermissions(1, config);
+      const result = await service.updatePermissions(1, config);
 
-      const reportsRoles = createdRows()
-        .filter((e: any) => e.actionKey === "reports.view")
-        .map((e: any) => e.role);
-      const jobCardsRoles = createdRows()
-        .filter((e: any) => e.actionKey === "job-cards.create")
-        .map((e: any) => e.role);
+      expect(result["reports.view"]).toContain("viewer");
+      expect(result["job-cards.create"]).not.toContain("viewer");
+    });
+  });
 
-      expect(reportsRoles).toContain("viewer");
-      expect(jobCardsRoles).not.toContain("viewer");
+  // ── Embedded read with legacy fallback ──────────────────────────────
+
+  describe("permissionsForCompany — embedded company field", () => {
+    it("should read from the embedded company.actionPermissions when present", async () => {
+      mockCompanyRepo.findById.mockResolvedValue({
+        id: 1,
+        actionPermissions: { "job-cards.create": ["storeman", "admin"] },
+      });
+
+      const result = await service.permissionsForCompany(1);
+
+      expect(result["job-cards.create"]).toEqual(["storeman", "admin"]);
+      expect(mockRepo.findForCompany).not.toHaveBeenCalled();
+    });
+
+    it("should fall back to legacy collection when embedded field is absent", async () => {
+      mockCompanyRepo.findById.mockResolvedValue({ id: 1, actionPermissions: null });
+      mockRepo.findForCompany.mockResolvedValue([
+        { companyId: 1, actionKey: "inventory.create", role: "storeman" },
+        { companyId: 1, actionKey: "inventory.create", role: "admin" },
+      ]);
+
+      const result = await service.permissionsForCompany(1);
+
+      expect(mockRepo.findForCompany).toHaveBeenCalledWith(1);
+      expect(result["inventory.create"]).toContain("storeman");
+    });
+
+    it("should fall back to defaults when neither embedded nor legacy data exists", async () => {
+      mockCompanyRepo.findById.mockResolvedValue({ id: 1, actionPermissions: null });
+      mockRepo.findForCompany.mockResolvedValue([]);
+
+      const result = await service.permissionsForCompany(1);
+
+      expect(result).toEqual(DEFAULT_ACTION_PERMISSIONS);
+    });
+
+    it("should merge embedded config with defaults for unconfigured actions", async () => {
+      mockCompanyRepo.findById.mockResolvedValue({
+        id: 1,
+        actionPermissions: { "job-cards.create": ["admin"] },
+      });
+
+      const result = await service.permissionsForCompany(1);
+
+      expect(result["job-cards.delete"]).toEqual(DEFAULT_ACTION_PERMISSIONS["job-cards.delete"]);
     });
   });
 

@@ -3,6 +3,7 @@ import { AuditService } from "../../audit/audit.service";
 import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { nowMillis } from "../../lib/datetime";
 import { StockControlActionPermissionRepository } from "../repositories/stock-control-action-permission.repository";
+import { StockControlCompanyRepository } from "../repositories/stock-control-company.repository";
 
 export const DEFAULT_ACTION_PERMISSIONS: Record<string, string[]> = {
   "job-cards.create": ["manager", "admin"],
@@ -73,6 +74,7 @@ export class ActionPermissionService {
 
   constructor(
     private readonly repo: StockControlActionPermissionRepository,
+    private readonly companyRepo: StockControlCompanyRepository,
     private readonly auditService: AuditService,
   ) {}
 
@@ -80,6 +82,15 @@ export class ActionPermissionService {
     const cached = this.cache.get(companyId);
     if (cached && cached.expiresAt > nowMillis()) {
       return cached.data;
+    }
+
+    const company = await this.companyRepo.findById(companyId);
+    const embedded = company?.actionPermissions ?? null;
+
+    if (embedded) {
+      const config = this.mergeWithDefaults(embedded);
+      this.cache.set(companyId, { data: config, expiresAt: nowMillis() + 60_000 });
+      return config;
     }
 
     const rows = await this.repo.findForCompany(companyId);
@@ -98,16 +109,20 @@ export class ActionPermissionService {
       {} as Record<string, string[]>,
     );
 
-    const config = Object.keys(DEFAULT_ACTION_PERMISSIONS).reduce(
-      (acc, key) => ({
-        ...acc,
-        [key]: groupedByAction[key] ?? [...DEFAULT_ACTION_PERMISSIONS[key]],
-      }),
-      { ...groupedByAction },
-    );
+    const config = this.mergeWithDefaults(groupedByAction);
 
     this.cache.set(companyId, { data: config, expiresAt: nowMillis() + 60_000 });
     return config;
+  }
+
+  private mergeWithDefaults(stored: Record<string, string[]>): Record<string, string[]> {
+    return Object.keys(DEFAULT_ACTION_PERMISSIONS).reduce(
+      (acc, key) => ({
+        ...acc,
+        [key]: stored[key] ?? [...DEFAULT_ACTION_PERMISSIONS[key]],
+      }),
+      { ...stored },
+    );
   }
 
   async rolesForAction(companyId: number, actionKey: string): Promise<string[] | null> {
@@ -134,13 +149,7 @@ export class ActionPermissionService {
       }
     });
 
-    const existingRows = await this.repo.findManyWhere({ companyId });
-    await Promise.all(existingRows.map((row) => this.repo.remove(row)));
-
-    const newRows = Object.entries(mergedConfig).flatMap(([actionKey, roles]) =>
-      roles.map((role) => ({ companyId, actionKey, role })),
-    );
-    await Promise.all(newRows.map((row) => this.repo.create(row)));
+    await this.companyRepo.updateById(companyId, { actionPermissions: mergedConfig });
 
     this.cache.delete(companyId);
     this.logger.log(`Updated action permissions for company ${companyId}`);

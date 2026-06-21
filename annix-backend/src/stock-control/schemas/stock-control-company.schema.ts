@@ -97,40 +97,8 @@ export class StockControlCompany {
   @Prop({ type: Object, required: false })
   rubberPricingConfig: Record<string, unknown>;
 
-  @Prop({ type: Boolean, required: true })
-  qcEnabled: boolean;
-
-  @Prop({ type: Boolean, required: true })
-  messagingEnabled: boolean;
-
-  @Prop({ type: Boolean, required: true })
-  staffLeaveEnabled: boolean;
-
-  @Prop({ type: Boolean, required: true })
-  workflowEnabled: boolean;
-
-  @Prop({ type: Boolean, required: true })
-  notificationsEnabled: boolean;
-
-  @Prop({ type: String, required: false })
-  sageUsername: string;
-
-  @Prop({ type: Buffer, required: false })
-  sagePassEncrypted: Buffer;
-
-  @Prop({ type: Number, required: false })
-  sageCompanyId: number;
-
-  @Prop({ type: String, required: false })
-  sageCompanyName: string;
-
-  @Prop({ type: Date, required: false })
-  sageConnectedAt: Date;
-
-  @Prop({ type: Date, required: false })
-  createdAt: Date;
-
-  @Prop({ type: Date, required: false })
+  @Prop({ type: Object, required: false })
+  actionPermissions: Record<string, string[]>;
   updatedAt: Date;
 }
 
