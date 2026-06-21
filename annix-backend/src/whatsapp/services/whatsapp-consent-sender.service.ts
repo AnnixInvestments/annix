@@ -3,6 +3,7 @@ import { isEmpty } from "es-toolkit/compat";
 import { AnnixOrbitProfileRepository } from "../../annix-orbit/repositories/annix-orbit-profile.repository";
 import { CandidateRepository } from "../../annix-orbit/repositories/candidate.repository";
 import { now } from "../../lib/datetime";
+import { dialCodeForCountry } from "../../lib/dial-codes";
 import { RbacService } from "../../rbac/rbac.service";
 import { UserRepository } from "../../user/user.repository";
 import {
@@ -93,20 +94,22 @@ export class WhatsAppConsentSenderService {
     if (!isEmpty(storedPhone)) {
       return storedPhone as string;
     }
+    const candidates = isEmpty(email) ? [] : await this.candidateRepo.findByEmail(email as string);
+    const targetCountry = candidates
+      .map((candidate) => candidate.targetCountries?.[0] ?? null)
+      .find((country) => !isEmpty(country));
+    const defaultDialCode = dialCodeForCountry(targetCountry ?? null);
+
     const profile = await this.orbitProfileRepo.findByUserId(userId);
-    const profilePhone = normalizeWaId(profile?.phone ?? null);
+    const profilePhone = normalizeWaId(profile?.phone ?? null, defaultDialCode);
     if (profilePhone) {
       return profilePhone;
     }
     // Last resort: the contact number Nix extracted from their CV. Lets the admin
     // request consent from seekers who never set a profile phone.
-    if (isEmpty(email)) {
-      return null;
-    }
-    const candidates = await this.candidateRepo.findByEmail(email as string);
     const cvPhone = candidates
       .map((candidate) => (candidate.extractedData ? candidate.extractedData.phone : null))
       .find((phone) => !isEmpty(phone));
-    return normalizeWaId(cvPhone ?? null);
+    return normalizeWaId(cvPhone ?? null, defaultDialCode);
   }
 }

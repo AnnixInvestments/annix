@@ -32,7 +32,10 @@ After setting secrets the app restarts and the relevant toggle activates.
 | Env var | Platform | What it is |
 |---|---|---|
 | `SOCIAL_PUBLIC_BASE_URL` | all | Public site origin that serves marketing images, e.g. `https://annix.co.za`. Meta and X fetch the image from this URL, so it must be publicly reachable (localhost will not work). Falls back to `FRONTEND_URL`. |
-| `LINKEDIN_ACCESS_TOKEN` | LinkedIn | OAuth 2.0 access token authorised for the company Page. |
+| `LINKEDIN_CLIENT_ID` | LinkedIn | OAuth 2.0 app client ID — enables the in-app Connect flow. |
+| `LINKEDIN_CLIENT_SECRET` | LinkedIn | OAuth 2.0 app client secret. Also keys the CSRF `state` HMAC. |
+| `LINKEDIN_REDIRECT_URI` | LinkedIn | Exact callback URL registered on the app, e.g. `https://annix.co.za/api/public/marketing/social/linkedin/callback`. |
+| `LINKEDIN_ACCESS_TOKEN` | LinkedIn | Fallback OAuth 2.0 access token (used only when no token is stored via Connect). |
 | `LINKEDIN_AUTHOR_URN` | LinkedIn | The Page author URN, e.g. `urn:li:organization:1234567`. |
 | `META_PAGE_ACCESS_TOKEN` | Facebook + Instagram | One long-lived Page access token covers both. |
 | `FACEBOOK_PAGE_ID` | Facebook | Numeric Facebook Page ID. |
@@ -56,8 +59,23 @@ The image URL sent to each platform is made absolute by prefixing the stored mar
    - `LINKEDIN_ACCESS_TOKEN` = the token.
    - `LINKEDIN_AUTHOR_URN` = `urn:li:organization:<your-page-id>`.
 
-**Token lifetime:** LinkedIn access tokens expire (~60 days). For now, refresh manually when posting
-starts failing with a 401; automatic refresh can be added later.
+**Token lifetime:** LinkedIn access tokens expire (~60 days). The stored OAuth credential auto-refreshes
+using the refresh token (when LinkedIn issues one) the next time a token is needed, so no manual rotation
+is required once connected.
+
+#### Connect via OAuth (preferred — no manual token handling)
+
+Instead of pasting `LINKEDIN_ACCESS_TOKEN`, set `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET` and
+`LINKEDIN_REDIRECT_URI` (the registered callback). An admin then opens **Marketing → LinkedIn → Connect**,
+which calls `GET /admin/marketing/social/linkedin/connect` to get the authorize URL, authorises on
+LinkedIn, and is redirected back to `GET /public/marketing/social/linkedin/callback`. The backend
+exchanges the code, encrypts the access/refresh tokens at rest in the `social_credentials` collection
+(AES-256-GCM via `TOKEN_ENCRYPTION_KEY`), and redirects to
+`${FRONTEND_URL}/admin/portal/marketing?linkedin=connected`. A signed (HMAC) `state` value guards the
+callback against CSRF without server-side session storage. The `LINKEDIN_ACCESS_TOKEN` env var keeps
+working as a fallback when no credential is stored. `GET /admin/marketing/social/linkedin/status`
+reports `{ connected, expiresAt, authorUrn, source }` where `source` is `oauth`, `env` or `none`;
+`POST /admin/marketing/social/linkedin/disconnect` removes the stored credential.
 
 ### Meta — Facebook Page + Instagram (start the review early, it is the slowest)
 

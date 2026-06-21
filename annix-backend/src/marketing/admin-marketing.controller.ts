@@ -36,6 +36,8 @@ import type {
   NewsletterSubscriberView,
 } from "./newsletter.service";
 import { NewsletterService } from "./newsletter.service";
+import type { LinkedInStatus } from "./social/linkedin-oauth.service";
+import { LinkedInOAuthService } from "./social/linkedin-oauth.service";
 import type {
   SocialPlatform,
   SocialPlatformStatus,
@@ -73,6 +75,7 @@ export class AdminMarketingController {
     private readonly marketingService: MarketingSiteContentService,
     private readonly translationService: MarketingTranslationService,
     private readonly socialService: SocialPublishingService,
+    private readonly linkedInOAuth: LinkedInOAuthService,
     private readonly newsletterService: NewsletterService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
@@ -145,6 +148,29 @@ export class AdminMarketingController {
   @ApiResponse({ status: 200 })
   async socialShare(@Body() body: SocialShareBody): Promise<SocialShareResult[]> {
     return this.socialService.share(body.platforms, body.caption, body.imageUrl);
+  }
+
+  @Get("social/linkedin/status")
+  @ApiOperation({ summary: "Whether LinkedIn is connected and how the token is sourced" })
+  @ApiResponse({ status: 200 })
+  async linkedInStatus(): Promise<LinkedInStatus> {
+    return this.linkedInOAuth.status();
+  }
+
+  @Get("social/linkedin/connect")
+  @ApiOperation({ summary: "Build the LinkedIn OAuth authorize URL to begin connecting" })
+  @ApiResponse({ status: 200 })
+  linkedInConnect(): { url: string } {
+    const state = this.linkedInOAuth.makeState();
+    return { url: this.linkedInOAuth.authorizeUrl(state) };
+  }
+
+  @Post("social/linkedin/disconnect")
+  @ApiOperation({ summary: "Remove the stored LinkedIn OAuth credentials" })
+  @ApiResponse({ status: 200 })
+  async linkedInDisconnect(): Promise<{ disconnected: true }> {
+    await this.linkedInOAuth.disconnect();
+    return { disconnected: true };
   }
 
   @Post("upload-image")

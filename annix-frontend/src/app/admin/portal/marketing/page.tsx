@@ -11,14 +11,19 @@ import {
   RESOURCE_CATEGORIES,
 } from "@annix/product-data/marketing";
 import { cloneDeep } from "es-toolkit/compat";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
 import { metricsApi } from "@/app/lib/api/metricsApi";
-import { formatDateLongZA } from "@/app/lib/datetime";
+import { daysBetween, formatDateLongZA, nowISO } from "@/app/lib/datetime";
 import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
-import { marketingAdminApi, mergeMarketingDefaults } from "@/app/lib/marketing/api";
+import {
+  type LinkedInConnectionStatus,
+  marketingAdminApi,
+  mergeMarketingDefaults,
+} from "@/app/lib/marketing/api";
 import { MarketingSitePreview } from "@/app/lib/marketing/components/MarketingSitePreview";
 import { SocialShareModal } from "@/app/lib/marketing/components/SocialShareModal";
 import {
@@ -723,6 +728,174 @@ function ResourceRow(props: {
   );
 }
 
+function LinkedInPanel(props: {
+  onError: (message: string) => void;
+  showToast: (message: string, variant: "success" | "error") => void;
+  confirm: (options: {
+    title: string;
+    message: string;
+    confirmLabel: string;
+    variant: "danger" | "warning" | "info" | "default";
+  }) => Promise<boolean>;
+}) {
+  const onError = props.onError;
+  const showToast = props.showToast;
+  const confirmFn = props.confirm;
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [status, setStatus] = useState<LinkedInConnectionStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [connecting, setConnecting] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+
+  async function refresh() {
+    setLoading(true);
+    try {
+      const next = await marketingAdminApi.linkedinStatus();
+      setStatus(next);
+    } catch {
+      onError("Could not load the LinkedIn connection status.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  const linkedinParam = searchParams.get("linkedin");
+  useEffect(() => {
+    if (!linkedinParam) {
+      return;
+    }
+    if (linkedinParam === "connected") {
+      showToast("LinkedIn connected", "success");
+      refresh();
+    } else if (linkedinParam === "error") {
+      showToast("Could not connect LinkedIn — please try again.", "error");
+    }
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("linkedin");
+    const query = params.toString();
+    router.replace(query ? `?${query}` : "?", { scroll: false });
+  }, [linkedinParam]);
+
+  async function handleConnect() {
+    setConnecting(true);
+    try {
+      const result = await marketingAdminApi.linkedinConnectUrl();
+      window.location.href = result.url;
+    } catch {
+      onError("Could not start the LinkedIn connection. Please try again.");
+      setConnecting(false);
+    }
+  }
+
+  async function handleDisconnect() {
+    const confirmed = await confirmFn({
+      title: "Disconnect LinkedIn?",
+      message: "You'll need to reconnect before you can post to LinkedIn from here again.",
+      confirmLabel: "Disconnect",
+      variant: "danger",
+    });
+    if (!confirmed) {
+      return;
+    }
+    setDisconnecting(true);
+    try {
+      await marketingAdminApi.linkedinDisconnect();
+      await refresh();
+      showToast("LinkedIn disconnected", "success");
+    } catch {
+      onError("Could not disconnect LinkedIn. Please try again.");
+    } finally {
+      setDisconnecting(false);
+    }
+  }
+
+  const source = status ? status.source : "none";
+  const expiresAt = status ? status.expiresAt : null;
+  const daysLeft = expiresAt ? daysBetween(nowISO(), expiresAt) : null;
+  const expiryLabel =
+    daysLeft === null
+      ? null
+      : daysLeft <= 0
+        ? "expired — reconnect to keep posting"
+        : `expires in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`;
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-gray-50/60 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold text-gray-900">LinkedIn connection</h3>
+          {loading ? (
+            <p className="mt-1 text-xs text-gray-500">Checking connection…</p>
+          ) : source === "oauth" ? (
+            <p className="mt-1 flex items-center gap-2 text-xs text-gray-600">
+              <span className="inline-flex items-center gap-1.5 font-semibold text-green-700">
+                <span className="h-2 w-2 rounded-full bg-green-500" />
+                Connected
+              </span>
+              {expiryLabel ? <span className="text-gray-500">· {expiryLabel}</span> : null}
+            </p>
+          ) : source === "env" ? (
+            <p className="mt-1 text-xs text-gray-600">
+              Connected via server token. Connect with OAuth to manage it from here.
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-gray-500">
+              Connect the Annix LinkedIn Page to post directly from here.
+            </p>
+          )}
+        </div>
+        {loading ? null : (
+          <div className="flex flex-wrap items-center gap-2">
+            {source === "oauth" ? (
+              <>
+                <button
+                  type="button"
+                  onClick={handleDisconnect}
+                  disabled={disconnecting}
+                  className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                >
+                  {disconnecting ? "Disconnecting…" : "Disconnect"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConnect}
+                  disabled={connecting}
+                  className="rounded-lg border border-[#323288] px-3 py-1.5 text-sm font-semibold text-[#323288] hover:bg-[#323288]/5 disabled:opacity-50"
+                >
+                  {connecting ? "Redirecting…" : "Reconnect"}
+                </button>
+              </>
+            ) : source === "env" ? (
+              <button
+                type="button"
+                onClick={handleConnect}
+                disabled={connecting}
+                className="rounded-lg border border-[#323288] px-3 py-1.5 text-sm font-semibold text-[#323288] hover:bg-[#323288]/5 disabled:opacity-50"
+              >
+                {connecting ? "Redirecting…" : "Connect with OAuth"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleConnect}
+                disabled={connecting}
+                className="rounded-lg bg-[#323288] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[#3a3a9e] disabled:opacity-50"
+              >
+                {connecting ? "Redirecting…" : "Connect LinkedIn"}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function MarketingCmsPage() {
   const [locale, setLocale] = useState<MarketingLocale>(DEFAULT_MARKETING_LOCALE);
   const draftQuery = useMarketingDraft(locale);
@@ -742,6 +915,18 @@ export default function MarketingCmsPage() {
   const [translating, setTranslating] = useState(false);
   const [socialOpen, setSocialOpen] = useState(false);
   const [socialResource, setSocialResource] = useState<MarketingResource | null>(null);
+
+  // Returning from the LinkedIn OAuth redirect lands here on the default tab.
+  // Surface the Resources tab so the LinkedIn connection panel (and its
+  // success/error toast + status refetch) is mounted and visible.
+  const marketingSearchParams = useSearchParams();
+  const linkedinReturn = marketingSearchParams.get("linkedin");
+  useEffect(() => {
+    if (linkedinReturn) {
+      setMode("edit");
+      setActiveTab("resources");
+    }
+  }, [linkedinReturn]);
 
   function openShare(resource: MarketingResource | null) {
     setSocialResource(resource);
@@ -2033,6 +2218,11 @@ export default function MarketingCmsPage() {
           </Section>
 
           <Section title="Resources" tabKey="resources" activeTab={activeTab}>
+            <LinkedInPanel
+              onError={(message) => alert({ message, variant: "error" })}
+              showToast={showToast}
+              confirm={confirm}
+            />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Text
                 label="Heading"

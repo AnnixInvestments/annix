@@ -1,13 +1,23 @@
-export function normalizeWaId(value: string | null | undefined): string | null {
+export function normalizeWaId(
+  value: string | null | undefined,
+  defaultDialCode = "27",
+): string | null {
   if (value === null || value === undefined) {
     return null;
   }
-  const digitsOnly = value.replace(/\D/g, "");
+  const trimmed = value.trim();
+  if (trimmed === "") {
+    return null;
+  }
+  if (trimmed.startsWith("+") || trimmed.startsWith("00")) {
+    const internationalDigits = trimmed.replace(/\D/g, "");
+    return internationalDigits.startsWith("00")
+      ? internationalDigits.slice(2)
+      : internationalDigits;
+  }
+  const digitsOnly = trimmed.replace(/\D/g, "");
   if (digitsOnly === "") {
     return null;
   }
-  const southAfricaNormalized = digitsOnly.startsWith("0")
-    ? `27${digitsOnly.slice(1)}`
-    : digitsOnly;
-  return southAfricaNormalized;
+  return digitsOnly.startsWith("0") ? `${defaultDialCode}${digitsOnly.slice(1)}` : digitsOnly;
 }

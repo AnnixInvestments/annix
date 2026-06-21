@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { LinkedInOAuthService } from "../linkedin-oauth.service";
 import type { ISocialAdapter, SocialPlatform, SocialShareInput } from "../social.types";
 
 const LINKEDIN_VERSION = "202405";
@@ -9,20 +10,24 @@ export class LinkedInAdapter implements ISocialAdapter {
   readonly label = "LinkedIn";
   private readonly logger = new Logger(LinkedInAdapter.name);
 
-  private token(): string {
-    return process.env.LINKEDIN_ACCESS_TOKEN ?? "";
-  }
+  constructor(private readonly oauth: LinkedInOAuthService) {}
 
   private authorUrn(): string {
-    return process.env.LINKEDIN_AUTHOR_URN ?? "";
+    return this.oauth.authorUrn();
   }
 
   isConfigured(): boolean {
-    return this.token().length > 0 && this.authorUrn().length > 0;
+    const hasToken = this.oauth.isClientConfigured() || this.oauth.hasEnvToken();
+    return hasToken && this.authorUrn().length > 0;
   }
 
   async share(input: SocialShareInput): Promise<void> {
-    const token = this.token();
+    const token = await this.oauth.validAccessToken();
+    if (!token) {
+      throw new Error(
+        "LinkedIn is not connected — connect via OAuth or set LINKEDIN_ACCESS_TOKEN.",
+      );
+    }
     const author = this.authorUrn();
     const imageUrn = await this.uploadImage(token, author, input.imageUrl);
     const response = await fetch("https://api.linkedin.com/rest/posts", {

@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
+import { PhoneInput } from "@/app/components/PhoneInput";
 import { extractErrorMessage, throwIfNotOk } from "@/app/lib/api/apiError";
 import { BrandingProvider } from "@/app/lib/branding/BrandingProvider";
 import { API_BASE_URL } from "@/lib/api-config";
@@ -39,23 +40,6 @@ async function submitConsent(
   );
   await throwIfNotOk(response);
   return response.json();
-}
-
-/** Light SA-number tidy-up for the input: turns a local 0XX number into the
- *  +27 form. The backend remains the source of truth for parsing/validation. */
-function normaliseSaPhone(raw: string): string {
-  const trimmed = raw.trim();
-  if (trimmed.length === 0) {
-    return trimmed;
-  }
-  const digits = trimmed.replace(/[^\d+]/g, "");
-  if (digits.startsWith("0") && digits.length >= 10) {
-    return `+27${digits.slice(1)}`;
-  }
-  if (digits.startsWith("27") && !digits.startsWith("+")) {
-    return `+${digits}`;
-  }
-  return digits;
 }
 
 function CardShell(props: { children: React.ReactNode }) {
@@ -144,7 +128,7 @@ function ConsentContent() {
     }
     setIsSubmitting(true);
     try {
-      await submitConsent(token, normaliseSaPhone(phone), true);
+      await submitConsent(token, phone, true);
       setDone(true);
     } catch (err) {
       setSubmitError(
@@ -269,20 +253,11 @@ function ConsentContent() {
           <label htmlFor="whatsappPhone" className="block text-sm font-medium text-gray-700">
             WhatsApp number
           </label>
-          <input
-            id="whatsappPhone"
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
-            required
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            onBlur={() => setPhone((current) => normaliseSaPhone(current))}
-            placeholder="+27 …"
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--brand-navbar,#323288)] focus:ring-[var(--brand-navbar,#323288)] text-gray-900"
-          />
+          <div className="mt-1">
+            <PhoneInput id="whatsappPhone" value={phone} onChange={setPhone} />
+          </div>
           <p className="mt-1 text-xs text-gray-500">
-            South African numbers are converted to the +27 format automatically.
+            Pick your country and enter your number — we'll format it automatically.
           </p>
         </div>
 

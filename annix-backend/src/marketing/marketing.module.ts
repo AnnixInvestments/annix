@@ -23,6 +23,10 @@ import { FacebookAdapter } from "./social/adapters/facebook.adapter";
 import { InstagramAdapter } from "./social/adapters/instagram.adapter";
 import { LinkedInAdapter } from "./social/adapters/linkedin.adapter";
 import { XAdapter } from "./social/adapters/x.adapter";
+import { LinkedInOAuthService } from "./social/linkedin-oauth.service";
+import { SocialCredentialRepository } from "./social/repositories/social-credential.repository";
+import { MongoSocialCredentialRepository } from "./social/repositories/social-credential.repository.mongo";
+import { SocialCredentialSchema } from "./social/schemas/social-credential.schema";
 import { SocialPublishingService } from "./social/social-publishing.service";
 
 @Module({
@@ -35,6 +39,7 @@ import { SocialPublishingService } from "./social/social-publishing.service";
         schema: MarketingNewsletterSubscriberSchema,
       },
       { name: "MarketingNewsletterCampaign", schema: MarketingNewsletterCampaignSchema },
+      { name: "SocialCredential", schema: SocialCredentialSchema },
     ]),
     MulterModule.register({ limits: { fileSize: 10 * 1024 * 1024 } }),
     StorageModule,
@@ -50,11 +55,13 @@ import { SocialPublishingService } from "./social/social-publishing.service";
     CookieConsentService,
     NewsletterService,
     SocialPublishingService,
+    LinkedInOAuthService,
     LinkedInAdapter,
     FacebookAdapter,
     InstagramAdapter,
     XAdapter,
     repositoryProvider(MarketingSiteContentRepository, MongoMarketingSiteContentRepository),
+    repositoryProvider(SocialCredentialRepository, MongoSocialCredentialRepository),
   ],
   exports: [MarketingSiteContentService],
 })

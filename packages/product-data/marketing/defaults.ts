@@ -301,6 +301,19 @@ const PRODUCT_PAGES: MarketingProductPage[] = [
 
 const RESOURCES: MarketingResource[] = [
   {
+    slug: "happy-fathers-day",
+    category: "Announcements",
+    title: "Happy Father's Day from Annix",
+    excerpt:
+      "To all the dads, grandfathers, stepdads and father figures — thank you for your guidance, strength and unwavering support. You build more than we see; you inspire everything. Today we celebrate you.",
+    body: "To all the dads, grandfathers, stepdads and father figures — thank you for your guidance, strength and unwavering support.\n\nYou build more than we see. You inspire everything.\n\nFrom everyone at Annix, today we celebrate you. Enjoy your day.",
+    imageUrl: "/marketing/annix-fathers-day.png",
+    productSlug: "",
+    published: true,
+    ctaLabel: "Explore Annix",
+    ctaUrl: "https://annix.co.za",
+  },
+  {
     slug: "annix-website-launched",
     category: "Announcements",
     title: "The Annix website is live",

@@ -15,6 +15,7 @@ import {
   Query,
   Res,
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
 import { AdminCompanyProfileService } from "../admin/admin-company-profile.service";
@@ -24,6 +25,7 @@ import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import { CookieConsentService } from "./cookie-consent.service";
 import { MarketingSiteContentService } from "./marketing-site-content.service";
 import { NewsletterService } from "./newsletter.service";
+import { LinkedInOAuthService } from "./social/linkedin-oauth.service";
 
 function mimeFromKey(key: string): string {
   const lower = key.toLowerCase();
@@ -67,6 +69,8 @@ export class PublicMarketingController {
     private readonly emailService: EmailService,
     private readonly cookieConsentService: CookieConsentService,
     private readonly newsletterService: NewsletterService,
+    private readonly linkedInOAuth: LinkedInOAuthService,
+    private readonly configService: ConfigService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
@@ -80,6 +84,34 @@ export class PublicMarketingController {
     res.setHeader("Content-Type", mimeFromKey(key));
     res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
     res.send(buffer);
+  }
+
+  @Get("social/linkedin/callback")
+  @ApiOperation({
+    summary: "LinkedIn OAuth redirect target — exchanges the code and stores tokens",
+  })
+  async linkedInCallback(
+    @Query("code") code: string,
+    @Query("state") state: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const base = (
+      this.configService.get<string>("FRONTEND_URL") ?? "http://localhost:3000"
+    ).replace(/\/$/, "");
+    const adminPath = `${base}/admin/portal/marketing`;
+    if (!code || !state || !this.linkedInOAuth.verifyState(state)) {
+      this.logger.warn("LinkedIn callback rejected — missing code or invalid state");
+      res.redirect(302, `${adminPath}?linkedin=error`);
+      return;
+    }
+    try {
+      await this.linkedInOAuth.exchangeCode(code, null);
+      res.redirect(302, `${adminPath}?linkedin=connected`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "unknown error";
+      this.logger.warn(`LinkedIn callback exchange failed: ${message}`);
+      res.redirect(302, `${adminPath}?linkedin=error`);
+    }
   }
 
   @Get("content")

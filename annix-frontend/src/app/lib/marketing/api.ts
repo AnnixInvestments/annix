@@ -89,6 +89,13 @@ export interface SocialSharePayload {
   imageUrl: string;
 }
 
+export interface LinkedInConnectionStatus {
+  connected: boolean;
+  expiresAt: string | null;
+  authorUrn: string | null;
+  source: "oauth" | "env" | "none";
+}
+
 export async function fetchPublishedMarketingContent(
   locale: MarketingLocale = DEFAULT_MARKETING_LOCALE,
   baseOverride?: string | null,
@@ -259,6 +266,20 @@ class MarketingAdminApiClient {
 
   shareToSocials(payload: SocialSharePayload): Promise<SocialShareResult[]> {
     return adminClient.post<SocialShareResult[]>("/admin/marketing/social/share", payload);
+  }
+
+  linkedinStatus(): Promise<LinkedInConnectionStatus> {
+    return adminClient.get<LinkedInConnectionStatus>("/admin/marketing/social/linkedin/status");
+  }
+
+  linkedinConnectUrl(): Promise<{ url: string }> {
+    return adminClient.get<{ url: string }>("/admin/marketing/social/linkedin/connect");
+  }
+
+  linkedinDisconnect(): Promise<{ disconnected: boolean }> {
+    return adminClient.post<{ disconnected: boolean }>(
+      "/admin/marketing/social/linkedin/disconnect",
+    );
   }
 
   newsletterSubscribers(): Promise<NewsletterSubscriber[]> {
