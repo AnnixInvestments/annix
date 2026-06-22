@@ -28,7 +28,7 @@ interface LinkedInPostsResponse {
   elements?: LinkedInPostElement[];
 }
 
-const LINKEDIN_VERSION = "202405";
+const LINKEDIN_VERSION = "202605";
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const MAX_POSTS = 10;
 

@@ -2,100 +2,90 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useState } from "react";
-import {
-  Pagination,
-  TableEmptyState,
-  TableIcons,
-  TableLoadingState,
-} from "@/app/components/shared/TableComponents";
-import { useToast } from "@/app/components/Toast";
-import { usePersistedState } from "@/app/hooks/usePersistedState";
+import { useEffect, useRef, useState } from "react";
 import { auCmsAdminApi } from "@/app/lib/api/auCmsAdminApi";
-import type { TestimonialDto } from "@/app/lib/api/auRubberApi";
-import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { useAuCmsTestimonials } from "@/app/lib/query/hooks";
 import { auCmsKeys } from "@/app/lib/query/keys/auCmsKeys";
 import { AuCmsHeader } from "../AuCmsHeader";
-
-const ITEMS_PER_PAGE = 25;
+import { TestimonialEditor, type TestimonialEditorHandle } from "./TestimonialEditor";
 
 export default function AuMarketingTestimonialsListPage() {
-  const { showToast } = useToast();
-  const { confirm, ConfirmDialog } = useConfirm();
-  const queryClient = useQueryClient();
   const testimonialsQuery = useAuCmsTestimonials();
   const rawData = testimonialsQuery.data;
   const testimonials = rawData || [];
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize, setPageSize] = usePersistedState<number>(
-    "auCms.testimonials.pageSize",
-    ITEMS_PER_PAGE,
-  );
-
-  const filtered = testimonials.filter((entry) => {
-    const q = searchQuery.toLowerCase();
-    const nameMatch = entry.authorName.toLowerCase().includes(q);
-    const company = entry.authorCompany;
-    const companyMatch = company !== null ? company.toLowerCase().includes(q) : false;
-    const bodyMatch = entry.body.toLowerCase().includes(q);
-    return nameMatch || companyMatch || bodyMatch;
-  });
-
-  const sorted = [...filtered].sort((a, b) => {
+  const sorted = [...testimonials].sort((a, b) => {
     const orderDiff = a.sortOrder - b.sortOrder;
     if (orderDiff !== 0) {
       return orderDiff;
     }
     return b.datePublished.localeCompare(a.datePublished);
   });
-  const paginated = sorted.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
 
-  const handleTogglePublish = async (entry: TestimonialDto) => {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [defaultApplied, setDefaultApplied] = useState(false);
+  const editorRef = useRef<TestimonialEditorHandle>(null);
+  const queryClient = useQueryClient();
+
+  const autoSaveCurrent = async () => {
+    const editor = editorRef.current;
+    if (!editor) {
+      return;
+    }
     try {
-      await auCmsAdminApi.updateTestimonial(entry.id, { isPublished: !entry.isPublished });
-      queryClient.invalidateQueries({ queryKey: auCmsKeys.testimonials.all });
-      const action = entry.isPublished ? "unpublished" : "published";
-      showToast(`Testimonial from ${entry.authorName} ${action}`, "success");
-    } catch {
-      showToast("Failed to update testimonial", "error");
+      await editor.save();
+    } catch (err) {
+      console.error("Auto-save failed", err);
     }
   };
 
-  const handleToggleHighlight = async (entry: TestimonialDto) => {
-    try {
-      await auCmsAdminApi.updateTestimonial(entry.id, { highlight: !entry.highlight });
-      queryClient.invalidateQueries({ queryKey: auCmsKeys.testimonials.all });
-    } catch {
-      showToast("Failed to update testimonial", "error");
-    }
+  const switchToTestimonial = async (id: string) => {
+    await autoSaveCurrent();
+    setSelectedId(id);
   };
 
-  const handleDelete = async (entry: TestimonialDto) => {
-    const confirmed = await confirm({
-      title: "Delete Testimonial",
-      message: `Delete the testimonial from "${entry.authorName}"? This cannot be undone.`,
-      confirmLabel: "Delete",
-      variant: "danger",
-    });
-    if (!confirmed) return;
-    try {
-      await auCmsAdminApi.deleteTestimonial(entry.id);
-      queryClient.invalidateQueries({ queryKey: auCmsKeys.testimonials.all });
-      showToast(`Testimonial from ${entry.authorName} deleted`, "success");
-    } catch {
-      showToast("Failed to delete testimonial", "error");
+  useEffect(() => {
+    if (defaultApplied || testimonialsQuery.isLoading) return;
+    const first = sorted.length > 0 ? sorted[0] : null;
+    const firstId = first ? first.id : "new";
+    setSelectedId(firstId);
+    setDefaultApplied(true);
+  }, [defaultApplied, testimonialsQuery.isLoading, sorted]);
+
+  const activeId = selectedId;
+  const activeIndex = activeId ? sorted.findIndex((t) => t.id === activeId) : -1;
+  const canMoveLeft = activeIndex > 0;
+  const canMoveRight = activeIndex >= 0 && activeIndex < sorted.length - 1;
+
+  const swapSortOrder = async (index: number, targetIndex: number) => {
+    const entry = sorted[index];
+    const target = sorted[targetIndex];
+    if (!entry || !target) {
+      return;
     }
+    await auCmsAdminApi.updateTestimonial(entry.id, { sortOrder: target.sortOrder });
+    await auCmsAdminApi.updateTestimonial(target.id, { sortOrder: entry.sortOrder });
+    queryClient.invalidateQueries({ queryKey: auCmsKeys.testimonials.all });
+  };
+
+  const handleMoveLeft = async () => {
+    if (activeIndex <= 0) {
+      return;
+    }
+    await swapSortOrder(activeIndex, activeIndex - 1);
+  };
+
+  const handleMoveRight = async () => {
+    if (activeIndex < 0 || activeIndex >= sorted.length - 1) {
+      return;
+    }
+    await swapSortOrder(activeIndex, activeIndex + 1);
   };
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-6">
-      {ConfirmDialog}
       <AuCmsHeader
         title="Testimonials"
-        subtitle="Manage customer testimonials shown on the AU Industries website"
+        subtitle="Quotes added here appear on auind.co.za/testimonials and emit Review JSON-LD for Google."
         actions={
           <>
             <Link
@@ -110,10 +100,23 @@ export default function AuMarketingTestimonialsListPage() {
               rel="noopener noreferrer"
               className="inline-flex items-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
             >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                />
+              </svg>
               View Live Page
             </a>
-            <Link
-              href="/admin/portal/marketing/au/testimonials/new"
+            <button
+              type="button"
+              onClick={async () => {
+                await autoSaveCurrent();
+                setSelectedId("new");
+                setDefaultApplied(true);
+              }}
               className="inline-flex items-center rounded-lg bg-yellow-500 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-600"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -125,163 +128,61 @@ export default function AuMarketingTestimonialsListPage() {
                 />
               </svg>
               New Testimonial
-            </Link>
+            </button>
           </>
         }
       />
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-4">
-        <div className="p-4 border-b border-gray-200">
-          <input
-            type="text"
-            placeholder="Search by name, company, or content..."
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setCurrentPage(0);
-            }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
-          />
+      <div className="sticky top-[57px] z-[5] -mx-6 overflow-x-auto border-b border-gray-200 bg-gray-50 px-6 py-2">
+        <div className="flex gap-1">
+          {sorted.map((entry) => {
+            const company = entry.authorCompany;
+            const label = company ? `${entry.authorName} · ${company}` : entry.authorName;
+            return (
+              <button
+                key={entry.id}
+                type="button"
+                onClick={() => switchToTestimonial(entry.id)}
+                className={
+                  activeId === entry.id
+                    ? "whitespace-nowrap rounded-lg bg-yellow-500 px-3 py-1.5 text-sm font-semibold text-white"
+                    : "whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-200"
+                }
+              >
+                {label}
+              </button>
+            );
+          })}
+          {activeId === "new" ? (
+            <button
+              type="button"
+              onClick={() => switchToTestimonial("new")}
+              className="whitespace-nowrap rounded-lg bg-yellow-500 px-3 py-1.5 text-sm font-semibold text-white"
+            >
+              New testimonial
+            </button>
+          ) : null}
         </div>
-
-        {testimonialsQuery.isLoading ? (
-          <TableLoadingState message="Loading testimonials..." />
-        ) : paginated.length === 0 ? (
-          <TableEmptyState
-            icon={<TableIcons.document />}
-            title={searchQuery ? "No testimonials match your search" : "No testimonials yet"}
-            subtitle={
-              searchQuery
-                ? "Try a different search term"
-                : "Add your first testimonial to populate the live page"
-            }
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Author
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Rating
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Source
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Highlight
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {paginated.map((entry) => (
-                  <TestimonialRow
-                    key={entry.id}
-                    entry={entry}
-                    onTogglePublish={() => handleTogglePublish(entry)}
-                    onToggleHighlight={() => handleToggleHighlight(entry)}
-                    onDelete={() => handleDelete(entry)}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
 
-      <Pagination
-        currentPage={currentPage}
-        totalItems={filtered.length}
-        itemsPerPage={pageSize}
-        itemName="testimonials"
-        onPageChange={setCurrentPage}
-        onPageSizeChange={(size) => {
-          setPageSize(size);
-          setCurrentPage(0);
-        }}
-      />
+      <div className="space-y-6">
+        {activeId ? (
+          <TestimonialEditor
+            ref={editorRef}
+            key={activeId}
+            testimonialId={activeId}
+            onCreated={(id) => setSelectedId(id)}
+            onDeleted={(deletedId) => {
+              const remaining = sorted.find((t) => t.id !== deletedId);
+              setSelectedId(remaining ? remaining.id : "new");
+            }}
+            onMoveLeft={handleMoveLeft}
+            onMoveRight={handleMoveRight}
+            canMoveLeft={canMoveLeft}
+            canMoveRight={canMoveRight}
+          />
+        ) : null}
+      </div>
     </div>
-  );
-}
-
-function TestimonialRow(props: {
-  entry: TestimonialDto;
-  onTogglePublish: () => void;
-  onToggleHighlight: () => void;
-  onDelete: () => void;
-}) {
-  const company = props.entry.authorCompany;
-  const role = props.entry.authorRole;
-  const subtitle = [role, company].filter((part) => part !== null).join(" · ");
-
-  return (
-    <tr className="hover:bg-gray-50">
-      <td className="px-6 py-4">
-        <Link
-          href={`/admin/portal/marketing/au/testimonials/${props.entry.id}`}
-          className="text-sm font-medium text-gray-900 hover:text-yellow-600"
-        >
-          {props.entry.authorName}
-        </Link>
-        {subtitle.length > 0 && <div className="text-xs text-gray-500 mt-0.5">{subtitle}</div>}
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <span className="text-sm font-medium text-gray-900">{props.entry.rating} / 5</span>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-        {props.entry.datePublished}
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 capitalize">
-          {props.entry.source}
-        </span>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <button
-          onClick={props.onTogglePublish}
-          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer transition-colors ${
-            props.entry.isPublished
-              ? "bg-green-100 text-green-800 hover:bg-green-200"
-              : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-          }`}
-        >
-          {props.entry.isPublished ? "Published" : "Draft"}
-        </button>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <button
-          onClick={props.onToggleHighlight}
-          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer transition-colors ${
-            props.entry.highlight
-              ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-          }`}
-        >
-          {props.entry.highlight ? "Featured" : "Standard"}
-        </button>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-        <Link
-          href={`/admin/portal/marketing/au/testimonials/${props.entry.id}`}
-          className="text-yellow-600 hover:text-yellow-900 mr-4"
-        >
-          Edit
-        </Link>
-        <button onClick={props.onDelete} className="text-red-600 hover:text-red-900">
-          Delete
-        </button>
-      </td>
-    </tr>
   );
 }

@@ -2,81 +2,80 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useState } from "react";
-import {
-  Pagination,
-  TableEmptyState,
-  TableIcons,
-  TableLoadingState,
-} from "@/app/components/shared/TableComponents";
-import { useToast } from "@/app/components/Toast";
-import { usePersistedState } from "@/app/hooks/usePersistedState";
+import { useEffect, useRef, useState } from "react";
 import { auCmsAdminApi } from "@/app/lib/api/auCmsAdminApi";
-import type { CompoundDataSheetDto } from "@/app/lib/api/auRubberApi";
-import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { useAuCmsDataSheets } from "@/app/lib/query/hooks";
 import { auCmsKeys } from "@/app/lib/query/keys/auCmsKeys";
 import { AuCmsHeader } from "../AuCmsHeader";
-
-const ITEMS_PER_PAGE = 25;
+import { DataSheetEditor, type DataSheetEditorHandle } from "./DataSheetEditor";
 
 export default function AuMarketingDataSheetsListPage() {
-  const { showToast } = useToast();
-  const { confirm, ConfirmDialog } = useConfirm();
-  const queryClient = useQueryClient();
   const sheetsQuery = useAuCmsDataSheets();
   const rawData = sheetsQuery.data;
   const sheets = rawData || [];
+  const sorted = [...sheets].sort((a, b) => a.sortOrder - b.sortOrder);
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize, setPageSize] = usePersistedState<number>(
-    "auCms.dataSheets.pageSize",
-    ITEMS_PER_PAGE,
-  );
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [defaultApplied, setDefaultApplied] = useState(false);
+  const editorRef = useRef<DataSheetEditorHandle>(null);
+  const queryClient = useQueryClient();
 
-  const filtered = sheets.filter((sheet) => {
-    const q = searchQuery.toLowerCase();
-    return (
-      sheet.name.toLowerCase().includes(q) ||
-      sheet.slug.toLowerCase().includes(q) ||
-      sheet.code.toLowerCase().includes(q)
-    );
-  });
-
-  const paginated = filtered.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
-
-  const handleTogglePublish = async (sheet: CompoundDataSheetDto) => {
+  const autoSaveCurrent = async () => {
+    const editor = editorRef.current;
+    if (!editor) {
+      return;
+    }
     try {
-      await auCmsAdminApi.updateDataSheet(sheet.id, { isPublished: !sheet.isPublished });
-      queryClient.invalidateQueries({ queryKey: auCmsKeys.dataSheets.all });
-      const action = sheet.isPublished ? "unpublished" : "published";
-      showToast(`"${sheet.name}" ${action}`, "success");
-    } catch {
-      showToast("Failed to update data sheet", "error");
+      await editor.save();
+    } catch (err) {
+      console.error("Auto-save failed", err);
     }
   };
 
-  const handleDelete = async (sheet: CompoundDataSheetDto) => {
-    const confirmed = await confirm({
-      title: "Delete Data Sheet",
-      message: `Delete "${sheet.name}"? This cannot be undone.`,
-      confirmLabel: "Delete",
-      variant: "danger",
-    });
-    if (!confirmed) return;
-    try {
-      await auCmsAdminApi.deleteDataSheet(sheet.id);
-      queryClient.invalidateQueries({ queryKey: auCmsKeys.dataSheets.all });
-      showToast(`"${sheet.name}" deleted`, "success");
-    } catch {
-      showToast("Failed to delete data sheet", "error");
+  const switchToSheet = async (id: string) => {
+    await autoSaveCurrent();
+    setSelectedId(id);
+  };
+
+  useEffect(() => {
+    if (defaultApplied || sheetsQuery.isLoading) return;
+    const first = sorted.length > 0 ? sorted[0] : null;
+    setSelectedId(first ? first.id : "new");
+    setDefaultApplied(true);
+  }, [defaultApplied, sheetsQuery.isLoading, sorted]);
+
+  const activeId = selectedId;
+  const activeIndex = activeId ? sorted.findIndex((s) => s.id === activeId) : -1;
+  const canMoveLeft = activeIndex > 0;
+  const canMoveRight = activeIndex >= 0 && activeIndex < sorted.length - 1;
+
+  const swapSortOrder = async (index: number, targetIndex: number) => {
+    const sheet = sorted[index];
+    const target = sorted[targetIndex];
+    if (!sheet || !target) {
+      return;
     }
+    await auCmsAdminApi.updateDataSheet(sheet.id, { sortOrder: target.sortOrder });
+    await auCmsAdminApi.updateDataSheet(target.id, { sortOrder: sheet.sortOrder });
+    queryClient.invalidateQueries({ queryKey: auCmsKeys.dataSheets.all });
+  };
+
+  const handleMoveLeft = async () => {
+    if (activeIndex <= 0) {
+      return;
+    }
+    await swapSortOrder(activeIndex, activeIndex - 1);
+  };
+
+  const handleMoveRight = async () => {
+    if (activeIndex < 0 || activeIndex >= sorted.length - 1) {
+      return;
+    }
+    await swapSortOrder(activeIndex, activeIndex + 1);
   };
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-6">
-      {ConfirmDialog}
       <AuCmsHeader
         title="Technical Data Sheets"
         subtitle="Manage the rubber compound data sheets shown on the AU Industries website"
@@ -96,145 +95,75 @@ export default function AuMarketingDataSheetsListPage() {
             >
               View Live Page
             </a>
-            <Link
-              href="/admin/portal/marketing/au/data-sheets/new"
+            <button
+              type="button"
+              onClick={async () => {
+                await autoSaveCurrent();
+                setSelectedId("new");
+                setDefaultApplied(true);
+              }}
               className="inline-flex items-center rounded-lg bg-yellow-500 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-600"
             >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
               New Data Sheet
-            </Link>
+            </button>
           </>
         }
       />
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-4">
-        <div className="p-4 border-b border-gray-200">
-          <input
-            type="text"
-            placeholder="Search by name, code or slug..."
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setCurrentPage(0);
-            }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
-          />
+      <div className="sticky top-[57px] z-[5] -mx-6 overflow-x-auto border-b border-gray-200 bg-gray-50 px-6 py-2">
+        <div className="flex gap-1">
+          {sorted.map((sheet) => (
+            <button
+              key={sheet.id}
+              type="button"
+              onClick={() => switchToSheet(sheet.id)}
+              className={
+                activeId === sheet.id
+                  ? "whitespace-nowrap rounded-lg bg-yellow-500 px-3 py-1.5 text-sm font-semibold text-white"
+                  : "whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-200"
+              }
+            >
+              {sheet.name}
+            </button>
+          ))}
+          {activeId === "new" ? (
+            <button
+              type="button"
+              onClick={() => switchToSheet("new")}
+              className="whitespace-nowrap rounded-lg bg-yellow-500 px-3 py-1.5 text-sm font-semibold text-white"
+            >
+              New data sheet
+            </button>
+          ) : null}
         </div>
-
-        {sheetsQuery.isLoading ? (
-          <TableLoadingState message="Loading data sheets..." />
-        ) : paginated.length === 0 ? (
-          <TableEmptyState
-            icon={<TableIcons.document />}
-            title={searchQuery ? "No data sheets match your search" : "No data sheets yet"}
-            subtitle={
-              searchQuery ? "Try a different search term" : "Add your first compound data sheet"
-            }
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Category
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    PDF
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {paginated.map((sheet) => (
-                  <DataSheetRow
-                    key={sheet.id}
-                    sheet={sheet}
-                    onTogglePublish={() => handleTogglePublish(sheet)}
-                    onDelete={() => handleDelete(sheet)}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
 
-      <Pagination
-        currentPage={currentPage}
-        totalItems={filtered.length}
-        itemsPerPage={pageSize}
-        itemName="data sheets"
-        onPageChange={setCurrentPage}
-        onPageSizeChange={(size) => {
-          setPageSize(size);
-          setCurrentPage(0);
-        }}
-      />
+      <div className="space-y-6">
+        {activeId ? (
+          <DataSheetEditor
+            ref={editorRef}
+            key={activeId}
+            sheetId={activeId}
+            onCreated={(id) => setSelectedId(id)}
+            onDeleted={(deletedId) => {
+              const remaining = sorted.find((s) => s.id !== deletedId);
+              setSelectedId(remaining ? remaining.id : "new");
+            }}
+            onMoveLeft={handleMoveLeft}
+            onMoveRight={handleMoveRight}
+            canMoveLeft={canMoveLeft}
+            canMoveRight={canMoveRight}
+          />
+        ) : null}
+      </div>
     </div>
-  );
-}
-
-function DataSheetRow(props: {
-  sheet: CompoundDataSheetDto;
-  onTogglePublish: () => void;
-  onDelete: () => void;
-}) {
-  const sheet = props.sheet;
-  const code = sheet.code;
-  const hasPdf = sheet.pdfStatus === "available" && sheet.pdfUrl !== null;
-
-  return (
-    <tr className="hover:bg-gray-50">
-      <td className="px-6 py-4">
-        <Link
-          href={`/admin/portal/marketing/au/data-sheets/${sheet.id}`}
-          className="text-sm font-medium text-gray-900 hover:text-yellow-600"
-        >
-          {sheet.name}
-        </Link>
-        <div className="text-xs text-gray-400 font-mono mt-0.5">{code || sheet.slug}</div>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{sheet.category}</td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <span
-          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-            hasPdf ? "bg-blue-100 text-blue-800" : "bg-amber-100 text-amber-800"
-          }`}
-        >
-          {hasPdf ? "PDF" : "Coming soon"}
-        </span>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <button
-          onClick={props.onTogglePublish}
-          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer transition-colors ${
-            sheet.isPublished
-              ? "bg-green-100 text-green-800 hover:bg-green-200"
-              : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-          }`}
-        >
-          {sheet.isPublished ? "Published" : "Draft"}
-        </button>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-        <Link
-          href={`/admin/portal/marketing/au/data-sheets/${sheet.id}`}
-          className="text-yellow-600 hover:text-yellow-900 mr-4"
-        >
-          Edit
-        </Link>
-        <button onClick={props.onDelete} className="text-red-600 hover:text-red-900">
-          Delete
-        </button>
-      </td>
-    </tr>
   );
 }

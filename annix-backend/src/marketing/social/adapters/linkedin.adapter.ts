@@ -2,7 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { LinkedInOAuthService } from "../linkedin-oauth.service";
 import type { ISocialAdapter, SocialPlatform, SocialShareInput } from "../social.types";
 
-const LINKEDIN_VERSION = "202405";
+const LINKEDIN_VERSION = "202605";
 
 @Injectable()
 export class LinkedInAdapter implements ISocialAdapter {
