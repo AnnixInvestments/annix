@@ -102,7 +102,7 @@ export class InterviewReminderService {
     const candidate = await this.candidateRepo.findById(candidateId);
     const email = candidate ? candidate.email : null;
     if (!email) return null;
-    const user = await this.userRepo.findOneByEmail(email);
+    const user = await this.userRepo.findOrbitUserByEmail(email);
     if (!user) return null;
     const profile = await this.profileRepo.findByUserId(user.id);
     if (!profile) return null;

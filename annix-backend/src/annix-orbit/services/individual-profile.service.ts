@@ -519,7 +519,7 @@ export class IndividualProfileService {
     if (!email || email.trim().length === 0) {
       return null;
     }
-    const user = await this.userRepo.findOneByEmail(email);
+    const user = await this.userRepo.findOrbitUserByEmail(email);
     if (!user) {
       return null;
     }

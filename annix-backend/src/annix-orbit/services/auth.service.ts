@@ -111,13 +111,6 @@ export class AnnixOrbitAuthService {
     if (scopedExisting) {
       throw new ConflictException("Email already registered");
     }
-    const legacy = await this.userRepo.findOneByEmail(email);
-    if (legacy) {
-      const legacyProfile = await this.profileRepo.findByUserId(legacy.id);
-      if (legacyProfile && this.orbitScope(legacyProfile.userType) === scope) {
-        throw new ConflictException("Email already registered");
-      }
-    }
   }
 
   /**
@@ -157,7 +150,7 @@ export class AnnixOrbitAuthService {
         return scoped;
       }
     }
-    return this.userRepo.findOneByEmail(email);
+    return this.userRepo.findOrbitUserByEmail(email);
   }
 
   constructor(
@@ -212,7 +205,10 @@ export class AnnixOrbitAuthService {
     if (password.length < 8) {
       throw new BadRequestException("Password must be at least 8 characters.");
     }
-    const existing = await this.userRepo.findOneByEmail(invite.email);
+    const existing = await this.userRepo.findOneByEmailAndScope(
+      invite.email,
+      this.orbitScope(AnnixOrbitUserType.RECRUITER),
+    );
     if (existing) {
       throw new ConflictException("An account with this email already exists.");
     }
@@ -222,6 +218,7 @@ export class AnnixOrbitAuthService {
       email: invite.email,
       username: invite.email,
       passwordHash,
+      appScope: this.orbitScope(AnnixOrbitUserType.RECRUITER),
       firstName: name.split(" ")[0],
       lastName: name.includes(" ") ? name.substring(name.indexOf(" ") + 1) : undefined,
       status: "active",
@@ -719,7 +716,7 @@ export class AnnixOrbitAuthService {
   }
 
   async resendVerification(email: string) {
-    const user = await this.userRepo.findOneByEmail(email);
+    const user = await this.userRepo.findOrbitUserByEmail(email);
 
     if (!user) {
       throw new NotFoundException("No account found with this email address.");
@@ -742,7 +739,7 @@ export class AnnixOrbitAuthService {
   }
 
   async forgotPassword(email: string) {
-    const user = await this.userRepo.findOneByEmail(email);
+    const user = await this.userRepo.findOrbitUserByEmail(email);
 
     if (user?.emailVerified) {
       const resetToken = uuidv4();
@@ -952,9 +949,6 @@ export class AnnixOrbitAuthService {
       eeDisclosure: null,
       phone: null,
     } as Partial<AnnixOrbitProfile>);
-    if (!user.appScope) {
-      user.appScope = this.orbitScope(AnnixOrbitUserType.INDIVIDUAL);
-    }
     this.logger.log(`Provisioned seeker profile for invited Orbit user ${user.id}`);
     return profile;
   }
