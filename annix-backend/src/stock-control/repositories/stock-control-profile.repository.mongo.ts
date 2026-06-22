@@ -1,19 +1,54 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
+import type { ClientSession, Model } from "mongoose";
 import type { DeepPartial } from "../../lib/persistence/crud-repository";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
 import { nestPopulate } from "../../lib/persistence/nest-populate";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import { StockControlProfile } from "../entities/stock-control-profile.entity";
 import { StockControlProfileRepository } from "./stock-control-profile.repository";
 
 @Injectable()
 export class MongoStockControlProfileRepository
-  extends MongoCrudRepository<StockControlProfile>
+  extends MongoTenantScopedRepository<StockControlProfile>
   implements StockControlProfileRepository
 {
-  constructor(@InjectModel("StockControlProfile") model: Model<StockControlProfile>) {
-    super(model);
+  constructor(
+    @InjectModel("StockControlProfile") model: Model<StockControlProfile>,
+    @Optional() session: ClientSession | null = null,
+  ) {
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoStockControlProfileRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoStockControlProfileRepository requires a MongoTransactionContext");
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoStockControlProfileRepository {
+    return new MongoStockControlProfileRepository(this.model, session);
+  }
+
+  async saveForCompany(
+    companyId: number,
+    entity: StockControlProfile,
+  ): Promise<StockControlProfile> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Profile does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async removeForCompany(companyId: number, entity: StockControlProfile): Promise<void> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Profile does not belong to the requesting company");
+    }
+    await this.remove(entity);
   }
 
   async findOneByUserId(userId: number): Promise<StockControlProfile | null> {

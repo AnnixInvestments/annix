@@ -1,17 +1,49 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import type { ClientSession, Model } from "mongoose";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import { PushSubscription } from "../entities/push-subscription.entity";
 import { PushSubscriptionRepository } from "./push-subscription.repository";
 
 @Injectable()
 export class MongoPushSubscriptionRepository
-  extends MongoCrudRepository<PushSubscription>
+  extends MongoTenantScopedRepository<PushSubscription>
   implements PushSubscriptionRepository
 {
-  constructor(@InjectModel("PushSubscription") model: Model<PushSubscription>) {
-    super(model);
+  constructor(
+    @InjectModel("PushSubscription") model: Model<PushSubscription>,
+    @Optional() session: ClientSession | null = null,
+  ) {
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoPushSubscriptionRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoPushSubscriptionRepository requires a MongoTransactionContext");
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoPushSubscriptionRepository {
+    return new MongoPushSubscriptionRepository(this.model, session);
+  }
+
+  async saveForCompany(companyId: number, entity: PushSubscription): Promise<PushSubscription> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Push subscription does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async removeForCompany(companyId: number, entity: PushSubscription): Promise<void> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Push subscription does not belong to the requesting company");
+    }
+    await this.remove(entity);
   }
 
   async findByEndpoint(endpoint: string): Promise<PushSubscription | null> {

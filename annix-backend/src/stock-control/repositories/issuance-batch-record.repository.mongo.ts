@@ -1,21 +1,54 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
+import type { ClientSession, Model } from "mongoose";
 import { type DeepPartial } from "../../lib/persistence/crud-repository";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import { IssuanceBatchRecord } from "../entities/issuance-batch-record.entity";
 import { IssuanceBatchRecordRepository } from "./issuance-batch-record.repository";
 
 @Injectable()
 export class MongoIssuanceBatchRecordRepository
-  extends MongoCrudRepository<IssuanceBatchRecord>
+  extends MongoTenantScopedRepository<IssuanceBatchRecord>
   implements IssuanceBatchRecordRepository
 {
   constructor(
     @InjectModel("IssuanceBatchRecord")
     model: Model<IssuanceBatchRecord>,
+    @Optional() session: ClientSession | null = null,
   ) {
-    super(model);
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoIssuanceBatchRecordRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoIssuanceBatchRecordRepository requires a MongoTransactionContext");
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoIssuanceBatchRecordRepository {
+    return new MongoIssuanceBatchRecordRepository(this.model, session);
+  }
+
+  async saveForCompany(
+    companyId: number,
+    entity: IssuanceBatchRecord,
+  ): Promise<IssuanceBatchRecord> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Issuance batch record does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async removeForCompany(companyId: number, entity: IssuanceBatchRecord): Promise<void> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Issuance batch record does not belong to the requesting company");
+    }
+    await this.remove(entity);
   }
 
   async findForJobCardWithCertificate(

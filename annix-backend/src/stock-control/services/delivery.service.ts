@@ -158,7 +158,7 @@ export class DeliveryService {
     }
 
     note.deliveryNumber = trimmed;
-    return this.deliveryNoteRepo.save(note);
+    return this.deliveryNoteRepo.saveForCompany(companyId, note);
   }
 
   async create(
@@ -325,11 +325,11 @@ export class DeliveryService {
   async remove(companyId: number, id: number, userId?: number): Promise<void> {
     const note = await this.findById(companyId, id);
 
-    const movements = await this.stockMovementRepo.findManyWhere({
-      referenceType: ReferenceType.DELIVERY,
-      referenceId: id,
+    const movements = await this.stockMovementRepo.findManyByReferenceForCompany(
       companyId,
-    });
+      ReferenceType.DELIVERY,
+      id,
+    );
 
     await this.txRunner.run(async (ctx) => {
       const stockItemTx = this.stockItemRepo.withTransaction(ctx);
@@ -347,32 +347,20 @@ export class DeliveryService {
             `Reversed stock movement for item ${movement.stockItemId} -${movement.quantity}`,
           );
         }
-        await movementTx.remove(movement);
+        await movementTx.removeForCompany(companyId, movement);
       }, Promise.resolve());
     });
 
-    const invoicesByNumericKey = await this.supplierInvoiceRepo.findManyWhere({
-      deliveryNoteId: id,
+    const linkedInvoices = await this.supplierInvoiceRepo.findLinkedToDeliveryNoteForCompany(
       companyId,
-    });
-    const invoicesByStringKey = await this.supplierInvoiceRepo.findManyWhere({
-      deliveryNoteId: String(id) as unknown as number,
-      companyId,
-    });
-    const linkedInvoices = Array.from(
-      new Map(
-        [...invoicesByNumericKey, ...invoicesByStringKey].map((invoice) => [
-          String(invoice.id),
-          invoice,
-        ]),
-      ).values(),
+      id,
     );
     if (linkedInvoices.length > 0) {
       await linkedInvoices.reduce(async (prev, invoice) => {
         await prev;
         await this.supplierInvoiceItemRepo.deleteByInvoice(invoice.id);
         await this.invoiceClarificationRepo.deleteForInvoice(invoice.id);
-        await this.supplierInvoiceRepo.remove(invoice);
+        await this.supplierInvoiceRepo.removeForCompany(companyId, invoice);
       }, Promise.resolve());
       this.logger.warn(
         `Deleted ${linkedInvoices.length} supplier invoice(s) linked to delivery ${id}`,
@@ -382,11 +370,11 @@ export class DeliveryService {
     if (note.items && note.items.length > 0) {
       await note.items.reduce(async (prev, item) => {
         await prev;
-        await this.deliveryNoteItemRepo.remove(item);
+        await this.deliveryNoteItemRepo.removeForCompany(companyId, item);
       }, Promise.resolve());
     }
 
-    await this.deliveryNoteRepo.remove(note);
+    await this.deliveryNoteRepo.removeForCompany(companyId, note);
 
     const movementCount = movements.length;
 
@@ -429,7 +417,7 @@ export class DeliveryService {
     const note = await this.findById(companyId, id);
     const result = await this.storageService.upload(file, "stock-control/deliveries");
     note.photoUrl = result.path;
-    await this.deliveryNoteRepo.save(note);
+    await this.deliveryNoteRepo.saveForCompany(companyId, note);
     return this.findById(companyId, id);
   }
 
@@ -727,7 +715,7 @@ export class DeliveryService {
     note.extractedData = merged as typeof note.extractedData;
     note.sdnStatus = SdnStatus.CONFIRMED;
 
-    await this.deliveryNoteRepo.save(note);
+    await this.deliveryNoteRepo.saveForCompany(companyId, note);
     this.logger.log(`Delivery note ${id} confirmed`);
 
     const supplierName = confirmedData.fromCompany?.name || note.supplierName;

@@ -450,7 +450,9 @@ export class StockAllocationService {
       allocation.undone = true;
       allocation.undoneAt = now().toJSDate();
       allocation.undoneByName = userName;
-      const persisted = await this.allocationRepo.withTransaction(ctx).save(allocation);
+      const persisted = await this.allocationRepo
+        .withTransaction(ctx)
+        .saveForCompany(companyId, allocation);
 
       if (stockItem) {
         await this.movementRepo.withTransaction(ctx).create({
@@ -555,11 +557,10 @@ export class StockAllocationService {
     const costReduction = Math.round(litresReturned * costPerLitre * 100) / 100;
 
     const leftoverName = `${originalItem.name} (Leftover)`;
-    const existingLeftover = await this.stockItemRepo.findOneWhere({
+    const existingLeftover = await this.stockItemRepo.findOneLeftoverByNameForCompany(
       companyId,
-      name: leftoverName,
-      isLeftover: true,
-    });
+      leftoverName,
+    );
 
     const stockReturn = await this.txRunner.run(async (ctx) => {
       const stockItemTx = this.stockItemRepo.withTransaction(ctx);

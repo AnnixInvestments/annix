@@ -1,18 +1,53 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
+import type { ClientSession, Model } from "mongoose";
 import type { DeepPartial } from "../../lib/persistence/crud-repository";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import { StockControlCompanyRole } from "../entities/stock-control-company-role.entity";
 import { StockControlCompanyRoleRepository } from "./stock-control-company-role.repository";
 
 @Injectable()
 export class MongoStockControlCompanyRoleRepository
-  extends MongoCrudRepository<StockControlCompanyRole>
+  extends MongoTenantScopedRepository<StockControlCompanyRole>
   implements StockControlCompanyRoleRepository
 {
-  constructor(@InjectModel("StockControlCompanyRole") model: Model<StockControlCompanyRole>) {
-    super(model);
+  constructor(
+    @InjectModel("StockControlCompanyRole") model: Model<StockControlCompanyRole>,
+    @Optional() session: ClientSession | null = null,
+  ) {
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoStockControlCompanyRoleRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoStockControlCompanyRoleRepository requires a MongoTransactionContext");
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoStockControlCompanyRoleRepository {
+    return new MongoStockControlCompanyRoleRepository(this.model, session);
+  }
+
+  async saveForCompany(
+    companyId: number,
+    entity: StockControlCompanyRole,
+  ): Promise<StockControlCompanyRole> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Company role does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async removeForCompany(companyId: number, entity: StockControlCompanyRole): Promise<void> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Company role does not belong to the requesting company");
+    }
+    await this.remove(entity);
   }
 
   async findForCompanyOrdered(companyId: number): Promise<StockControlCompanyRole[]> {

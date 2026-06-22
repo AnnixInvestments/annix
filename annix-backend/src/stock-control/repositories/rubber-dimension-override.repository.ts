@@ -1,4 +1,6 @@
-import { CrudRepository, type DeepPartial } from "../../lib/persistence/crud-repository";
+import type { DeepPartial } from "../../lib/persistence/crud-repository";
+import { TenantScopedRepository } from "../../lib/persistence/tenant-scoped-repository";
+import type { TransactionContext } from "../../lib/persistence/transaction-context";
 import { RubberDimensionOverride } from "../entities/rubber-dimension-override.entity";
 
 export interface RubberDimensionOverrideMatch {
@@ -18,7 +20,13 @@ export interface RubberDimensionOverrideQuery {
   flangeConfig: string | null;
 }
 
-export abstract class RubberDimensionOverrideRepository extends CrudRepository<RubberDimensionOverride> {
+export abstract class RubberDimensionOverrideRepository extends TenantScopedRepository<RubberDimensionOverride> {
+  abstract withTransaction(context: TransactionContext): RubberDimensionOverrideRepository;
+  abstract saveForCompany(
+    companyId: number,
+    entity: RubberDimensionOverride,
+  ): Promise<RubberDimensionOverride>;
+  abstract removeForCompany(companyId: number, entity: RubberDimensionOverride): Promise<void>;
   abstract findMatchingOverride(
     companyId: number,
     criteria: RubberDimensionOverrideMatch,

@@ -134,7 +134,7 @@ export class InspectionBookingService {
       booking.notes = booking.notes ? `${booking.notes}\n\nCompletion: ${notes}` : notes;
     }
 
-    const saved = await this.bookingRepo.save(booking);
+    const saved = await this.bookingRepo.saveForCompany(companyId, booking);
 
     this.logger.log(
       `Inspection ${bookingId} completed for job card ${booking.jobCardId} by ${user.name}`,
@@ -160,7 +160,7 @@ export class InspectionBookingService {
 
     booking.status = "cancelled";
 
-    const saved = await this.bookingRepo.save(booking);
+    const saved = await this.bookingRepo.saveForCompany(companyId, booking);
 
     this.logger.log(
       `Inspection ${bookingId} cancelled for job card ${booking.jobCardId} by ${user.name}`,
@@ -218,7 +218,7 @@ export class InspectionBookingService {
     booking.proposedEndTime = null;
     booking.proposedNote = null;
     booking.proposedAt = null;
-    const saved = await this.bookingRepo.save(booking);
+    const saved = await this.bookingRepo.saveForCompany(booking.companyId, booking);
 
     await this.completeInspectionStep(saved);
     await this.notifyBookerAccepted(saved);
@@ -247,7 +247,7 @@ export class InspectionBookingService {
     booking.proposedEndTime = input.proposedEndTime;
     booking.proposedNote = input.note;
     booking.proposedAt = now().toJSDate();
-    const saved = await this.bookingRepo.save(booking);
+    const saved = await this.bookingRepo.saveForCompany(booking.companyId, booking);
 
     await this.notifyBookerProposed(saved);
     return saved;
@@ -280,7 +280,7 @@ export class InspectionBookingService {
     booking.proposedNote = null;
     booking.proposedAt = null;
 
-    const saved = await this.bookingRepo.save(booking);
+    const saved = await this.bookingRepo.saveForCompany(companyId, booking);
 
     await this.completeInspectionStep(saved);
     await this.notifyInspectorAccepted(saved, user);
@@ -313,7 +313,7 @@ export class InspectionBookingService {
     booking.proposedAt = null;
     booking.respondedAt = now().toJSDate();
 
-    const saved = await this.bookingRepo.save(booking);
+    const saved = await this.bookingRepo.saveForCompany(companyId, booking);
 
     this.logger.log(
       `Proposed time rejected for booking ${bookingId} by ${user.name}; returning to booked`,

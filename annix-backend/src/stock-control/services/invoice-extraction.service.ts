@@ -247,7 +247,7 @@ export class InvoiceExtractionService {
     await this.invoiceItemRepo.deleteByInvoice(invoiceId);
 
     invoice.extractionStatus = InvoiceExtractionStatus.PROCESSING;
-    await this.invoiceRepo.save(invoice);
+    await this.invoiceRepo.saveForCompany(invoice.companyId, invoice);
 
     try {
       const correctionHints = await this.correctionHintsForSupplier(
@@ -308,7 +308,7 @@ export class InvoiceExtractionService {
         invoice.vatAmount = extractedData.vatAmount;
       }
 
-      await this.invoiceRepo.save(invoice);
+      await this.invoiceRepo.saveForCompany(invoice.companyId, invoice);
 
       if (!invoice.deliveryNoteId) {
         await this.autoLinkToDeliveryNote(invoice, extractedData);
@@ -331,7 +331,7 @@ export class InvoiceExtractionService {
           ? InvoiceExtractionStatus.NEEDS_CLARIFICATION
           : InvoiceExtractionStatus.AWAITING_APPROVAL;
 
-      return this.invoiceRepo.save(invoice);
+      return this.invoiceRepo.saveForCompany(invoice.companyId, invoice);
     } catch (error) {
       this.logger.error(`Invoice extraction failed for ${invoiceId}: ${error.message}`);
       try {
@@ -401,7 +401,7 @@ export class InvoiceExtractionService {
     if (matches.length > 0) {
       invoice.deliveryNoteId = matches[0].id;
       invoice.linkedDeliveryNoteIds = matches.map((m) => m.id);
-      await this.invoiceRepo.save(invoice);
+      await this.invoiceRepo.saveForCompany(invoice.companyId, invoice);
       const dnLabels = matches.map((m) => `${m.id} (${m.deliveryNumber})`).join(", ");
       this.logger.log(
         `Auto-linked invoice ${invoice.id} (${invoice.invoiceNumber}) to DNs: ${dnLabels}`,
@@ -501,7 +501,7 @@ export class InvoiceExtractionService {
         if (matches.length > 0) {
           invoice.deliveryNoteId = matches[0].id;
           invoice.linkedDeliveryNoteIds = matches.map((m) => m.id);
-          await this.invoiceRepo.save(invoice);
+          await this.invoiceRepo.saveForCompany(companyId, invoice);
           const dnLabels = matches.map((m) => m.deliveryNumber).join(", ");
           return {
             linked: acc.linked + 1,
@@ -598,7 +598,7 @@ export class InvoiceExtractionService {
         item.matchStatus = InvoiceItemMatchStatus.UNMATCHED;
       }
 
-      await this.invoiceItemRepo.save(item);
+      await this.invoiceItemRepo.saveForCompany(invoice.companyId, item);
     }, Promise.resolve());
   }
 
@@ -657,7 +657,7 @@ export class InvoiceExtractionService {
 
       if (matchingPartB && !matchingPartB.linkedItemId) {
         matchingPartB.linkedItemId = partA.id;
-        await this.invoiceItemRepo.save(matchingPartB);
+        await this.invoiceItemRepo.saveForCompany(matchingPartB.companyId, matchingPartB);
       }
     }, Promise.resolve());
   }
@@ -730,7 +730,7 @@ export class InvoiceExtractionService {
       isPartB: item.isPartB,
     };
 
-    await this.clarificationRepo.save(clarification);
+    await this.clarificationRepo.saveForCompany(invoice.companyId, clarification);
   }
 
   private async createLowConfidenceClarification(
@@ -760,7 +760,7 @@ export class InvoiceExtractionService {
       isPartB: item.isPartB,
     };
 
-    await this.clarificationRepo.save(clarification);
+    await this.clarificationRepo.saveForCompany(invoice.companyId, clarification);
   }
 
   private async checkPriceChangeApproval(
@@ -790,7 +790,7 @@ export class InvoiceExtractionService {
         priceChangePercent: changePercent,
       };
 
-      await this.clarificationRepo.save(clarification);
+      await this.clarificationRepo.saveForCompany(invoice.companyId, clarification);
     }
   }
 
@@ -871,7 +871,10 @@ export class InvoiceExtractionService {
           clarification.invoiceItem.previousPrice = Number(stockItem.costPerUnit) || null;
         }
 
-        await this.invoiceItemRepo.save(clarification.invoiceItem);
+        await this.invoiceItemRepo.saveForCompany(
+          clarification.companyId,
+          clarification.invoiceItem,
+        );
       }
     } else if (response.createNewItem) {
       const savedItem = await this.stockItemRepo.create({
@@ -888,7 +891,10 @@ export class InvoiceExtractionService {
       if (clarification.invoiceItem) {
         clarification.invoiceItem.stockItemId = savedItem.id;
         clarification.invoiceItem.matchStatus = InvoiceItemMatchStatus.NEW_ITEM_CREATED;
-        await this.invoiceItemRepo.save(clarification.invoiceItem);
+        await this.invoiceItemRepo.saveForCompany(
+          clarification.companyId,
+          clarification.invoiceItem,
+        );
       }
     } else if (response.skipPriceUpdate) {
       clarification.status = ClarificationStatus.SKIPPED;
@@ -901,7 +907,7 @@ export class InvoiceExtractionService {
     clarification.answeredBy = userId;
     clarification.answeredAt = now().toJSDate();
 
-    await this.clarificationRepo.save(clarification);
+    await this.clarificationRepo.saveForCompany(clarification.companyId, clarification);
 
     await this.updateInvoiceStatus(clarification.invoiceId);
 
@@ -909,7 +915,7 @@ export class InvoiceExtractionService {
   }
 
   async skipClarification(clarificationId: number, userId: number): Promise<InvoiceClarification> {
-    const clarification = await this.clarificationRepo.findById(clarificationId);
+    const clarification = await this.clarificationRepo.findOneByIdWithRelations(clarificationId);
 
     if (!clarification) {
       throw new Error(`Clarification ${clarificationId} not found`);
@@ -919,7 +925,7 @@ export class InvoiceExtractionService {
     clarification.answeredBy = userId;
     clarification.answeredAt = now().toJSDate();
 
-    await this.clarificationRepo.save(clarification);
+    await this.clarificationRepo.saveForCompany(clarification.companyId, clarification);
     await this.updateInvoiceStatus(clarification.invoiceId);
 
     return clarification;
@@ -984,7 +990,7 @@ export class InvoiceExtractionService {
         ? InvoiceExtractionStatus.NEEDS_CLARIFICATION
         : InvoiceExtractionStatus.AWAITING_APPROVAL;
 
-    await this.invoiceRepo.save(invoice);
+    await this.invoiceRepo.saveForCompany(invoice.companyId, invoice);
   }
 
   private toPositiveNumberId(value: unknown): number | null {
@@ -1072,10 +1078,10 @@ export class InvoiceExtractionService {
           stockItem.componentRole = item.isPartA ? "base" : "hardener";
         }
 
-        await this.stockItemRepo.save(stockItem);
+        await this.stockItemRepo.saveForCompany(invoice.companyId, stockItem);
 
         item.priceUpdated = true;
-        await this.invoiceItemRepo.save(item);
+        await this.invoiceItemRepo.saveForCompany(invoice.companyId, item);
       }
     }, Promise.resolve());
 
@@ -1085,7 +1091,7 @@ export class InvoiceExtractionService {
     invoice.approvedBy = approvedBy;
     invoice.approvedAt = now().toJSDate();
 
-    return this.invoiceRepo.save(invoice);
+    return this.invoiceRepo.saveForCompany(invoice.companyId, invoice);
   }
 
   private async createFifoBatchesForApprovedItems(
@@ -1244,7 +1250,7 @@ export class InvoiceExtractionService {
       }
     }
 
-    const savedItem = await this.invoiceItemRepo.save(item);
+    const savedItem = await this.invoiceItemRepo.saveForCompany(item.companyId, item);
 
     if (savedItem.stockItemId) {
       await this.autoResolveClarificationsForItem(savedItem.id, userId);
@@ -1276,7 +1282,7 @@ export class InvoiceExtractionService {
       throw new Error(`Invoice item ${itemId} not found on invoice ${invoiceId}`);
     }
 
-    await this.invoiceItemRepo.remove(item);
+    await this.invoiceItemRepo.removeForCompany(item.companyId, item);
   }
 
   async manualMatchInvoiceItem(
@@ -1305,7 +1311,7 @@ export class InvoiceExtractionService {
     item.matchConfidence = 100;
     item.previousPrice = Number(stockItem.costPerUnit) || null;
 
-    const savedItem = await this.invoiceItemRepo.save(item);
+    const savedItem = await this.invoiceItemRepo.saveForCompany(item.companyId, item);
 
     await this.autoResolveClarificationsForItem(savedItem.id, userId);
     await this.updateInvoiceStatus(invoiceId);

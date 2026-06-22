@@ -1,7 +1,11 @@
-import { CrudRepository } from "../../lib/persistence/crud-repository";
+import { TenantScopedRepository } from "../../lib/persistence/tenant-scoped-repository";
+import type { TransactionContext } from "../../lib/persistence/transaction-context";
 import { GlossaryTerm } from "../entities/glossary-term.entity";
 
-export abstract class GlossaryTermRepository extends CrudRepository<GlossaryTerm> {
+export abstract class GlossaryTermRepository extends TenantScopedRepository<GlossaryTerm> {
+  abstract withTransaction(context: TransactionContext): GlossaryTermRepository;
+  abstract saveForCompany(companyId: number, entity: GlossaryTerm): Promise<GlossaryTerm>;
+  abstract removeForCompany(companyId: number, entity: GlossaryTerm): Promise<void>;
   abstract findForCompanyOrdered(companyId: number): Promise<GlossaryTerm[]>;
   abstract findOneForCompanyByAbbreviation(
     companyId: number,

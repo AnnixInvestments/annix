@@ -1,9 +1,13 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
+import type { ClientSession, Model } from "mongoose";
 import type { DeepPartial } from "../../lib/persistence/crud-repository";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
 import { nestPopulate } from "../../lib/persistence/nest-populate";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import { SupplierDocument } from "../entities/supplier-document.entity";
 import {
   type SupplierDocumentQueryFilters,
@@ -12,15 +16,43 @@ import {
 
 @Injectable()
 export class MongoSupplierDocumentRepository
-  extends MongoCrudRepository<SupplierDocument>
+  extends MongoTenantScopedRepository<SupplierDocument>
   implements SupplierDocumentRepository
 {
-  constructor(@InjectModel("SupplierDocument") model: Model<SupplierDocument>) {
-    super(model);
+  constructor(
+    @InjectModel("SupplierDocument") model: Model<SupplierDocument>,
+    @Optional() session: ClientSession | null = null,
+  ) {
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoSupplierDocumentRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoSupplierDocumentRepository requires a MongoTransactionContext");
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoSupplierDocumentRepository {
+    return new MongoSupplierDocumentRepository(this.model, session);
   }
 
   build(data: DeepPartial<SupplierDocument>): SupplierDocument {
     return data as SupplierDocument;
+  }
+
+  async saveForCompany(companyId: number, entity: SupplierDocument): Promise<SupplierDocument> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Supplier document does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async removeForCompany(companyId: number, entity: SupplierDocument): Promise<void> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Supplier document does not belong to the requesting company");
+    }
+    await this.remove(entity);
   }
 
   async findAllFilteredForCompany(

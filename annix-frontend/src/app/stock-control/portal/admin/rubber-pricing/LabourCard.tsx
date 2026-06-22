@@ -53,24 +53,41 @@ interface ParaffinDraft {
   m2PerPot: number;
 }
 
-type ComponentThroughputs = Record<ComponentKey, number>;
+interface ComponentSetting {
+  department: string;
+  m2PerHour: number;
+}
+
+type ComponentSettings = Record<ComponentKey, ComponentSetting>;
 
 interface LabourDraft {
   paraffin: ParaffinDraft;
   deptRates: Record<string, number>;
-  throughputs: Record<RubberPriceFamily, ComponentThroughputs>;
+  components: Record<RubberPriceFamily, ComponentSettings>;
 }
 
-function throughputsForFamily(
+function componentsForFamily(
   config: RubberPricingConfig,
   family: RubberPriceFamily,
-): ComponentThroughputs {
+): ComponentSettings {
   const familyCfg = config[family];
   return {
-    rubberLining: familyCfg.rubberLining.m2PerHour,
-    handling: familyCfg.handling.m2PerHour,
-    finishing: familyCfg.finishing.m2PerHour,
-    solution: familyCfg.solution.m2PerHour,
+    rubberLining: {
+      department: familyCfg.rubberLining.department,
+      m2PerHour: familyCfg.rubberLining.m2PerHour,
+    },
+    handling: {
+      department: familyCfg.handling.department,
+      m2PerHour: familyCfg.handling.m2PerHour,
+    },
+    finishing: {
+      department: familyCfg.finishing.department,
+      m2PerHour: familyCfg.finishing.m2PerHour,
+    },
+    solution: {
+      department: familyCfg.solution.department,
+      m2PerHour: familyCfg.solution.m2PerHour,
+    },
   };
 }
 
@@ -89,9 +106,9 @@ function draftFromConfig(config: RubberPricingConfig): LabourDraft {
       m2PerPot: paraffin.m2PerPot,
     },
     deptRates,
-    throughputs: {
-      plate: throughputsForFamily(config, "plate"),
-      pipe: throughputsForFamily(config, "pipe"),
+    components: {
+      plate: componentsForFamily(config, "plate"),
+      pipe: componentsForFamily(config, "pipe"),
     },
   };
 }
@@ -100,14 +117,6 @@ function curingPerM2(paraffin: ParaffinDraft): number {
   return paraffin.m2PerPot > 0
     ? (paraffin.ltrsPerCure * paraffin.costPerLitre) / paraffin.m2PerPot
     : 0;
-}
-
-function componentDepartment(
-  config: RubberPricingConfig,
-  family: RubberPriceFamily,
-  component: ComponentKey,
-): string {
-  return config[family][component].department;
 }
 
 interface LabourCardProps {
@@ -155,12 +164,34 @@ export function LabourCard(props: LabourCardProps) {
         if (!prev) {
           return prev;
         }
-        const familyThroughputs = prev.throughputs[family];
+        const familyComponents = prev.components[family];
+        const current = familyComponents[component];
         return {
           ...prev,
-          throughputs: {
-            ...prev.throughputs,
-            [family]: { ...familyThroughputs, [component]: parsed },
+          components: {
+            ...prev.components,
+            [family]: { ...familyComponents, [component]: { ...current, m2PerHour: parsed } },
+          },
+        };
+      });
+      setDirty(true);
+    },
+    [],
+  );
+
+  const setDepartment = useCallback(
+    (family: RubberPriceFamily, component: ComponentKey, department: string) => {
+      setDraft((prev) => {
+        if (!prev) {
+          return prev;
+        }
+        const familyComponents = prev.components[family];
+        const current = familyComponents[component];
+        return {
+          ...prev,
+          components: {
+            ...prev.components,
+            [family]: { ...familyComponents, [component]: { ...current, department } },
           },
         };
       });
@@ -175,13 +206,13 @@ export function LabourCard(props: LabourCardProps) {
     }
     const withFamily = (family: RubberPriceFamily) => {
       const familyCfg = config[family];
-      const throughputs = draft.throughputs[family];
+      const components = draft.components[family];
       return {
         ...familyCfg,
-        rubberLining: { ...familyCfg.rubberLining, m2PerHour: throughputs.rubberLining },
-        handling: { ...familyCfg.handling, m2PerHour: throughputs.handling },
-        finishing: { ...familyCfg.finishing, m2PerHour: throughputs.finishing },
-        solution: { ...familyCfg.solution, m2PerHour: throughputs.solution },
+        rubberLining: { ...familyCfg.rubberLining, ...components.rubberLining },
+        handling: { ...familyCfg.handling, ...components.handling },
+        finishing: { ...familyCfg.finishing, ...components.finishing },
+        solution: { ...familyCfg.solution, ...components.solution },
       };
     };
     const nextConfig: RubberPricingConfig = {
@@ -215,10 +246,10 @@ export function LabourCard(props: LabourCardProps) {
   const deptNames = keys(draft.deptRates);
 
   const componentPerM2 = (family: RubberPriceFamily, component: ComponentKey): number => {
-    const department = componentDepartment(config, family, component);
-    const rate = draft.deptRates[department];
+    const setting = draft.components[family][component];
+    const rate = draft.deptRates[setting.department];
     const safeRate = rate ?? 0;
-    const throughput = draft.throughputs[family][component];
+    const throughput = setting.m2PerHour;
     return throughput > 0 ? safeRate / throughput : 0;
   };
 
@@ -317,7 +348,7 @@ export function LabourCard(props: LabourCardProps) {
 
       <div className="p-4 space-y-2">
         <span className="text-sm font-medium text-gray-700">
-          Per-family throughput (m² per hour)
+          Per-family department &amp; throughput (m² per hour)
         </span>
         <div className="overflow-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -340,16 +371,17 @@ export function LabourCard(props: LabourCardProps) {
                       {COMPONENT_LABELS[component]}
                     </td>
                     {FAMILIES.map((fam) => {
-                      const department = componentDepartment(config, fam.key, component);
-                      const throughput = draft.throughputs[fam.key][component];
+                      const setting = draft.components[fam.key][component];
                       const perM2 = componentPerM2(fam.key, component);
                       return (
                         <FamilyThroughputCells
                           key={fam.key}
-                          department={department}
-                          throughput={throughput}
+                          department={setting.department}
+                          departmentOptions={deptNames}
+                          throughput={setting.m2PerHour}
                           perM2={perM2}
-                          onChange={(value) => setThroughput(fam.key, component, value)}
+                          onDepartmentChange={(value) => setDepartment(fam.key, component, value)}
+                          onThroughputChange={(value) => setThroughput(fam.key, component, value)}
                         />
                       );
                     })}
@@ -378,22 +410,37 @@ export function LabourCard(props: LabourCardProps) {
 
 interface FamilyThroughputCellsProps {
   department: string;
+  departmentOptions: string[];
   throughput: number;
   perM2: number;
-  onChange: (value: string) => void;
+  onDepartmentChange: (value: string) => void;
+  onThroughputChange: (value: string) => void;
 }
 
 function FamilyThroughputCells(props: FamilyThroughputCellsProps) {
   return (
     <>
-      <td className={`${TD_CLASS} text-gray-500`}>{props.department}</td>
+      <td className={TD_CLASS}>
+        <select
+          value={props.department}
+          onChange={(e) => props.onDepartmentChange(e.target.value)}
+          aria-label="Department"
+          className={`${INPUT_CLASS} w-28`}
+        >
+          {props.departmentOptions.map((dept) => (
+            <option key={dept} value={dept}>
+              {dept}
+            </option>
+          ))}
+        </select>
+      </td>
       <td className={TD_CLASS}>
         <input
           type="number"
           step="0.01"
           value={props.throughput}
-          onChange={(e) => props.onChange(e.target.value)}
-          aria-label={`${props.department} throughput`}
+          onChange={(e) => props.onThroughputChange(e.target.value)}
+          aria-label="Throughput"
           className={`${INPUT_CLASS} w-24`}
         />
       </td>

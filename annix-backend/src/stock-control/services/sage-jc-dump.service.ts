@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import * as XLSX from "xlsx";
-import type { CrudRepository } from "../../lib/persistence/crud-repository";
 import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { CpoStatus, CustomerPurchaseOrder } from "../entities/customer-purchase-order.entity";
 import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-item.entity";
@@ -264,7 +263,7 @@ export class SageJcDumpService {
     }
 
     if (cpoNeedsSave) {
-      await this.cpoRepo.save(cpo);
+      await this.cpoRepo.saveForCompany(cpo.companyId, cpo);
     }
 
     const allItems = this.classifyItems(pages);
@@ -347,7 +346,7 @@ export class SageJcDumpService {
         isCpoCalloff: true,
         companyId,
       });
-      parentJc = await this.jobCardRepo.save(newJc);
+      parentJc = await this.jobCardRepo.saveForCompany(companyId, newJc);
       this.logger.log(`Auto-created parent JC #${parentJc.id} for CPO ${cpo.cpoNumber}`);
     } else {
       let parentNeedsUpdate = false;
@@ -360,7 +359,7 @@ export class SageJcDumpService {
         parentNeedsUpdate = true;
       }
       if (parentNeedsUpdate) {
-        await this.jobCardRepo.save(parentJc);
+        await this.jobCardRepo.saveForCompany(companyId, parentJc);
       }
     }
 
@@ -436,7 +435,7 @@ export class SageJcDumpService {
             })),
           );
           for (const lineItem of appendedLineItems) {
-            await lineItemTx.save(lineItem);
+            await lineItemTx.saveForCompany(companyId, lineItem);
           }
           mergedJobCards.push({
             id: existingJcId,
@@ -492,7 +491,7 @@ export class SageJcDumpService {
           companyId,
         });
 
-        const savedJc = await jobCardTx.save(deliveryJc);
+        const savedJc = await jobCardTx.saveForCompany(companyId, deliveryJc);
 
         const lineItemEntities = this.lineItemRepo.buildMany(
           gated.map(({ item, qty }, idx) => ({
@@ -509,7 +508,7 @@ export class SageJcDumpService {
         );
 
         for (const lineItem of lineItemEntities) {
-          await lineItemTx.save(lineItem);
+          await lineItemTx.saveForCompany(companyId, lineItem);
         }
 
         createdJobCards.push({
@@ -533,12 +532,12 @@ export class SageJcDumpService {
               Number(cpoItem.quantityOrdered),
             );
             cpoItem.quantityFulfilled = newFulfilled;
-            await cpoItemTx.save(cpoItem);
+            await cpoItemTx.saveForCompany(cpo.companyId, cpoItem);
           }
         }
       }
 
-      const updatedItems = await cpoItemTx.findManyWhere({ cpoId: cpo.id });
+      const updatedItems = await cpoItemTx.findForCpoOrdered(cpo.id, cpo.companyId);
       const totalFulfilled = updatedItems.reduce(
         (sum, item) => sum + Number(item.quantityFulfilled),
         0,
@@ -552,7 +551,7 @@ export class SageJcDumpService {
       if (totalFulfilled >= totalOrdered && totalOrdered > 0) {
         cpo.status = CpoStatus.FULFILLED;
       }
-      await cpoTx.save(cpo);
+      await cpoTx.saveForCompany(cpo.companyId, cpo);
 
       return {
         createdJobCards,
@@ -868,7 +867,7 @@ export class SageJcDumpService {
   private async gateItemsByCpo(
     items: SageJcDumpParsedItem[],
     cpo: CustomerPurchaseOrder,
-    cpoItemTx: CrudRepository<CustomerPurchaseOrderItem>,
+    cpoItemTx: CustomerPurchaseOrderItemRepository,
   ): Promise<Array<{ item: SageJcDumpParsedItem; qty: number }>> {
     const gated: Array<{ item: SageJcDumpParsedItem; qty: number }> = [];
 
@@ -887,7 +886,7 @@ export class SageJcDumpService {
 
       const qty = Math.min(item.quantity, remaining);
       cpoItem.quantityFulfilled = Number(cpoItem.quantityFulfilled) + qty;
-      await cpoItemTx.save(cpoItem);
+      await cpoItemTx.saveForCompany(cpo.companyId, cpoItem);
 
       gated.push({ item, qty });
     }

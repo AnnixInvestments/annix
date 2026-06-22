@@ -1,7 +1,15 @@
-import { CrudRepository, type DeepPartial } from "../../lib/persistence/crud-repository";
+import type { DeepPartial } from "../../lib/persistence/crud-repository";
+import { TenantScopedRepository } from "../../lib/persistence/tenant-scoped-repository";
+import type { TransactionContext } from "../../lib/persistence/transaction-context";
 import { JobCardBackgroundCompletion } from "../entities/job-card-background-completion.entity";
 
-export abstract class JobCardBackgroundCompletionRepository extends CrudRepository<JobCardBackgroundCompletion> {
+export abstract class JobCardBackgroundCompletionRepository extends TenantScopedRepository<JobCardBackgroundCompletion> {
+  abstract withTransaction(context: TransactionContext): JobCardBackgroundCompletionRepository;
+  abstract saveForCompany(
+    companyId: number,
+    entity: JobCardBackgroundCompletion,
+  ): Promise<JobCardBackgroundCompletion>;
+  abstract removeForCompany(companyId: number, entity: JobCardBackgroundCompletion): Promise<void>;
   abstract buildMany(
     rows: DeepPartial<JobCardBackgroundCompletion>[],
   ): JobCardBackgroundCompletion[];

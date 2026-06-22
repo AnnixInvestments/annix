@@ -1,7 +1,15 @@
-import { CrudRepository } from "../../lib/persistence/crud-repository";
+import { TenantScopedRepository } from "../../lib/persistence/tenant-scoped-repository";
+import type { TransactionContext } from "../../lib/persistence/transaction-context";
 import { CoatingAnalysisStatus, JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 
-export abstract class JobCardCoatingAnalysisRepository extends CrudRepository<JobCardCoatingAnalysis> {
+export abstract class JobCardCoatingAnalysisRepository extends TenantScopedRepository<JobCardCoatingAnalysis> {
+  abstract withTransaction(context: TransactionContext): JobCardCoatingAnalysisRepository;
+  abstract saveForCompany(
+    companyId: number,
+    entity: JobCardCoatingAnalysis,
+  ): Promise<JobCardCoatingAnalysis>;
+  abstract removeForCompany(companyId: number, entity: JobCardCoatingAnalysis): Promise<void>;
+  abstract findOneForCompany(id: number, companyId: number): Promise<JobCardCoatingAnalysis | null>;
   abstract findOneForJobCard(
     companyId: number,
     jobCardId: number,

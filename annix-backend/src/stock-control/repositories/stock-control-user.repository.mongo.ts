@@ -1,7 +1,11 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import type { ClientSession, Model } from "mongoose";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import { StockControlRole, StockControlUser } from "../entities/stock-control-user.entity";
 import { StockControlUserRepository } from "./stock-control-user.repository";
 
@@ -11,11 +15,39 @@ function caseInsensitiveExact(value: string): RegExp {
 
 @Injectable()
 export class MongoStockControlUserRepository
-  extends MongoCrudRepository<StockControlUser>
+  extends MongoTenantScopedRepository<StockControlUser>
   implements StockControlUserRepository
 {
-  constructor(@InjectModel("StockControlUser") model: Model<StockControlUser>) {
-    super(model);
+  constructor(
+    @InjectModel("StockControlUser") model: Model<StockControlUser>,
+    @Optional() session: ClientSession | null = null,
+  ) {
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoStockControlUserRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoStockControlUserRepository requires a MongoTransactionContext");
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoStockControlUserRepository {
+    return new MongoStockControlUserRepository(this.model, session);
+  }
+
+  async saveForCompany(companyId: number, entity: StockControlUser): Promise<StockControlUser> {
+    if (entity.companyId !== companyId) {
+      throw new Error("User does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async removeForCompany(companyId: number, entity: StockControlUser): Promise<void> {
+    if (entity.companyId !== companyId) {
+      throw new Error("User does not belong to the requesting company");
+    }
+    await this.remove(entity);
   }
 
   async findOneByEmail(email: string): Promise<StockControlUser | null> {

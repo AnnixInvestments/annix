@@ -1,18 +1,50 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
+import type { ClientSession, Model } from "mongoose";
 import { type DeepPartial } from "../../lib/persistence/crud-repository";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import { DispatchCdn } from "../entities/dispatch-cdn.entity";
 import { DispatchCdnRepository } from "./dispatch-cdn.repository";
 
 @Injectable()
 export class MongoDispatchCdnRepository
-  extends MongoCrudRepository<DispatchCdn>
+  extends MongoTenantScopedRepository<DispatchCdn>
   implements DispatchCdnRepository
 {
-  constructor(@InjectModel("DispatchCdn") model: Model<DispatchCdn>) {
-    super(model);
+  constructor(
+    @InjectModel("DispatchCdn") model: Model<DispatchCdn>,
+    @Optional() session: ClientSession | null = null,
+  ) {
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoDispatchCdnRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoDispatchCdnRepository requires a MongoTransactionContext");
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoDispatchCdnRepository {
+    return new MongoDispatchCdnRepository(this.model, session);
+  }
+
+  async saveForCompany(companyId: number, entity: DispatchCdn): Promise<DispatchCdn> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Dispatch CDN does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async removeForCompany(companyId: number, entity: DispatchCdn): Promise<void> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Dispatch CDN does not belong to the requesting company");
+    }
+    await this.remove(entity);
   }
 
   async findForJobCard(companyId: number, jobCardId: number): Promise<DispatchCdn[]> {

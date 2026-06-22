@@ -68,8 +68,7 @@ describe("WorkflowAssignmentService", () => {
     findUserIdsForStep: jest.fn(),
     findForStepWithUserRelation: jest.fn(),
     countForStep: jest.fn(),
-    findManyWhere: jest.fn(),
-    remove: jest.fn(),
+    deleteForStep: jest.fn(),
     buildMany: jest.fn().mockImplementation((rows) => rows),
     saveMany: jest.fn(),
   };
@@ -109,7 +108,7 @@ describe("WorkflowAssignmentService", () => {
 
     service = module.get<WorkflowAssignmentService>(WorkflowAssignmentService);
     jest.clearAllMocks();
-    mockAssignmentRepo.findManyWhere.mockResolvedValue([]);
+    mockAssignmentRepo.deleteForStep.mockResolvedValue(undefined);
   });
 
   it("should be defined", () => {
@@ -231,17 +230,11 @@ describe("WorkflowAssignmentService", () => {
   describe("updateAssignments", () => {
     it("should delete existing and create new assignments", async () => {
       mockUserRepo.findIdsByIdsForCompany.mockResolvedValue([{ id: 10 }, { id: 20 }]);
-      const existingAssignment = createAssignment({ id: 5, userId: 30 });
-      mockAssignmentRepo.findManyWhere.mockResolvedValueOnce([existingAssignment]);
       mockAssignmentRepo.saveMany.mockResolvedValue([]);
 
       await service.updateAssignments(COMPANY_ID, "reception", [10, 20], 10, 20);
 
-      expect(mockAssignmentRepo.findManyWhere).toHaveBeenCalledWith({
-        companyId: COMPANY_ID,
-        workflowStep: "reception",
-      });
-      expect(mockAssignmentRepo.remove).toHaveBeenCalledWith(existingAssignment);
+      expect(mockAssignmentRepo.deleteForStep).toHaveBeenCalledWith(COMPANY_ID, "reception");
       expect(mockAssignmentRepo.buildMany).toHaveBeenCalledWith([
         {
           companyId: COMPANY_ID,
@@ -263,16 +256,10 @@ describe("WorkflowAssignmentService", () => {
 
     it("should only delete when userIds is empty", async () => {
       mockUserRepo.findIdsByIdsForCompany.mockResolvedValue([]);
-      const existingAssignment = createAssignment({ id: 5, userId: 30 });
-      mockAssignmentRepo.findManyWhere.mockResolvedValueOnce([existingAssignment]);
 
       await service.updateAssignments(COMPANY_ID, "reception", []);
 
-      expect(mockAssignmentRepo.findManyWhere).toHaveBeenCalledWith({
-        companyId: COMPANY_ID,
-        workflowStep: "reception",
-      });
-      expect(mockAssignmentRepo.remove).toHaveBeenCalledWith(existingAssignment);
+      expect(mockAssignmentRepo.deleteForStep).toHaveBeenCalledWith(COMPANY_ID, "reception");
       expect(mockAssignmentRepo.buildMany).not.toHaveBeenCalled();
       expect(mockAssignmentRepo.saveMany).not.toHaveBeenCalled();
     });

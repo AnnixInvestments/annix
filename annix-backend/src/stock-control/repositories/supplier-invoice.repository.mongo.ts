@@ -1,9 +1,13 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
+import type { ClientSession, Model } from "mongoose";
 import type { DeepPartial } from "../../lib/persistence/crud-repository";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
 import { nestPopulate } from "../../lib/persistence/nest-populate";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import { InvoiceExtractionStatus, SupplierInvoice } from "../entities/supplier-invoice.entity";
 import {
   type SageExportInvoiceFilters,
@@ -16,15 +20,43 @@ function escapeRegex(value: string): string {
 
 @Injectable()
 export class MongoSupplierInvoiceRepository
-  extends MongoCrudRepository<SupplierInvoice>
+  extends MongoTenantScopedRepository<SupplierInvoice>
   implements SupplierInvoiceRepository
 {
-  constructor(@InjectModel("SupplierInvoice") model: Model<SupplierInvoice>) {
-    super(model);
+  constructor(
+    @InjectModel("SupplierInvoice") model: Model<SupplierInvoice>,
+    @Optional() session: ClientSession | null = null,
+  ) {
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoSupplierInvoiceRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoSupplierInvoiceRepository requires a MongoTransactionContext");
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoSupplierInvoiceRepository {
+    return new MongoSupplierInvoiceRepository(this.model, session);
   }
 
   build(data: DeepPartial<SupplierInvoice>): SupplierInvoice {
     return data as SupplierInvoice;
+  }
+
+  async saveForCompany(companyId: number, entity: SupplierInvoice): Promise<SupplierInvoice> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Supplier invoice does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async removeForCompany(companyId: number, entity: SupplierInvoice): Promise<void> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Supplier invoice does not belong to the requesting company");
+    }
+    await this.remove(entity);
   }
 
   async updateById(id: number, updates: DeepPartial<SupplierInvoice>): Promise<void> {
@@ -135,6 +167,20 @@ export class MongoSupplierInvoiceRepository
           { deliveryNoteId: { $in: [deliveryNoteId, String(deliveryNoteId)] } },
           { linkedDeliveryNoteIds: deliveryNoteId },
         ],
+      })
+      .lean()
+      .exec();
+    return this.toDomainList(docs);
+  }
+
+  async findLinkedToDeliveryNoteForCompany(
+    companyId: number,
+    deliveryNoteId: number,
+  ): Promise<SupplierInvoice[]> {
+    const docs = await this.documents
+      .find({
+        companyId,
+        deliveryNoteId: { $in: [deliveryNoteId, String(deliveryNoteId)] },
       })
       .lean()
       .exec();

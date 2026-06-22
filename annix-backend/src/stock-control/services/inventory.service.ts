@@ -6,7 +6,6 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-import type { DeepPartial } from "../../lib/persistence/crud-repository";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { LearningSource, LearningType } from "../../nix/entities/nix-learning.entity";
 import { NixLearningRepository } from "../../nix/nix-learning.repository";
@@ -181,7 +180,7 @@ export class InventoryService {
     if (!data.photoUrl) {
       item.photoUrl = storedPhotoUrl;
     }
-    const saved = await this.stockItemRepo.save(item);
+    const saved = await this.stockItemRepo.saveForCompany(companyId, item);
 
     if (
       data.category !== undefined &&
@@ -208,7 +207,7 @@ export class InventoryService {
 
   async remove(companyId: number, id: number): Promise<void> {
     const item = await this.findById(companyId, id);
-    await this.stockItemRepo.remove(item);
+    await this.stockItemRepo.removeForCompany(companyId, item);
   }
 
   async lowStockAlerts(companyId: number): Promise<StockItem[]> {
@@ -402,47 +401,44 @@ export class InventoryService {
     for (const source of sourceItems) {
       quantityAdded += Number(source.quantity);
 
-      const movements = await this.movementRepo.findManyWhere({
-        stockItemId: source.id,
-        companyId,
-      });
+      const movements = await this.movementRepo.findManyByStockItemForCompany(companyId, source.id);
       await Promise.all(
         movements.map((movement) =>
-          this.movementRepo.save({ ...movement, stockItemId: targetItemId }),
+          this.movementRepo.saveForCompany(companyId, { ...movement, stockItemId: targetItemId }),
         ),
       );
       movementsTransferred += movements.length;
 
-      const deliveryItems = await this.deliveryNoteItemRepo.findManyWhere({
-        stockItemId: source.id,
+      const deliveryItems = await this.deliveryNoteItemRepo.findManyByStockItemForCompany(
         companyId,
-      } as DeepPartial<DeliveryNoteItem>);
+        source.id,
+      );
       await Promise.all(
         deliveryItems.map((deliveryItem) =>
-          this.deliveryNoteItemRepo.save({
+          this.deliveryNoteItemRepo.saveForCompany(companyId, {
             ...deliveryItem,
             stockItemId: targetItemId,
           } as DeliveryNoteItem),
         ),
       );
 
-      const allocations = await this.allocationRepo.findManyWhere({
-        stockItemId: source.id,
+      const allocations = await this.allocationRepo.findManyByStockItemForCompany(
         companyId,
-      });
+        source.id,
+      );
       await Promise.all(
         allocations.map((allocation) =>
-          this.allocationRepo.save({ ...allocation, stockItemId: targetItemId }),
+          this.allocationRepo.saveForCompany(companyId, {
+            ...allocation,
+            stockItemId: targetItemId,
+          }),
         ),
       );
 
-      const issuances = await this.issuanceRepo.findManyWhere({
-        stockItemId: source.id,
-        companyId,
-      });
+      const issuances = await this.issuanceRepo.findManyByStockItemForCompany(companyId, source.id);
       await Promise.all(
         issuances.map((issuance) =>
-          this.issuanceRepo.save({ ...issuance, stockItemId: targetItemId }),
+          this.issuanceRepo.saveForCompany(companyId, { ...issuance, stockItemId: targetItemId }),
         ),
       );
 
@@ -457,7 +453,7 @@ export class InventoryService {
         companyId,
       });
 
-      await this.stockItemRepo.remove(source);
+      await this.stockItemRepo.removeForCompany(companyId, source);
 
       this.logger.log(
         `Merged stock item "${source.name}" (id=${source.id}, qty=${source.quantity}) into "${targetItem.name}" (id=${targetItemId})`,
@@ -526,7 +522,7 @@ export class InventoryService {
     const item = await this.findById(companyId, id);
     const result = await this.storageService.upload(file, "stock-control/inventory");
     item.photoUrl = result.path;
-    const saved = await this.stockItemRepo.save(item);
+    const saved = await this.stockItemRepo.saveForCompany(companyId, item);
     const [refreshed] = await this.refreshPhotoUrls([{ ...saved }]);
     return refreshed;
   }

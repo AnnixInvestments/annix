@@ -157,7 +157,7 @@ export class DashboardService {
   }
 
   async reorderAlerts(companyId: number): Promise<StockItem[]> {
-    return this.stockItemRepo.reorderAlertsForCompany(companyId);
+    return this.stockItemRepo.reorderAlertsForCompany(companyId, 100);
   }
 
   async workflowLaneCounts(companyId: number): Promise<WorkflowLaneCounts> {
@@ -343,7 +343,7 @@ export class DashboardService {
 
     if (existing) {
       const merged = Object.assign(existing, data);
-      return this.preferenceRepo.save(merged);
+      return this.preferenceRepo.saveForCompany(companyId, merged);
     }
 
     return this.preferenceRepo.create({ companyId, userId, ...data });

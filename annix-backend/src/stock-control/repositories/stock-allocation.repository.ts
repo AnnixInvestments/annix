@@ -1,4 +1,4 @@
-import { CrudRepository } from "../../lib/persistence/crud-repository";
+import { TenantScopedRepository } from "../../lib/persistence/tenant-scoped-repository";
 import type { TransactionContext } from "../../lib/persistence/transaction-context";
 import { StockAllocation } from "../entities/stock-allocation.entity";
 
@@ -11,8 +11,14 @@ export interface CostByJobRow {
   totalItemsAllocated: number;
 }
 
-export abstract class StockAllocationRepository extends CrudRepository<StockAllocation> {
-  abstract withTransaction(context: TransactionContext): CrudRepository<StockAllocation>;
+export abstract class StockAllocationRepository extends TenantScopedRepository<StockAllocation> {
+  abstract withTransaction(context: TransactionContext): StockAllocationRepository;
+  abstract saveForCompany(companyId: number, entity: StockAllocation): Promise<StockAllocation>;
+  abstract findManyByStockItemForCompany(
+    companyId: number,
+    stockItemId: number,
+  ): Promise<StockAllocation[]>;
+  abstract deleteByJobCardForCompany(companyId: number, jobCardId: number): Promise<void>;
   abstract findActiveExistingByJobAndStockItem(
     companyId: number,
     jobCardId: number,

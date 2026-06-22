@@ -90,6 +90,8 @@ describe("SageJcDumpService", () => {
     cpoRepo = {
       findOneForCompanyWithItems: jest.fn(),
       save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
+      saveForCompany: jest.fn().mockImplementation((_companyId, entity) => Promise.resolve(entity)),
+      removeForCompany: jest.fn().mockResolvedValue(undefined),
       withTransaction: jest.fn().mockReturnThis(),
     };
     jobCardRepo = {
@@ -97,16 +99,24 @@ describe("SageJcDumpService", () => {
       findChildJobCardsByJobNumber: jest.fn().mockResolvedValue([]),
       build: jest.fn().mockImplementation((data) => data),
       save: jest.fn().mockImplementation((data) => Promise.resolve({ ...data, id: 100 })),
+      saveForCompany: jest
+        .fn()
+        .mockImplementation((_companyId, data) => Promise.resolve({ ...data, id: 100 })),
+      removeForCompany: jest.fn().mockResolvedValue(undefined),
       withTransaction: jest.fn().mockReturnThis(),
     };
     const lineItemRepo = {
       buildMany: jest.fn().mockImplementation((rows) => rows),
       count: jest.fn().mockResolvedValue(0),
       save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
+      saveForCompany: jest.fn().mockImplementation((_companyId, entity) => Promise.resolve(entity)),
+      removeForCompany: jest.fn().mockResolvedValue(undefined),
       withTransaction: jest.fn().mockReturnThis(),
     };
     const cpoItemRepo = {
       save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
+      saveForCompany: jest.fn().mockImplementation((_companyId, entity) => Promise.resolve(entity)),
+      removeForCompany: jest.fn().mockResolvedValue(undefined),
       findManyWhere: jest.fn().mockResolvedValue([]),
       withTransaction: jest.fn().mockReturnThis(),
     };
@@ -311,7 +321,7 @@ describe("SageJcDumpService", () => {
 
       expect(cpo.reference).toBeNull();
       expect(cpo.coatingSpecs).toBe("PAINT EXT : PAINT PILOT QD RED OXIDE");
-      expect(cpoRepo.save).toHaveBeenCalled();
+      expect(cpoRepo.saveForCompany).toHaveBeenCalled();
     });
 
     it("clears footer-only coatingSpecs", async () => {
@@ -323,7 +333,7 @@ describe("SageJcDumpService", () => {
       await service.parseSageJcDump(buffer, COMPANY_ID, 1);
 
       expect(cpo.coatingSpecs).toBeNull();
-      expect(cpoRepo.save).toHaveBeenCalled();
+      expect(cpoRepo.saveForCompany).toHaveBeenCalled();
     });
 
     it("clears footer-only notes", async () => {
@@ -335,7 +345,7 @@ describe("SageJcDumpService", () => {
       await service.parseSageJcDump(buffer, COMPANY_ID, 1);
 
       expect(cpo.notes).toBeNull();
-      expect(cpoRepo.save).toHaveBeenCalled();
+      expect(cpoRepo.saveForCompany).toHaveBeenCalled();
     });
 
     it("preserves legitimate notes that are not footer labels", async () => {

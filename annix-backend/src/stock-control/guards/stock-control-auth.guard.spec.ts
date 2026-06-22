@@ -23,7 +23,7 @@ describe("StockControlAuthGuard", () => {
   const buildGuard = (overrides: {
     verify?: jest.Mock;
     findOneByUserId?: jest.Mock;
-    findById?: jest.Mock;
+    findOneForCompany?: jest.Mock;
   }) => {
     const jwtService = {
       verify: overrides.verify ?? jest.fn(),
@@ -32,7 +32,7 @@ describe("StockControlAuthGuard", () => {
       findOneByUserId: overrides.findOneByUserId ?? jest.fn(),
     } as unknown as StockControlProfileRepository;
     const userRepo = {
-      findById: overrides.findById ?? jest.fn(),
+      findOneForCompany: overrides.findOneForCompany ?? jest.fn(),
     } as unknown as StockControlUserRepository;
     return new StockControlAuthGuard(jwtService, profileRepo, userRepo);
   };
@@ -86,7 +86,7 @@ describe("StockControlAuthGuard", () => {
         companyId: 99,
       }),
       findOneByUserId: jest.fn().mockResolvedValue({ companyId: 42, legacyScUserId: 11 }),
-      findById: jest.fn().mockResolvedValue({ id: 11, role: StockControlRole.MANAGER }),
+      findOneForCompany: jest.fn().mockResolvedValue({ id: 11, role: StockControlRole.MANAGER }),
     });
     const { context, request } = buildContext("access-token");
 
@@ -109,7 +109,7 @@ describe("StockControlAuthGuard", () => {
         .fn()
         .mockReturnValue({ type: "stock-control", sub: 5, role: "admin", companyId: 99 }),
       findOneByUserId: jest.fn().mockResolvedValue({ companyId: 42, legacyScUserId: null }),
-      findById: jest.fn(),
+      findOneForCompany: jest.fn(),
     });
     const { context, request } = buildContext("access-token");
 

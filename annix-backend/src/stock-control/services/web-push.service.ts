@@ -48,7 +48,7 @@ export class WebPushService {
       existing.companyId = companyId;
       existing.keyP256dh = subscription.keys.p256dh;
       existing.keyAuth = subscription.keys.auth;
-      await this.subscriptionRepo.save(existing);
+      await this.subscriptionRepo.saveForCompany(companyId, existing);
     } else {
       await this.subscriptionRepo.create({
         userId,
@@ -69,11 +69,6 @@ export class WebPushService {
       return;
     }
 
-    const user = await this.userRepo.findById(userId);
-    if (user && user.pushNotificationsEnabled === false) {
-      return;
-    }
-
     const subscriptions = await this.subscriptionRepo.findForUser(userId);
 
     if (subscriptions.length === 0) {
@@ -82,6 +77,11 @@ export class WebPushService {
     }
 
     const companyId = subscriptions[0].companyId;
+
+    const user = await this.userRepo.findOneForCompany(userId, companyId);
+    if (user && user.pushNotificationsEnabled === false) {
+      return;
+    }
     const company = await this.companyRepo.findById(companyId);
     if (company && !company.notificationsEnabled) {
       this.logger.log(

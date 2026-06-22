@@ -1,18 +1,50 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import type { ClientSession, Model } from "mongoose";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
 import { nestPopulate } from "../../lib/persistence/nest-populate";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import { Requisition, RequisitionSource, RequisitionStatus } from "../entities/requisition.entity";
 import { RequisitionRepository } from "./requisition.repository";
 
 @Injectable()
 export class MongoRequisitionRepository
-  extends MongoCrudRepository<Requisition>
+  extends MongoTenantScopedRepository<Requisition>
   implements RequisitionRepository
 {
-  constructor(@InjectModel("Requisition") model: Model<Requisition>) {
-    super(model);
+  constructor(
+    @InjectModel("Requisition") model: Model<Requisition>,
+    @Optional() session: ClientSession | null = null,
+  ) {
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoRequisitionRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoRequisitionRepository requires a MongoTransactionContext");
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoRequisitionRepository {
+    return new MongoRequisitionRepository(this.model, session);
+  }
+
+  async saveForCompany(companyId: number, entity: Requisition): Promise<Requisition> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Requisition does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async removeForCompany(companyId: number, entity: Requisition): Promise<void> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Requisition does not belong to the requesting company");
+    }
+    await this.remove(entity);
   }
 
   async findActiveForJobCard(companyId: number, jobCardId: number): Promise<Requisition | null> {

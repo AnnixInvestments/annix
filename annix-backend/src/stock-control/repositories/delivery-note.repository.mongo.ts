@@ -1,7 +1,11 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import type { ClientSession, Model } from "mongoose";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import { DeliveryNote } from "../entities/delivery-note.entity";
 import {
   type DeliveryNoteAutoLinkRow,
@@ -11,11 +15,39 @@ import {
 
 @Injectable()
 export class MongoDeliveryNoteRepository
-  extends MongoCrudRepository<DeliveryNote>
+  extends MongoTenantScopedRepository<DeliveryNote>
   implements DeliveryNoteRepository
 {
-  constructor(@InjectModel("DeliveryNote") model: Model<DeliveryNote>) {
-    super(model);
+  constructor(
+    @InjectModel("DeliveryNote") model: Model<DeliveryNote>,
+    @Optional() session: ClientSession | null = null,
+  ) {
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoDeliveryNoteRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoDeliveryNoteRepository requires a MongoTransactionContext");
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoDeliveryNoteRepository {
+    return new MongoDeliveryNoteRepository(this.model, session);
+  }
+
+  async saveForCompany(companyId: number, entity: DeliveryNote): Promise<DeliveryNote> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Delivery note does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async removeForCompany(companyId: number, entity: DeliveryNote): Promise<void> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Delivery note does not belong to the requesting company");
+    }
+    await this.remove(entity);
   }
 
   async findOneByNumber(companyId: number, deliveryNumber: string): Promise<DeliveryNote | null> {
@@ -62,7 +94,12 @@ export class MongoDeliveryNoteRepository
   }
 
   async findAllForCompanyByReceivedDate(companyId: number): Promise<DeliveryNote[]> {
-    const docs = await this.documents.find({ companyId }).sort({ receivedDate: -1 }).lean().exec();
+    const docs = await this.documents
+      .find({ companyId })
+      .sort({ receivedDate: -1 })
+      .allowDiskUse(true)
+      .lean()
+      .exec();
     return this.toDomainList(docs);
   }
 

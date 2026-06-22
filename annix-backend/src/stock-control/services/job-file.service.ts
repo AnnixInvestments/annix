@@ -100,7 +100,7 @@ export class JobFileService {
       throw new ForbiddenException("Only the uploader can delete this file");
     }
 
-    await this.jobFileRepo.remove(file);
+    await this.jobFileRepo.removeForCompany(companyId, file);
     this.logger.log(`Deleted job file ${fileId} from job card ${jobCardId}`);
   }
 

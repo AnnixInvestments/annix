@@ -19,13 +19,15 @@ describe("InventoryService", () => {
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     build: jest.fn().mockImplementation((data) => ({ ...data })),
     buildMany: jest.fn().mockImplementation((rows) => rows),
-    save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+    saveForCompany: jest
+      .fn()
+      .mockImplementation((_companyId, entity) => Promise.resolve({ id: 1, ...entity })),
     saveMany: jest
       .fn()
       .mockImplementation((entities) =>
         Promise.resolve(entities.map((e: object, i: number) => ({ id: i + 1, ...e }))),
       ),
-    remove: jest.fn().mockResolvedValue(null),
+    removeForCompany: jest.fn().mockResolvedValue(undefined),
     findOneForCompany: jest.fn(),
     findOneForCompanyWithRelations: jest.fn(),
     findByIdsForCompanyOrderedByName: jest.fn().mockResolvedValue([]),
@@ -73,8 +75,8 @@ describe("InventoryService", () => {
           useValue: {
             build: jest.fn(),
             create: jest.fn(),
-            save: jest.fn(),
-            findManyWhere: jest.fn().mockResolvedValue([]),
+            saveForCompany: jest.fn(),
+            findManyByStockItemForCompany: jest.fn().mockResolvedValue([]),
           },
         },
         {
@@ -91,13 +93,16 @@ describe("InventoryService", () => {
           useValue: {
             find: jest.fn().mockResolvedValue([]),
             update: jest.fn(),
-            save: jest.fn(),
-            findManyWhere: jest.fn().mockResolvedValue([]),
+            saveForCompany: jest.fn(),
+            findManyByStockItemForCompany: jest.fn().mockResolvedValue([]),
           },
         },
         {
           provide: StockIssuanceRepository,
-          useValue: { save: jest.fn(), findManyWhere: jest.fn().mockResolvedValue([]) },
+          useValue: {
+            saveForCompany: jest.fn(),
+            findManyByStockItemForCompany: jest.fn().mockResolvedValue([]),
+          },
         },
         { provide: STORAGE_SERVICE, useValue: mockStorageService },
         { provide: RequisitionService, useValue: mockRequisitionService },
@@ -246,11 +251,12 @@ describe("InventoryService", () => {
         movements: [],
       };
       mockStockItemRepo.findOneForCompanyWithRelations.mockResolvedValue({ ...existing });
-      mockStockItemRepo.save.mockResolvedValue({ ...existing, name: "New Name" });
+      mockStockItemRepo.saveForCompany.mockResolvedValue({ ...existing, name: "New Name" });
 
       const result = await service.update(1, 1, { name: "New Name" });
 
-      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
+      expect(mockStockItemRepo.saveForCompany).toHaveBeenCalledWith(
+        1,
         expect.objectContaining({ name: "New Name", photoUrl: "existing/photo.jpg" }),
       );
       expect(result).toBeDefined();
@@ -268,11 +274,15 @@ describe("InventoryService", () => {
         movements: [],
       };
       mockStockItemRepo.findOneForCompanyWithRelations.mockResolvedValue({ ...existing });
-      mockStockItemRepo.save.mockResolvedValue({ ...existing, photoUrl: "new/photo.jpg" });
+      mockStockItemRepo.saveForCompany.mockResolvedValue({
+        ...existing,
+        photoUrl: "new/photo.jpg",
+      });
 
       await service.update(1, 1, { photoUrl: "new/photo.jpg" });
 
-      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
+      expect(mockStockItemRepo.saveForCompany).toHaveBeenCalledWith(
+        1,
         expect.objectContaining({ photoUrl: "new/photo.jpg" }),
       );
     });
@@ -289,7 +299,11 @@ describe("InventoryService", () => {
         movements: [],
       };
       mockStockItemRepo.findOneForCompanyWithRelations.mockResolvedValue({ ...existing });
-      mockStockItemRepo.save.mockResolvedValue({ ...existing, quantity: 10, minStockLevel: 20 });
+      mockStockItemRepo.saveForCompany.mockResolvedValue({
+        ...existing,
+        quantity: 10,
+        minStockLevel: 20,
+      });
 
       await service.update(1, 1, { quantity: 10 });
 
@@ -308,7 +322,7 @@ describe("InventoryService", () => {
         movements: [],
       };
       mockStockItemRepo.findOneForCompanyWithRelations.mockResolvedValue({ ...existing });
-      mockStockItemRepo.save.mockResolvedValue({ ...existing });
+      mockStockItemRepo.saveForCompany.mockResolvedValue({ ...existing });
 
       await service.update(1, 1, { name: "Renamed" });
 
@@ -329,7 +343,7 @@ describe("InventoryService", () => {
 
       await service.remove(1, 1);
 
-      expect(mockStockItemRepo.remove).toHaveBeenCalledWith(item);
+      expect(mockStockItemRepo.removeForCompany).toHaveBeenCalledWith(1, item);
     });
 
     it("throws NotFoundException when item does not exist", async () => {
@@ -540,7 +554,7 @@ describe("InventoryService", () => {
       };
       mockStockItemRepo.findOneForCompanyWithRelations.mockResolvedValue(item);
       mockStorageService.upload.mockResolvedValue({ path: "stock-control/inventory/new.jpg" });
-      mockStockItemRepo.save.mockResolvedValue({
+      mockStockItemRepo.saveForCompany.mockResolvedValue({
         ...item,
         photoUrl: "stock-control/inventory/new.jpg",
       });

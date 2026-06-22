@@ -1,7 +1,14 @@
-import { CrudRepository } from "../../lib/persistence/crud-repository";
+import { TenantScopedRepository } from "../../lib/persistence/tenant-scoped-repository";
+import type { TransactionContext } from "../../lib/persistence/transaction-context";
 import { JobCardActionCompletion } from "../entities/job-card-action-completion.entity";
 
-export abstract class JobCardActionCompletionRepository extends CrudRepository<JobCardActionCompletion> {
+export abstract class JobCardActionCompletionRepository extends TenantScopedRepository<JobCardActionCompletion> {
+  abstract withTransaction(context: TransactionContext): JobCardActionCompletionRepository;
+  abstract saveForCompany(
+    companyId: number,
+    entity: JobCardActionCompletion,
+  ): Promise<JobCardActionCompletion>;
+  abstract removeForCompany(companyId: number, entity: JobCardActionCompletion): Promise<void>;
   abstract findOneForStepAction(
     jobCardId: number,
     stepKey: string,

@@ -1,7 +1,11 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import type { ClientSession, Model } from "mongoose";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import { StockIssuance } from "../entities/stock-issuance.entity";
 import {
   type StaffItemBreakdownRow,
@@ -12,11 +16,40 @@ import {
 
 @Injectable()
 export class MongoStockIssuanceRepository
-  extends MongoCrudRepository<StockIssuance>
+  extends MongoTenantScopedRepository<StockIssuance>
   implements StockIssuanceRepository
 {
-  constructor(@InjectModel("StockIssuance") model: Model<StockIssuance>) {
-    super(model);
+  constructor(
+    @InjectModel("StockIssuance") model: Model<StockIssuance>,
+    @Optional() session: ClientSession | null = null,
+  ) {
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoStockIssuanceRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoStockIssuanceRepository requires a MongoTransactionContext");
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoStockIssuanceRepository {
+    return new MongoStockIssuanceRepository(this.model, session);
+  }
+
+  async saveForCompany(companyId: number, entity: StockIssuance): Promise<StockIssuance> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Stock issuance does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async findManyByStockItemForCompany(
+    companyId: number,
+    stockItemId: number,
+  ): Promise<StockIssuance[]> {
+    const docs = await this.documents.find({ companyId, stockItemId }).lean().exec();
+    return this.toDomainList(docs);
   }
 
   private issuedAtRange(filters: StaffStockFilters | undefined): Record<string, unknown> {

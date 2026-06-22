@@ -1,4 +1,5 @@
-import { CrudRepository, type DeepPartial } from "../../lib/persistence/crud-repository";
+import type { DeepPartial } from "../../lib/persistence/crud-repository";
+import { TenantScopedRepository } from "../../lib/persistence/tenant-scoped-repository";
 import type { TransactionContext } from "../../lib/persistence/transaction-context";
 import { CpoStatus, CustomerPurchaseOrder } from "../entities/customer-purchase-order.entity";
 
@@ -13,8 +14,13 @@ export interface CpoSearchRow {
   updatedAt: Date;
 }
 
-export abstract class CustomerPurchaseOrderRepository extends CrudRepository<CustomerPurchaseOrder> {
-  abstract withTransaction(context: TransactionContext): CrudRepository<CustomerPurchaseOrder>;
+export abstract class CustomerPurchaseOrderRepository extends TenantScopedRepository<CustomerPurchaseOrder> {
+  abstract withTransaction(context: TransactionContext): CustomerPurchaseOrderRepository;
+  abstract saveForCompany(
+    companyId: number,
+    entity: CustomerPurchaseOrder,
+  ): Promise<CustomerPurchaseOrder>;
+  abstract removeForCompany(companyId: number, entity: CustomerPurchaseOrder): Promise<void>;
   abstract findPaginatedWithItems(
     companyId: number,
     status: string | null,

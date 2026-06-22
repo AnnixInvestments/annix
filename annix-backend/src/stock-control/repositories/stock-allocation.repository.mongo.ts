@@ -1,18 +1,55 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import type { ClientSession, Model } from "mongoose";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
 import { nestPopulate } from "../../lib/persistence/nest-populate";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import { StockAllocation } from "../entities/stock-allocation.entity";
 import { type CostByJobRow, StockAllocationRepository } from "./stock-allocation.repository";
 
 @Injectable()
 export class MongoStockAllocationRepository
-  extends MongoCrudRepository<StockAllocation>
+  extends MongoTenantScopedRepository<StockAllocation>
   implements StockAllocationRepository
 {
-  constructor(@InjectModel("StockAllocation") model: Model<StockAllocation>) {
-    super(model);
+  constructor(
+    @InjectModel("StockAllocation") model: Model<StockAllocation>,
+    @Optional() session: ClientSession | null = null,
+  ) {
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoStockAllocationRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoStockAllocationRepository requires a MongoTransactionContext");
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoStockAllocationRepository {
+    return new MongoStockAllocationRepository(this.model, session);
+  }
+
+  async saveForCompany(companyId: number, entity: StockAllocation): Promise<StockAllocation> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Stock allocation does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async findManyByStockItemForCompany(
+    companyId: number,
+    stockItemId: number,
+  ): Promise<StockAllocation[]> {
+    const docs = await this.documents.find({ companyId, stockItemId }).lean().exec();
+    return this.toDomainList(docs);
+  }
+
+  async deleteByJobCardForCompany(companyId: number, jobCardId: number): Promise<void> {
+    await this.documents.deleteMany({ companyId, jobCardId }).exec();
   }
 
   async findActiveExistingByJobAndStockItem(

@@ -1,4 +1,4 @@
-import { CrudRepository } from "../../lib/persistence/crud-repository";
+import { TenantScopedRepository } from "../../lib/persistence/tenant-scoped-repository";
 import type { TransactionContext } from "../../lib/persistence/transaction-context";
 import { DeliveryNote } from "../entities/delivery-note.entity";
 
@@ -17,8 +17,10 @@ export interface DeliveryNoteSearchRow {
   createdAt: Date;
 }
 
-export abstract class DeliveryNoteRepository extends CrudRepository<DeliveryNote> {
-  abstract withTransaction(context: TransactionContext): CrudRepository<DeliveryNote>;
+export abstract class DeliveryNoteRepository extends TenantScopedRepository<DeliveryNote> {
+  abstract withTransaction(context: TransactionContext): DeliveryNoteRepository;
+  abstract saveForCompany(companyId: number, entity: DeliveryNote): Promise<DeliveryNote>;
+  abstract removeForCompany(companyId: number, entity: DeliveryNote): Promise<void>;
   abstract findOneByNumber(companyId: number, deliveryNumber: string): Promise<DeliveryNote | null>;
   abstract findOneForCompany(id: number, companyId: number): Promise<DeliveryNote | null>;
   abstract findOneForCompanyWithItems(id: number, companyId: number): Promise<DeliveryNote | null>;

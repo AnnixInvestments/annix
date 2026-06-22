@@ -1,7 +1,11 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import type { ClientSession, Model } from "mongoose";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import {
   ClarificationStatus,
   ClarificationType,
@@ -11,14 +15,43 @@ import { InvoiceClarificationRepository } from "./invoice-clarification.reposito
 
 @Injectable()
 export class MongoInvoiceClarificationRepository
-  extends MongoCrudRepository<InvoiceClarification>
+  extends MongoTenantScopedRepository<InvoiceClarification>
   implements InvoiceClarificationRepository
 {
   constructor(
     @InjectModel("InvoiceClarification")
     model: Model<InvoiceClarification>,
+    @Optional() session: ClientSession | null = null,
   ) {
-    super(model);
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoInvoiceClarificationRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoInvoiceClarificationRepository requires a MongoTransactionContext");
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoInvoiceClarificationRepository {
+    return new MongoInvoiceClarificationRepository(this.model, session);
+  }
+
+  async saveForCompany(
+    companyId: number,
+    entity: InvoiceClarification,
+  ): Promise<InvoiceClarification> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Invoice clarification does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async removeForCompany(companyId: number, entity: InvoiceClarification): Promise<void> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Invoice clarification does not belong to the requesting company");
+    }
+    await this.remove(entity);
   }
 
   countByInvoiceAndStatus(

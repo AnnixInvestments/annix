@@ -79,7 +79,11 @@ describe("WorkflowStepConfigService", () => {
     build: jest.fn().mockImplementation((data) => ({ ...data })),
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 99, ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 99, ...entity })),
+    saveForCompany: jest
+      .fn()
+      .mockImplementation((_companyId, entity) => Promise.resolve({ id: 99, ...entity })),
     remove: jest.fn().mockResolvedValue({}),
+    removeForCompany: jest.fn().mockResolvedValue(undefined),
   };
 
   beforeEach(async () => {
@@ -273,7 +277,7 @@ describe("WorkflowStepConfigService", () => {
 
       await service.removeStep(COMPANY_ID, "custom_step");
 
-      expect(mockRepo.remove).toHaveBeenCalledWith(step);
+      expect(mockRepo.removeForCompany).toHaveBeenCalledWith(COMPANY_ID, step);
     });
 
     it("should throw NotFoundException when step does not exist", async () => {
@@ -299,7 +303,7 @@ describe("WorkflowStepConfigService", () => {
         "middle_step",
         "admin_approval",
       );
-      expect(mockRepo.remove).toHaveBeenCalledWith(step);
+      expect(mockRepo.removeForCompany).toHaveBeenCalledWith(COMPANY_ID, step);
     });
 
     it("should re-parent dependent steps to null when removed step has no parent", async () => {

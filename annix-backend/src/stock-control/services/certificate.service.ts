@@ -319,7 +319,7 @@ export class CertificateService {
     const cert = await this.findById(companyId, id);
 
     await this.storageService.delete(cert.filePath);
-    await this.certRepo.remove(cert);
+    await this.certRepo.removeForCompany(companyId, cert);
 
     this.logger.log(`Certificate deleted: id=${id} batch=${cert.batchNumber}`);
   }
@@ -607,7 +607,7 @@ export class CertificateService {
       } catch (err) {
         this.logger.warn(`Failed to delete old data book: ${err}`);
       }
-      await this.dataBookRepo.remove(existing);
+      await this.dataBookRepo.removeForCompany(companyId, existing);
     }
 
     this.logger.log(`[compileDataBook] JC ${jobCardId}: S3 upload complete, saving DB record...`);
@@ -812,7 +812,7 @@ export class CertificateService {
 
     if (dataBook && !dataBook.isStale) {
       dataBook.isStale = true;
-      await this.dataBookRepo.save(dataBook);
+      await this.dataBookRepo.saveForCompany(companyId, dataBook);
     }
   }
 

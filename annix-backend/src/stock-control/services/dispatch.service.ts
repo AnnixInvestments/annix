@@ -248,7 +248,7 @@ export class DispatchService {
       throw new BadRequestException("Cannot reverse scans on a completed dispatch");
     }
 
-    await this.dispatchScanRepo.remove(scan);
+    await this.dispatchScanRepo.removeForCompany(companyId, scan);
 
     this.logger.log(
       `Dispatch scan ${scanId} reversed by ${user.name} for job card ${scan.jobCardId}`,

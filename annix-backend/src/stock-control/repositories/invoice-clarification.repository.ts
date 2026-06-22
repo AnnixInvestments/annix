@@ -1,10 +1,17 @@
-import { CrudRepository } from "../../lib/persistence/crud-repository";
+import { TenantScopedRepository } from "../../lib/persistence/tenant-scoped-repository";
+import type { TransactionContext } from "../../lib/persistence/transaction-context";
 import {
   ClarificationStatus,
   InvoiceClarification,
 } from "../entities/invoice-clarification.entity";
 
-export abstract class InvoiceClarificationRepository extends CrudRepository<InvoiceClarification> {
+export abstract class InvoiceClarificationRepository extends TenantScopedRepository<InvoiceClarification> {
+  abstract withTransaction(context: TransactionContext): InvoiceClarificationRepository;
+  abstract saveForCompany(
+    companyId: number,
+    entity: InvoiceClarification,
+  ): Promise<InvoiceClarification>;
+  abstract removeForCompany(companyId: number, entity: InvoiceClarification): Promise<void>;
   abstract countByInvoiceAndStatus(
     invoiceId: number,
     status: ClarificationStatus | string,

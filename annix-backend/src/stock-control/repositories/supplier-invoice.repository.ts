@@ -1,4 +1,6 @@
-import { CrudRepository, type DeepPartial } from "../../lib/persistence/crud-repository";
+import type { DeepPartial } from "../../lib/persistence/crud-repository";
+import { TenantScopedRepository } from "../../lib/persistence/tenant-scoped-repository";
+import type { TransactionContext } from "../../lib/persistence/transaction-context";
 import { InvoiceExtractionStatus, SupplierInvoice } from "../entities/supplier-invoice.entity";
 
 export interface SageExportInvoiceFilters {
@@ -7,8 +9,11 @@ export interface SageExportInvoiceFilters {
   excludeExported?: boolean;
 }
 
-export abstract class SupplierInvoiceRepository extends CrudRepository<SupplierInvoice> {
+export abstract class SupplierInvoiceRepository extends TenantScopedRepository<SupplierInvoice> {
+  abstract withTransaction(context: TransactionContext): SupplierInvoiceRepository;
   abstract build(data: DeepPartial<SupplierInvoice>): SupplierInvoice;
+  abstract saveForCompany(companyId: number, entity: SupplierInvoice): Promise<SupplierInvoice>;
+  abstract removeForCompany(companyId: number, entity: SupplierInvoice): Promise<void>;
   abstract updateById(id: number, updates: DeepPartial<SupplierInvoice>): Promise<void>;
   abstract updateManyByIdsForCompany(
     ids: number[],
@@ -39,6 +44,10 @@ export abstract class SupplierInvoiceRepository extends CrudRepository<SupplierI
   abstract findFailedForCompany(companyId: number): Promise<SupplierInvoice[]>;
   abstract findUnlinkedForCompany(companyId: number): Promise<SupplierInvoice[]>;
   abstract findCompletedLinkedToDeliveryNote(
+    companyId: number,
+    deliveryNoteId: number,
+  ): Promise<SupplierInvoice[]>;
+  abstract findLinkedToDeliveryNoteForCompany(
     companyId: number,
     deliveryNoteId: number,
   ): Promise<SupplierInvoice[]>;

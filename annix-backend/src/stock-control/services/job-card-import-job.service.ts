@@ -69,7 +69,7 @@ export class JobCardImportJobService implements OnModuleInit {
 
       job.totalDocuments = drawings.length;
       job.qualityDocuments = qualityDocuments;
-      await this.importJobRepo.save(job);
+      await this.importJobRepo.saveForCompany(companyId, job);
 
       if (drawings.length === 0) {
         await this.failJob(jobId, companyId, "No drawing PDFs were found in this email.");
@@ -85,7 +85,7 @@ export class JobCardImportJobService implements OnModuleInit {
             const inProgress = await this.importJobRepo.findOneForCompany(jobId, companyId);
             if (inProgress) {
               inProgress.currentDocumentName = drawing.filename;
-              await this.importJobRepo.save(inProgress);
+              await this.importJobRepo.saveForCompany(companyId, inProgress);
             }
 
             const result = await this.jobCardImportService.parseDrawingPdfs([drawing]);
@@ -99,7 +99,7 @@ export class JobCardImportJobService implements OnModuleInit {
               afterDoc.completedDocuments = index + 1;
               afterDoc.drawingRows = collected as unknown as Record<string, unknown>[];
               afterDoc.documentNumber = documentNumber;
-              await this.importJobRepo.save(afterDoc);
+              await this.importJobRepo.saveForCompany(companyId, afterDoc);
             }
           }),
         Promise.resolve(),
@@ -114,7 +114,7 @@ export class JobCardImportJobService implements OnModuleInit {
         finalJob.status = "completed";
         finalJob.currentDocumentName = null;
       }
-      await this.importJobRepo.save(finalJob);
+      await this.importJobRepo.saveForCompany(companyId, finalJob);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       this.logger.error(`Import job ${jobId} failed: ${message}`);
@@ -128,7 +128,7 @@ export class JobCardImportJobService implements OnModuleInit {
     job.status = "failed";
     job.error = error;
     job.currentDocumentName = null;
-    await this.importJobRepo.save(job);
+    await this.importJobRepo.saveForCompany(companyId, job);
   }
 
   job(companyId: number, id: number): Promise<JobCardImportJob | null> {
@@ -143,6 +143,6 @@ export class JobCardImportJobService implements OnModuleInit {
     const job = await this.importJobRepo.findOneForCompany(id, companyId);
     if (!job) return;
     job.acknowledged = true;
-    await this.importJobRepo.save(job);
+    await this.importJobRepo.saveForCompany(companyId, job);
   }
 }

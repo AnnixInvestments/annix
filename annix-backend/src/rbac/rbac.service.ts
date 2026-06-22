@@ -393,7 +393,7 @@ export class RbacService {
       const newRole = roleCodeToEnum[dto.roleCode];
       if (newRole) {
         scUser.role = newRole;
-        await this.stockControlUserRepo.save(scUser);
+        await this.stockControlUserRepo.saveForCompany(scUser.companyId, scUser);
       }
     }
 
@@ -513,11 +513,11 @@ export class RbacService {
     // delete their Stock Control account directly.
     if (userId < 0) {
       const stockControlUserId = -userId;
-      const scUser = await this.stockControlUserRepo.findById(stockControlUserId);
+      const scUser = await this.stockControlUserRepo.findOneByIdWithCompany(stockControlUserId);
       if (!scUser) {
         throw new NotFoundException(`User with ID ${userId} not found`);
       }
-      await this.stockControlUserRepo.remove(scUser);
+      await this.stockControlUserRepo.removeForCompany(scUser.companyId, scUser);
       this.logger.log(`Stock Control user ${stockControlUserId} deleted by ${actingUserId}`);
       return;
     }
@@ -538,7 +538,7 @@ export class RbacService {
     // a stock-control-only row. Remove the matching Stock Control account too.
     const scUser = await this.stockControlUserRepo.findOneByEmailCaseInsensitive(user.email);
     if (scUser) {
-      await this.stockControlUserRepo.remove(scUser);
+      await this.stockControlUserRepo.removeForCompany(scUser.companyId, scUser);
     }
 
     this.logger.log(

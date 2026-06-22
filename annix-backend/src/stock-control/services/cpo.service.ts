@@ -222,7 +222,7 @@ export class CpoService {
     if (!cpo) {
       throw new NotFoundException(`CPO ${id} not found`);
     }
-    await this.cpoRepo.remove(cpo);
+    await this.cpoRepo.removeForCompany(companyId, cpo);
 
     this.auditService
       .log({
@@ -249,7 +249,7 @@ export class CpoService {
     const cpo = await this.findById(companyId, id);
     const previousStatus = cpo.status;
     cpo.status = status;
-    const saved = await this.cpoRepo.save(cpo);
+    const saved = await this.cpoRepo.saveForCompany(companyId, cpo);
 
     this.auditService
       .log({
@@ -273,7 +273,7 @@ export class CpoService {
     const cpo = await this.findById(companyId, id);
     const previousCoatingSpecs = cpo.coatingSpecs;
     cpo.coatingSpecs = coatingSpecs;
-    await this.cpoRepo.save(cpo);
+    await this.cpoRepo.saveForCompany(companyId, cpo);
 
     this.auditService
       .log({
@@ -372,7 +372,7 @@ export class CpoService {
     if (data.jtNo !== undefined) item.jtNo = data.jtNo || null;
     if (data.m2 !== undefined) item.m2 = data.m2 ?? null;
 
-    const saved = await this.cpoItemRepo.save(item);
+    const saved = await this.cpoItemRepo.saveForCompany(companyId, item);
 
     if (oldQty !== newQty) {
       const cpo = await this.cpoRepo.findOneForCompany(cpoId, companyId);
@@ -394,7 +394,7 @@ export class CpoService {
     }
 
     const qty = Number(item.quantityOrdered);
-    await this.cpoItemRepo.remove(item);
+    await this.cpoItemRepo.removeForCompany(companyId, item);
 
     const cpo = await this.cpoRepo.findOneForCompanyWithItems(cpoId, companyId);
     if (cpo) {
@@ -584,7 +584,7 @@ export class CpoService {
         companyId,
       })),
     );
-    await this.requisitionItemRepo.saveMany(items);
+    await this.requisitionItemRepo.saveManyForCompany(companyId, items);
 
     this.logger.log(
       `Created call-off requisition ${savedReq.requisitionNumber} with ${items.length} item(s) for CPO ${cpo.cpoNumber}`,
@@ -835,7 +835,7 @@ export class CpoService {
       record.invoicedAt = now().toJSDate();
     }
 
-    return this.calloffRepo.save(record);
+    return this.calloffRepo.saveForCompany(companyId, record);
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_8AM, { name: "stock-control:uninvoiced-arrivals" })
@@ -940,7 +940,7 @@ export class CpoService {
         record.status = CalloffStatus.DELIVERED;
         record.deliveredAt = now().toJSDate();
         record.notes = `Auto-delivered from DN #${deliveryNoteId} (${supplierName})`;
-        return this.calloffRepo.save(record);
+        return this.calloffRepo.saveForCompany(companyId, record);
       }),
     );
 
@@ -1279,7 +1279,7 @@ export class CpoService {
     existing.fulfilledQuantity = 0;
     existing.status = CpoStatus.ACTIVE;
 
-    const saved = await this.cpoRepo.save(existing);
+    const saved = await this.cpoRepo.saveForCompany(companyId, existing);
 
     await this.cpoItemRepo.deleteForCpo(saved.id);
 

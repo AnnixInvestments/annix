@@ -5,7 +5,6 @@ import { RepProfileRepository } from "../annix-rep/rep-profile/rep-profile.repos
 import { AnnixSentinelProfileRepository } from "../annix-sentinel/companies/annix-sentinel-profile.repository";
 import { CustomerProfileRepository } from "../customer/customer-profile.repository";
 import { nowISO } from "../lib/datetime";
-import { CrudRepository } from "../lib/persistence/crud-repository";
 import { AppRepository, UserAppAccessRepository } from "../rbac/rbac.repository";
 import { StockControlProfileRepository } from "../stock-control/repositories/stock-control-profile.repository";
 import { StockControlUserRepository } from "../stock-control/repositories/stock-control-user.repository";
@@ -112,7 +111,7 @@ export class IdentityReconciliationService {
   private async profileCount(
     portal: string,
     table: string,
-    repo: CrudRepository<{ id: number }>,
+    repo: { count(): Promise<number> },
   ): Promise<{ portal: string; table: string; profileCount: number }> {
     const profileCount = await repo.count();
     return { portal, table, profileCount };
@@ -298,7 +297,7 @@ export class IdentityReconciliationService {
       recordRole(teacherUser.email, "teacher-assistant", null);
     });
 
-    const stockControlUsers = await this.stockControlUserRepo.findAll();
+    const stockControlUsers = await this.stockControlUserRepo.findAllOrderedById();
     stockControlUsers.forEach((scUser) => {
       recordRole(scUser.email, "stock-control:legacy", scUser.role ?? null);
     });

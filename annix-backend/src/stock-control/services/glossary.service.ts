@@ -213,7 +213,7 @@ export class GlossaryService {
       existing.term = dto.term;
       existing.definition = dto.definition;
       existing.category = dto.category ?? null;
-      return this.termRepo.save(existing);
+      return this.termRepo.saveForCompany(companyId, existing);
     }
 
     return this.termRepo.create({

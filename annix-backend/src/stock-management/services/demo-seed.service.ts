@@ -354,7 +354,7 @@ export class DemoSeedService {
   }> {
     this.logger.log(`Syncing legacy stock items for company ${companyId}`);
 
-    const stockItems = await this.stockItemRepo.findManyWhere({ companyId });
+    const stockItems = await this.stockItemRepo.findAllForCompany(companyId);
     this.logger.log(`Found ${stockItems.length} legacy stock items`);
 
     let created = 0;

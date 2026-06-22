@@ -1,4 +1,5 @@
-import { CrudRepository } from "../../lib/persistence/crud-repository";
+import { TenantScopedRepository } from "../../lib/persistence/tenant-scoped-repository";
+import type { TransactionContext } from "../../lib/persistence/transaction-context";
 import { StaffMember } from "../entities/staff-member.entity";
 
 export interface StaffSearchRow {
@@ -10,7 +11,10 @@ export interface StaffSearchRow {
   updatedAt: Date;
 }
 
-export abstract class StaffMemberRepository extends CrudRepository<StaffMember> {
+export abstract class StaffMemberRepository extends TenantScopedRepository<StaffMember> {
+  abstract withTransaction(context: TransactionContext): StaffMemberRepository;
+  abstract saveForCompany(companyId: number, entity: StaffMember): Promise<StaffMember>;
+  abstract removeForCompany(companyId: number, entity: StaffMember): Promise<void>;
   abstract findAllForCompanyOrdered(
     companyId: number,
     filters?: { search?: string; active?: string },

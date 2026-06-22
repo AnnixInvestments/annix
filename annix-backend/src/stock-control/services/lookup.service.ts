@@ -48,13 +48,13 @@ export class LookupService {
   ): Promise<StockControlDepartment> {
     const department = await this.departmentById(companyId, id);
     Object.assign(department, data);
-    return this.departmentRepo.save(department);
+    return this.departmentRepo.saveForCompany(companyId, department);
   }
 
   async deleteDepartment(companyId: number, id: number): Promise<StockControlDepartment> {
     const department = await this.departmentById(companyId, id);
     department.active = false;
-    return this.departmentRepo.save(department);
+    return this.departmentRepo.saveForCompany(companyId, department);
   }
 
   async locationsByCompany(companyId: number): Promise<StockControlLocation[]> {
@@ -101,12 +101,12 @@ export class LookupService {
   ): Promise<StockControlLocation> {
     const location = await this.locationById(companyId, id);
     Object.assign(location, data);
-    return this.locationRepo.save(location);
+    return this.locationRepo.saveForCompany(companyId, location);
   }
 
   async deleteLocation(companyId: number, id: number): Promise<StockControlLocation> {
     const location = await this.locationById(companyId, id);
     location.active = false;
-    return this.locationRepo.save(location);
+    return this.locationRepo.saveForCompany(companyId, location);
   }
 }

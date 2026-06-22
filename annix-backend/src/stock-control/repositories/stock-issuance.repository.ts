@@ -1,4 +1,5 @@
-import { CrudRepository } from "../../lib/persistence/crud-repository";
+import { TenantScopedRepository } from "../../lib/persistence/tenant-scoped-repository";
+import type { TransactionContext } from "../../lib/persistence/transaction-context";
 import { StockIssuance } from "../entities/stock-issuance.entity";
 
 export interface StaffStockFilters {
@@ -30,7 +31,13 @@ export interface StaffItemBreakdownRow {
   totalValue: string | null;
 }
 
-export abstract class StockIssuanceRepository extends CrudRepository<StockIssuance> {
+export abstract class StockIssuanceRepository extends TenantScopedRepository<StockIssuance> {
+  abstract withTransaction(context: TransactionContext): StockIssuanceRepository;
+  abstract saveForCompany(companyId: number, entity: StockIssuance): Promise<StockIssuance>;
+  abstract findManyByStockItemForCompany(
+    companyId: number,
+    stockItemId: number,
+  ): Promise<StockIssuance[]>;
   abstract staffStockReportRows(
     companyId: number,
     filters: StaffStockFilters | undefined,

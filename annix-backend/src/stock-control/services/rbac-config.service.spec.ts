@@ -8,8 +8,7 @@ describe("RbacConfigService", () => {
 
   const mockRepo = {
     findForCompany: jest.fn(),
-    findManyWhere: jest.fn(),
-    remove: jest.fn(),
+    removeForCompany: jest.fn(),
     create: jest.fn().mockImplementation((data) => Promise.resolve(data)),
   };
 
@@ -29,7 +28,7 @@ describe("RbacConfigService", () => {
 
     service = module.get<RbacConfigService>(RbacConfigService);
     jest.clearAllMocks();
-    mockRepo.findManyWhere.mockResolvedValue([]);
+    mockRepo.findForCompany.mockResolvedValue([]);
   });
 
   it("should be defined", () => {
@@ -105,7 +104,7 @@ describe("RbacConfigService", () => {
 
     it("should delete existing config and insert new rows", async () => {
       const existingRow = { id: 3, companyId: 1, navKey: "dashboard", role: "manager" };
-      mockRepo.findManyWhere.mockResolvedValueOnce([existingRow]);
+      mockRepo.findForCompany.mockResolvedValueOnce([existingRow]);
       const config = {
         dashboard: ["viewer", "admin"],
         inventory: ["admin"],
@@ -113,8 +112,8 @@ describe("RbacConfigService", () => {
 
       await service.updateNavConfig(1, config);
 
-      expect(mockRepo.findManyWhere).toHaveBeenCalledWith({ companyId: 1 });
-      expect(mockRepo.remove).toHaveBeenCalledWith(existingRow);
+      expect(mockRepo.findForCompany).toHaveBeenCalledWith(1);
+      expect(mockRepo.removeForCompany).toHaveBeenCalledWith(1, existingRow);
       expect(mockRepo.create).toHaveBeenCalled();
     });
 
@@ -173,13 +172,13 @@ describe("RbacConfigService", () => {
 
       expect(result).toBeDefined();
       expect(result.dashboard).toBeDefined();
-      expect(mockRepo.findForCompany).toHaveBeenCalledTimes(1);
+      expect(mockRepo.findForCompany).toHaveBeenCalledTimes(2);
     });
 
     it("should scope delete to the correct companyId", async () => {
       await service.updateNavConfig(99, { dashboard: ["admin"] });
 
-      expect(mockRepo.findManyWhere).toHaveBeenCalledWith({ companyId: 99 });
+      expect(mockRepo.findForCompany).toHaveBeenCalledWith(99);
     });
 
     it("should create entities with correct companyId, navKey, and role", async () => {

@@ -56,7 +56,7 @@ export class StockControlInvitationService {
     });
 
     const company = await this.companyRepo.findById(companyId);
-    const inviter = await this.userRepo.findById(invitedById);
+    const inviter = await this.userRepo.findOneForCompany(invitedById, companyId);
 
     await this.emailService.sendStockControlInvitationEmail(
       email,
@@ -93,7 +93,7 @@ export class StockControlInvitationService {
           const previousCompanyId = existingUser.companyId;
           existingUser.companyId = companyId;
           existingUser.role = inv.role;
-          await this.userRepo.save(existingUser);
+          await this.userRepo.saveForCompany(companyId, existingUser);
           this.logger.log(
             `Moved user ${existingUser.email} from company ${previousCompanyId} to ${companyId}`,
           );
@@ -101,7 +101,7 @@ export class StockControlInvitationService {
 
         inv.status = StockControlInvitationStatus.ACCEPTED;
         inv.acceptedAt = now().toJSDate();
-        await this.invitationRepo.save(inv);
+        await this.invitationRepo.saveForCompany(companyId, inv);
         resolvedInvitationIds.add(inv.id);
       }),
     );
@@ -118,7 +118,7 @@ export class StockControlInvitationService {
       now().toJSDate() > invitation.expiresAt
     ) {
       invitation.status = StockControlInvitationStatus.EXPIRED;
-      await this.invitationRepo.save(invitation);
+      await this.invitationRepo.saveForCompany(invitation.companyId, invitation);
     }
 
     return invitation;
@@ -135,7 +135,7 @@ export class StockControlInvitationService {
     }
 
     invitation.status = StockControlInvitationStatus.CANCELLED;
-    await this.invitationRepo.save(invitation);
+    await this.invitationRepo.saveForCompany(companyId, invitation);
     this.logger.log(`Invitation cancelled: ${invitation.email}`);
   }
 
@@ -155,7 +155,7 @@ export class StockControlInvitationService {
     invitation.token = uuidv4();
     invitation.expiresAt = now().plus({ days: INVITATION_EXPIRY_DAYS }).toJSDate();
 
-    const saved = await this.invitationRepo.save(invitation);
+    const saved = await this.invitationRepo.saveForCompany(companyId, invitation);
 
     const company = await this.companyRepo.findById(companyId);
 

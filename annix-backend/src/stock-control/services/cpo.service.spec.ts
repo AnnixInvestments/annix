@@ -122,8 +122,12 @@ describe("CpoService", () => {
     countByStatus: jest.fn(),
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+    saveForCompany: jest
+      .fn()
+      .mockImplementation((_companyId, entity) => Promise.resolve({ id: 1, ...entity })),
     updateById: jest.fn().mockResolvedValue(undefined),
     remove: jest.fn().mockResolvedValue(undefined),
+    removeForCompany: jest.fn().mockResolvedValue(undefined),
     findPaginatedWithItems: jest.fn(),
     findOneForCompanyWithItems: jest.fn(),
     findOneByIdWithItems: jest.fn(),
@@ -141,8 +145,12 @@ describe("CpoService", () => {
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     createMany: jest.fn().mockResolvedValue([]),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+    saveForCompany: jest
+      .fn()
+      .mockImplementation((_companyId, entity) => Promise.resolve({ id: 1, ...entity })),
     updateById: jest.fn().mockResolvedValue(undefined),
     remove: jest.fn().mockResolvedValue(undefined),
+    removeForCompany: jest.fn().mockResolvedValue(undefined),
     deleteForCpo: jest.fn().mockResolvedValue(undefined),
   };
 
@@ -179,6 +187,10 @@ describe("CpoService", () => {
     findForCompanyWithCpoAndJobCard: jest.fn().mockResolvedValue([]),
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+    saveForCompany: jest
+      .fn()
+      .mockImplementation((_companyId, entity) => Promise.resolve({ id: 1, ...entity })),
+    removeForCompany: jest.fn().mockResolvedValue(undefined),
   };
 
   const reqFindOne = jest.fn();
@@ -368,7 +380,11 @@ describe("CpoService", () => {
     it("updates item fields and recalculates quantity when changed", async () => {
       const item = makeCpoItem({ quantityOrdered: 5 });
       mockCpoItemRepo.findOneForCpoAndCompany.mockResolvedValue(item);
-      mockCpoItemRepo.save.mockResolvedValue({ ...item, quantityOrdered: 8, itemCode: "PIPE-NEW" });
+      mockCpoItemRepo.saveForCompany.mockResolvedValue({
+        ...item,
+        quantityOrdered: 8,
+        itemCode: "PIPE-NEW",
+      });
 
       const cpo = makeCpo({ totalQuantity: 10 });
       mockCpoRepo.findOneForCompany.mockResolvedValue(cpo);
@@ -387,7 +403,7 @@ describe("CpoService", () => {
     it("does not update CPO quantity when quantity unchanged", async () => {
       const item = makeCpoItem({ quantityOrdered: 5 });
       mockCpoItemRepo.findOneForCpoAndCompany.mockResolvedValue(item);
-      mockCpoItemRepo.save.mockResolvedValue({ ...item, itemCode: "PIPE-UPD" });
+      mockCpoItemRepo.saveForCompany.mockResolvedValue({ ...item, itemCode: "PIPE-UPD" });
 
       await service.updateCpoItem(COMPANY_ID, 1, 1, { itemCode: "PIPE-UPD" });
 
@@ -405,7 +421,7 @@ describe("CpoService", () => {
     it("clamps totalQuantity to zero minimum", async () => {
       const item = makeCpoItem({ quantityOrdered: 20 });
       mockCpoItemRepo.findOneForCpoAndCompany.mockResolvedValue(item);
-      mockCpoItemRepo.save.mockResolvedValue({ ...item, quantityOrdered: 1 });
+      mockCpoItemRepo.saveForCompany.mockResolvedValue({ ...item, quantityOrdered: 1 });
 
       const cpo = makeCpo({ totalQuantity: 5 });
       mockCpoRepo.findOneForCompany.mockResolvedValue(cpo);
@@ -429,7 +445,7 @@ describe("CpoService", () => {
 
       await service.deleteCpoItem(COMPANY_ID, 1, 1);
 
-      expect(mockCpoItemRepo.remove).toHaveBeenCalledWith(item);
+      expect(mockCpoItemRepo.removeForCompany).toHaveBeenCalledWith(COMPANY_ID, item);
       expect(mockCpoRepo.updateById).toHaveBeenCalledWith(1, {
         totalItems: 1,
         totalQuantity: 7,
@@ -465,7 +481,7 @@ describe("CpoService", () => {
 
       await service.deleteCpo(COMPANY_ID, 1);
 
-      expect(mockCpoRepo.remove).toHaveBeenCalledWith(cpo);
+      expect(mockCpoRepo.removeForCompany).toHaveBeenCalledWith(COMPANY_ID, cpo);
     });
 
     it("throws NotFoundException when CPO not found", async () => {
@@ -479,12 +495,12 @@ describe("CpoService", () => {
     it("transitions CPO status and returns updated entity", async () => {
       const cpo = makeCpo();
       mockCpoRepo.findOneForCompanyWithItems.mockResolvedValue(cpo);
-      mockCpoRepo.save.mockResolvedValue({ ...cpo, status: CpoStatus.FULFILLED });
+      mockCpoRepo.saveForCompany.mockResolvedValue({ ...cpo, status: CpoStatus.FULFILLED });
 
       const result = await service.updateStatus(COMPANY_ID, 1, CpoStatus.FULFILLED);
 
       expect(result.status).toBe(CpoStatus.FULFILLED);
-      expect(mockCpoRepo.save).toHaveBeenCalled();
+      expect(mockCpoRepo.saveForCompany).toHaveBeenCalled();
     });
 
     it("throws NotFoundException when CPO not found", async () => {
@@ -500,7 +516,9 @@ describe("CpoService", () => {
     it("updates calloff record status to CALLED_OFF and sets calledOffAt", async () => {
       const record = makeCalloffRecord();
       mockCalloffRepo.findOneForCompany.mockResolvedValue(record);
-      mockCalloffRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockCalloffRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve(entity),
+      );
 
       const result = await service.updateCalloffStatus(COMPANY_ID, 1, CalloffStatus.CALLED_OFF);
 
@@ -511,7 +529,9 @@ describe("CpoService", () => {
     it("updates calloff record status to DELIVERED and sets deliveredAt", async () => {
       const record = makeCalloffRecord({ status: CalloffStatus.CALLED_OFF });
       mockCalloffRepo.findOneForCompany.mockResolvedValue(record);
-      mockCalloffRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockCalloffRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve(entity),
+      );
 
       const result = await service.updateCalloffStatus(COMPANY_ID, 1, CalloffStatus.DELIVERED);
 
@@ -522,7 +542,9 @@ describe("CpoService", () => {
     it("updates calloff record status to INVOICED and sets invoicedAt", async () => {
       const record = makeCalloffRecord({ status: CalloffStatus.DELIVERED });
       mockCalloffRepo.findOneForCompany.mockResolvedValue(record);
-      mockCalloffRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockCalloffRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve(entity),
+      );
 
       const result = await service.updateCalloffStatus(COMPANY_ID, 1, CalloffStatus.INVOICED);
 
@@ -537,7 +559,9 @@ describe("CpoService", () => {
         calledOffAt: existingDate,
       });
       mockCalloffRepo.findOneForCompany.mockResolvedValue(record);
-      mockCalloffRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockCalloffRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve(entity),
+      );
 
       const result = await service.updateCalloffStatus(COMPANY_ID, 1, CalloffStatus.CALLED_OFF);
 
@@ -797,7 +821,7 @@ describe("CpoService", () => {
         previousVersions: [],
       });
       mockCpoRepo.findOneByNumberWithItems.mockResolvedValue(existingCpo);
-      mockCpoRepo.save.mockResolvedValue({ ...existingCpo, versionNumber: 2, id: 10 });
+      mockCpoRepo.saveForCompany.mockResolvedValue({ ...existingCpo, versionNumber: 2, id: 10 });
       mockCpoItemRepo.deleteForCpo.mockResolvedValue({ affected: 1 });
       mockCpoItemRepo.createMany.mockResolvedValue([]);
 

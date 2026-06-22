@@ -2,7 +2,7 @@ import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { ClientSession, Model } from "mongoose";
 import type { DeepPartial } from "../../lib/persistence/crud-repository";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
 import { nestPopulate } from "../../lib/persistence/nest-populate";
 import {
   MongoTransactionContext,
@@ -22,7 +22,7 @@ function escapeRegex(value: string): string {
 
 @Injectable()
 export class MongoStockItemRepository
-  extends MongoCrudRepository<StockItem>
+  extends MongoTenantScopedRepository<StockItem>
   implements StockItemRepository
 {
   constructor(
@@ -36,7 +36,11 @@ export class MongoStockItemRepository
     if (!(context instanceof MongoTransactionContext)) {
       throw new Error("MongoStockItemRepository requires a MongoTransactionContext");
     }
-    return new MongoStockItemRepository(this.model, context.session);
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoStockItemRepository {
+    return new MongoStockItemRepository(this.model, session);
   }
 
   private get writeSessionOption(): { session: ClientSession } | Record<string, never> {
@@ -53,6 +57,30 @@ export class MongoStockItemRepository
 
   async saveMany(entities: StockItem[]): Promise<StockItem[]> {
     return Promise.all(entities.map((entity) => this.save(entity)));
+  }
+
+  async saveForCompany(companyId: number, entity: StockItem): Promise<StockItem> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Stock item does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async removeForCompany(companyId: number, entity: StockItem): Promise<void> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Stock item does not belong to the requesting company");
+    }
+    await this.documents
+      .findOneAndDelete({ _id: entity.id, companyId }, this.writeSessionOption)
+      .exec();
+  }
+
+  async findOneLeftoverByNameForCompany(
+    companyId: number,
+    name: string,
+  ): Promise<StockItem | null> {
+    const doc = await this.documents.findOne({ companyId, name, isLeftover: true }).lean().exec();
+    return this.toDomain(doc);
   }
 
   async updateByIdForCompany(
@@ -169,17 +197,22 @@ export class MongoStockItemRepository
   }
 
   async findAllForCompany(companyId: number): Promise<StockItem[]> {
-    const docs = await this.documents.find({ companyId }).lean().exec();
+    const docs = await this.documents.find({ companyId }).allowDiskUse(true).lean().exec();
     return this.toDomainList(docs);
   }
 
   async findAllForCompanyOrderedByName(companyId: number): Promise<StockItem[]> {
-    const docs = await this.documents.find({ companyId }).sort({ name: 1 }).lean().exec();
+    const docs = await this.documents
+      .find({ companyId })
+      .sort({ name: 1 })
+      .allowDiskUse(true)
+      .lean()
+      .exec();
     return this.toDomainList(docs);
   }
 
   async findForCompanySelectMatch(companyId: number): Promise<StockItem[]> {
-    const docs = await this.documents.find({ companyId }).lean().exec();
+    const docs = await this.documents.find({ companyId }).allowDiskUse(true).lean().exec();
     return this.toDomainList(docs);
   }
 
@@ -387,25 +420,29 @@ export class MongoStockItemRepository
     return this.lowStockCountForCompany(companyId);
   }
 
-  async reorderAlertsForCompany(companyId: number): Promise<StockItem[]> {
-    const docs = await this.documents
+  async reorderAlertsForCompany(companyId: number, limit?: number): Promise<StockItem[]> {
+    const cursor = this.documents
       .find({
         companyId,
         minStockLevel: { $gt: 0 },
         $expr: { $lte: ["$quantity", "$minStockLevel"] },
       })
-      .sort({ quantity: 1 })
-      .lean()
-      .exec();
+      .sort({ quantity: 1 });
+    if (limit && limit > 0) {
+      cursor.limit(limit);
+    }
+    const docs = await cursor.lean().exec();
     return this.toDomainList(docs);
   }
 
-  async lowStockForCompany(companyId: number): Promise<StockItem[]> {
-    const docs = await this.documents
+  async lowStockForCompany(companyId: number, limit?: number): Promise<StockItem[]> {
+    const cursor = this.documents
       .find({ companyId, $expr: { $lte: ["$quantity", "$minStockLevel"] } })
-      .sort({ quantity: 1 })
-      .lean()
-      .exec();
+      .sort({ quantity: 1 });
+    if (limit && limit > 0) {
+      cursor.limit(limit);
+    }
+    const docs = await cursor.lean().exec();
     return this.toDomainList(docs);
   }
 

@@ -48,7 +48,7 @@ export class SignatureService {
 
     if (existing) {
       existing.signatureUrl = result.path;
-      return this.signatureRepo.save(existing);
+      return this.signatureRepo.saveForCompany(companyId, existing);
     }
 
     return this.signatureRepo.create({
@@ -86,7 +86,7 @@ export class SignatureService {
       throw new NotFoundException("Signature not found");
     }
 
-    await this.signatureRepo.remove(signature);
+    await this.signatureRepo.removeForCompany(signature.companyId, signature);
     this.logger.log(`Deleted signature for user ${userId}`);
   }
 }

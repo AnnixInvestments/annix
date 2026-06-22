@@ -26,16 +26,20 @@ describe("RequisitionService", () => {
     count: reqCount,
     countByNumberPrefix: reqCount,
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
-    save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+    saveForCompany: jest
+      .fn()
+      .mockImplementation((_companyId, entity) => Promise.resolve({ id: 1, ...entity })),
   };
 
-  const itemSave = jest.fn().mockImplementation((items) => Promise.resolve(items));
+  const itemSave = jest
+    .fn()
+    .mockImplementation((_companyId, entities) => Promise.resolve(entities));
   const itemFindOne = jest.fn();
   const mockItemRepo = {
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     buildMany: jest.fn().mockImplementation((rows) => rows.map((r: object) => ({ ...r }))),
-    save: itemSave,
-    saveMany: itemSave,
+    saveForCompany: itemSave,
+    saveManyForCompany: itemSave,
     findOne: itemFindOne,
     findOneForCompanyWithStockItem: itemFindOne,
     findOneForRequisition: itemFindOne,

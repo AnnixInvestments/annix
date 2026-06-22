@@ -20,9 +20,13 @@ describe("InvoiceService", () => {
   const mockInvoiceRepo = {
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+    saveForCompany: jest
+      .fn()
+      .mockImplementation((_companyId, entity) => Promise.resolve({ id: 1, ...entity })),
     findOne: invoiceFindOne,
     find: invoiceFind,
     remove: jest.fn().mockResolvedValue(null),
+    removeForCompany: jest.fn().mockResolvedValue(undefined),
     update: jest.fn().mockResolvedValue({ affected: 1 }),
     updateById: jest.fn().mockResolvedValue(undefined),
     findOneById: (id: number) => invoiceFindOne({ where: { id } }),
@@ -377,7 +381,8 @@ describe("InvoiceService", () => {
       await service.uploadScan(1, 1, mockFile);
 
       expect(mockStorageService.upload).toHaveBeenCalledWith(mockFile, "stock-control/invoices");
-      expect(mockInvoiceRepo.save).toHaveBeenCalledWith(
+      expect(mockInvoiceRepo.saveForCompany).toHaveBeenCalledWith(
+        1,
         expect.objectContaining({
           scanUrl: "stock-control/invoices/invoice.pdf",
         }),
@@ -618,7 +623,7 @@ describe("InvoiceService", () => {
 
       await service.remove(1, 1);
 
-      expect(mockInvoiceRepo.remove).toHaveBeenCalledWith(invoice);
+      expect(mockInvoiceRepo.removeForCompany).toHaveBeenCalledWith(1, invoice);
     });
 
     it("throws NotFoundException when invoice does not exist", async () => {
@@ -692,7 +697,8 @@ describe("InvoiceService", () => {
 
       await service.linkToDeliveryNote(1, 1, 5);
 
-      expect(mockInvoiceRepo.save).toHaveBeenCalledWith(
+      expect(mockInvoiceRepo.saveForCompany).toHaveBeenCalledWith(
+        1,
         expect.objectContaining({
           deliveryNoteId: 5,
         }),

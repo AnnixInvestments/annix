@@ -71,7 +71,7 @@ export class DispatchLoadPhotoService {
       throw new NotFoundException(`Load photo ${photoId} not found`);
     }
 
-    await this.photoRepo.remove(photo);
+    await this.photoRepo.removeForCompany(companyId, photo);
   }
 
   async hasPhotos(companyId: number, jobCardId: number): Promise<boolean> {

@@ -1,7 +1,11 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import type { ClientSession, Model } from "mongoose";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import { StaffMember } from "../entities/staff-member.entity";
 import { StaffMemberRepository, type StaffSearchRow } from "./staff-member.repository";
 
@@ -11,11 +15,39 @@ function escapeRegex(value: string): string {
 
 @Injectable()
 export class MongoStaffMemberRepository
-  extends MongoCrudRepository<StaffMember>
+  extends MongoTenantScopedRepository<StaffMember>
   implements StaffMemberRepository
 {
-  constructor(@InjectModel("StaffMember") model: Model<StaffMember>) {
-    super(model);
+  constructor(
+    @InjectModel("StaffMember") model: Model<StaffMember>,
+    @Optional() session: ClientSession | null = null,
+  ) {
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoStaffMemberRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoStaffMemberRepository requires a MongoTransactionContext");
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoStaffMemberRepository {
+    return new MongoStaffMemberRepository(this.model, session);
+  }
+
+  async saveForCompany(companyId: number, entity: StaffMember): Promise<StaffMember> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Staff member does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async removeForCompany(companyId: number, entity: StaffMember): Promise<void> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Staff member does not belong to the requesting company");
+    }
+    await this.remove(entity);
   }
 
   async findAllForCompanyOrdered(
@@ -42,7 +74,7 @@ export class MongoStaffMemberRepository
         }
       : base;
 
-    const docs = await this.documents.find(query).sort({ name: 1 }).lean().exec();
+    const docs = await this.documents.find(query).sort({ name: 1 }).limit(2000).lean().exec();
     return this.toDomainList(docs);
   }
 
@@ -50,6 +82,7 @@ export class MongoStaffMemberRepository
     const docs = await this.documents
       .find({ companyId, active: true })
       .sort({ name: 1 })
+      .limit(2000)
       .lean()
       .exec();
     return this.toDomainList(docs);

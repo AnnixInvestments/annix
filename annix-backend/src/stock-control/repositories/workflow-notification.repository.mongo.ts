@@ -1,8 +1,12 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
+import type { ClientSession, Model } from "mongoose";
 import type { DeepPartial } from "../../lib/persistence/crud-repository";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import {
   NotificationActionType,
   WorkflowNotification,
@@ -11,11 +15,42 @@ import { WorkflowNotificationRepository } from "./workflow-notification.reposito
 
 @Injectable()
 export class MongoWorkflowNotificationRepository
-  extends MongoCrudRepository<WorkflowNotification>
+  extends MongoTenantScopedRepository<WorkflowNotification>
   implements WorkflowNotificationRepository
 {
-  constructor(@InjectModel("WorkflowNotification") model: Model<WorkflowNotification>) {
-    super(model);
+  constructor(
+    @InjectModel("WorkflowNotification") model: Model<WorkflowNotification>,
+    @Optional() session: ClientSession | null = null,
+  ) {
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoWorkflowNotificationRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoWorkflowNotificationRepository requires a MongoTransactionContext");
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoWorkflowNotificationRepository {
+    return new MongoWorkflowNotificationRepository(this.model, session);
+  }
+
+  async saveForCompany(
+    companyId: number,
+    entity: WorkflowNotification,
+  ): Promise<WorkflowNotification> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Notification does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async removeForCompany(companyId: number, entity: WorkflowNotification): Promise<void> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Notification does not belong to the requesting company");
+    }
+    await this.remove(entity);
   }
 
   buildMany(rows: DeepPartial<WorkflowNotification>[]): WorkflowNotification[] {
@@ -77,5 +112,9 @@ export class MongoWorkflowNotificationRepository
       .lean()
       .exec();
     return this.toDomainList(docs);
+  }
+
+  async deleteForUser(companyId: number, userId: number): Promise<void> {
+    await this.documents.deleteMany({ companyId, userId }).exec();
   }
 }

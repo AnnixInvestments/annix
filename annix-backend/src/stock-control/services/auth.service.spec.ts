@@ -55,6 +55,10 @@ describe("StockControlAuthService", () => {
     find: userFind,
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+    saveForCompany: jest
+      .fn()
+      .mockImplementation((_companyId, entity) => Promise.resolve({ id: 1, ...entity })),
+    removeForCompany: jest.fn().mockResolvedValue(undefined),
     count: userCount,
     update: jest.fn().mockResolvedValue({ affected: 1 }),
     remove: jest.fn().mockResolvedValue(undefined),
@@ -89,6 +93,8 @@ describe("StockControlAuthService", () => {
   const mockInvitationRepo = {
     findOne: invitationFindOne,
     save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
+    saveForCompany: jest.fn().mockImplementation((_companyId, entity) => Promise.resolve(entity)),
+    removeForCompany: jest.fn().mockResolvedValue(undefined),
     findOneByTokenAndStatus: (token: string) => invitationFindOne({ where: { token } }),
     findOneByEmailAndStatus: (email: string) => invitationFindOne({ where: { email } }),
   };
@@ -131,7 +137,9 @@ describe("StockControlAuthService", () => {
     findByStatusToken: adminTransferFindOne,
     create: jest.fn().mockImplementation((data) => Promise.resolve({ ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
+    saveForCompany: jest.fn().mockImplementation((_companyId, entity) => Promise.resolve(entity)),
     remove: jest.fn().mockResolvedValue(undefined),
+    removeForCompany: jest.fn().mockResolvedValue(undefined),
   };
 
   const mockCompanyRoleService = {
@@ -162,6 +170,10 @@ describe("StockControlAuthService", () => {
     findOneOrFail: jest.fn(),
     create: jest.fn().mockImplementation((data: any) => Promise.resolve(data)),
     save: jest.fn().mockImplementation((entity: any) => Promise.resolve(entity)),
+    saveForCompany: jest
+      .fn()
+      .mockImplementation((_companyId: any, entity: any) => Promise.resolve(entity)),
+    removeForCompany: jest.fn().mockResolvedValue(undefined),
     update: jest.fn().mockResolvedValue({ affected: 1 }),
     updateByUserId: jest.fn().mockResolvedValue(undefined),
     findOneByUserId: (userId: number) => profileFindOne({ where: { userId } }),
@@ -181,16 +193,19 @@ describe("StockControlAuthService", () => {
   const mockUserLocationAssignmentRepo = {
     findManyWhere: jest.fn().mockResolvedValue([]),
     remove: jest.fn().mockResolvedValue(undefined),
+    deleteForUser: jest.fn().mockResolvedValue(undefined),
   };
 
   const mockWorkflowStepAssignmentRepo = {
     findManyWhere: jest.fn().mockResolvedValue([]),
     remove: jest.fn().mockResolvedValue(undefined),
+    deleteForUser: jest.fn().mockResolvedValue(undefined),
   };
 
   const mockWorkflowNotificationRepo = {
     findManyWhere: jest.fn().mockResolvedValue([]),
     remove: jest.fn().mockResolvedValue(undefined),
+    deleteForUser: jest.fn().mockResolvedValue(undefined),
   };
 
   const baseUnifiedUser = {
@@ -445,7 +460,7 @@ describe("StockControlAuthService", () => {
 
       expect(result.isInvitedUser).toBe(true);
       expect(invitation.status).toBe(StockControlInvitationStatus.ACCEPTED);
-      expect(mockInvitationRepo.save).toHaveBeenCalled();
+      expect(mockInvitationRepo.saveForCompany).toHaveBeenCalled();
     });
 
     it("throws BadRequestException for invalid invitation token", async () => {

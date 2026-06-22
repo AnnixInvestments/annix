@@ -149,7 +149,7 @@ export class InvoiceService {
         this.logger.warn(
           `Recovered stale PROCESSING invoice ${invoice.id} → ${invoice.extractionStatus}`,
         );
-        return this.invoiceRepo.save(invoice);
+        return this.invoiceRepo.saveForCompany(invoice.companyId, invoice);
       }),
     );
   }
@@ -256,7 +256,7 @@ export class InvoiceService {
 
     const uploadResult = await this.storageService.upload(file, "stock-control/invoices");
     invoice.scanUrl = uploadResult.path;
-    await this.invoiceRepo.save(invoice);
+    await this.invoiceRepo.saveForCompany(companyId, invoice);
 
     const imageBase64 = file.buffer.toString("base64");
     const mediaType = this.mimeToMediaType(file.mimetype);
@@ -396,7 +396,7 @@ export class InvoiceService {
 
   async remove(companyId: number, id: number, userId?: number): Promise<void> {
     const invoice = await this.findById(companyId, id);
-    await this.invoiceRepo.remove(invoice);
+    await this.invoiceRepo.removeForCompany(companyId, invoice);
 
     this.auditService
       .log({
@@ -465,7 +465,7 @@ export class InvoiceService {
     const oldDeliveryNoteId = invoice.deliveryNoteId;
     invoice.deliveryNoteId = deliveryNoteId;
     invoice.deliveryNote = deliveryNote;
-    const saved = await this.invoiceRepo.save(invoice);
+    const saved = await this.invoiceRepo.saveForCompany(companyId, invoice);
 
     this.auditService
       .log({

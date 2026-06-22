@@ -431,7 +431,7 @@ export class PaintPriceListService {
           changed = changed || applied.changed;
         }
         if (changed) {
-          await this.itemRepo.save(current);
+          await this.itemRepo.saveForCompany(companyId, current);
         }
         return { item: current, changed };
       }),
@@ -920,7 +920,9 @@ export class PaintPriceListService {
       const itemTx = this.itemRepo.withTransaction(ctx);
       const existing = await this.itemRepo.findAllForCompany(companyId);
       const toRemove = existing.filter((item) => item.supplierName === supplierName);
-      await this.runWritesInBatches(toRemove.map((item) => () => itemTx.remove(item)));
+      await this.runWritesInBatches(
+        toRemove.map((item) => () => itemTx.removeForCompany(companyId, item)),
+      );
       await this.runWritesInBatches(
         inputs.map((input) => () => itemTx.create(this.toCreatePayload(companyId, input))),
       );
@@ -979,7 +981,7 @@ export class PaintPriceListService {
         if (!match) {
           return Promise.resolve(match);
         }
-        return this.itemRepo.save({
+        return this.itemRepo.saveForCompany(companyId, {
           ...match,
           costPerLitre: input.costPerLitre ?? match.costPerLitre,
           costPerKit: input.costPerKit ?? match.costPerKit,
@@ -999,7 +1001,9 @@ export class PaintPriceListService {
   ): Promise<{ updated: number }> {
     const items = await this.itemRepo.findAllForCompany(companyId);
     await this.runWritesInBatches(
-      items.map((item) => () => this.itemRepo.save({ ...item, upliftPercent })),
+      items.map(
+        (item) => () => this.itemRepo.saveForCompany(companyId, { ...item, upliftPercent }),
+      ),
     );
     this.auditService
       .log({
@@ -1032,7 +1036,7 @@ export class PaintPriceListService {
       id: existing.id,
       companyId,
     } as PaintPriceListItem;
-    return this.itemRepo.save(merged);
+    return this.itemRepo.saveForCompany(companyId, merged);
   }
 
   async remove(companyId: number, id: number): Promise<void> {
@@ -1040,6 +1044,6 @@ export class PaintPriceListService {
     if (!existing) {
       throw new NotFoundException(`Paint price list item ${id} not found`);
     }
-    await this.itemRepo.remove(existing);
+    await this.itemRepo.removeForCompany(companyId, existing);
   }
 }

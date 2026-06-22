@@ -110,13 +110,13 @@ export class StockControlAuthService {
 
         if (now().toJSDate() > invitation.expiresAt) {
           invitation.status = StockControlInvitationStatus.EXPIRED;
-          await this.invitationRepo.save(invitation);
+          await this.invitationRepo.saveForCompany(invitation.companyId, invitation);
           throw new BadRequestException("Invitation has expired");
         }
 
         invitation.status = StockControlInvitationStatus.ACCEPTED;
         invitation.acceptedAt = now().toJSDate();
-        await this.invitationRepo.save(invitation);
+        await this.invitationRepo.saveForCompany(invitation.companyId, invitation);
 
         return {
           companyId: invitation.companyId,
@@ -133,7 +133,7 @@ export class StockControlAuthService {
       if (pendingInvitation) {
         pendingInvitation.status = StockControlInvitationStatus.ACCEPTED;
         pendingInvitation.acceptedAt = now().toJSDate();
-        await this.invitationRepo.save(pendingInvitation);
+        await this.invitationRepo.saveForCompany(pendingInvitation.companyId, pendingInvitation);
 
         return {
           companyId: pendingInvitation.companyId,
@@ -199,7 +199,7 @@ export class StockControlAuthService {
     user.emailVerified = true;
     user.emailVerificationToken = null;
     user.emailVerificationExpires = null;
-    await this.userRepo.save(user);
+    await this.userRepo.saveForCompany(user.companyId, user);
 
     await this.unifiedUserRepo.updateByEmailCaseInsensitive(user.email, {
       emailVerified: true,
@@ -245,7 +245,7 @@ export class StockControlAuthService {
 
     user.emailVerificationToken = verificationToken;
     user.emailVerificationExpires = verificationExpires;
-    await this.userRepo.save(user);
+    await this.userRepo.saveForCompany(user.companyId, user);
 
     await this.unifiedUserRepo.updateByEmailCaseInsensitive(user.email, {
       emailVerificationToken: verificationToken,
@@ -266,7 +266,7 @@ export class StockControlAuthService {
 
       user.resetPasswordToken = resetToken;
       user.resetPasswordExpires = resetExpires;
-      await this.userRepo.save(user);
+      await this.userRepo.saveForCompany(user.companyId, user);
 
       await this.unifiedUserRepo.updateByEmailCaseInsensitive(user.email, {
         resetPasswordToken: resetToken,
@@ -292,7 +292,7 @@ export class StockControlAuthService {
     user.passwordHash = newHash;
     user.resetPasswordToken = null;
     user.resetPasswordExpires = null;
-    await this.userRepo.save(user);
+    await this.userRepo.saveForCompany(user.companyId, user);
 
     await this.unifiedUserRepo.updateByEmailCaseInsensitive(user.email, {
       passwordHash: newHash,
@@ -325,7 +325,7 @@ export class StockControlAuthService {
 
     // Resolve role from legacy SC user (until roles migrate to RBAC)
     const scUser = profile.legacyScUserId
-      ? await this.userRepo.findById(profile.legacyScUserId)
+      ? await this.userRepo.findOneForCompany(profile.legacyScUserId, profile.companyId)
       : null;
     const role = scUser?.role || StockControlRole.STOREMAN;
 
@@ -363,7 +363,7 @@ export class StockControlAuthService {
 
     // Resolve role from legacy SC user (until roles migrate to RBAC)
     const scUser = profile.legacyScUserId
-      ? await this.userRepo.findById(profile.legacyScUserId)
+      ? await this.userRepo.findOneForCompany(profile.legacyScUserId, profile.companyId)
       : null;
     const role = scUser?.role || StockControlRole.STOREMAN;
 
@@ -481,7 +481,7 @@ export class StockControlAuthService {
       }
 
       const scUser = profile.legacyScUserId
-        ? await this.userRepo.findById(profile.legacyScUserId)
+        ? await this.userRepo.findOneForCompany(profile.legacyScUserId, profile.companyId)
         : null;
       const role = scUser?.role || StockControlRole.STOREMAN;
       const name =
@@ -622,7 +622,7 @@ export class StockControlAuthService {
     }
 
     user.role = role;
-    await this.userRepo.save(user);
+    await this.userRepo.saveForCompany(companyId, user);
 
     return { message: "Role updated successfully." };
   }
@@ -657,26 +657,15 @@ export class StockControlAuthService {
         });
         await Promise.all(appAccessRows.map((row) => this.userAppAccessRepo.remove(row)));
       }
-      const profiles = await this.profileRepo.findManyWhere({ userId: user.unifiedUserId });
-      await Promise.all(profiles.map((profile) => this.profileRepo.remove(profile)));
+      const profile = await this.profileRepo.findOneByUserId(user.unifiedUserId);
+      if (profile && profile.companyId === companyId) {
+        await this.profileRepo.removeForCompany(companyId, profile);
+      }
     }
-    const locationAssignments = await this.userLocationAssignmentRepo.findManyWhere({
-      userId: user.id,
-    });
-    await Promise.all(
-      locationAssignments.map((assignment) => this.userLocationAssignmentRepo.remove(assignment)),
-    );
-    const stepAssignments = await this.workflowStepAssignmentRepo.findManyWhere({
-      userId: user.id,
-    });
-    await Promise.all(
-      stepAssignments.map((assignment) => this.workflowStepAssignmentRepo.remove(assignment)),
-    );
-    const notifications = await this.workflowNotificationRepo.findManyWhere({ userId: user.id });
-    await Promise.all(
-      notifications.map((notification) => this.workflowNotificationRepo.remove(notification)),
-    );
-    await this.userRepo.remove(user);
+    await this.userLocationAssignmentRepo.deleteForUser(companyId, user.id);
+    await this.workflowStepAssignmentRepo.deleteForUser(companyId, user.id);
+    await this.workflowNotificationRepo.deleteForUser(companyId, user.id);
+    await this.userRepo.removeForCompany(companyId, user);
 
     this.logger.log(`Deleted team member ${user.email} (id=${user.id}) from company ${companyId}`);
     return { message: "Team member deleted successfully." };
@@ -732,7 +721,7 @@ export class StockControlAuthService {
     const existingPending = await this.adminTransferRepo.findPendingForCompany(companyId);
     if (existingPending) {
       existingPending.status = AdminTransferStatus.CANCELLED;
-      await this.adminTransferRepo.save(existingPending);
+      await this.adminTransferRepo.saveForCompany(companyId, existingPending);
     }
 
     const token = uuidv4();
@@ -774,7 +763,7 @@ export class StockControlAuthService {
 
     if (now().toJSDate() > transfer.expiresAt) {
       transfer.status = AdminTransferStatus.EXPIRED;
-      await this.adminTransferRepo.save(transfer);
+      await this.adminTransferRepo.saveForCompany(companyId, transfer);
       return null;
     }
 
@@ -797,7 +786,7 @@ export class StockControlAuthService {
 
     if (now().toJSDate() > transfer.expiresAt) {
       transfer.status = AdminTransferStatus.EXPIRED;
-      await this.adminTransferRepo.save(transfer);
+      await this.adminTransferRepo.saveForCompany(companyId, transfer);
       throw new BadRequestException("Admin transfer has expired. Please initiate a new one.");
     }
 
@@ -821,7 +810,7 @@ export class StockControlAuthService {
     }
 
     transfer.status = AdminTransferStatus.CANCELLED;
-    await this.adminTransferRepo.save(transfer);
+    await this.adminTransferRepo.saveForCompany(companyId, transfer);
 
     return { message: "Admin transfer cancelled." };
   }
@@ -838,7 +827,7 @@ export class StockControlAuthService {
 
     if (now().toJSDate() > transfer.expiresAt) {
       transfer.status = AdminTransferStatus.EXPIRED;
-      await this.adminTransferRepo.save(transfer);
+      await this.adminTransferRepo.saveForCompany(transfer.companyId, transfer);
       return { transferred: false, message: "Transfer has expired" };
     }
 
@@ -860,20 +849,20 @@ export class StockControlAuthService {
     );
 
     targetUser.role = StockControlRole.ADMIN;
-    await this.userRepo.save(targetUser);
+    await this.userRepo.saveForCompany(transfer.companyId, targetUser);
 
     if (initiator) {
       if (transfer.newRoleForInitiator === null) {
-        await this.userRepo.remove(initiator);
+        await this.userRepo.removeForCompany(transfer.companyId, initiator);
       } else {
         initiator.role = transfer.newRoleForInitiator;
-        await this.userRepo.save(initiator);
+        await this.userRepo.saveForCompany(transfer.companyId, initiator);
       }
     }
 
     transfer.status = AdminTransferStatus.ACCEPTED;
     transfer.acceptedAt = now().toJSDate();
-    await this.adminTransferRepo.save(transfer);
+    await this.adminTransferRepo.saveForCompany(transfer.companyId, transfer);
 
     return { transferred: true, message: "Admin transfer completed successfully." };
   }
@@ -956,7 +945,7 @@ export class StockControlAuthService {
     }
 
     const scUser = profile.legacyScUserId
-      ? await this.userRepo.findById(profile.legacyScUserId)
+      ? await this.userRepo.findOneForCompany(profile.legacyScUserId, profile.companyId)
       : null;
     const role = scUser?.role || StockControlRole.STOREMAN;
 

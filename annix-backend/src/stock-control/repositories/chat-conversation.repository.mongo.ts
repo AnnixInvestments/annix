@@ -1,17 +1,49 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import type { ClientSession, Model } from "mongoose";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import { ChatConversation } from "../entities/chat-conversation.entity";
 import { ChatConversationRepository } from "./chat-conversation.repository";
 
 @Injectable()
 export class MongoChatConversationRepository
-  extends MongoCrudRepository<ChatConversation>
+  extends MongoTenantScopedRepository<ChatConversation>
   implements ChatConversationRepository
 {
-  constructor(@InjectModel("ChatConversation") model: Model<ChatConversation>) {
-    super(model);
+  constructor(
+    @InjectModel("ChatConversation") model: Model<ChatConversation>,
+    @Optional() session: ClientSession | null = null,
+  ) {
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoChatConversationRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoChatConversationRepository requires a MongoTransactionContext");
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoChatConversationRepository {
+    return new MongoChatConversationRepository(this.model, session);
+  }
+
+  async saveForCompany(companyId: number, entity: ChatConversation): Promise<ChatConversation> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Chat conversation does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async removeForCompany(companyId: number, entity: ChatConversation): Promise<void> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Chat conversation does not belong to the requesting company");
+    }
+    await this.remove(entity);
   }
 
   private get participantModel(): Model<Record<string, unknown>> {

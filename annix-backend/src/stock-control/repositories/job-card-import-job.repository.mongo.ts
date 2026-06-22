@@ -1,20 +1,50 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import type { ClientSession, Model } from "mongoose";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import { JobCardImportJob } from "../entities/job-card-import-job.entity";
 import { JobCardImportJobRepository } from "./job-card-import-job.repository";
 
 @Injectable()
 export class MongoJobCardImportJobRepository
-  extends MongoCrudRepository<JobCardImportJob>
+  extends MongoTenantScopedRepository<JobCardImportJob>
   implements JobCardImportJobRepository
 {
   constructor(
     @InjectModel("JobCardImportJob")
     model: Model<JobCardImportJob>,
+    @Optional() session: ClientSession | null = null,
   ) {
-    super(model);
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoJobCardImportJobRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoJobCardImportJobRepository requires a MongoTransactionContext");
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoJobCardImportJobRepository {
+    return new MongoJobCardImportJobRepository(this.model, session);
+  }
+
+  async saveForCompany(companyId: number, entity: JobCardImportJob): Promise<JobCardImportJob> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Job card import job does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async removeForCompany(companyId: number, entity: JobCardImportJob): Promise<void> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Job card import job does not belong to the requesting company");
+    }
+    await this.remove(entity);
   }
 
   async findActiveForUser(

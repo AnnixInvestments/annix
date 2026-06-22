@@ -1,9 +1,13 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
+import type { ClientSession, Model } from "mongoose";
 import type { DeepPartial } from "../../lib/persistence/crud-repository";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
 import { nestPopulate } from "../../lib/persistence/nest-populate";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import { SupplierCertificate } from "../entities/supplier-certificate.entity";
 import {
   type CertificateFilters,
@@ -16,15 +20,46 @@ function escapeRegex(value: string): string {
 
 @Injectable()
 export class MongoSupplierCertificateRepository
-  extends MongoCrudRepository<SupplierCertificate>
+  extends MongoTenantScopedRepository<SupplierCertificate>
   implements SupplierCertificateRepository
 {
-  constructor(@InjectModel("SupplierCertificate") model: Model<SupplierCertificate>) {
-    super(model);
+  constructor(
+    @InjectModel("SupplierCertificate") model: Model<SupplierCertificate>,
+    @Optional() session: ClientSession | null = null,
+  ) {
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoSupplierCertificateRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoSupplierCertificateRepository requires a MongoTransactionContext");
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoSupplierCertificateRepository {
+    return new MongoSupplierCertificateRepository(this.model, session);
   }
 
   build(data: DeepPartial<SupplierCertificate>): SupplierCertificate {
     return data as SupplierCertificate;
+  }
+
+  async saveForCompany(
+    companyId: number,
+    entity: SupplierCertificate,
+  ): Promise<SupplierCertificate> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Supplier certificate does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async removeForCompany(companyId: number, entity: SupplierCertificate): Promise<void> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Supplier certificate does not belong to the requesting company");
+    }
+    await this.remove(entity);
   }
 
   async updateById(id: number, updates: DeepPartial<SupplierCertificate>): Promise<void> {

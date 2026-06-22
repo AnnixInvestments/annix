@@ -96,7 +96,7 @@ export class RequisitionService {
       }),
     );
 
-    await this.itemRepo.saveMany(items);
+    await this.itemRepo.saveManyForCompany(companyId, items);
 
     this.logger.log(
       `Requisition ${saved.requisitionNumber} created with ${items.length} item(s) for job card ${jobCardId}`,
@@ -206,7 +206,7 @@ export class RequisitionService {
       item.reqNumber = data.reqNumber;
     }
 
-    return this.itemRepo.save(item);
+    return this.itemRepo.saveForCompany(companyId, item);
   }
 
   async recordReceipt(
@@ -227,7 +227,7 @@ export class RequisitionService {
       item.linkedDeliveryNoteId = deliveryNoteId;
     }
 
-    await this.itemRepo.save(item);
+    await this.itemRepo.saveForCompany(companyId, item);
     await this.recalculateRequisitionStatus(companyId, requisitionId);
 
     return item;
@@ -259,7 +259,7 @@ export class RequisitionService {
       requisition.status = RequisitionStatus.PARTIALLY_RECEIVED;
     }
 
-    await this.requisitionRepo.save(requisition);
+    await this.requisitionRepo.saveForCompany(companyId, requisition);
   }
 
   private async nextRequisitionNumber(companyId: number, base: string): Promise<string> {

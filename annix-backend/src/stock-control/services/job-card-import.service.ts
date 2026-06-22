@@ -1198,7 +1198,7 @@ export class JobCardImportService {
 
     if (existing) {
       existing.mappingConfig = config;
-      return this.mappingRepo.save(existing);
+      return this.mappingRepo.saveForCompany(companyId, existing);
     }
 
     return this.mappingRepo.create({
@@ -1611,7 +1611,7 @@ export class JobCardImportService {
 
     if (combinedNotes.length > 0) {
       jobCard.notes = combinedNotes;
-      await this.jobCardRepo.save(jobCard);
+      await this.jobCardRepo.saveForCompany(companyId, jobCard);
     }
 
     this.logger.log(
@@ -1654,7 +1654,7 @@ export class JobCardImportService {
     existing.sourceFilePath = sourceFilePath;
     existing.sourceFileName = sourceFileName;
 
-    const saved = await this.jobCardRepo.save(existing);
+    const saved = await this.jobCardRepo.saveForCompany(companyId, existing);
 
     await this.lineItemRepo.deleteForJobCard(saved.id);
 

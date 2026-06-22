@@ -93,7 +93,7 @@ export class CompanyRoleService {
     }
 
     role.label = label.trim().slice(0, 50);
-    const saved = await this.roleRepo.save(role);
+    const saved = await this.roleRepo.saveForCompany(companyId, role);
 
     return {
       id: saved.id,
@@ -115,7 +115,7 @@ export class CompanyRoleService {
       throw new BadRequestException("Cannot delete the admin role");
     }
 
-    await this.roleRepo.remove(role);
+    await this.roleRepo.removeForCompany(companyId, role);
   }
 
   async reorderRoles(companyId: number, orderedIds: number[]): Promise<CompanyRoleDto[]> {

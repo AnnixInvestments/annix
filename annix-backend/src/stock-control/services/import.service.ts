@@ -640,7 +640,7 @@ export class ImportService {
                 createdBy: createdBy || null,
                 companyId,
               });
-              await this.movementRepo.save(movement);
+              await this.movementRepo.saveForCompany(companyId, movement);
             }
           }
 
@@ -653,7 +653,7 @@ export class ImportService {
           return { ...acc, updated: acc.updated + 1 };
         }
 
-        const item = this.stockItemRepo.build({
+        const saved = await this.stockItemRepo.create({
           sku: row.sku,
           name: row.name,
           description: row.description || null,
@@ -666,7 +666,6 @@ export class ImportService {
           companyId,
           needsQrPrint: isStockTake,
         });
-        const saved = await this.stockItemRepo.save(item);
 
         if (row.quantity && row.quantity > 0) {
           const movement = this.movementRepo.build({
@@ -678,7 +677,7 @@ export class ImportService {
             createdBy: createdBy || null,
             companyId,
           });
-          await this.movementRepo.save(movement);
+          await this.movementRepo.saveForCompany(companyId, movement);
         }
 
         return { ...acc, created: acc.created + 1 };
@@ -1080,7 +1079,7 @@ export class ImportService {
                 createdBy,
                 companyId,
               });
-              await this.movementRepo.save(movement);
+              await this.movementRepo.saveForCompany(companyId, movement);
             }
           }
 
@@ -1098,7 +1097,7 @@ export class ImportService {
             );
           }
         } else if (row.action === "create") {
-          const item = this.stockItemRepo.build({
+          const saved = await this.stockItemRepo.create({
             sku: row.sku,
             name: row.name,
             description: row.description || null,
@@ -1111,7 +1110,6 @@ export class ImportService {
             companyId,
             needsQrPrint: isStockTake,
           });
-          const saved = await this.stockItemRepo.save(item);
           countedItemIds.add(saved.id);
 
           if (row.quantity && row.quantity > 0) {
@@ -1126,7 +1124,7 @@ export class ImportService {
               createdBy,
               companyId,
             });
-            await this.movementRepo.save(movement);
+            await this.movementRepo.saveForCompany(companyId, movement);
           }
 
           result.created += 1;

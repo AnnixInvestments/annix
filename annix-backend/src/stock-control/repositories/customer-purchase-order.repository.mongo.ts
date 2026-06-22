@@ -1,8 +1,12 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
+import type { ClientSession, Model } from "mongoose";
 import { type DeepPartial } from "../../lib/persistence/crud-repository";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import { CpoStatus, CustomerPurchaseOrder } from "../entities/customer-purchase-order.entity";
 import {
   type CpoSearchRow,
@@ -11,11 +15,42 @@ import {
 
 @Injectable()
 export class MongoCustomerPurchaseOrderRepository
-  extends MongoCrudRepository<CustomerPurchaseOrder>
+  extends MongoTenantScopedRepository<CustomerPurchaseOrder>
   implements CustomerPurchaseOrderRepository
 {
-  constructor(@InjectModel("CustomerPurchaseOrder") model: Model<CustomerPurchaseOrder>) {
-    super(model);
+  constructor(
+    @InjectModel("CustomerPurchaseOrder") model: Model<CustomerPurchaseOrder>,
+    @Optional() session: ClientSession | null = null,
+  ) {
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoCustomerPurchaseOrderRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoCustomerPurchaseOrderRepository requires a MongoTransactionContext");
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoCustomerPurchaseOrderRepository {
+    return new MongoCustomerPurchaseOrderRepository(this.model, session);
+  }
+
+  async saveForCompany(
+    companyId: number,
+    entity: CustomerPurchaseOrder,
+  ): Promise<CustomerPurchaseOrder> {
+    if (entity.companyId !== companyId) {
+      throw new Error("CPO does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async removeForCompany(companyId: number, entity: CustomerPurchaseOrder): Promise<void> {
+    if (entity.companyId !== companyId) {
+      throw new Error("CPO does not belong to the requesting company");
+    }
+    await this.remove(entity);
   }
 
   async findPaginatedWithItems(

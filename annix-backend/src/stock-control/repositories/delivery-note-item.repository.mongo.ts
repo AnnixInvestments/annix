@@ -1,8 +1,12 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
+import type { ClientSession, Model } from "mongoose";
 import { type DeepPartial } from "../../lib/persistence/crud-repository";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
 import { DeliveryNoteItemRepository } from "./delivery-note-item.repository";
 
@@ -21,11 +25,39 @@ function toDocumentShape(row: DeepPartial<DeliveryNoteItem>): Record<string, unk
 
 @Injectable()
 export class MongoDeliveryNoteItemRepository
-  extends MongoCrudRepository<DeliveryNoteItem>
+  extends MongoTenantScopedRepository<DeliveryNoteItem>
   implements DeliveryNoteItemRepository
 {
-  constructor(@InjectModel("DeliveryNoteItem") model: Model<DeliveryNoteItem>) {
-    super(model);
+  constructor(
+    @InjectModel("DeliveryNoteItem") model: Model<DeliveryNoteItem>,
+    @Optional() session: ClientSession | null = null,
+  ) {
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoDeliveryNoteItemRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoDeliveryNoteItemRepository requires a MongoTransactionContext");
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoDeliveryNoteItemRepository {
+    return new MongoDeliveryNoteItemRepository(this.model, session);
+  }
+
+  async saveForCompany(companyId: number, entity: DeliveryNoteItem): Promise<DeliveryNoteItem> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Delivery note item does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async removeForCompany(companyId: number, entity: DeliveryNoteItem): Promise<void> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Delivery note item does not belong to the requesting company");
+    }
+    await this.remove(entity);
   }
 
   create(data: DeepPartial<DeliveryNoteItem>): Promise<DeliveryNoteItem> {
@@ -34,6 +66,14 @@ export class MongoDeliveryNoteItemRepository
 
   createMany(rows: Array<DeepPartial<DeliveryNoteItem>>): Promise<DeliveryNoteItem[]> {
     return Promise.all(rows.map((row) => this.create(row)));
+  }
+
+  async findManyByStockItemForCompany(
+    companyId: number,
+    stockItemId: number,
+  ): Promise<DeliveryNoteItem[]> {
+    const docs = await this.documents.find({ companyId, stockItemId }).lean().exec();
+    return this.toDomainList(docs);
   }
 
   async supplierNamesForStockItems(

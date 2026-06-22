@@ -362,7 +362,7 @@ export class WorkflowStepConfigService {
     step.triggerAfterStep = isBackground ? (triggerAfterStep ?? null) : null;
     step.sortOrder = isBackground ? 0 : await this.nextSortOrder(companyId);
 
-    const saved = await this.repo.save(step);
+    const saved = await this.repo.saveForCompany(companyId, step);
     this.invalidate(companyId);
     return saved;
   }
@@ -379,7 +379,7 @@ export class WorkflowStepConfigService {
     }
 
     step.triggerAfterStep = triggerAfterStep;
-    const saved = await this.repo.save(step);
+    const saved = await this.repo.saveForCompany(companyId, step);
     this.invalidate(companyId);
     return saved;
   }
@@ -406,7 +406,7 @@ export class WorkflowStepConfigService {
 
     await this.repo.updateTriggerAfterStep(companyId, stepKey, step.triggerAfterStep);
 
-    await this.repo.remove(step);
+    await this.repo.removeForCompany(companyId, step);
     this.invalidate(companyId);
   }
 

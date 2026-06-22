@@ -109,7 +109,7 @@ export class JobCardVersionService {
     jobCard.sourceFilePath = uploadResult.url;
     jobCard.sourceFileName = file.originalname;
 
-    await this.jobCardRepo.save(jobCard);
+    await this.jobCardRepo.saveForCompany(companyId, jobCard);
 
     await this.resetWorkflow(companyId, jobCardId);
 

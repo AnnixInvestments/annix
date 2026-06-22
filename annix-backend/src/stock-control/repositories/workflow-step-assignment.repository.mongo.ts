@@ -1,18 +1,53 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
+import type { ClientSession, Model } from "mongoose";
 import type { DeepPartial } from "../../lib/persistence/crud-repository";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import { WorkflowStepAssignment } from "../entities/workflow-step-assignment.entity";
 import { WorkflowStepAssignmentRepository } from "./workflow-step-assignment.repository";
 
 @Injectable()
 export class MongoWorkflowStepAssignmentRepository
-  extends MongoCrudRepository<WorkflowStepAssignment>
+  extends MongoTenantScopedRepository<WorkflowStepAssignment>
   implements WorkflowStepAssignmentRepository
 {
-  constructor(@InjectModel("WorkflowStepAssignment") model: Model<WorkflowStepAssignment>) {
-    super(model);
+  constructor(
+    @InjectModel("WorkflowStepAssignment") model: Model<WorkflowStepAssignment>,
+    @Optional() session: ClientSession | null = null,
+  ) {
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoWorkflowStepAssignmentRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoWorkflowStepAssignmentRepository requires a MongoTransactionContext");
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoWorkflowStepAssignmentRepository {
+    return new MongoWorkflowStepAssignmentRepository(this.model, session);
+  }
+
+  async saveForCompany(
+    companyId: number,
+    entity: WorkflowStepAssignment,
+  ): Promise<WorkflowStepAssignment> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Step assignment does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async removeForCompany(companyId: number, entity: WorkflowStepAssignment): Promise<void> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Step assignment does not belong to the requesting company");
+    }
+    await this.remove(entity);
   }
 
   buildMany(rows: DeepPartial<WorkflowStepAssignment>[]): WorkflowStepAssignment[] {
@@ -62,6 +97,14 @@ export class MongoWorkflowStepAssignmentRepository
       .lean()
       .exec();
     return this.toDomainList(docs);
+  }
+
+  async deleteForStep(companyId: number, step: string): Promise<void> {
+    await this.documents.deleteMany({ companyId, workflowStep: step }).exec();
+  }
+
+  async deleteForUser(companyId: number, userId: number): Promise<void> {
+    await this.documents.deleteMany({ companyId, userId }).exec();
   }
 
   async findForStepWithUserRelation(

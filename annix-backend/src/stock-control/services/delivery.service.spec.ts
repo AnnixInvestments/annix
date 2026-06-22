@@ -32,6 +32,10 @@ describe("DeliveryService", () => {
     findAllForCompanyByReceivedDate: jest.fn().mockResolvedValue([]),
     findAutoLinkCandidates: jest.fn().mockResolvedValue([]),
     remove: jest.fn(),
+    removeForCompany: jest.fn(),
+    saveForCompany: jest
+      .fn()
+      .mockImplementation((_companyId, entity) => Promise.resolve({ id: 1, ...entity })),
     withTransaction: jest.fn(),
   };
   mockDeliveryNoteRepo.withTransaction.mockReturnValue(mockDeliveryNoteRepo);
@@ -40,6 +44,8 @@ describe("DeliveryService", () => {
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     createMany: jest.fn().mockResolvedValue([]),
     remove: jest.fn(),
+    removeForCompany: jest.fn(),
+    findManyByStockItemForCompany: jest.fn().mockResolvedValue([]),
     withTransaction: jest.fn(),
   };
   mockDeliveryNoteItemRepo.withTransaction.mockReturnValue(mockDeliveryNoteItemRepo);
@@ -56,8 +62,8 @@ describe("DeliveryService", () => {
 
   const mockStockMovementRepo = {
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
-    findManyWhere: jest.fn().mockResolvedValue([]),
-    remove: jest.fn(),
+    findManyByReferenceForCompany: jest.fn().mockResolvedValue([]),
+    removeForCompany: jest.fn(),
     withTransaction: jest.fn(),
   };
   mockStockMovementRepo.withTransaction.mockReturnValue(mockStockMovementRepo);
@@ -125,8 +131,10 @@ describe("DeliveryService", () => {
 
   const mockSupplierInvoiceRepo = {
     findCompletedLinkedToDeliveryNote: jest.fn().mockResolvedValue([]),
+    findLinkedToDeliveryNoteForCompany: jest.fn().mockResolvedValue([]),
     findManyWhere: jest.fn().mockResolvedValue([]),
     remove: jest.fn(),
+    removeForCompany: jest.fn(),
   };
 
   const mockSupplierInvoiceItemRepo = {
@@ -176,9 +184,10 @@ describe("DeliveryService", () => {
     mockStockItemRepo.setQuantityForCompany.mockResolvedValue(true);
     mockStockMovementRepo.create.mockImplementation((data) => Promise.resolve({ id: 1, ...data }));
     mockStockMovementRepo.withTransaction.mockReturnValue(mockStockMovementRepo);
-    mockStockMovementRepo.findManyWhere.mockResolvedValue([]);
+    mockStockMovementRepo.findManyByReferenceForCompany.mockResolvedValue([]);
     mockTxRunner.run.mockImplementation((work) => work({}));
     mockSupplierInvoiceRepo.findCompletedLinkedToDeliveryNote.mockResolvedValue([]);
+    mockSupplierInvoiceRepo.findLinkedToDeliveryNoteForCompany.mockResolvedValue([]);
     mockSupplierInvoiceRepo.findManyWhere.mockResolvedValue([]);
     mockSupplierInvoiceItemRepo.findByInvoice.mockResolvedValue([]);
   });
@@ -282,14 +291,20 @@ describe("DeliveryService", () => {
         items: [],
         photoUrl: null,
       });
-      const movement = { id: 1, stockItemId: 1, quantity: 20, movementType: MovementType.IN };
-      mockStockMovementRepo.findManyWhere.mockResolvedValue([movement]);
+      const movement = {
+        id: 1,
+        stockItemId: 1,
+        quantity: 20,
+        movementType: MovementType.IN,
+        companyId: 1,
+      };
+      mockStockMovementRepo.findManyByReferenceForCompany.mockResolvedValue([movement]);
       mockStockItemRepo.findOneForCompany.mockResolvedValue(stockItem);
 
       await service.remove(1, 1);
 
       expect(mockStockItemRepo.decrementQuantityForCompany).toHaveBeenCalledWith(1, 1, 20, false);
-      expect(mockStockMovementRepo.remove).toHaveBeenCalledWith(movement);
+      expect(mockStockMovementRepo.removeForCompany).toHaveBeenCalledWith(1, movement);
     });
 
     it("removes delivery note and items", async () => {
@@ -299,13 +314,16 @@ describe("DeliveryService", () => {
         items,
         photoUrl: null,
       });
-      mockStockMovementRepo.findManyWhere.mockResolvedValue([]);
+      mockStockMovementRepo.findManyByReferenceForCompany.mockResolvedValue([]);
 
       await service.remove(1, 1);
 
-      expect(mockDeliveryNoteItemRepo.remove).toHaveBeenCalledWith(items[0]);
-      expect(mockDeliveryNoteItemRepo.remove).toHaveBeenCalledWith(items[1]);
-      expect(mockDeliveryNoteRepo.remove).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
+      expect(mockDeliveryNoteItemRepo.removeForCompany).toHaveBeenCalledWith(1, items[0]);
+      expect(mockDeliveryNoteItemRepo.removeForCompany).toHaveBeenCalledWith(1, items[1]);
+      expect(mockDeliveryNoteRepo.removeForCompany).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ id: 1 }),
+      );
     });
 
     it("removes linked supplier invoices with their items and clarifications", async () => {
@@ -314,18 +332,16 @@ describe("DeliveryService", () => {
         items: [],
         photoUrl: null,
       });
-      mockStockMovementRepo.findManyWhere.mockResolvedValue([]);
+      mockStockMovementRepo.findManyByReferenceForCompany.mockResolvedValue([]);
       const invoice = { id: 7, deliveryNoteId: 1 };
-      mockSupplierInvoiceRepo.findManyWhere
-        .mockResolvedValueOnce([invoice])
-        .mockResolvedValueOnce([invoice]);
+      mockSupplierInvoiceRepo.findLinkedToDeliveryNoteForCompany.mockResolvedValue([invoice]);
 
       await service.remove(1, 1);
 
       expect(mockSupplierInvoiceItemRepo.deleteByInvoice).toHaveBeenCalledTimes(1);
       expect(mockSupplierInvoiceItemRepo.deleteByInvoice).toHaveBeenCalledWith(7);
       expect(mockInvoiceClarificationRepo.deleteForInvoice).toHaveBeenCalledWith(7);
-      expect(mockSupplierInvoiceRepo.remove).toHaveBeenCalledWith(invoice);
+      expect(mockSupplierInvoiceRepo.removeForCompany).toHaveBeenCalledWith(1, invoice);
     });
   });
 

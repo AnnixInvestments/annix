@@ -176,7 +176,7 @@ export class ReconciliationExtractionService {
     );
 
     if (newItems.length > 0) {
-      await this.itemRepo.saveMany(newItems);
+      await this.itemRepo.saveManyForCompany(doc.companyId, newItems);
       this.logger.log(`Created ${newItems.length} reconciliation items from document ${doc.id}`);
     }
   }

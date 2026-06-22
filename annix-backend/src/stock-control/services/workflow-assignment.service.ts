@@ -120,11 +120,7 @@ export class WorkflowAssignmentService {
         ? secondaryUserId
         : null;
 
-    const existingAssignments = await this.assignmentRepo.findManyWhere({
-      companyId,
-      workflowStep: step,
-    });
-    await Promise.all(existingAssignments.map((existing) => this.assignmentRepo.remove(existing)));
+    await this.assignmentRepo.deleteForStep(companyId, step);
 
     if (cleanedIds.length > 0) {
       const assignments = this.assignmentRepo.buildMany(

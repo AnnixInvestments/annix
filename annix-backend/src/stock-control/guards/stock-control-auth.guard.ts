@@ -45,7 +45,7 @@ export class StockControlAuthGuard implements CanActivate {
       }
 
       const scUser = profile.legacyScUserId
-        ? await this.userRepo.findById(profile.legacyScUserId)
+        ? await this.userRepo.findOneForCompany(profile.legacyScUserId, profile.companyId)
         : null;
       const role = scUser?.role || StockControlRole.STOREMAN;
 

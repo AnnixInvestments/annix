@@ -1,4 +1,5 @@
-import { CrudRepository, type DeepPartial } from "../../lib/persistence/crud-repository";
+import type { DeepPartial } from "../../lib/persistence/crud-repository";
+import { TenantScopedRepository } from "../../lib/persistence/tenant-scoped-repository";
 import type { TransactionContext } from "../../lib/persistence/transaction-context";
 import { StockItem } from "../entities/stock-item.entity";
 
@@ -20,11 +21,17 @@ export interface SohByLocationRow {
   totalValue: number;
 }
 
-export abstract class StockItemRepository extends CrudRepository<StockItem> {
+export abstract class StockItemRepository extends TenantScopedRepository<StockItem> {
   abstract withTransaction(context: TransactionContext): StockItemRepository;
   abstract build(data: DeepPartial<StockItem>): StockItem;
   abstract buildMany(rows: DeepPartial<StockItem>[]): StockItem[];
   abstract saveMany(entities: StockItem[]): Promise<StockItem[]>;
+  abstract saveForCompany(companyId: number, entity: StockItem): Promise<StockItem>;
+  abstract removeForCompany(companyId: number, entity: StockItem): Promise<void>;
+  abstract findOneLeftoverByNameForCompany(
+    companyId: number,
+    name: string,
+  ): Promise<StockItem | null>;
   abstract updateByIdForCompany(
     id: number,
     companyId: number,
@@ -67,8 +74,10 @@ export abstract class StockItemRepository extends CrudRepository<StockItem> {
     category: string,
   ): Promise<StockItem | null>;
   abstract findByIdsForCompanyOrderedByName(ids: number[], companyId: number): Promise<StockItem[]>;
+  // Intentionally unbounded: full set is required by OCR/invoice/delivery matching; capping would silently drop matches for large tenants. Future fix is query-side matching.
   abstract findAllForCompany(companyId: number): Promise<StockItem[]>;
   abstract findAllForCompanyOrderedByName(companyId: number): Promise<StockItem[]>;
+  // Intentionally unbounded: see findAllForCompany — matching needs every row.
   abstract findForCompanySelectMatch(companyId: number): Promise<StockItem[]>;
   abstract findUncategorizedForCompany(companyId: number): Promise<StockItem[]>;
   abstract findRubberCategoryForCompanyOrderedByName(companyId: number): Promise<StockItem[]>;
@@ -106,8 +115,8 @@ export abstract class StockItemRepository extends CrudRepository<StockItem> {
   abstract totalValueForCompany(companyId: number): Promise<number>;
   abstract lowStockCountForCompany(companyId: number): Promise<number>;
   abstract reorderAlertCountForCompany(companyId: number): Promise<number>;
-  abstract reorderAlertsForCompany(companyId: number): Promise<StockItem[]>;
-  abstract lowStockForCompany(companyId: number): Promise<StockItem[]>;
+  abstract reorderAlertsForCompany(companyId: number, limit?: number): Promise<StockItem[]>;
+  abstract lowStockForCompany(companyId: number, limit?: number): Promise<StockItem[]>;
   abstract sohSummaryForCompany(companyId: number): Promise<SohSummaryRow[]>;
   abstract sohByLocationForCompany(companyId: number): Promise<SohByLocationRow[]>;
   abstract overAllocationCountForCompany(companyId: number): Promise<number>;

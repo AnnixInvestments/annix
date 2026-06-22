@@ -23,7 +23,11 @@ describe("DispatchService", () => {
     findOneForCompanyWithJobCard: jest.fn(),
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+    saveForCompany: jest
+      .fn()
+      .mockImplementation((_companyId, entity) => Promise.resolve({ id: 1, ...entity })),
     remove: jest.fn().mockResolvedValue(null),
+    removeForCompany: jest.fn().mockResolvedValue(undefined),
   };
 
   const jobCardFindOne = jest.fn();
@@ -429,7 +433,7 @@ describe("DispatchService", () => {
 
       await service.reverseDispatchScan(1, 5, { id: 1, name: "Test User" });
 
-      expect(mockDispatchScanRepo.remove).toHaveBeenCalledWith(scan);
+      expect(mockDispatchScanRepo.removeForCompany).toHaveBeenCalledWith(1, scan);
     });
 
     it("throws NotFoundException when scan does not exist", async () => {

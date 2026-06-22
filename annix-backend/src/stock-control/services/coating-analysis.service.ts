@@ -216,7 +216,7 @@ export class CoatingAnalysisService {
         analysis.coats = [];
         analysis.stockAssessment = [];
         analysis.analysedAt = now().toJSDate();
-        return this.analysisRepo.save(analysis);
+        return this.analysisRepo.saveForCompany(companyId, analysis);
       }
 
       const correctionHints = await this.correctionHintsForCustomer(
@@ -281,7 +281,7 @@ export class CoatingAnalysisService {
       analysis.analysedAt = now().toJSDate();
       analysis.error = null;
 
-      const saved = await this.analysisRepo.save(analysis);
+      const saved = await this.analysisRepo.saveForCompany(companyId, analysis);
       this.logger.log(
         `Coating analysis complete for job card ${jobCardId}: ${coats.length} coat(s), extM2=${analysis.extM2}, intM2=${analysis.intM2}`,
       );
@@ -324,7 +324,7 @@ export class CoatingAnalysisService {
       analysis.intSurfacePrep = updates.intSurfacePrep || null;
     }
     analysis.surfacePrep = analysis.extSurfacePrep || analysis.intSurfacePrep;
-    return this.analysisRepo.save(analysis);
+    return this.analysisRepo.saveForCompany(companyId, analysis);
   }
 
   async updateSurfaceArea(
@@ -352,7 +352,7 @@ export class CoatingAnalysisService {
     const stockAssessment = await this.assessStock(coats, companyId);
     analysis.stockAssessment = stockAssessment;
 
-    return this.analysisRepo.save(analysis);
+    return this.analysisRepo.saveForCompany(companyId, analysis);
   }
 
   async updateCoat(
@@ -395,7 +395,7 @@ export class CoatingAnalysisService {
     const stockAssessment = await this.assessStock(coats, companyId);
     analysis.stockAssessment = stockAssessment;
 
-    return this.analysisRepo.save(analysis);
+    return this.analysisRepo.saveForCompany(companyId, analysis);
   }
 
   async removeCoat(
@@ -419,7 +419,7 @@ export class CoatingAnalysisService {
     const stockAssessment = await this.assessStock(analysis.coats, companyId);
     analysis.stockAssessment = stockAssessment;
 
-    return this.analysisRepo.save(analysis);
+    return this.analysisRepo.saveForCompany(companyId, analysis);
   }
 
   async unverifiedProducts(
@@ -536,7 +536,7 @@ export class CoatingAnalysisService {
     const stockAssessment = await this.assessStock(updatedCoats, companyId);
     analysis.stockAssessment = stockAssessment;
 
-    return this.analysisRepo.save(analysis);
+    return this.analysisRepo.saveForCompany(companyId, analysis);
   }
 
   async acceptRecommendation(
@@ -554,7 +554,7 @@ export class CoatingAnalysisService {
     analysis.acceptedBy = acceptedBy;
     analysis.acceptedAt = now().toJSDate();
 
-    return this.analysisRepo.save(analysis);
+    return this.analysisRepo.saveForCompany(companyId, analysis);
   }
 
   private sumPaintM2(lineItems: JobCardLineItem[]): number {
@@ -886,7 +886,7 @@ export class CoatingAnalysisService {
     analysis.pmEditedBy = userName;
     analysis.pmEditedAt = now().toJSDate();
 
-    return this.analysisRepo.save(analysis);
+    return this.analysisRepo.saveForCompany(companyId, analysis);
   }
 
   private async backfillNotesFromCpo(jobCard: JobCard): Promise<void> {
@@ -922,7 +922,7 @@ export class CoatingAnalysisService {
       draftJobCards.map(async (jc) => {
         jc.notes = sanitizeNotes(jc.notes);
         await this.backfillNotesFromCpo(jc);
-        await this.jobCardRepo.save(jc);
+        await this.jobCardRepo.saveForCompany(companyId, jc);
         return jc;
       }),
     );
@@ -1023,6 +1023,6 @@ export class CoatingAnalysisService {
     analysis.status = CoatingAnalysisStatus.FAILED;
     analysis.error = errorMessage;
     this.logger.error(`Coating analysis failed: ${errorMessage}`);
-    return this.analysisRepo.save(analysis);
+    return this.analysisRepo.saveForCompany(analysis.companyId, analysis);
   }
 }

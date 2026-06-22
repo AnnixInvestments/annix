@@ -1,7 +1,11 @@
-import { CrudRepository } from "../../lib/persistence/crud-repository";
+import { TenantScopedRepository } from "../../lib/persistence/tenant-scoped-repository";
+import type { TransactionContext } from "../../lib/persistence/transaction-context";
 import { StockControlUser } from "../entities/stock-control-user.entity";
 
-export abstract class StockControlUserRepository extends CrudRepository<StockControlUser> {
+export abstract class StockControlUserRepository extends TenantScopedRepository<StockControlUser> {
+  abstract withTransaction(context: TransactionContext): StockControlUserRepository;
+  abstract saveForCompany(companyId: number, entity: StockControlUser): Promise<StockControlUser>;
+  abstract removeForCompany(companyId: number, entity: StockControlUser): Promise<void>;
   abstract findOneByEmail(email: string): Promise<StockControlUser | null>;
   abstract findOneByEmailCaseInsensitive(email: string): Promise<StockControlUser | null>;
   abstract findOneByEmailAndCompany(

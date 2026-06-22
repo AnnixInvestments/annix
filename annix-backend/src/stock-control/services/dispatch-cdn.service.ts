@@ -105,7 +105,7 @@ export class DispatchCdnService {
     }
 
     cdn.lineMatches = lineMatches;
-    return this.cdnRepo.save(cdn);
+    return this.cdnRepo.saveForCompany(companyId, cdn);
   }
 
   async deleteCdn(companyId: number, cdnId: number): Promise<void> {
@@ -115,7 +115,7 @@ export class DispatchCdnService {
       throw new NotFoundException(`CDN ${cdnId} not found`);
     }
 
-    await this.cdnRepo.remove(cdn);
+    await this.cdnRepo.removeForCompany(companyId, cdn);
   }
 
   async hasCdns(companyId: number, jobCardId: number): Promise<boolean> {

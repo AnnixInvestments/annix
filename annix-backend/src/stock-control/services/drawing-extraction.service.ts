@@ -382,7 +382,7 @@ export class DrawingExtractionService {
     attachmentId: number,
   ): Promise<void> {
     const attachment = await this.attachmentById(companyId, jobCardId, attachmentId);
-    await this.attachmentRepo.remove(attachment);
+    await this.attachmentRepo.removeForCompany(companyId, attachment);
     this.logger.log(`Deleted attachment ${attachmentId} from job card ${jobCardId}`);
   }
 
@@ -394,7 +394,7 @@ export class DrawingExtractionService {
     const attachment = await this.attachmentById(companyId, jobCardId, attachmentId);
 
     attachment.extractionStatus = ExtractionStatus.PROCESSING;
-    await this.attachmentRepo.save(attachment);
+    await this.attachmentRepo.saveForCompany(companyId, attachment);
 
     try {
       const result = await this.extractFromAttachment(attachment);
@@ -404,7 +404,7 @@ export class DrawingExtractionService {
       attachment.extractedAt = now().toJSDate();
       attachment.extractionError = null;
 
-      const saved = await this.attachmentRepo.save(attachment);
+      const saved = await this.attachmentRepo.saveForCompany(companyId, attachment);
       this.logger.log(
         `Extraction complete for attachment ${attachmentId}: ${result.dimensions.length} dimensions, totalExtM2=${result.totalExternalM2}`,
       );
@@ -417,7 +417,7 @@ export class DrawingExtractionService {
       const message = err instanceof Error ? err.message : "Unknown error";
       attachment.extractionStatus = ExtractionStatus.FAILED;
       attachment.extractionError = message;
-      await this.attachmentRepo.save(attachment);
+      await this.attachmentRepo.saveForCompany(companyId, attachment);
       this.logger.error(`Extraction failed for attachment ${attachmentId}: ${message}`);
       throw err;
     }

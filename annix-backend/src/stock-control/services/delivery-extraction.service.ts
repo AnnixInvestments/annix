@@ -61,7 +61,7 @@ export class DeliveryExtractionService {
     }
 
     note.extractionStatus = "processing";
-    await this.deliveryNoteRepo.save(note);
+    await this.deliveryNoteRepo.saveForCompany(note.companyId, note);
 
     try {
       const photoBuffer = await this.storageService.download(note.photoUrl);
@@ -75,11 +75,11 @@ export class DeliveryExtractionService {
 
       note.extractedData = extractedData;
       note.extractionStatus = "completed";
-      await this.deliveryNoteRepo.save(note);
+      await this.deliveryNoteRepo.saveForCompany(note.companyId, note);
     } catch (error) {
       note.extractionStatus = "failed";
       note.extractedData = { rawText: error.message };
-      await this.deliveryNoteRepo.save(note);
+      await this.deliveryNoteRepo.saveForCompany(note.companyId, note);
       throw error;
     }
   }
@@ -273,7 +273,7 @@ export class DeliveryExtractionService {
 
     this.overrideMap = null;
     note.sdnStatus = SdnStatus.STOCK_LINKED;
-    await this.deliveryNoteRepo.save(note);
+    await this.deliveryNoteRepo.saveForCompany(companyId, note);
   }
 
   async createStockItemsFromExtracted(
@@ -320,7 +320,7 @@ export class DeliveryExtractionService {
           ...allRollNumbers.filter((rn) => !existingRolls.includes(rn)),
         ];
         stockItem.rollNumbers = mergedRolls;
-        await this.stockItemRepo.save(stockItem);
+        await this.stockItemRepo.saveForCompany(companyId, stockItem);
 
         await this.deliveryNoteItemRepo.createMany(
           item.rollDetails.map((roll) => ({
@@ -345,7 +345,7 @@ export class DeliveryExtractionService {
           createdBy: receivedBy || null,
           companyId,
         });
-        await this.movementRepo.save(movement);
+        await this.movementRepo.saveForCompany(companyId, movement);
       } else {
         const itemRollNumber = item.rollNumber || this.extractRollNumber(item, sku);
         const itemWeightKg = item.weightKg || null;
@@ -354,7 +354,7 @@ export class DeliveryExtractionService {
           const existingRolls = stockItem.rollNumbers || [];
           if (!existingRolls.includes(itemRollNumber)) {
             stockItem.rollNumbers = [...existingRolls, itemRollNumber];
-            await this.stockItemRepo.save(stockItem);
+            await this.stockItemRepo.saveForCompany(companyId, stockItem);
           }
         }
 
@@ -381,7 +381,7 @@ export class DeliveryExtractionService {
           createdBy: receivedBy || null,
           companyId,
         });
-        await this.movementRepo.save(movement);
+        await this.movementRepo.saveForCompany(companyId, movement);
       }
     };
 
@@ -666,7 +666,7 @@ export class DeliveryExtractionService {
     const packSizeLitres =
       item.isPaint && item.volumeLitersPerPack ? item.volumeLitersPerPack : null;
 
-    const created = this.stockItemRepo.build({
+    const created = await this.stockItemRepo.create({
       sku: finalSku,
       name: itemName.slice(0, 255),
       description: itemDescription,
@@ -685,7 +685,6 @@ export class DeliveryExtractionService {
       compoundCode: rubberData?.compoundCode || null,
       rollNumber: null,
     });
-    await this.stockItemRepo.save(created);
     const locLabel = inferredLocationId ? `location=${inferredLocationId}` : "no location";
     this.logger.log(
       `Created new stock item ${sku}: ${created.name} @ R${safeCost.toFixed(2)} (${locLabel})`,
@@ -1023,6 +1022,6 @@ export class DeliveryExtractionService {
       createdBy: receivedBy || null,
       companyId,
     });
-    await this.movementRepo.save(movement);
+    await this.movementRepo.saveForCompany(companyId, movement);
   }
 }

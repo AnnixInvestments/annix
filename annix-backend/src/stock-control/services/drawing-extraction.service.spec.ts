@@ -20,10 +20,16 @@ describe("DrawingExtractionService", () => {
       .mockImplementation((entity) =>
         Promise.resolve(Array.isArray(entity) ? entity : { id: 1, ...entity }),
       ),
+    saveForCompany: jest
+      .fn()
+      .mockImplementation((_companyId, entity) =>
+        Promise.resolve(Array.isArray(entity) ? entity : { id: 1, ...entity }),
+      ),
     saveMany: jest.fn().mockImplementation((entities) => Promise.resolve(entities)),
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     updateMany: jest.fn(),
     remove: jest.fn(),
+    removeForCompany: jest.fn(),
   };
 
   const mockJobCardRepo = {
@@ -357,7 +363,7 @@ describe("DrawingExtractionService", () => {
 
       await service.deleteAttachment(10, 1, 5);
 
-      expect(mockAttachmentRepo.remove).toHaveBeenCalledWith(attachment);
+      expect(mockAttachmentRepo.removeForCompany).toHaveBeenCalledWith(10, attachment);
     });
   });
 

@@ -1,7 +1,11 @@
-import { CrudRepository } from "../../lib/persistence/crud-repository";
+import { TenantScopedRepository } from "../../lib/persistence/tenant-scoped-repository";
+import type { TransactionContext } from "../../lib/persistence/transaction-context";
 import { JobCardImportJob } from "../entities/job-card-import-job.entity";
 
-export abstract class JobCardImportJobRepository extends CrudRepository<JobCardImportJob> {
+export abstract class JobCardImportJobRepository extends TenantScopedRepository<JobCardImportJob> {
+  abstract withTransaction(context: TransactionContext): JobCardImportJobRepository;
+  abstract saveForCompany(companyId: number, entity: JobCardImportJob): Promise<JobCardImportJob>;
+  abstract removeForCompany(companyId: number, entity: JobCardImportJob): Promise<void>;
   abstract findActiveForUser(
     companyId: number,
     createdByUserId: number | null,

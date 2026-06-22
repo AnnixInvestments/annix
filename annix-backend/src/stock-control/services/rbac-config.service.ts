@@ -84,8 +84,8 @@ export class RbacConfigService {
       }
     });
 
-    const existingRows = await this.rbacRepo.findManyWhere({ companyId });
-    await Promise.all(existingRows.map((row) => this.rbacRepo.remove(row)));
+    const existingRows = await this.rbacRepo.findForCompany(companyId);
+    await Promise.all(existingRows.map((row) => this.rbacRepo.removeForCompany(companyId, row)));
 
     const newRows = Object.entries(mergedConfig).flatMap(([navKey, roles]) =>
       roles.map((role) => ({ companyId, navKey, role })),

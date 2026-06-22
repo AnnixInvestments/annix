@@ -45,7 +45,12 @@ export class ReconciliationService {
     const items = await this.itemRepo.findForJobCardOrdered(companyId, jobCardId);
 
     const events =
-      items.length > 0 ? await this.eventRepo.findForItemsOrdered(items.map((i) => i.id)) : [];
+      items.length > 0
+        ? await this.eventRepo.findForItemsForCompany(
+            companyId,
+            items.map((i) => i.id),
+          )
+        : [];
 
     const eventsByItemId = events.reduce<Record<number, ReconciliationEvent[]>>(
       (acc, e) => ({
@@ -91,12 +96,12 @@ export class ReconciliationService {
     const item = await this.findOrFail(companyId, id);
     Object.assign(item, data);
     await this.recalculateStatus(item);
-    return this.itemRepo.save(item);
+    return this.itemRepo.saveForCompany(companyId, item);
   }
 
   async deleteItem(companyId: number, id: number): Promise<void> {
     const item = await this.findOrFail(companyId, id);
-    await this.itemRepo.remove(item);
+    await this.itemRepo.removeForCompany(companyId, item);
   }
 
   async recordEvent(
@@ -132,7 +137,7 @@ export class ReconciliationService {
         }
 
         await this.recalculateStatus(item);
-        await this.itemRepo.save(item);
+        await this.itemRepo.saveForCompany(companyId, item);
 
         return saved;
       }),

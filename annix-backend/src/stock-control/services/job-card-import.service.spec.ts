@@ -31,6 +31,9 @@ describe("JobCardImportService", () => {
     findDeliveryJobCards: jest.fn().mockResolvedValue([]),
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+    saveForCompany: jest
+      .fn()
+      .mockImplementation((_companyId, entity) => Promise.resolve({ id: 1, ...entity })),
   };
 
   const mockM2CalculationService = {
@@ -56,6 +59,9 @@ describe("JobCardImportService", () => {
     findForCompany: jest.fn(),
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+    saveForCompany: jest
+      .fn()
+      .mockImplementation((_companyId, entity) => Promise.resolve({ id: 1, ...entity })),
   };
 
   const mockCpoItemRepo = {
@@ -127,6 +133,9 @@ describe("JobCardImportService", () => {
 
     mockJobCardRepo.create.mockImplementation((data) => Promise.resolve({ id: 1, ...data }));
     mockJobCardRepo.save.mockImplementation((entity) => Promise.resolve({ id: 1, ...entity }));
+    mockJobCardRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+      Promise.resolve({ id: 1, ...entity }),
+    );
     mockJobCardRepo.findActiveByJobAndJcNumber.mockResolvedValue([]);
     mockJobCardRepo.findDeliveryJobCards.mockResolvedValue([]);
     mockM2CalculationService.calculateM2ForItems.mockResolvedValue([]);
@@ -137,6 +146,9 @@ describe("JobCardImportService", () => {
     mockLineItemRepo.deleteForJobCard.mockResolvedValue(undefined);
     mockMappingRepo.create.mockImplementation((data) => Promise.resolve({ id: 1, ...data }));
     mockMappingRepo.save.mockImplementation((entity) => Promise.resolve({ id: 1, ...entity }));
+    mockMappingRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+      Promise.resolve({ id: 1, ...entity }),
+    );
     mockNixLearningRepo.findActiveCorrectionsByCategoryTopByConfidence.mockResolvedValue([]);
     mockNixLearningRepo.findActiveCorrectionByPatternKeyAndCategory.mockResolvedValue(null);
     mockNixLearningRepo.create.mockImplementation((data) => Promise.resolve({ id: 1, ...data }));
@@ -201,6 +213,11 @@ describe("JobCardImportService", () => {
         jobNumber: "JOB-001",
         jtDnNumber: "JT-100",
       });
+      mockJobCardRepo.saveForCompany.mockResolvedValue({
+        id: 20,
+        jobNumber: "JOB-001",
+        jtDnNumber: "JT-100",
+      });
 
       const rows: JobCardImportRow[] = [
         {
@@ -236,6 +253,9 @@ describe("JobCardImportService", () => {
         lineItems: [],
       });
       mockJobCardRepo.save.mockImplementation((entity) =>
+        Promise.resolve({ ...entity, id: entity.id || 10 }),
+      );
+      mockJobCardRepo.saveForCompany.mockImplementation((_companyId, entity) =>
         Promise.resolve({ ...entity, id: entity.id || 10 }),
       );
       mockVersionService.archiveCurrentVersion.mockResolvedValue(null);
@@ -403,7 +423,8 @@ describe("JobCardImportService", () => {
 
       await service.saveMapping(1, config);
 
-      expect(mockMappingRepo.save).toHaveBeenCalledWith(
+      expect(mockMappingRepo.saveForCompany).toHaveBeenCalledWith(
+        1,
         expect.objectContaining({ id: 5, mappingConfig: config }),
       );
     });

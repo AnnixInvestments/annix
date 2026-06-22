@@ -1,4 +1,6 @@
-import { CrudRepository, type DeepPartial } from "../../lib/persistence/crud-repository";
+import type { DeepPartial } from "../../lib/persistence/crud-repository";
+import { TenantScopedRepository } from "../../lib/persistence/tenant-scoped-repository";
+import type { TransactionContext } from "../../lib/persistence/transaction-context";
 import { SupplierCertificate } from "../entities/supplier-certificate.entity";
 
 export interface CertificateFilters {
@@ -9,7 +11,13 @@ export interface CertificateFilters {
   certificateType?: string;
 }
 
-export abstract class SupplierCertificateRepository extends CrudRepository<SupplierCertificate> {
+export abstract class SupplierCertificateRepository extends TenantScopedRepository<SupplierCertificate> {
+  abstract withTransaction(context: TransactionContext): SupplierCertificateRepository;
+  abstract saveForCompany(
+    companyId: number,
+    entity: SupplierCertificate,
+  ): Promise<SupplierCertificate>;
+  abstract removeForCompany(companyId: number, entity: SupplierCertificate): Promise<void>;
   abstract build(data: DeepPartial<SupplierCertificate>): SupplierCertificate;
   abstract updateById(id: number, updates: DeepPartial<SupplierCertificate>): Promise<void>;
   abstract findOneForCompanyByBatchAndType(

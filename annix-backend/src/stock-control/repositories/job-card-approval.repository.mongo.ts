@@ -1,18 +1,50 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
+import type { ClientSession, Model } from "mongoose";
 import { type DeepPartial } from "../../lib/persistence/crud-repository";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import { ApprovalStatus, JobCardApproval } from "../entities/job-card-approval.entity";
 import { JobCardApprovalRepository } from "./job-card-approval.repository";
 
 @Injectable()
 export class MongoJobCardApprovalRepository
-  extends MongoCrudRepository<JobCardApproval>
+  extends MongoTenantScopedRepository<JobCardApproval>
   implements JobCardApprovalRepository
 {
-  constructor(@InjectModel("JobCardApproval") model: Model<JobCardApproval>) {
-    super(model);
+  constructor(
+    @InjectModel("JobCardApproval") model: Model<JobCardApproval>,
+    @Optional() session: ClientSession | null = null,
+  ) {
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoJobCardApprovalRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoJobCardApprovalRepository requires a MongoTransactionContext");
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoJobCardApprovalRepository {
+    return new MongoJobCardApprovalRepository(this.model, session);
+  }
+
+  async saveForCompany(companyId: number, entity: JobCardApproval): Promise<JobCardApproval> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Job card approval does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async removeForCompany(companyId: number, entity: JobCardApproval): Promise<void> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Job card approval does not belong to the requesting company");
+    }
+    await this.remove(entity);
   }
 
   async findForJobCardOrdered(companyId: number, jobCardId: number): Promise<JobCardApproval[]> {

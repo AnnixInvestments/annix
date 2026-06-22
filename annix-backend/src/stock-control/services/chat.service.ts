@@ -69,8 +69,13 @@ export class ChatService {
     return saved;
   }
 
-  async update(messageId: number, senderId: number, text: string): Promise<{ success: boolean }> {
-    const message = await this.chatRepo.findById(messageId);
+  async update(
+    companyId: number,
+    messageId: number,
+    senderId: number,
+    text: string,
+  ): Promise<{ success: boolean }> {
+    const message = await this.chatRepo.findOneForCompany(messageId, companyId);
 
     if (!message || message.senderId !== senderId) {
       return { success: false };
@@ -78,7 +83,7 @@ export class ChatService {
 
     message.text = text.trim();
     message.editedAt = now().toJSDate();
-    await this.chatRepo.save(message);
+    await this.chatRepo.saveForCompany(companyId, message);
 
     return { success: true };
   }

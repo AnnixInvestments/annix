@@ -487,7 +487,7 @@ export class JobCardsController {
     if (!lineItem) {
       throw new BadRequestException("Line item not found");
     }
-    await this.lineItemRepo.remove(lineItem);
+    await this.lineItemRepo.removeForCompany(req.user.companyId, lineItem);
     return { message: "Line item deleted" };
   }
 
@@ -702,7 +702,7 @@ export class JobCardsController {
       notes: `Rubber offcut wastage from JC #${id}: ${dto.widthMm}mm x ${dto.lengthMm}mm x ${dto.thicknessMm}mm (SG ${dto.specificGravity}) = ${roundedKg} kg`,
       createdBy: req.user.name,
     });
-    await this.stockMovementRepo.save(movement);
+    await this.stockMovementRepo.saveForCompany(companyId, movement);
 
     const offcutSku = `RO-${id}-${Date.now()}`;
     const savedOffcut = await this.stockItemRepo.create({
@@ -773,7 +773,7 @@ export class JobCardsController {
           notes: `Rubber offcut returned from JC #${id}: ${offcut.widthMm}mm x ${offcut.lengthMm}mm x ${offcut.thicknessMm}mm (${colour})`,
           createdBy,
         });
-        await this.stockMovementRepo.save(movement);
+        await this.stockMovementRepo.saveForCompany(companyId, movement);
 
         return { stockItemId: saved.id, widthMm: offcut.widthMm, lengthMm: offcut.lengthMm };
       }),

@@ -21,7 +21,10 @@ describe("CoatingAnalysisService", () => {
     findLiningFlagForJobCard: jest.fn(),
     countByStatus: jest.fn(),
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
-    save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+    saveForCompany: jest
+      .fn()
+      .mockImplementation((_companyId, entity) => Promise.resolve({ id: 1, ...entity })),
+    removeForCompany: jest.fn().mockResolvedValue(undefined),
   };
 
   const jobCardFindOne = jest.fn();
@@ -30,6 +33,7 @@ describe("CoatingAnalysisService", () => {
     findOneForCompany: jobCardFindOne,
     findActiveOrDraftForCompany: jest.fn(),
     save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
+    saveForCompany: jest.fn().mockImplementation((_companyId, entity) => Promise.resolve(entity)),
     saveMany: jest.fn().mockImplementation((entities) => Promise.resolve(entities)),
   };
 

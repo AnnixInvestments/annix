@@ -1,17 +1,49 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import type { ClientSession, Model } from "mongoose";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import { CalloffStatus, CpoCalloffRecord } from "../entities/cpo-calloff-record.entity";
 import { CpoCalloffRecordRepository } from "./cpo-calloff-record.repository";
 
 @Injectable()
 export class MongoCpoCalloffRecordRepository
-  extends MongoCrudRepository<CpoCalloffRecord>
+  extends MongoTenantScopedRepository<CpoCalloffRecord>
   implements CpoCalloffRecordRepository
 {
-  constructor(@InjectModel("CpoCalloffRecord") model: Model<CpoCalloffRecord>) {
-    super(model);
+  constructor(
+    @InjectModel("CpoCalloffRecord") model: Model<CpoCalloffRecord>,
+    @Optional() session: ClientSession | null = null,
+  ) {
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoCpoCalloffRecordRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoCpoCalloffRecordRepository requires a MongoTransactionContext");
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoCpoCalloffRecordRepository {
+    return new MongoCpoCalloffRecordRepository(this.model, session);
+  }
+
+  async saveForCompany(companyId: number, entity: CpoCalloffRecord): Promise<CpoCalloffRecord> {
+    if (entity.companyId !== companyId) {
+      throw new Error("CPO call-off record does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async removeForCompany(companyId: number, entity: CpoCalloffRecord): Promise<void> {
+    if (entity.companyId !== companyId) {
+      throw new Error("CPO call-off record does not belong to the requesting company");
+    }
+    await this.remove(entity);
   }
 
   async findForJobCard(jobCardId: number, companyId: number): Promise<CpoCalloffRecord[]> {

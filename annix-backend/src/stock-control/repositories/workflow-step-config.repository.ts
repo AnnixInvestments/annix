@@ -1,7 +1,15 @@
-import { CrudRepository, type DeepPartial } from "../../lib/persistence/crud-repository";
+import type { DeepPartial } from "../../lib/persistence/crud-repository";
+import { TenantScopedRepository } from "../../lib/persistence/tenant-scoped-repository";
+import type { TransactionContext } from "../../lib/persistence/transaction-context";
 import { WorkflowStepConfig } from "../entities/workflow-step-config.entity";
 
-export abstract class WorkflowStepConfigRepository extends CrudRepository<WorkflowStepConfig> {
+export abstract class WorkflowStepConfigRepository extends TenantScopedRepository<WorkflowStepConfig> {
+  abstract withTransaction(context: TransactionContext): WorkflowStepConfigRepository;
+  abstract saveForCompany(
+    companyId: number,
+    entity: WorkflowStepConfig,
+  ): Promise<WorkflowStepConfig>;
+  abstract removeForCompany(companyId: number, entity: WorkflowStepConfig): Promise<void>;
   abstract build(data: DeepPartial<WorkflowStepConfig>): WorkflowStepConfig;
   abstract findOrderedForeground(companyId: number): Promise<WorkflowStepConfig[]>;
   abstract findOrderedBackground(companyId: number): Promise<WorkflowStepConfig[]>;

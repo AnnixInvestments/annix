@@ -1,4 +1,5 @@
-import { CrudRepository, type DeepPartial } from "../../lib/persistence/crud-repository";
+import type { DeepPartial } from "../../lib/persistence/crud-repository";
+import { TenantScopedRepository } from "../../lib/persistence/tenant-scoped-repository";
 import type { TransactionContext } from "../../lib/persistence/transaction-context";
 import { MovementType, StockMovement } from "../entities/stock-movement.entity";
 
@@ -16,9 +17,20 @@ export interface MovementHistoryFilters {
   stockItemId?: number;
 }
 
-export abstract class StockMovementRepository extends CrudRepository<StockMovement> {
-  abstract withTransaction(context: TransactionContext): CrudRepository<StockMovement>;
+export abstract class StockMovementRepository extends TenantScopedRepository<StockMovement> {
+  abstract withTransaction(context: TransactionContext): StockMovementRepository;
   abstract build(data: DeepPartial<StockMovement>): StockMovement;
+  abstract saveForCompany(companyId: number, entity: StockMovement): Promise<StockMovement>;
+  abstract removeForCompany(companyId: number, entity: StockMovement): Promise<void>;
+  abstract findManyByStockItemForCompany(
+    companyId: number,
+    stockItemId: number,
+  ): Promise<StockMovement[]>;
+  abstract findManyByReferenceForCompany(
+    companyId: number,
+    referenceType: string,
+    referenceId: number,
+  ): Promise<StockMovement[]>;
   abstract findFilteredForCompany(
     companyId: number,
     filters: MovementListFilters | undefined,

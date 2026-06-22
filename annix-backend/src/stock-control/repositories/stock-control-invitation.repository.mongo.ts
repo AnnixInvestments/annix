@@ -1,7 +1,11 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import type { ClientSession, Model } from "mongoose";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import {
   StockControlInvitation,
   StockControlInvitationStatus,
@@ -10,11 +14,42 @@ import { StockControlInvitationRepository } from "./stock-control-invitation.rep
 
 @Injectable()
 export class MongoStockControlInvitationRepository
-  extends MongoCrudRepository<StockControlInvitation>
+  extends MongoTenantScopedRepository<StockControlInvitation>
   implements StockControlInvitationRepository
 {
-  constructor(@InjectModel("StockControlInvitation") model: Model<StockControlInvitation>) {
-    super(model);
+  constructor(
+    @InjectModel("StockControlInvitation") model: Model<StockControlInvitation>,
+    @Optional() session: ClientSession | null = null,
+  ) {
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoStockControlInvitationRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoStockControlInvitationRepository requires a MongoTransactionContext");
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoStockControlInvitationRepository {
+    return new MongoStockControlInvitationRepository(this.model, session);
+  }
+
+  async saveForCompany(
+    companyId: number,
+    entity: StockControlInvitation,
+  ): Promise<StockControlInvitation> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Invitation does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async removeForCompany(companyId: number, entity: StockControlInvitation): Promise<void> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Invitation does not belong to the requesting company");
+    }
+    await this.remove(entity);
   }
 
   async findOneByTokenAndStatus(

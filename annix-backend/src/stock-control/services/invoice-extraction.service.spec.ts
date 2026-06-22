@@ -27,6 +27,10 @@ describe("InvoiceExtractionService", () => {
     findOne: invoiceFindOne,
     find: invoiceFind,
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+    saveForCompany: jest
+      .fn()
+      .mockImplementation((_companyId, entity) => Promise.resolve({ id: 1, ...entity })),
+    removeForCompany: jest.fn().mockResolvedValue(undefined),
     update: jest.fn().mockResolvedValue({ affected: 1 }),
     updateById: jest.fn().mockResolvedValue(undefined),
     findOneById: (id: number) => invoiceFindOne({ where: { id } }),
@@ -37,6 +41,8 @@ describe("InvoiceExtractionService", () => {
   const mockInvoiceItemRepo = {
     find: invoiceItemFind,
     save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
+    saveForCompany: jest.fn().mockImplementation((_companyId, entity) => Promise.resolve(entity)),
+    removeForCompany: jest.fn().mockResolvedValue(undefined),
     create: jest.fn().mockImplementation((data) => ({ ...data })),
     delete: jest.fn(),
     buildMany: jest.fn().mockImplementation((rows) => rows),
@@ -56,6 +62,10 @@ describe("InvoiceExtractionService", () => {
     findSkippedPriceForInvoice: jest.fn().mockResolvedValue([]),
     findPendingForInvoiceWithItem: jest.fn().mockResolvedValue([]),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+    saveForCompany: jest
+      .fn()
+      .mockImplementation((_companyId, entity) => Promise.resolve({ id: 1, ...entity })),
+    removeForCompany: jest.fn().mockResolvedValue(undefined),
     saveMany: jest.fn().mockImplementation((entities) => Promise.resolve(entities)),
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     countByInvoiceAndStatus: jest.fn().mockResolvedValue(0),
@@ -69,7 +79,9 @@ describe("InvoiceExtractionService", () => {
     find: stockItemFind,
     findOne: stockItemFindOne,
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 100, ...data })),
-    save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 100, ...entity })),
+    saveForCompany: jest
+      .fn()
+      .mockImplementation((_companyId, entity) => Promise.resolve({ id: 100, ...entity })),
     findForCompanySelectMatch: (companyId: number) => stockItemFind({ where: { companyId } }),
     findById: (id: number) => stockItemFindOne({ where: { id } }),
     findOneForCompany: (id: number, companyId: number) =>
@@ -171,7 +183,9 @@ describe("InvoiceExtractionService", () => {
       };
 
       mockInvoiceRepo.findOne.mockResolvedValue({ ...baseInvoice });
-      mockInvoiceRepo.save.mockImplementation((entity) => Promise.resolve({ ...entity }));
+      mockInvoiceRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve({ ...entity }),
+      );
       mockDeliveryNoteRepo.findAutoLinkCandidates.mockResolvedValue([]);
       mockInvoiceItemRepo.find.mockResolvedValue([]);
       mockStockItemRepo.find.mockResolvedValue([]);
@@ -198,7 +212,9 @@ describe("InvoiceExtractionService", () => {
         ...baseInvoice,
         extractionStatus: InvoiceExtractionStatus.FAILED,
       });
-      mockInvoiceRepo.save.mockImplementation((entity) => Promise.resolve({ ...entity }));
+      mockInvoiceRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve({ ...entity }),
+      );
 
       mockAiChatService.chatWithImage.mockResolvedValue({
         content: "This is not JSON at all",
@@ -236,7 +252,9 @@ describe("InvoiceExtractionService", () => {
       };
 
       mockInvoiceRepo.findOne.mockResolvedValue({ ...baseInvoice });
-      mockInvoiceRepo.save.mockImplementation((entity) => Promise.resolve({ ...entity }));
+      mockInvoiceRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve({ ...entity }),
+      );
       mockDeliveryNoteRepo.findAutoLinkCandidates.mockResolvedValue([]);
       mockInvoiceItemRepo.find.mockResolvedValue([
         {
@@ -364,11 +382,14 @@ describe("InvoiceExtractionService", () => {
       mockStockItemRepo.find.mockResolvedValue([
         { id: 50, name: "Widget", sku: "WDG-001", costPerUnit: 100 },
       ]);
-      mockInvoiceItemRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockInvoiceItemRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve(entity),
+      );
 
       await service.matchItemsToStock(1);
 
-      expect(mockInvoiceItemRepo.save).toHaveBeenCalledWith(
+      expect(mockInvoiceItemRepo.saveForCompany).toHaveBeenCalledWith(
+        10,
         expect.objectContaining({
           stockItemId: 50,
           matchConfidence: 100,
@@ -391,11 +412,13 @@ describe("InvoiceExtractionService", () => {
       mockStockItemRepo.find.mockResolvedValue([
         { id: 60, name: "Penguard HB Topcoat Red Oxide", sku: "PEN-HBT", costPerUnit: 500 },
       ]);
-      mockInvoiceItemRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockInvoiceItemRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve(entity),
+      );
 
       await service.matchItemsToStock(1);
 
-      const savedItem = mockInvoiceItemRepo.save.mock.calls[0][0];
+      const savedItem = mockInvoiceItemRepo.saveForCompany.mock.calls[0][1];
       expect(savedItem.stockItemId).toBe(60);
       expect(savedItem.matchConfidence).toBeLessThan(80);
       expect(savedItem.matchConfidence).toBeGreaterThanOrEqual(50);
@@ -416,11 +439,14 @@ describe("InvoiceExtractionService", () => {
       mockStockItemRepo.find.mockResolvedValue([
         { id: 70, name: "Steel Pipe 200NB", sku: "SP-200", costPerUnit: 800 },
       ]);
-      mockInvoiceItemRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockInvoiceItemRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve(entity),
+      );
 
       await service.matchItemsToStock(1);
 
-      expect(mockInvoiceItemRepo.save).toHaveBeenCalledWith(
+      expect(mockInvoiceItemRepo.saveForCompany).toHaveBeenCalledWith(
+        10,
         expect.objectContaining({
           matchStatus: InvoiceItemMatchStatus.UNMATCHED,
         }),
@@ -455,11 +481,14 @@ describe("InvoiceExtractionService", () => {
       };
 
       mockInvoiceItemRepo.find.mockResolvedValue([partA, partB]);
-      mockInvoiceItemRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockInvoiceItemRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve(entity),
+      );
 
       await service.linkPartABItems(1);
 
-      expect(mockInvoiceItemRepo.save).toHaveBeenCalledWith(
+      expect(mockInvoiceItemRepo.saveForCompany).toHaveBeenCalledWith(
+        undefined,
         expect.objectContaining({ id: 2, linkedItemId: 1 }),
       );
     });
@@ -485,7 +514,7 @@ describe("InvoiceExtractionService", () => {
 
       await service.linkPartABItems(1);
 
-      expect(mockInvoiceItemRepo.save).not.toHaveBeenCalled();
+      expect(mockInvoiceItemRepo.saveForCompany).not.toHaveBeenCalled();
     });
   });
 
@@ -513,7 +542,9 @@ describe("InvoiceExtractionService", () => {
       mockDeliveryNoteRepo.findAutoLinkCandidates.mockResolvedValue([
         { id: 50, companyId: 10, deliveryNumber: "DN-500", supplierName: "Supplier A" },
       ]);
-      mockInvoiceRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockInvoiceRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve(entity),
+      );
 
       const result = await service.autoLinkAllUnlinked(10);
 
@@ -541,11 +572,17 @@ describe("InvoiceExtractionService", () => {
 
       mockClarificationRepo.findOneByIdWithRelations.mockResolvedValue(clarification);
       mockStockItemRepo.findOne.mockResolvedValue({ id: 200, costPerUnit: 150 });
-      mockInvoiceItemRepo.save.mockImplementation((entity) => Promise.resolve(entity));
-      mockClarificationRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockInvoiceItemRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve(entity),
+      );
+      mockClarificationRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve(entity),
+      );
       mockClarificationRepo.countByInvoiceAndStatus.mockResolvedValue(0);
       mockInvoiceRepo.findOne.mockResolvedValue({ id: 1 });
-      mockInvoiceRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockInvoiceRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve(entity),
+      );
 
       const result = await service.processClarificationResponse(
         1,
@@ -574,12 +611,18 @@ describe("InvoiceExtractionService", () => {
       };
 
       mockClarificationRepo.findOneByIdWithRelations.mockResolvedValue(clarification);
-      mockStockItemRepo.save.mockResolvedValue({ id: 100, sku: "NEW-01", name: "New Item" });
-      mockInvoiceItemRepo.save.mockImplementation((entity) => Promise.resolve(entity));
-      mockClarificationRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockStockItemRepo.create.mockResolvedValue({ id: 100, sku: "NEW-01", name: "New Item" });
+      mockInvoiceItemRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve(entity),
+      );
+      mockClarificationRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve(entity),
+      );
       mockClarificationRepo.countByInvoiceAndStatus.mockResolvedValue(0);
       mockInvoiceRepo.findOne.mockResolvedValue({ id: 1 });
-      mockInvoiceRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockInvoiceRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve(entity),
+      );
 
       const result = await service.processClarificationResponse(
         2,
@@ -606,10 +649,14 @@ describe("InvoiceExtractionService", () => {
       };
 
       mockClarificationRepo.findOneByIdWithRelations.mockResolvedValue(clarification);
-      mockClarificationRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockClarificationRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve(entity),
+      );
       mockClarificationRepo.countByInvoiceAndStatus.mockResolvedValue(0);
       mockInvoiceRepo.findOne.mockResolvedValue({ id: 1 });
-      mockInvoiceRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockInvoiceRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve(entity),
+      );
 
       const result = await service.processClarificationResponse(3, { skipPriceUpdate: true }, 42);
 
@@ -646,10 +693,16 @@ describe("InvoiceExtractionService", () => {
 
       mockInvoiceRepo.findOne.mockResolvedValue(invoice);
       mockStockItemRepo.findOne.mockResolvedValue(stockItem);
-      mockStockItemRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockStockItemRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve(entity),
+      );
       mockPriceHistoryRepo.save.mockResolvedValue({});
-      mockInvoiceItemRepo.save.mockImplementation((entity) => Promise.resolve(entity));
-      mockInvoiceRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockInvoiceItemRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve(entity),
+      );
+      mockInvoiceRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve(entity),
+      );
       mockClarificationRepo.findSkippedPriceForInvoice.mockResolvedValue([]);
 
       const result = await service.applyPriceUpdates(1, 42);
@@ -686,7 +739,9 @@ describe("InvoiceExtractionService", () => {
           status: ClarificationStatus.SKIPPED,
         },
       ]);
-      mockInvoiceRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockInvoiceRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve(entity),
+      );
 
       await service.applyPriceUpdates(1, 42);
 
@@ -712,8 +767,12 @@ describe("InvoiceExtractionService", () => {
       mockInvoiceRepo.findOne.mockResolvedValue(invoice);
       invoiceItemFind.mockResolvedValue([item]);
       mockStockItemRepo.findOne.mockResolvedValue(stockItem);
-      mockInvoiceRepo.save.mockImplementation((entity) => Promise.resolve(entity));
-      mockInvoiceItemRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockInvoiceRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve(entity),
+      );
+      mockInvoiceItemRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve(entity),
+      );
       mockClarificationRepo.findSkippedPriceForInvoice.mockResolvedValue([]);
 
       await service.applyPriceUpdates(1, 42);
@@ -743,8 +802,12 @@ describe("InvoiceExtractionService", () => {
 
       mockInvoiceRepo.findOne.mockResolvedValue(invoice);
       mockStockItemRepo.findOne.mockResolvedValue(stockItem);
-      mockInvoiceRepo.save.mockImplementation((entity) => Promise.resolve(entity));
-      mockInvoiceItemRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockInvoiceRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve(entity),
+      );
+      mockInvoiceItemRepo.saveForCompany.mockImplementation((_companyId, entity) =>
+        Promise.resolve(entity),
+      );
       mockClarificationRepo.findSkippedPriceForInvoice.mockResolvedValue([]);
 
       await service.applyPriceUpdates(1, 42);

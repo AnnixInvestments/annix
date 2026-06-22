@@ -109,7 +109,7 @@ describe("JobCardsController", () => {
 
     stockMovementRepo = {
       build: jest.fn(),
-      save: jest.fn(),
+      saveForCompany: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -158,6 +158,7 @@ describe("JobCardsController", () => {
             findOneForJobCard: jest.fn(),
             create: jest.fn(),
             remove: jest.fn(),
+            removeForCompany: jest.fn(),
           },
         },
         {
@@ -684,7 +685,7 @@ describe("JobCardsController", () => {
       stockItemRepo.findOneWastageForCompany.mockResolvedValue(wastageItem);
       const movementEntity = { id: 1 };
       stockMovementRepo.build.mockReturnValue(movementEntity);
-      stockMovementRepo.save.mockResolvedValue(movementEntity);
+      stockMovementRepo.saveForCompany.mockResolvedValue(movementEntity);
       const offcutItem = { id: 99 };
       stockItemRepo.create.mockResolvedValue(offcutItem);
 
@@ -693,7 +694,7 @@ describe("JobCardsController", () => {
       expect(stockItemRepo.findOneWastageForCompany).toHaveBeenCalled();
       expect(stockItemRepo.incrementQuantityForCompany).toHaveBeenCalled();
       expect(stockMovementRepo.build).toHaveBeenCalled();
-      expect(stockMovementRepo.save).toHaveBeenCalled();
+      expect(stockMovementRepo.saveForCompany).toHaveBeenCalled();
       expect(result.weightKg).toBeCloseTo(0.72);
       expect(result.stockItemId).toBe(50);
       expect(result.offcutStockItemId).toBe(99);
@@ -713,7 +714,7 @@ describe("JobCardsController", () => {
       const offcutItem = { id: 101 };
       stockItemRepo.create.mockResolvedValueOnce(newItem).mockResolvedValueOnce(offcutItem);
       stockMovementRepo.build.mockReturnValue({ id: 1 });
-      stockMovementRepo.save.mockResolvedValue({ id: 1 });
+      stockMovementRepo.saveForCompany.mockResolvedValue({ id: 1 });
 
       const result = await controller.markOffcutAsWastage(mockReq(), 5, dto as any);
 

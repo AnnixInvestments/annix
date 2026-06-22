@@ -75,7 +75,7 @@ export class StaffService {
   async update(companyId: number, id: number, data: Partial<StaffMember>): Promise<StaffMember> {
     const member = await this.findByIdInternal(companyId, id);
     Object.assign(member, data);
-    const saved = await this.staffRepo.save(member);
+    const saved = await this.staffRepo.saveForCompany(companyId, member);
     this.invalidateListCaches(companyId);
     return this.withPresignedPhotoUrl(saved);
   }
@@ -83,7 +83,7 @@ export class StaffService {
   async softDelete(companyId: number, id: number): Promise<StaffMember> {
     const member = await this.findByIdInternal(companyId, id);
     member.active = false;
-    const saved = await this.staffRepo.save(member);
+    const saved = await this.staffRepo.saveForCompany(companyId, member);
     this.invalidateListCaches(companyId);
     return this.withPresignedPhotoUrl(saved);
   }
@@ -110,7 +110,7 @@ export class StaffService {
     const result = await this.storageService.upload(file, "stock-control/staff");
     member.photoUrl = result.path;
     this.presignedUrlCache.delete(result.path);
-    const saved = await this.staffRepo.save(member);
+    const saved = await this.staffRepo.saveForCompany(companyId, member);
     this.invalidateListCaches(companyId);
     return this.withPresignedPhotoUrl(saved);
   }

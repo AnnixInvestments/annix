@@ -43,6 +43,6 @@ export class SupplierController {
       phone: body.phone || null,
       email: body.email || null,
     });
-    return this.supplierRepo.save(supplier);
+    return this.supplierRepo.saveForCompany(req.user.companyId, supplier);
   }
 }

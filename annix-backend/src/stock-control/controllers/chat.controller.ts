@@ -96,7 +96,7 @@ export class ChatController {
       return { success: false };
     }
 
-    return this.chatService.update(messageId, req.user.id, body.text);
+    return this.chatService.update(req.user.companyId, messageId, req.user.id, body.text);
   }
 
   @Post("upload")

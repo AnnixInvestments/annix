@@ -1,8 +1,12 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
+import type { ClientSession, Model } from "mongoose";
 import type { DeepPartial } from "../../lib/persistence/crud-repository";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import { ReferenceType, StockMovement } from "../entities/stock-movement.entity";
 import {
   type MovementHistoryFilters,
@@ -12,15 +16,60 @@ import {
 
 @Injectable()
 export class MongoStockMovementRepository
-  extends MongoCrudRepository<StockMovement>
+  extends MongoTenantScopedRepository<StockMovement>
   implements StockMovementRepository
 {
-  constructor(@InjectModel("StockMovement") model: Model<StockMovement>) {
-    super(model);
+  constructor(
+    @InjectModel("StockMovement") model: Model<StockMovement>,
+    @Optional() session: ClientSession | null = null,
+  ) {
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoStockMovementRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error("MongoStockMovementRepository requires a MongoTransactionContext");
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoStockMovementRepository {
+    return new MongoStockMovementRepository(this.model, session);
   }
 
   build(data: DeepPartial<StockMovement>): StockMovement {
     return data as StockMovement;
+  }
+
+  async saveForCompany(companyId: number, entity: StockMovement): Promise<StockMovement> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Stock movement does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async removeForCompany(companyId: number, entity: StockMovement): Promise<void> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Stock movement does not belong to the requesting company");
+    }
+    await this.remove(entity);
+  }
+
+  async findManyByStockItemForCompany(
+    companyId: number,
+    stockItemId: number,
+  ): Promise<StockMovement[]> {
+    const docs = await this.documents.find({ companyId, stockItemId }).lean().exec();
+    return this.toDomainList(docs);
+  }
+
+  async findManyByReferenceForCompany(
+    companyId: number,
+    referenceType: string,
+    referenceId: number,
+  ): Promise<StockMovement[]> {
+    const docs = await this.documents.find({ companyId, referenceType, referenceId }).lean().exec();
+    return this.toDomainList(docs);
   }
 
   async findFilteredForCompany(

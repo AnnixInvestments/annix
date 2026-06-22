@@ -45,7 +45,7 @@ export class PriceHistoryService {
     history.changeReason = PriceChangeReason.MANUAL;
     history.changedBy = changedBy;
 
-    return this.priceHistoryRepo.save(history);
+    return this.priceHistoryRepo.saveForCompany(companyId, history);
   }
 
   async priceStatistics(

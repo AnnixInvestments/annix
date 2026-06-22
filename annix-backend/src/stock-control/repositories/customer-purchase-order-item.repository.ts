@@ -1,9 +1,15 @@
-import { CrudRepository, type DeepPartial } from "../../lib/persistence/crud-repository";
+import type { DeepPartial } from "../../lib/persistence/crud-repository";
+import { TenantScopedRepository } from "../../lib/persistence/tenant-scoped-repository";
 import type { TransactionContext } from "../../lib/persistence/transaction-context";
 import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-item.entity";
 
-export abstract class CustomerPurchaseOrderItemRepository extends CrudRepository<CustomerPurchaseOrderItem> {
-  abstract withTransaction(context: TransactionContext): CrudRepository<CustomerPurchaseOrderItem>;
+export abstract class CustomerPurchaseOrderItemRepository extends TenantScopedRepository<CustomerPurchaseOrderItem> {
+  abstract withTransaction(context: TransactionContext): CustomerPurchaseOrderItemRepository;
+  abstract saveForCompany(
+    companyId: number,
+    entity: CustomerPurchaseOrderItem,
+  ): Promise<CustomerPurchaseOrderItem>;
+  abstract removeForCompany(companyId: number, entity: CustomerPurchaseOrderItem): Promise<void>;
   abstract createMany(
     rows: Array<DeepPartial<CustomerPurchaseOrderItem>>,
   ): Promise<CustomerPurchaseOrderItem[]>;

@@ -15,6 +15,7 @@ import { StockItemRepository } from "../repositories/stock-item.repository";
 import { StockMovementRepository } from "../repositories/stock-movement.repository";
 import { StockReturnRepository } from "../repositories/stock-return.repository";
 import { JobCardService } from "./job-card.service";
+import { JobCardAllocationService } from "./job-card-allocation.service";
 import { RequisitionService } from "./requisition.service";
 import { WorkflowNotificationService } from "./workflow-notification.service";
 
@@ -35,6 +36,9 @@ describe("JobCardService", () => {
   const mockJobCardRepo = {
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+    saveForCompany: jest
+      .fn()
+      .mockImplementation((_companyId, entity) => Promise.resolve({ id: 1, ...entity })),
     saveMany: jest.fn().mockImplementation((entities) => Promise.resolve(entities)),
     find: jobCardFind,
     findOne: jobCardFindOne,
@@ -48,6 +52,7 @@ describe("JobCardService", () => {
     jtNumbersForJobCards: jest.fn().mockResolvedValue([]),
     adjacentIds: jest.fn().mockResolvedValue({ previousId: null, nextId: null }),
     remove: jest.fn().mockResolvedValue(null),
+    removeForCompany: jest.fn().mockResolvedValue(null),
   };
 
   const allocFind = jest.fn();
@@ -61,10 +66,11 @@ describe("JobCardService", () => {
     findOnePendingForCompany: allocFindOne,
     findOneForCompanyWithRelations: allocFindOne,
     findForJobCardPaginated: jest.fn(),
-    findManyWhere: jest.fn().mockResolvedValue([]),
+    deleteByJobCardForCompany: jest.fn().mockResolvedValue(undefined),
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
-    save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
-    remove: jest.fn(),
+    saveForCompany: jest
+      .fn()
+      .mockImplementation((_companyId, entity) => Promise.resolve({ id: 1, ...entity })),
     withTransaction: jest.fn(),
   };
   mockAllocationRepo.withTransaction.mockReturnValue(mockAllocationRepo);
@@ -91,18 +97,17 @@ describe("JobCardService", () => {
   };
 
   const mockStockReturnRepo = {
-    findManyWhere: jest.fn().mockResolvedValue([]),
-    remove: jest.fn(),
+    deleteByJobCardForCompany: jest.fn().mockResolvedValue(undefined),
   };
 
   const mockReconciliationItemRepo = {
-    findManyWhere: jest.fn().mockResolvedValue([]),
-    remove: jest.fn(),
+    findForJobCard: jest.fn().mockResolvedValue([]),
+    removeForCompany: jest.fn(),
   };
 
   const mockReconciliationDocumentRepo = {
-    findManyWhere: jest.fn().mockResolvedValue([]),
-    remove: jest.fn(),
+    findForJobCard: jest.fn().mockResolvedValue([]),
+    removeForCompany: jest.fn(),
   };
 
   const mockCoatingAnalysisRepo = {
@@ -138,6 +143,7 @@ describe("JobCardService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         JobCardService,
+        JobCardAllocationService,
         { provide: JobCardRepository, useValue: mockJobCardRepo },
         { provide: StockAllocationRepository, useValue: mockAllocationRepo },
         { provide: JobCardCoatingAnalysisRepository, useValue: mockCoatingAnalysisRepo },
@@ -228,7 +234,8 @@ describe("JobCardService", () => {
       mockJobCardRepo.findOne.mockResolvedValue(existing);
 
       await service.update(1, 1, { description: "Updated" });
-      expect(mockJobCardRepo.save).toHaveBeenCalledWith(
+      expect(mockJobCardRepo.saveForCompany).toHaveBeenCalledWith(
+        1,
         expect.objectContaining({ description: "Updated" }),
       );
     });
@@ -247,31 +254,19 @@ describe("JobCardService", () => {
 
       await service.remove(1, 1);
 
-      expect(mockStockReturnRepo.findManyWhere).toHaveBeenCalledWith({
-        jobCardId: 1,
-        companyId: 1,
-      });
-      expect(mockAllocationRepo.findManyWhere).toHaveBeenCalledWith({
-        jobCardId: 1,
-        companyId: 1,
-      });
-      expect(mockReconciliationItemRepo.findManyWhere).toHaveBeenCalledWith({
-        jobCardId: 1,
-        companyId: 1,
-      });
-      expect(mockReconciliationDocumentRepo.findManyWhere).toHaveBeenCalledWith({
-        jobCardId: 1,
-        companyId: 1,
-      });
+      expect(mockStockReturnRepo.deleteByJobCardForCompany).toHaveBeenCalledWith(1, 1);
+      expect(mockAllocationRepo.deleteByJobCardForCompany).toHaveBeenCalledWith(1, 1);
+      expect(mockReconciliationItemRepo.findForJobCard).toHaveBeenCalledWith(1, 1);
+      expect(mockReconciliationDocumentRepo.findForJobCard).toHaveBeenCalledWith(1, 1);
       expect(mockJobCardLineItemRepo.deleteForJobCard).toHaveBeenCalledWith(1);
-      expect(mockJobCardRepo.remove).toHaveBeenCalledWith(card);
+      expect(mockJobCardRepo.removeForCompany).toHaveBeenCalledWith(1, card);
     });
 
     it("throws NotFoundException when job card missing", async () => {
       mockJobCardRepo.findOne.mockResolvedValue(null);
 
       await expect(service.remove(1, 999)).rejects.toThrow(NotFoundException);
-      expect(mockJobCardRepo.remove).not.toHaveBeenCalled();
+      expect(mockJobCardRepo.removeForCompany).not.toHaveBeenCalled();
     });
   });
 
@@ -555,7 +550,8 @@ describe("JobCardService", () => {
       const result = await service.approveOverAllocation(1, 5, 99);
 
       expect(mockStockItemRepo.decrementQuantityForCompany).toHaveBeenCalledWith(10, 1, 10, true);
-      expect(mockAllocationRepo.save).toHaveBeenCalledWith(
+      expect(mockAllocationRepo.saveForCompany).toHaveBeenCalledWith(
+        1,
         expect.objectContaining({
           pendingApproval: false,
           approvedByManagerId: 99,
@@ -638,7 +634,8 @@ describe("JobCardService", () => {
 
       const result = await service.rejectOverAllocation(1, 5, "Exceeds budget");
 
-      expect(mockAllocationRepo.save).toHaveBeenCalledWith(
+      expect(mockAllocationRepo.saveForCompany).toHaveBeenCalledWith(
+        1,
         expect.objectContaining({
           pendingApproval: false,
           rejectionReason: "Exceeds budget",
@@ -678,7 +675,8 @@ describe("JobCardService", () => {
       const result = await service.undoAllocation(1, 5, user);
 
       expect(mockStockItemRepo.incrementQuantityForCompany).toHaveBeenCalledWith(10, 1, 10);
-      expect(mockAllocationRepo.save).toHaveBeenCalledWith(
+      expect(mockAllocationRepo.saveForCompany).toHaveBeenCalledWith(
+        1,
         expect.objectContaining({
           undone: true,
           undoneByName: "Admin User",
@@ -831,7 +829,8 @@ describe("JobCardService", () => {
       await service.uploadAllocationPhoto(1, 5, file);
 
       expect(mockStorageService.upload).toHaveBeenCalledWith(file, "stock-control/allocations");
-      expect(mockAllocationRepo.save).toHaveBeenCalledWith(
+      expect(mockAllocationRepo.saveForCompany).toHaveBeenCalledWith(
+        1,
         expect.objectContaining({ photoUrl: "https://s3.example.com/photo.jpg" }),
       );
     });

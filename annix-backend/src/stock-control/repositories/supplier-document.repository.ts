@@ -1,4 +1,6 @@
-import { CrudRepository, type DeepPartial } from "../../lib/persistence/crud-repository";
+import type { DeepPartial } from "../../lib/persistence/crud-repository";
+import { TenantScopedRepository } from "../../lib/persistence/tenant-scoped-repository";
+import type { TransactionContext } from "../../lib/persistence/transaction-context";
 import { SupplierDocument } from "../entities/supplier-document.entity";
 
 export interface SupplierDocumentQueryFilters {
@@ -6,7 +8,10 @@ export interface SupplierDocumentQueryFilters {
   docType?: string;
 }
 
-export abstract class SupplierDocumentRepository extends CrudRepository<SupplierDocument> {
+export abstract class SupplierDocumentRepository extends TenantScopedRepository<SupplierDocument> {
+  abstract withTransaction(context: TransactionContext): SupplierDocumentRepository;
+  abstract saveForCompany(companyId: number, entity: SupplierDocument): Promise<SupplierDocument>;
+  abstract removeForCompany(companyId: number, entity: SupplierDocument): Promise<void>;
   abstract build(data: DeepPartial<SupplierDocument>): SupplierDocument;
   abstract findAllFilteredForCompany(
     companyId: number,

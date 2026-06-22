@@ -1,8 +1,12 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { Model } from "mongoose";
-import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import type { ClientSession, Model } from "mongoose";
+import { MongoTenantScopedRepository } from "../../lib/persistence/mongo-tenant-scoped-repository";
 import { nestPopulate } from "../../lib/persistence/nest-populate";
+import {
+  MongoTransactionContext,
+  type TransactionContext,
+} from "../../lib/persistence/transaction-context";
 import {
   AdminTransferStatus,
   StockControlAdminTransfer,
@@ -11,14 +15,45 @@ import { StockControlAdminTransferRepository } from "./stock-control-admin-trans
 
 @Injectable()
 export class MongoStockControlAdminTransferRepository
-  extends MongoCrudRepository<StockControlAdminTransfer>
+  extends MongoTenantScopedRepository<StockControlAdminTransfer>
   implements StockControlAdminTransferRepository
 {
   constructor(
     @InjectModel("StockControlAdminTransfer")
     model: Model<StockControlAdminTransfer>,
+    @Optional() session: ClientSession | null = null,
   ) {
-    super(model);
+    super(model, session);
+  }
+
+  withTransaction(context: TransactionContext): MongoStockControlAdminTransferRepository {
+    if (!(context instanceof MongoTransactionContext)) {
+      throw new Error(
+        "MongoStockControlAdminTransferRepository requires a MongoTransactionContext",
+      );
+    }
+    return this.cloneForSession(context.session);
+  }
+
+  protected cloneForSession(session: ClientSession): MongoStockControlAdminTransferRepository {
+    return new MongoStockControlAdminTransferRepository(this.model, session);
+  }
+
+  async saveForCompany(
+    companyId: number,
+    entity: StockControlAdminTransfer,
+  ): Promise<StockControlAdminTransfer> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Admin transfer does not belong to the requesting company");
+    }
+    return this.save(entity);
+  }
+
+  async removeForCompany(companyId: number, entity: StockControlAdminTransfer): Promise<void> {
+    if (entity.companyId !== companyId) {
+      throw new Error("Admin transfer does not belong to the requesting company");
+    }
+    await this.remove(entity);
   }
 
   async findPendingForCompany(companyId: number): Promise<StockControlAdminTransfer | null> {

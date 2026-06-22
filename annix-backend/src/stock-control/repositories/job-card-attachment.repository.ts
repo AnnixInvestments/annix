@@ -1,7 +1,12 @@
-import { CrudRepository, type DeepPartial } from "../../lib/persistence/crud-repository";
+import type { DeepPartial } from "../../lib/persistence/crud-repository";
+import { TenantScopedRepository } from "../../lib/persistence/tenant-scoped-repository";
+import type { TransactionContext } from "../../lib/persistence/transaction-context";
 import { ExtractionStatus, JobCardAttachment } from "../entities/job-card-attachment.entity";
 
-export abstract class JobCardAttachmentRepository extends CrudRepository<JobCardAttachment> {
+export abstract class JobCardAttachmentRepository extends TenantScopedRepository<JobCardAttachment> {
+  abstract withTransaction(context: TransactionContext): JobCardAttachmentRepository;
+  abstract saveForCompany(companyId: number, entity: JobCardAttachment): Promise<JobCardAttachment>;
+  abstract removeForCompany(companyId: number, entity: JobCardAttachment): Promise<void>;
   abstract findForJobCard(jobCardId: number, companyId: number): Promise<JobCardAttachment[]>;
   abstract findOneForJobCard(
     attachmentId: number,

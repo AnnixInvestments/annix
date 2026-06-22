@@ -79,7 +79,7 @@ export class ReconciliationDocumentService {
     }
 
     await this.storageService.delete(doc.filePath).catch(() => {});
-    await this.docRepo.remove(doc);
+    await this.docRepo.removeForCompany(companyId, doc);
   }
 
   async presignedUrl(companyId: number, id: number): Promise<string> {
