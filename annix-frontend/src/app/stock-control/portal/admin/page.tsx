@@ -5,6 +5,8 @@ import { useVisibleNavItems } from "../../hooks/useVisibleNavItems";
 
 const DESCRIPTIONS: Record<string, string> = {
   "inbound-emails": "Monitor and manage documents received via email",
+  "boiler-control-docs":
+    "Sequence of operations & I/O schedule for the steam boiler LOGO! controller (admin reference)",
   "paint-pricing": "Manage paint cost inputs and sell-price-per-m² calculations",
   "paint-quote": "Quote coating work — sell price per m² and total from a paint, area and tier",
   "rubber-pricing":
