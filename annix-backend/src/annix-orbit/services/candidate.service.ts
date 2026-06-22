@@ -69,6 +69,18 @@ export class CandidateService {
     });
   }
 
+  async createForCompany(
+    companyId: number,
+    jobPostingId: number,
+    data: Partial<Candidate>,
+  ): Promise<Candidate> {
+    const jobPosting = await this.jobPostingRepo.findByIdForCompany(jobPostingId, companyId);
+    if (!jobPosting) {
+      throw new NotFoundException("Job posting not found");
+    }
+    return this.create(jobPostingId, data);
+  }
+
   async findByJobPosting(
     companyId: number,
     jobPostingId: number,

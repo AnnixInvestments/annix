@@ -77,6 +77,7 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
   const profileStatusQuery = useOrbitMyProfileStatus(isAuthenticated && isIndividual);
   const seekerAssistantFlag = useFeatureFlagEnabled("ANNIX_ORBIT_SEEKER_ASSISTANT");
   const profileStatus = profileStatusQuery.data;
+  const statusLoading = profileStatusQuery.isLoading;
   const hasCv = profileStatus ? profileStatus.hasCv : null;
   const onboardingComplete = profileStatus ? profileStatus.onboardingComplete : null;
   const eeDisclosed = profileStatus ? profileStatus.eeDisclosed : false;
@@ -122,6 +123,7 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
       router.push("/annix/orbit/portal/dashboard");
       return;
     }
+    if (statusLoading) return;
     if (onboardingRedirectTarget) {
       router.replace(onboardingRedirectTarget);
       return;
@@ -131,6 +133,7 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
     }
   }, [
     isLoading,
+    statusLoading,
     isAuthenticated,
     user,
     isIndividual,

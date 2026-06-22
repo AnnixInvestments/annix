@@ -1,15 +1,22 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { FormModal } from "@/app/components/modals/FormModal";
 import { useToast } from "@/app/components/Toast";
 import { DateInput } from "@/app/components/ui/DateInput";
-import type { SeekerInterviewBooking, SeekerInterviewEvent } from "@/app/lib/api/annixOrbitApi";
+import type {
+  InterviewPrepPack,
+  SeekerInterviewBooking,
+  SeekerInterviewEvent,
+} from "@/app/lib/api/annixOrbitApi";
+import { metricsApi } from "@/app/lib/api/metricsApi";
 import { DateTime, formatTimeZA, fromISO, now } from "@/app/lib/datetime";
 import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
+  useInterviewPrepGenerate,
   useOrbitCreateSeekerInterviewEvent,
   useOrbitDeleteSeekerInterviewEvent,
   useOrbitSeekerApplications,
@@ -17,6 +24,9 @@ import {
   useOrbitUpdateSeekerInterviewEvent,
 } from "@/app/lib/query/hooks";
 import { AddToCalendarButtons, type CalendarLinkEvent } from "./calendarLinks";
+import { InterviewPrepModal } from "./InterviewPrepModal";
+
+const PREP_ESTIMATED_MS = 20000;
 
 const GoogleMapLocationPicker = dynamic(() => import("@/app/components/GoogleMapLocationPicker"), {
   ssr: false,
@@ -34,8 +44,15 @@ interface CalendarItem {
   key: string;
   kind: "booking" | "self";
   selfId: number | null;
+  bookingId: number | null;
   startsAt: string;
   title: string;
+  linkEvent: CalendarLinkEvent;
+}
+
+interface BookingView {
+  bookingId: number;
+  roleTitle: string;
   linkEvent: CalendarLinkEvent;
 }
 
@@ -120,7 +137,44 @@ export function InterviewCalendar(props: {
   const [monthAnchor, setMonthAnchor] = useState(() => now().startOf("month"));
   const [form, setForm] = useState<EventFormState | null>(null);
   const [viewEvent, setViewEvent] = useState<CalendarLinkEvent | null>(null);
+  const [bookingView, setBookingView] = useState<BookingView | null>(null);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [prepPack, setPrepPack] = useState<InterviewPrepPack | null>(null);
+  const [prepRoleTitle, setPrepRoleTitle] = useState("");
+  const [prepEstimateMs, setPrepEstimateMs] = useState(PREP_ESTIMATED_MS);
+
+  const prepMutation = useInterviewPrepGenerate();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
+
+  useEffect(() => {
+    metricsApi
+      .extractionStats("annix-orbit-nix-seeker", "interview-prep")
+      .then((stats) => {
+        if (stats.averageMs) setPrepEstimateMs(stats.averageMs);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handlePrep = async (booking: BookingView) => {
+    showExtraction({
+      brand: "annix-orbit",
+      label: "Nix is preparing you for this interview…",
+      estimatedDurationMs: prepEstimateMs,
+    });
+    try {
+      const pack = await prepMutation.mutateAsync(booking.bookingId);
+      setPrepRoleTitle(booking.roleTitle);
+      setPrepPack(pack);
+      setBookingView(null);
+    } catch {
+      alert({
+        message: "Couldn't prepare for this interview — please try again.",
+        variant: "error",
+      });
+    } finally {
+      hideExtraction();
+    }
+  };
 
   const prefill = props.prefill;
   const [prefillConsumed, setPrefillConsumed] = useState(false);
@@ -155,6 +209,7 @@ export function InterviewCalendar(props: {
         key: `booking-${booking.id}`,
         kind: "booking",
         selfId: null,
+        bookingId: booking.id,
         startsAt: slot.startsAt,
         title,
         linkEvent: {
@@ -175,6 +230,7 @@ export function InterviewCalendar(props: {
         key: `self-${event.id}`,
         kind: "self",
         selfId: event.id,
+        bookingId: null,
         startsAt: event.startsAt,
         title,
         linkEvent: {
@@ -395,6 +451,12 @@ export function InterviewCalendar(props: {
                         e.stopPropagation();
                         if (isSelf && item.selfId != null) {
                           openEditEvent(item.selfId);
+                        } else if (item.bookingId != null) {
+                          setBookingView({
+                            bookingId: item.bookingId,
+                            roleTitle: item.title,
+                            linkEvent: item.linkEvent,
+                          });
                         } else {
                           setViewEvent(item.linkEvent);
                         }
@@ -596,6 +658,47 @@ export function InterviewCalendar(props: {
           </div>
         </FormModal>
       ) : null}
+      {bookingView ? (
+        <FormModal
+          isOpen={true}
+          onClose={() => setBookingView(null)}
+          onSubmit={() => setBookingView(null)}
+          title={bookingView.linkEvent.title.replace(/^Interview:\s*/, "")}
+          hideFooter
+        >
+          <div className="space-y-3">
+            <p className="text-sm text-gray-700">
+              {fromISO(bookingView.linkEvent.startsAt).toFormat("EEEE d LLLL yyyy")} ·{" "}
+              {formatTimeZA(bookingView.linkEvent.startsAt)}
+            </p>
+            {bookingView.linkEvent.location ? (
+              <p className="text-sm text-gray-600">{bookingView.linkEvent.location}</p>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => handlePrep(bookingView)}
+              disabled={prepMutation.isPending}
+              className="w-full rounded-lg bg-[var(--brand-accent,#FF8A00)] px-4 py-2.5 font-semibold text-[var(--brand-navbar,#1a1a3a)] hover:opacity-90 disabled:opacity-60"
+            >
+              Prep for this interview
+            </button>
+            <p className="text-xs text-gray-500">
+              Nix builds a job-specific prep pack from this role and your CV.
+            </p>
+            <div className="pt-2 border-t border-gray-100">
+              <AddToCalendarButtons event={bookingView.linkEvent} />
+            </div>
+          </div>
+        </FormModal>
+      ) : null}
+
+      <InterviewPrepModal
+        isOpen={prepPack != null}
+        onClose={() => setPrepPack(null)}
+        roleTitle={prepRoleTitle}
+        pack={prepPack}
+      />
+
       {ConfirmDialog}
       {AlertDialog}
     </div>

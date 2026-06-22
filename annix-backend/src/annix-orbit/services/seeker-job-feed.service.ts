@@ -84,6 +84,36 @@ const NIX_SEARCH_METRIC_CATEGORY = "annix-orbit-nix-seeker";
 const NIX_SEARCH_METRIC_OPERATION = "job-search";
 const NIX_SEARCH_FALLBACK_MS = 90_000;
 
+interface ApplyClickJobSnapshot {
+  jobTitle: string | null;
+  jobCompany: string | null;
+  jobLocation: string | null;
+  jobSalaryMin: number | null;
+  jobSalaryMax: number | null;
+  jobSalaryCurrency: string | null;
+}
+
+function applyClickJobSnapshotFromJob(job: ExternalJob | null): ApplyClickJobSnapshot {
+  if (!job) {
+    return {
+      jobTitle: null,
+      jobCompany: null,
+      jobLocation: null,
+      jobSalaryMin: null,
+      jobSalaryMax: null,
+      jobSalaryCurrency: null,
+    };
+  }
+  return {
+    jobTitle: job.title,
+    jobCompany: job.company,
+    jobLocation: job.locationArea ?? job.locationRaw ?? null,
+    jobSalaryMin: job.salaryMin,
+    jobSalaryMax: job.salaryMax,
+    jobSalaryCurrency: job.salaryCurrency,
+  };
+}
+
 export interface SeekerJobMatch {
   matchId: number;
   candidateId: number;
@@ -1465,6 +1495,14 @@ export class SeekerJobFeedService {
       candidateId = candidates[0].id;
     }
 
+    const externalJob =
+      input.externalJobId !== null
+        ? await this.externalJobRepo.findById(input.externalJobId)
+        : null;
+    if (input.externalJobId !== null && !externalJob) {
+      return { recorded: false, clickId: null };
+    }
+
     if (input.externalJobId !== null && candidateId !== null) {
       const cutoff = fromJSDate(new Date(nowMillis() - APPLY_CLICK_DEDUP_MS)).toJSDate();
       const existing = await this.applyClickRepo.findRecentClick(
@@ -1477,7 +1515,7 @@ export class SeekerJobFeedService {
       }
     }
 
-    const jobSnapshot = await this.applyClickJobSnapshot(input.externalJobId);
+    const jobSnapshot = applyClickJobSnapshotFromJob(externalJob);
     const saved = await this.applyClickRepo.create({
       candidateId,
       externalJobId: input.externalJobId,
@@ -1495,37 +1533,6 @@ export class SeekerJobFeedService {
       );
     }
     return { recorded: true, clickId: saved.id };
-  }
-
-  // Denormalise the job's display fields onto the apply-click so the seeker's
-  // application survives the external job being pruned off the board later.
-  private async applyClickJobSnapshot(externalJobId: number | null): Promise<{
-    jobTitle: string | null;
-    jobCompany: string | null;
-    jobLocation: string | null;
-    jobSalaryMin: number | null;
-    jobSalaryMax: number | null;
-    jobSalaryCurrency: string | null;
-  }> {
-    const empty = {
-      jobTitle: null,
-      jobCompany: null,
-      jobLocation: null,
-      jobSalaryMin: null,
-      jobSalaryMax: null,
-      jobSalaryCurrency: null,
-    };
-    if (externalJobId === null) return empty;
-    const job = await this.externalJobRepo.findById(externalJobId);
-    if (!job) return empty;
-    return {
-      jobTitle: job.title,
-      jobCompany: job.company,
-      jobLocation: job.locationArea ?? job.locationRaw ?? null,
-      jobSalaryMin: job.salaryMin,
-      jobSalaryMax: job.salaryMax,
-      jobSalaryCurrency: job.salaryCurrency,
-    };
   }
 
   async matchTierForSeeker(email: string | null): Promise<{

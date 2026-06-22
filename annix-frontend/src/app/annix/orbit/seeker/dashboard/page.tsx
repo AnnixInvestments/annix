@@ -33,6 +33,7 @@ const ICON_PROFILE =
   "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z";
 
 const STATUS_LABEL: Record<SeekerApplicationStatus, string> = {
+  saved: "Saved",
   applied: "Applied",
   interviewing: "Interviewing",
   rejected: "Rejected",
@@ -41,6 +42,7 @@ const STATUS_LABEL: Record<SeekerApplicationStatus, string> = {
 };
 
 const STATUS_CLASS: Record<SeekerApplicationStatus, string> = {
+  saved: "bg-slate-50 text-slate-700 border-slate-200 dark:text-slate-300",
   applied: "bg-blue-50 text-blue-700 border-blue-200 dark:text-blue-300",
   interviewing: "bg-amber-50 text-amber-800 border-amber-200",
   rejected: "bg-red-50 text-red-700 border-red-200 dark:text-red-300",

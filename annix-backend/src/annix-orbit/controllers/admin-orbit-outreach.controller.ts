@@ -23,6 +23,8 @@ import {
   ValidateNested,
 } from "class-validator";
 import { AdminAuthGuard } from "../../admin/guards/admin-auth.guard";
+import { Roles } from "../../auth/roles.decorator";
+import { RolesGuard } from "../../auth/roles.guard";
 import {
   OrbitOutreachService,
   type OutreachEnvironment,
@@ -112,7 +114,7 @@ class ScheduleOutreachDto extends SendOutreachDto {
 }
 
 @Controller("admin/annix-orbit/outreach")
-@UseGuards(AdminAuthGuard)
+@UseGuards(AdminAuthGuard, RolesGuard)
 export class AdminOrbitOutreachController {
   constructor(private readonly service: OrbitOutreachService) {}
 
@@ -138,44 +140,52 @@ export class AdminOrbitOutreachController {
   }
 
   @Get("assets")
+  @Roles("admin")
   assets() {
     return this.service.listAssets();
   }
 
   @Post("assets")
+  @Roles("admin")
   @UseInterceptors(FileInterceptor("file"))
   uploadAsset(@Body() dto: UploadOutreachAssetDto, @UploadedFile() file: Express.Multer.File) {
     return this.service.uploadAsset(dto.slot, dto.label ?? null, file);
   }
 
   @Delete("assets/:id")
+  @Roles("admin")
   async deleteAsset(@Param("id") id: string) {
     await this.service.deleteAsset(id);
     return { ok: true };
   }
 
   @Post("send")
+  @Roles("admin")
   send(@Body() dto: SendOutreachDto) {
     return this.service.send(this.toInput(dto));
   }
 
   @Get("schedules")
+  @Roles("admin")
   schedules() {
     return this.service.listSchedules();
   }
 
   @Post("schedule")
+  @Roles("admin")
   schedule(@Body() dto: ScheduleOutreachDto) {
     return this.service.schedule(this.toInput(dto), dto.scheduledAt);
   }
 
   @Delete("schedules/:id")
+  @Roles("admin")
   async cancelSchedule(@Param("id") id: string) {
     await this.service.cancelSchedule(id);
     return { ok: true };
   }
 
   @Post("dispatch-now")
+  @Roles("admin")
   dispatchNow() {
     return this.service.runDueSchedulesNow();
   }

@@ -1,7 +1,3 @@
-// "saved_job" and "used_interview_prep" were removed from the funnel: their
-// features are not built (no UI/endpoint, events never fired), so they could
-// never be completed and only made the /N count misleading. Re-add them when
-// the save-a-job and interview-prep features ship.
 export const SEEKER_WORKFLOW_STEPS = [
   "registered_account",
   "completed_profile",
@@ -12,6 +8,7 @@ export const SEEKER_WORKFLOW_STEPS = [
   "cv_improvement_generated",
   "viewed_matched_jobs",
   "applied_job",
+  "used_interview_prep",
   "updated_profile_after_suggestion",
 ] as const;
 
@@ -28,6 +25,7 @@ export const SEEKER_EVENTS = {
   cvImprovementGenerated: "seeker_cv_improvement_generated",
   jobsViewed: "seeker_jobs_viewed",
   jobApplied: "seeker_job_applied",
+  interviewPrepUsed: "seeker_interview_prep_used",
   profileUpdated: "seeker_profile_updated",
 } as const;
 
@@ -41,6 +39,7 @@ export const SEEKER_EVENT_TO_STEP: Record<string, SeekerWorkflowStepKey> = {
   seeker_cv_improvement_generated: "cv_improvement_generated",
   seeker_jobs_viewed: "viewed_matched_jobs",
   seeker_job_applied: "applied_job",
+  seeker_interview_prep_used: "used_interview_prep",
   seeker_profile_updated: "updated_profile_after_suggestion",
 };
 

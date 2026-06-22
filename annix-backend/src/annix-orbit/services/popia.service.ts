@@ -19,6 +19,7 @@ import { AnnixOrbitEeConsentTextVersionRepository } from "../repositories/annix-
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import { CandidateRepository } from "../repositories/candidate.repository";
 import { CandidateReferenceRepository } from "../repositories/candidate-reference.repository";
+import { JobPostingRepository } from "../repositories/job-posting.repository";
 import { CvAuditService, ErasureReason } from "./cv-audit.service";
 
 export interface RecordEeConsentInput {
@@ -83,6 +84,7 @@ export class PopiaService {
     private readonly storageService: IStorageService,
     private readonly cvAuditService: CvAuditService,
     private readonly profileRepo: AnnixOrbitProfileRepository,
+    private readonly jobPostingRepo: JobPostingRepository,
   ) {}
 
   // Raw ID/passport images are only retained while a review/mismatch waits for
@@ -329,7 +331,15 @@ export class PopiaService {
     }
   }
 
-  async aggregateForJob(jobPostingId: number, actorId: number | null): Promise<EeJobAggregate> {
+  async aggregateForJob(
+    companyId: number,
+    jobPostingId: number,
+    actorId: number | null,
+  ): Promise<EeJobAggregate> {
+    const posting = await this.jobPostingRepo.findByIdForCompany(jobPostingId, companyId);
+    if (!posting) {
+      throw new NotFoundException("Job posting not found");
+    }
     const rows = await this.eeAttributesRepo.aggregateForJob(jobPostingId);
 
     await this.cvAuditService.logEeAttributesAccess(

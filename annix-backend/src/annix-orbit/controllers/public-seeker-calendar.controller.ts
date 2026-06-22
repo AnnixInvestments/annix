@@ -1,8 +1,11 @@
-import { Controller, Get, Param, Res } from "@nestjs/common";
+import { Controller, Get, Param, Res, UseGuards } from "@nestjs/common";
+import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
 import type { Response } from "express";
 import { SeekerCalendarService } from "../services/seeker-calendar.service";
 
 @Controller("public/annix-orbit/calendar")
+@UseGuards(ThrottlerGuard)
+@Throttle({ default: { limit: 20, ttl: 60000 } })
 export class PublicSeekerCalendarController {
   constructor(private readonly seekerCalendarService: SeekerCalendarService) {}
 

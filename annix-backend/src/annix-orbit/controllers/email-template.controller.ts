@@ -11,7 +11,9 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { CvEmailTemplateKind } from "../entities/annix-orbit-email-template.entity";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { EmailTemplateService } from "../services/email-template.service";
 
 const KIND_VALUES = Object.values(CvEmailTemplateKind) as string[];
@@ -24,7 +26,8 @@ const parseKind = (raw: string): CvEmailTemplateKind => {
 };
 
 @Controller("annix-orbit/email-templates")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.VIEWER)
 export class EmailTemplateController {
   constructor(private readonly templates: EmailTemplateService) {}
 
@@ -39,6 +42,7 @@ export class EmailTemplateController {
   }
 
   @Patch(":kind")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   async update(
     @Request() req: { user: { companyId: number } },
     @Param("kind") kind: string,
@@ -61,11 +65,13 @@ export class EmailTemplateController {
   }
 
   @Delete(":kind")
+  @AnnixOrbitRoles(AnnixOrbitRole.ADMIN)
   async reset(@Request() req: { user: { companyId: number } }, @Param("kind") kind: string) {
     return this.templates.resetToDefault(req.user.companyId, parseKind(kind));
   }
 
   @Post(":kind/nix-draft")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   async nixDraft(
     @Request() req: { user: { companyId: number } },
     @Param("kind") kind: string,

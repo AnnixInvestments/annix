@@ -18,13 +18,16 @@ import {
   CreateAnnixOrbitTalentCandidateDto,
   UpdateAnnixOrbitTalentCandidateDto,
 } from "../dto/annix-orbit-talent-candidate.dto";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { AnnixOrbitTalentCandidateService } from "../services/annix-orbit-talent-candidate.service";
 
 const CV_MAX_BYTES = 10 * 1024 * 1024;
 
 @Controller("annix-orbit/talent-candidates")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.VIEWER)
 export class AnnixOrbitTalentCandidateController {
   constructor(private readonly candidateService: AnnixOrbitTalentCandidateService) {}
 
@@ -44,6 +47,7 @@ export class AnnixOrbitTalentCandidateController {
   }
 
   @Post("extract-cv")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   @UseInterceptors(FileInterceptor("file", { limits: { fileSize: CV_MAX_BYTES } }))
   async extractCv(
     @Request() req: { user: { companyId: number } },
@@ -56,6 +60,7 @@ export class AnnixOrbitTalentCandidateController {
   }
 
   @Post()
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   create(
     @Request() req: { user: { companyId: number; id: number } },
     @Body() dto: CreateAnnixOrbitTalentCandidateDto,
@@ -64,6 +69,7 @@ export class AnnixOrbitTalentCandidateController {
   }
 
   @Put(":id")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   update(
     @Request() req: { user: { companyId: number; id: number; name: string } },
     @Param("id", ParseIntPipe) id: number,
@@ -78,6 +84,7 @@ export class AnnixOrbitTalentCandidateController {
   }
 
   @Delete(":id")
+  @AnnixOrbitRoles(AnnixOrbitRole.ADMIN)
   async remove(
     @Request() req: { user: { companyId: number } },
     @Param("id", ParseIntPipe) id: number,

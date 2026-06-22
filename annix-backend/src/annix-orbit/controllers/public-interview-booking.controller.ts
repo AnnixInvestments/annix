@@ -1,7 +1,18 @@
-import { Controller, Get, NotFoundException, Param, ParseIntPipe, Post } from "@nestjs/common";
+import {
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  ParseIntPipe,
+  Post,
+  UseGuards,
+} from "@nestjs/common";
+import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
 import { InterviewBookingService } from "../services/interview-booking.service";
 
 @Controller("public/annix-orbit/interview-booking")
+@UseGuards(ThrottlerGuard)
+@Throttle({ default: { limit: 20, ttl: 60000 } })
 export class PublicInterviewBookingController {
   constructor(private readonly bookings: InterviewBookingService) {}
 

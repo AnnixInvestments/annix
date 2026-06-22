@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { chunk } from "es-toolkit/compat";
 import type { Model } from "mongoose";
+import { now } from "../../lib/datetime";
 import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import type { Candidate } from "../entities/candidate.entity";
@@ -24,7 +25,7 @@ function escapeRegex(value: string): string {
 function buildLiveJobFilter(filters: RecommendedMatchCountFilters | null): Record<string, unknown> {
   const query: Record<string, unknown> = {
     delisted: { $ne: true },
-    $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
+    $or: [{ expiresAt: null }, { expiresAt: { $gt: now().toJSDate() } }],
   };
   const and: Array<Record<string, unknown>> = [];
 
@@ -94,7 +95,7 @@ export class MongoCandidateJobMatchRepository
     scores: MatchScores,
   ): Promise<CandidateJobMatch> {
     const nextId = await this.nextMatchId();
-    const now = new Date();
+    const timestamp = now().toJSDate();
     const doc = await this.documents
       .findOneAndUpdate(
         { candidateId, externalJobId },
@@ -104,9 +105,9 @@ export class MongoCandidateJobMatchRepository
             structuredScore: scores.structuredScore,
             overallScore: scores.overallScore,
             matchDetails: scores.matchDetails,
-            updatedAt: now,
+            updatedAt: timestamp,
           },
-          $setOnInsert: { _id: nextId, candidateId, externalJobId, createdAt: now },
+          $setOnInsert: { _id: nextId, candidateId, externalJobId, createdAt: timestamp },
         },
         { upsert: true, returnDocument: "after" },
       )
@@ -342,7 +343,7 @@ export class MongoCandidateJobMatchRepository
               {
                 $match: {
                   delisted: { $ne: true },
-                  $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
+                  $or: [{ expiresAt: null }, { expiresAt: { $gt: now().toJSDate() } }],
                 },
               },
               {

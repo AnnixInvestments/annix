@@ -14,11 +14,14 @@ import {
   CreateAnnixOrbitComplianceItemDto,
   UpdateAnnixOrbitComplianceItemDto,
 } from "../dto/annix-orbit-compliance-item.dto";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { AnnixOrbitComplianceItemService } from "../services/annix-orbit-compliance-item.service";
 
 @Controller("annix-orbit/compliance-items")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.VIEWER)
 export class AnnixOrbitComplianceItemController {
   constructor(private readonly complianceService: AnnixOrbitComplianceItemService) {}
 
@@ -33,6 +36,7 @@ export class AnnixOrbitComplianceItemController {
   }
 
   @Post()
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   create(
     @Request() req: { user: { companyId: number } },
     @Body() dto: CreateAnnixOrbitComplianceItemDto,
@@ -41,6 +45,7 @@ export class AnnixOrbitComplianceItemController {
   }
 
   @Put(":id")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   update(
     @Request() req: { user: { companyId: number } },
     @Param("id", ParseIntPipe) id: number,
@@ -50,6 +55,7 @@ export class AnnixOrbitComplianceItemController {
   }
 
   @Delete(":id")
+  @AnnixOrbitRoles(AnnixOrbitRole.ADMIN)
   async remove(
     @Request() req: { user: { companyId: number } },
     @Param("id", ParseIntPipe) id: number,

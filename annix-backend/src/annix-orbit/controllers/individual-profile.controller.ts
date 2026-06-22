@@ -25,8 +25,12 @@ import {
   INDIVIDUAL_DOC_MAX_BYTES,
   isAcceptedDocumentMime,
 } from "../config/individual-documents.config";
+import { CalendarAdvisoryDto } from "../dto/calendar-advisory.dto";
 import {
+  SetPhotoVisibilityDto,
   UpdateCredentialFieldsDto,
+  UpdateNotificationPreferencesDto,
+  UpdateSeekerPreferencesDto,
   UploadIndividualDocumentDto,
 } from "../dto/individual-profile.dto";
 import { NixGeneratedCvDto } from "../dto/nix-generated-cv.dto";
@@ -43,7 +47,6 @@ import { SeekerThrottlerGuard } from "../guards/seeker-throttler.guard";
 import { IndividualProfileService } from "../services/individual-profile.service";
 import { InterviewBookingService } from "../services/interview-booking.service";
 import { NixCvPdfService } from "../services/nix-cv-pdf.service";
-import type { NixCalendarAdvisoryConflict } from "../services/nix-prompts";
 import { NixSeekerAssistService } from "../services/nix-seeker-assist.service";
 
 @Controller("annix-orbit/me")
@@ -87,7 +90,7 @@ export class IndividualProfileController {
   @Patch("preferences")
   updatePreferences(
     @Request() req: { user: { id: number } },
-    @Body() body: { phoneType?: string | null; appGuideSeen?: boolean; ageGroup?: string | null },
+    @Body() body: UpdateSeekerPreferencesDto,
   ) {
     return this.individualProfileService.updateSeekerPreferences(req.user.id, body);
   }
@@ -179,7 +182,7 @@ export class IndividualProfileController {
   }
 
   @Patch("profile/photo/visibility")
-  setPhotoVisibility(@Request() req: { user: { id: number } }, @Body() dto: { visible: boolean }) {
+  setPhotoVisibility(@Request() req: { user: { id: number } }, @Body() dto: SetPhotoVisibilityDto) {
     return this.individualProfileService.setPhotoVisibility(req.user.id, dto.visible === true);
   }
 
@@ -209,8 +212,7 @@ export class IndividualProfileController {
   @Patch("notification-preferences")
   updateNotificationPreferences(
     @Request() req: { user: { id: number } },
-    @Body()
-    body: { matchAlertThreshold?: number; digestEnabled?: boolean; pushEnabled?: boolean },
+    @Body() body: UpdateNotificationPreferencesDto,
   ) {
     return this.individualProfileService.updateNotificationPreferences(req.user.id, body);
   }
@@ -267,6 +269,16 @@ export class IndividualProfileController {
   @Throttle({ default: { limit: 6, ttl: 60000 } })
   nixCvImprovements(@Request() req: { user: { id: number } }) {
     return this.nixSeekerAssistService.cvImprovements(req.user.id);
+  }
+
+  @Post("interview-prep/:interviewId/generate")
+  @UseGuards(SeekerThrottlerGuard)
+  @Throttle({ default: { limit: 6, ttl: 60000 } })
+  nixInterviewPrep(
+    @Param("interviewId", ParseIntPipe) interviewId: number,
+    @Request() req: { user: { id: number } },
+  ) {
+    return this.nixSeekerAssistService.interviewPrep(req.user.id, interviewId);
   }
 
   @Post("nix-wizard/generate-cv")
@@ -359,7 +371,9 @@ export class IndividualProfileController {
   }
 
   @Post("calendar-advisory")
-  async calendarAdvisory(@Body() body: { conflicts: NixCalendarAdvisoryConflict[] }) {
+  @UseGuards(SeekerThrottlerGuard)
+  @Throttle({ default: { limit: 6, ttl: 60000 } })
+  async calendarAdvisory(@Body() body: CalendarAdvisoryDto) {
     const conflicts = body.conflicts ? body.conflicts : [];
     return this.nixSeekerAssistService.calendarAdvisory(conflicts);
   }

@@ -8,7 +8,13 @@ import {
   MaxLength,
   Min,
 } from "class-validator";
+import { OptionalString } from "../../lib/dto/validation-decorators";
 import { CandidateStatus } from "../entities/candidate.entity";
+
+export class CandidateReasonDto {
+  @OptionalString({ maxLength: 1000 })
+  reason?: string;
+}
 
 export class UpdateCandidateStatusDto {
   @IsEnum(CandidateStatus)

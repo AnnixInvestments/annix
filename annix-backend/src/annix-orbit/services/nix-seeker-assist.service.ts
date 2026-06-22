@@ -3,6 +3,7 @@ import {
   HttpException,
   Injectable,
   Logger,
+  NotFoundException,
   ServiceUnavailableException,
 } from "@nestjs/common";
 import { isNumber } from "es-toolkit/compat";
@@ -18,20 +19,24 @@ import {
 } from "../entities/annix-orbit-individual-document.entity";
 import { AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
 import { SEEKER_EVENTS } from "../lib/seeker-testing.constants";
+import { AnnixOrbitCompanyRepository } from "../repositories/annix-orbit-company.repository";
 import { AnnixOrbitIndividualDocumentRepository } from "../repositories/annix-orbit-individual-document.repository";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import { CandidateRepository } from "../repositories/candidate.repository";
+import { InterviewBookingService } from "./interview-booking.service";
 import {
   calendarAdvisoryPrompt,
   credentialPhotoPrompt,
   identityDocumentPrompt,
   identityVerdictPrompt,
+  interviewPrepPrompt,
   type NixCalendarAdvisoryConflict,
   type NixCalendarAdvisoryResponse,
   type NixCredentialPhotoResult,
   type NixGeneratedCv,
   type NixIdentityDocumentResult,
   type NixIdentityVerdictResult,
+  type NixInterviewPrepResponse,
   type NixSeekerCvAssessmentResponse,
   parseNixJson,
   seekerCvGenerationPrompt,
@@ -50,6 +55,154 @@ function telemetryErrorLabel(error: unknown): string {
     return error.name;
   }
   return "UnknownError";
+}
+
+export function normalizeInterviewPrep(raw: unknown): NixInterviewPrepResponse {
+  const obj = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const text = (value: unknown): string => (typeof value === "string" ? value : "");
+  const stringList = (value: unknown): string[] =>
+    Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : [];
+  const objList = (value: unknown): Record<string, unknown>[] =>
+    Array.isArray(value)
+      ? value.filter(
+          (entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === "object",
+        )
+      : [];
+  return {
+    roleSummary: text(obj.roleSummary),
+    likelyQuestions: objList(obj.likelyQuestions).map((entry) => ({
+      question: text(entry.question),
+      whyAsked: text(entry.whyAsked),
+    })),
+    starTalkingPoints: objList(obj.starTalkingPoints).map((entry) => ({
+      competency: text(entry.competency),
+      prompt: text(entry.prompt),
+      pointers: stringList(entry.pointers),
+    })),
+    gapsToBridge: stringList(obj.gapsToBridge),
+    companyContext: stringList(obj.companyContext),
+    questionsToAsk: stringList(obj.questionsToAsk),
+    logistics: stringList(obj.logistics),
+  };
+}
+
+const CV_IMPROVEMENT_AREAS = [
+  "summary",
+  "skills",
+  "experience",
+  "education",
+  "certifications",
+  "formatting",
+  "keywords",
+  "references",
+  "other",
+] as const;
+
+type CvImprovementArea = (typeof CV_IMPROVEMENT_AREAS)[number];
+
+const CV_IMPACT_LEVELS = ["high", "medium", "low"] as const;
+type CvImpactLevel = (typeof CV_IMPACT_LEVELS)[number];
+
+const CV_RANKING_POTENTIALS = ["low", "medium", "strong"] as const;
+type CvRankingPotential = (typeof CV_RANKING_POTENTIALS)[number];
+
+function normalizeText(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function normalizeNullableText(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function normalizeStringList(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === "string")
+    : [];
+}
+
+function normalizeObjectList(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value)
+    ? value.filter(
+        (entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === "object",
+      )
+    : [];
+}
+
+export function normalizeGeneratedCv(raw: unknown): NixGeneratedCv {
+  const obj = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const contact = (obj.contact && typeof obj.contact === "object" ? obj.contact : {}) as Record<
+    string,
+    unknown
+  >;
+  return {
+    fullName: normalizeText(obj.fullName),
+    headlineTitle: normalizeText(obj.headlineTitle),
+    location: normalizeNullableText(obj.location),
+    contact: {
+      email: normalizeNullableText(contact.email),
+      phone: normalizeNullableText(contact.phone),
+      linkedin: normalizeNullableText(contact.linkedin),
+    },
+    professionalSummary: normalizeText(obj.professionalSummary),
+    coreCompetencies: normalizeStringList(obj.coreCompetencies),
+    experience: normalizeObjectList(obj.experience).map((entry) => ({
+      role: normalizeText(entry.role),
+      employer: normalizeText(entry.employer),
+      period: normalizeText(entry.period),
+      location: normalizeNullableText(entry.location),
+      bullets: normalizeStringList(entry.bullets),
+    })),
+    education: normalizeStringList(obj.education),
+    certifications: normalizeStringList(obj.certifications),
+    professionalRegistrations: normalizeStringList(obj.professionalRegistrations),
+    keySkills: normalizeStringList(obj.keySkills),
+    references: normalizeObjectList(obj.references).map((entry) => ({
+      name: normalizeText(entry.name),
+      position: normalizeNullableText(entry.position),
+      company: normalizeNullableText(entry.company),
+      phone: normalizeNullableText(entry.phone),
+      email: normalizeNullableText(entry.email),
+    })),
+    improvementsApplied: normalizeStringList(obj.improvementsApplied),
+    closingNote: normalizeNullableText(obj.closingNote),
+  };
+}
+
+function normalizeCvImprovementArea(value: unknown): CvImprovementArea {
+  return CV_IMPROVEMENT_AREAS.includes(value as CvImprovementArea)
+    ? (value as CvImprovementArea)
+    : "other";
+}
+
+function normalizeCvImpactLevel(value: unknown): CvImpactLevel {
+  return CV_IMPACT_LEVELS.includes(value as CvImpactLevel) ? (value as CvImpactLevel) : "medium";
+}
+
+function normalizeCvRankingPotential(value: unknown): CvRankingPotential {
+  return CV_RANKING_POTENTIALS.includes(value as CvRankingPotential)
+    ? (value as CvRankingPotential)
+    : "medium";
+}
+
+export function normalizeCvAssessment(raw: unknown): NixSeekerCvAssessmentResponse {
+  const obj = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  return {
+    overallScore: coerceOverallScore(obj.overallScore) ?? 0,
+    rankingPotential: normalizeCvRankingPotential(obj.rankingPotential),
+    headline: normalizeText(obj.headline),
+    strengths: normalizeStringList(obj.strengths),
+    improvements: normalizeObjectList(obj.improvements).map((entry) => ({
+      area: normalizeCvImprovementArea(entry.area),
+      priority: normalizeCvImpactLevel(entry.priority),
+      finding: normalizeText(entry.finding),
+      suggestion: normalizeText(entry.suggestion),
+      example: normalizeNullableText(entry.example),
+      rankingImpact: normalizeCvImpactLevel(entry.rankingImpact),
+    })),
+    missingDocumentSuggestions: normalizeStringList(obj.missingDocumentSuggestions),
+    keywordGaps: normalizeStringList(obj.keywordGaps),
+    rewriteSummary: normalizeNullableText(obj.rewriteSummary),
+  };
 }
 
 function coerceOverallScore(value: unknown): number | null {
@@ -145,6 +298,8 @@ export class NixSeekerAssistService {
     private readonly seekerJobFeed: SeekerJobFeedService,
     private readonly seekerTelemetry: SeekerTelemetryService,
     private readonly candidateRepo: CandidateRepository,
+    private readonly interviewBookingService: InterviewBookingService,
+    private readonly companyRepo: AnnixOrbitCompanyRepository,
   ) {}
 
   private async candidateIdForUser(userId: number): Promise<number | null> {
@@ -280,24 +435,21 @@ export class NixSeekerAssistService {
           supportingDocuments,
         });
         const aiResult = await this.callAi(prompt);
-        return parseNixJson<NixSeekerCvAssessmentResponse>(aiResult.content);
+        return normalizeCvAssessment(parseNixJson<NixSeekerCvAssessmentResponse>(aiResult.content));
       });
 
-      const overallScore = coerceOverallScore(result.overallScore);
-      if (overallScore !== null) {
-        result.overallScore = overallScore;
-        try {
-          profile.careerScore = overallScore;
-          profile.careerScoreGeneratedAt = now().toJSDate();
-          await this.profileRepo.save(profile);
-        } catch (saveError) {
-          const message = saveError instanceof Error ? saveError.message : String(saveError);
-          this.logger.warn(`Failed to persist career score: ${message}`);
-        }
-        await this.seekerTelemetry.record(candidateId, SEEKER_EVENTS.careerScoreGenerated, {
-          metadata: { score: overallScore },
-        });
+      const overallScore = result.overallScore;
+      try {
+        profile.careerScore = overallScore;
+        profile.careerScoreGeneratedAt = now().toJSDate();
+        await this.profileRepo.save(profile);
+      } catch (saveError) {
+        const message = saveError instanceof Error ? saveError.message : String(saveError);
+        this.logger.warn(`Failed to persist career score: ${message}`);
       }
+      await this.seekerTelemetry.record(candidateId, SEEKER_EVENTS.careerScoreGenerated, {
+        metadata: { score: overallScore },
+      });
 
       await this.seekerTelemetry.record(candidateId, SEEKER_EVENTS.aiAnalysisCompleted, {
         ok: true,
@@ -312,6 +464,104 @@ export class NixSeekerAssistService {
         durationMs: nowMillis() - startedMs,
       });
       throw error;
+    }
+  }
+
+  async interviewPrep(userId: number, interviewId: number): Promise<NixInterviewPrepResponse> {
+    const profile = await this.profileRepo.findByUserId(userId);
+    if (!profile) {
+      throw new BadRequestException("CV Assistant profile not found");
+    }
+    if (profile.userType !== AnnixOrbitUserType.INDIVIDUAL) {
+      throw new BadRequestException("Interview prep is only for individual job seekers.");
+    }
+    if (!profile.rawCvText || profile.rawCvText.trim().length === 0) {
+      throw new BadRequestException(
+        "Upload your CV first — Nix needs your CV to prepare you for this interview.",
+      );
+    }
+
+    const user = await this.userRepo.findById(userId);
+    const email = user ? user.email : null;
+    if (!email) {
+      throw new NotFoundException("We couldn't find your account.");
+    }
+
+    const bookings = await this.interviewBookingService.bookingsForIndividualByEmail(email);
+    const booking = bookings.find((b) => b.id === interviewId);
+    if (!booking) {
+      throw new NotFoundException("Interview not found for your account.");
+    }
+
+    const jobPosting = booking.slot ? booking.slot.jobPosting : null;
+    const jobTitle = jobPosting ? jobPosting.title : "the interview";
+    const jobDescription = jobPosting ? jobPosting.description : null;
+    const requiredSkills = jobPosting ? (jobPosting.requiredSkills ?? []) : [];
+    const requiredCertifications = jobPosting ? (jobPosting.requiredCertifications ?? []) : [];
+    const jobRequirements = [...requiredSkills, ...requiredCertifications];
+    const jobCompany = jobPosting ? await this.companyNameForPosting(jobPosting.companyId) : null;
+
+    const extractedCv = profile.extractedCvData
+      ? {
+          candidateName: profile.extractedCvData.candidateName,
+          summary: profile.extractedCvData.summary,
+          skills: profile.extractedCvData.skills,
+          experienceYears: profile.extractedCvData.experienceYears,
+          education: profile.extractedCvData.education,
+          certifications: profile.extractedCvData.certifications,
+          professionalRegistrations: profile.extractedCvData.professionalRegistrations,
+          saQualifications: profile.extractedCvData.saQualifications,
+          location: profile.extractedCvData.location,
+        }
+      : null;
+
+    const candidateId = await this.candidateIdForUser(userId);
+    const startedMs = nowMillis();
+
+    try {
+      const result = await this.metrics.time(METRIC_CATEGORY, "interview-prep", async () => {
+        const prompt = interviewPrepPrompt({
+          jobTitle,
+          jobCompany,
+          jobDescription,
+          jobRequirements,
+          cvText: profile.rawCvText as string,
+          extractedCv,
+        });
+        const aiResult = await this.callAi(prompt);
+        return normalizeInterviewPrep(parseNixJson<NixInterviewPrepResponse>(aiResult.content));
+      });
+
+      try {
+        profile.interviewPrepUsedAt = now().toJSDate();
+        await this.profileRepo.save(profile);
+      } catch (saveError) {
+        const message = saveError instanceof Error ? saveError.message : String(saveError);
+        this.logger.warn(`Failed to persist interview prep timestamp: ${message}`);
+      }
+
+      await this.seekerTelemetry.record(candidateId, SEEKER_EVENTS.interviewPrepUsed, {
+        ok: true,
+        durationMs: nowMillis() - startedMs,
+      });
+
+      return result;
+    } catch (error) {
+      await this.seekerTelemetry.record(candidateId, SEEKER_EVENTS.interviewPrepUsed, {
+        ok: false,
+        errorMessage: telemetryErrorLabel(error),
+        durationMs: nowMillis() - startedMs,
+      });
+      throw error;
+    }
+  }
+
+  private async companyNameForPosting(companyId: number): Promise<string | null> {
+    try {
+      const company = await this.companyRepo.findById(companyId);
+      return company ? company.name : null;
+    } catch {
+      return null;
     }
   }
 
@@ -378,7 +628,7 @@ export class NixSeekerAssistService {
         supportingDocuments,
       });
       const aiResult = await this.callAi(prompt);
-      return parseNixJson<NixGeneratedCv>(aiResult.content);
+      return normalizeGeneratedCv(parseNixJson<NixGeneratedCv>(aiResult.content));
     });
 
     const result = dedupeExperienceLocations(generated);

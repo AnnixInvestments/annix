@@ -9,11 +9,14 @@ import {
 } from "@nestjs/common";
 import type { Response } from "express";
 import { fromISO } from "../../lib/datetime";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { type EeReport, EeReportService } from "../services/ee-report.service";
 
 @Controller("annix-orbit/compliance")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.ADMIN)
 export class ComplianceController {
   constructor(private readonly eeReportService: EeReportService) {}
 

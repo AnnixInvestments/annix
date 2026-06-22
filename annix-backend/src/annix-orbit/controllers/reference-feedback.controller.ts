@@ -1,8 +1,11 @@
-import { Body, Controller, Get, Param, Post } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
+import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
 import { SubmitReferenceFeedbackDto } from "../dto/candidate.dto";
 import { ReferenceService } from "../services/reference.service";
 
 @Controller("annix-orbit/reference-feedback")
+@UseGuards(ThrottlerGuard)
+@Throttle({ default: { limit: 20, ttl: 60000 } })
 export class ReferenceFeedbackController {
   constructor(private readonly referenceService: ReferenceService) {}
 

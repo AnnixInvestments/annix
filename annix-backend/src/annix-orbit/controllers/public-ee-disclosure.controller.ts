@@ -1,4 +1,5 @@
-import { Body, Controller, Get, NotFoundException, Param, Post } from "@nestjs/common";
+import { Body, Controller, Get, NotFoundException, Param, Post, UseGuards } from "@nestjs/common";
+import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
 import { SubmitEeDisclosureDto } from "../dto/ee-disclosure.dto";
 import type { EePurpose } from "../entities/annix-orbit-candidate-ee-attributes.entity";
 import {
@@ -11,6 +12,8 @@ import {
 import { EeDisclosureService } from "../services/ee-disclosure.service";
 
 @Controller("public/annix-orbit/ee-disclosure")
+@UseGuards(ThrottlerGuard)
+@Throttle({ default: { limit: 20, ttl: 60000 } })
 export class PublicEeDisclosureController {
   constructor(private readonly disclosure: EeDisclosureService) {}
 

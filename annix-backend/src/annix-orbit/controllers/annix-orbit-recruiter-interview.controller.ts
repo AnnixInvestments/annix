@@ -14,11 +14,14 @@ import {
   CreateAnnixOrbitRecruiterInterviewDto,
   UpdateAnnixOrbitRecruiterInterviewDto,
 } from "../dto/annix-orbit-recruiter-interview.dto";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { AnnixOrbitRecruiterInterviewService } from "../services/annix-orbit-recruiter-interview.service";
 
 @Controller("annix-orbit/recruiter-interviews")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.VIEWER)
 export class AnnixOrbitRecruiterInterviewController {
   constructor(private readonly interviewService: AnnixOrbitRecruiterInterviewService) {}
 
@@ -33,6 +36,7 @@ export class AnnixOrbitRecruiterInterviewController {
   }
 
   @Post()
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   create(
     @Request() req: { user: { companyId: number } },
     @Body() dto: CreateAnnixOrbitRecruiterInterviewDto,
@@ -41,6 +45,7 @@ export class AnnixOrbitRecruiterInterviewController {
   }
 
   @Put(":id")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   update(
     @Request() req: { user: { companyId: number } },
     @Param("id", ParseIntPipe) id: number,
@@ -50,6 +55,7 @@ export class AnnixOrbitRecruiterInterviewController {
   }
 
   @Delete(":id")
+  @AnnixOrbitRoles(AnnixOrbitRole.ADMIN)
   async remove(
     @Request() req: { user: { companyId: number } },
     @Param("id", ParseIntPipe) id: number,

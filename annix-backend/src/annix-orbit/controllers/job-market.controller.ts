@@ -28,6 +28,7 @@ interface AuthRequest {
 
 @Controller("annix-orbit/job-market")
 @UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.VIEWER)
 export class JobMarketController {
   constructor(
     private readonly sourceService: JobMarketSourceService,
@@ -142,6 +143,7 @@ export class JobMarketController {
   }
 
   @Post("candidates/:candidateId/match")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   async triggerCandidateMatch(@Param("candidateId", ParseIntPipe) candidateId: number) {
     const matches = await this.matchingService.matchCandidateToJobs(candidateId);
     return { matched: matches.length };
@@ -153,12 +155,14 @@ export class JobMarketController {
   }
 
   @Post("jobs/:jobId/match")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   async triggerJobMatch(@Param("jobId", ParseIntPipe) jobId: number) {
     const matches = await this.matchingService.matchJobToCandidates(jobId);
     return { matched: matches.length };
   }
 
   @Post("matches/:matchId/dismiss")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   async dismissMatch(@Param("matchId", ParseIntPipe) matchId: number) {
     await this.matchingService.dismissMatch(matchId);
     return { message: "Match dismissed" };

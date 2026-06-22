@@ -11,6 +11,8 @@ import {
 } from "@nestjs/common";
 import { IsBoolean, IsInt, IsOptional, IsString, MaxLength, Min } from "class-validator";
 import { AdminAuthGuard } from "../../admin/guards/admin-auth.guard";
+import { Roles } from "../../auth/roles.decorator";
+import { RolesGuard } from "../../auth/roles.guard";
 import { OrbitCredentialTypeService } from "../services/orbit-credential-type.service";
 
 class CreateCredentialTypeDto {
@@ -59,16 +61,18 @@ class UpdateCredentialTypeDto {
 }
 
 @Controller("admin/annix-orbit/credential-types")
-@UseGuards(AdminAuthGuard)
+@UseGuards(AdminAuthGuard, RolesGuard)
 export class AdminOrbitCredentialTypesController {
   constructor(private readonly service: OrbitCredentialTypeService) {}
 
   @Get()
+  @Roles("admin")
   list() {
     return this.service.listAll();
   }
 
   @Post()
+  @Roles("admin")
   create(@Body() dto: CreateCredentialTypeDto) {
     return this.service.create({
       code: dto.code,
@@ -80,11 +84,13 @@ export class AdminOrbitCredentialTypesController {
   }
 
   @Patch(":id")
+  @Roles("admin")
   update(@Param("id", ParseIntPipe) id: number, @Body() dto: UpdateCredentialTypeDto) {
     return this.service.update(id, dto);
   }
 
   @Delete(":id")
+  @Roles("admin")
   async remove(@Param("id", ParseIntPipe) id: number) {
     await this.service.remove(id);
     return { success: true };

@@ -12,7 +12,9 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { fromISO } from "../../lib/datetime";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { InterviewBookingService } from "../services/interview-booking.service";
 
 interface CreateSlotBody {
@@ -36,7 +38,8 @@ const parseDate = (value: string | undefined, label: string): Date => {
 };
 
 @Controller("annix-orbit/interview-slots")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.VIEWER)
 export class InterviewBookingController {
   constructor(private readonly bookings: InterviewBookingService) {}
 
@@ -57,6 +60,7 @@ export class InterviewBookingController {
   }
 
   @Post("by-job/:jobId")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   async createSlot(
     @Request() req: { user: { companyId: number } },
     @Param("jobId", ParseIntPipe) jobId: number,
@@ -75,6 +79,7 @@ export class InterviewBookingController {
   }
 
   @Delete(":slotId")
+  @AnnixOrbitRoles(AnnixOrbitRole.ADMIN)
   async deleteSlot(
     @Request() req: { user: { companyId: number } },
     @Param("slotId", ParseIntPipe) slotId: number,
@@ -83,6 +88,7 @@ export class InterviewBookingController {
   }
 
   @Post("invite/:candidateId")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   async sendInvite(
     @Request() req: { user: { companyId: number } },
     @Param("candidateId", ParseIntPipe) candidateId: number,

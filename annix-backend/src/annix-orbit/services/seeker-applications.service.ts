@@ -1,11 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import { fromISO, fromJSDate } from "../../lib/datetime";
+import { ExternalJob } from "../entities/external-job.entity";
 import { SeekerApplyClick } from "../entities/seeker-apply-click.entity";
 import { CandidateRepository } from "../repositories/candidate.repository";
 import { ExternalJobRepository } from "../repositories/external-job.repository";
 import { SeekerApplyClickRepository } from "../repositories/seeker-apply-click.repository";
 
 export const APPLICATION_STATUSES = [
+  "saved",
   "applied",
   "interviewing",
   "rejected",
@@ -87,7 +89,21 @@ export class SeekerApplicationsService {
     });
 
     const visible = [...repByKey.values()].filter((click) => click.dismissed !== true);
-    const applications = await Promise.all(visible.map((click) => this.toApplication(click)));
+
+    const jobIds = [
+      ...new Set(
+        visible.map((click) => click.externalJobId).filter((id): id is number => id != null),
+      ),
+    ];
+    const jobs = jobIds.length > 0 ? await this.externalJobRepo.findByIds(jobIds) : [];
+    const jobsById = new Map(jobs.map((job) => [job.id, job]));
+
+    const applications = visible.map((click) =>
+      this.toApplication(
+        click,
+        click.externalJobId != null ? (jobsById.get(click.externalJobId) ?? null) : null,
+      ),
+    );
     return applications.sort((a, b) => {
       if (a.appliedAt > b.appliedAt) return -1;
       if (a.appliedAt < b.appliedAt) return 1;
@@ -126,30 +142,27 @@ export class SeekerApplicationsService {
     return click;
   }
 
-  private async toApplication(click: SeekerApplyClick): Promise<SeekerApplication> {
+  private toApplication(click: SeekerApplyClick, job: ExternalJob | null): SeekerApplication {
     const appliedAt = toIsoString(click.clickedAt as unknown as Date | string);
     const status = resolveStatus(click.status);
     const notes = click.notes ?? null;
-    if (click.externalJobId != null) {
-      const job = await this.externalJobRepo.findById(click.externalJobId);
-      if (job) {
-        const location = job.locationArea ?? job.locationRaw ?? null;
-        const sourceUrl = click.sourceUrl ?? job.sourceUrl;
-        return {
-          id: click.id,
-          externalJobId: click.externalJobId,
-          title: job.title,
-          company: job.company,
-          location,
-          sourceUrl,
-          salaryMin: job.salaryMin,
-          salaryMax: job.salaryMax,
-          salaryCurrency: job.salaryCurrency,
-          status,
-          notes,
-          appliedAt,
-        };
-      }
+    if (click.externalJobId != null && job) {
+      const location = job.locationArea ?? job.locationRaw ?? null;
+      const sourceUrl = click.sourceUrl ?? job.sourceUrl;
+      return {
+        id: click.id,
+        externalJobId: click.externalJobId,
+        title: job.title,
+        company: job.company,
+        location,
+        sourceUrl,
+        salaryMin: job.salaryMin,
+        salaryMax: job.salaryMax,
+        salaryCurrency: job.salaryCurrency,
+        status,
+        notes,
+        appliedAt,
+      };
     }
     // The live job is gone (pruned / re-ingested / delisted) — fall back to the
     // snapshot captured at apply time so the application still shows what was

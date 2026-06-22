@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { EeDisclosureManager } from "@/app/annix/orbit/components/EeDisclosureManager";
 import { useOrbitMyProfileStatus } from "@/app/lib/query/hooks";
 
@@ -10,6 +11,13 @@ export default function SeekerEeAttributesPage() {
   const statusQuery = useOrbitMyProfileStatus();
   const status = statusQuery.data;
   const inOnboarding = status ? status.onboardingComplete === false : false;
+  const alreadyDisclosed = status ? status.eeDisclosed === true : false;
+
+  useEffect(() => {
+    if (inOnboarding && alreadyDisclosed) {
+      router.replace("/annix/orbit/seeker/plans");
+    }
+  }, [inOnboarding, alreadyDisclosed, router]);
 
   const handleUpdated = () => {
     if (inOnboarding) {

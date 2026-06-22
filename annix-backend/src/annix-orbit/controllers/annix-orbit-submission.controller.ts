@@ -14,11 +14,14 @@ import {
   CreateAnnixOrbitSubmissionDto,
   UpdateAnnixOrbitSubmissionDto,
 } from "../dto/annix-orbit-submission.dto";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { AnnixOrbitSubmissionService } from "../services/annix-orbit-submission.service";
 
 @Controller("annix-orbit/submissions")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.VIEWER)
 export class AnnixOrbitSubmissionController {
   constructor(private readonly submissionService: AnnixOrbitSubmissionService) {}
 
@@ -33,6 +36,7 @@ export class AnnixOrbitSubmissionController {
   }
 
   @Post()
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   create(
     @Request() req: { user: { companyId: number; id: number; name: string } },
     @Body() dto: CreateAnnixOrbitSubmissionDto,
@@ -45,6 +49,7 @@ export class AnnixOrbitSubmissionController {
   }
 
   @Put(":id")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   update(
     @Request() req: { user: { companyId: number } },
     @Param("id", ParseIntPipe) id: number,
@@ -54,6 +59,7 @@ export class AnnixOrbitSubmissionController {
   }
 
   @Delete(":id")
+  @AnnixOrbitRoles(AnnixOrbitRole.ADMIN)
   async remove(
     @Request() req: { user: { companyId: number } },
     @Param("id", ParseIntPipe) id: number,

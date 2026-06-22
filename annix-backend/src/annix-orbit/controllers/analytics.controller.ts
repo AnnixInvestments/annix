@@ -1,9 +1,12 @@
 import { Controller, Get, Header, Query, Request, UseGuards } from "@nestjs/common";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { AnalyticsService } from "../services/analytics.service";
 
 @Controller("annix-orbit/analytics")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.VIEWER)
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 

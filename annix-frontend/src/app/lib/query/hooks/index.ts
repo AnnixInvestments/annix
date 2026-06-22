@@ -386,6 +386,7 @@ export {
   useUpdateNixGeneratedCv,
 } from "./annix-orbit/useOrbitIndividualProfile";
 export {
+  useInterviewPrepGenerate,
   useOrbitCalendarAdvisory,
   useOrbitCreateInterviewSlot,
   useOrbitDeleteInterviewSlot,

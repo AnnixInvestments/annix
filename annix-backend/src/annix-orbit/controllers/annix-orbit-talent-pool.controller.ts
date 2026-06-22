@@ -14,11 +14,14 @@ import {
   CreateAnnixOrbitTalentPoolDto,
   UpdateAnnixOrbitTalentPoolDto,
 } from "../dto/annix-orbit-talent-pool.dto";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { AnnixOrbitTalentPoolService } from "../services/annix-orbit-talent-pool.service";
 
 @Controller("annix-orbit/talent-pools")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.VIEWER)
 export class AnnixOrbitTalentPoolController {
   constructor(private readonly poolService: AnnixOrbitTalentPoolService) {}
 
@@ -33,6 +36,7 @@ export class AnnixOrbitTalentPoolController {
   }
 
   @Post()
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   create(
     @Request() req: { user: { companyId: number } },
     @Body() dto: CreateAnnixOrbitTalentPoolDto,
@@ -41,6 +45,7 @@ export class AnnixOrbitTalentPoolController {
   }
 
   @Put(":id")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   update(
     @Request() req: { user: { companyId: number } },
     @Param("id", ParseIntPipe) id: number,
@@ -50,6 +55,7 @@ export class AnnixOrbitTalentPoolController {
   }
 
   @Delete(":id")
+  @AnnixOrbitRoles(AnnixOrbitRole.ADMIN)
   async remove(
     @Request() req: { user: { companyId: number } },
     @Param("id", ParseIntPipe) id: number,

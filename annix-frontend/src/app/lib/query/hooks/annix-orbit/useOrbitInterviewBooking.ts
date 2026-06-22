@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   annixOrbitApiClient,
   type CreateInterviewSlotInput,
+  type InterviewPrepPack,
   type InterviewSlot,
   type NixCalendarAdvisoryConflict,
   type NixCalendarAdvisoryResponse,
@@ -80,5 +81,11 @@ export function useOrbitMyInterviewInvites() {
 export function useOrbitCalendarAdvisory() {
   return useMutation<NixCalendarAdvisoryResponse, Error, NixCalendarAdvisoryConflict[]>({
     mutationFn: (conflicts) => annixOrbitApiClient.calendarAdvisory(conflicts),
+  });
+}
+
+export function useInterviewPrepGenerate() {
+  return useMutation<InterviewPrepPack, Error, number>({
+    mutationFn: (interviewId) => annixOrbitApiClient.interviewPrepGenerate(interviewId),
   });
 }

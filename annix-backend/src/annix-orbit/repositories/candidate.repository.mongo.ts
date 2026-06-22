@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
 import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
@@ -13,13 +13,29 @@ import {
   CandidateRepository,
 } from "./candidate.repository";
 
+const CANDIDATE_QUERY_HARD_CAP = 2000;
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 @Injectable()
 export class MongoCandidateRepository
   extends MongoCrudRepository<Candidate>
   implements CandidateRepository
 {
+  private readonly logger = new Logger(MongoCandidateRepository.name);
+
   constructor(@InjectModel("Candidate", ORBIT_CONNECTION) model: Model<Candidate>) {
     super(model);
+  }
+
+  private warnIfTruncated(method: string, count: number, companyId: number): void {
+    if (count === CANDIDATE_QUERY_HARD_CAP) {
+      this.logger.warn(
+        `${method} hit the ${CANDIDATE_QUERY_HARD_CAP}-row hard cap for company ${companyId} — results truncated`,
+      );
+    }
   }
 
   async findByJobPosting(jobPostingId: number, status?: string): Promise<Candidate[]> {
@@ -75,9 +91,11 @@ export class MongoCandidateRepository
     const docs = await this.documents
       .find(filter)
       .sort({ matchScore: -1, createdAt: -1 })
+      .limit(CANDIDATE_QUERY_HARD_CAP)
       .populate(["jobPosting", "references"])
       .lean()
       .exec();
+    this.warnIfTruncated("findAllForCompany", docs.length, companyId);
     return this.toDomainList(docs);
   }
 
@@ -97,8 +115,10 @@ export class MongoCandidateRepository
     const jobIds = await this.candidateIdsForCompany(companyId);
     const docs = await this.documents
       .find({ jobPostingId: { $in: jobIds } })
+      .limit(CANDIDATE_QUERY_HARD_CAP)
       .lean()
       .exec();
+    this.warnIfTruncated("candidatesForCompany", docs.length, companyId);
     return this.toDomainList(docs);
   }
 
@@ -162,7 +182,7 @@ export class MongoCandidateRepository
   }): Promise<[Candidate[], number]> {
     const filter: Record<string, unknown> = { isTestFixture: false };
     if (params.search) {
-      const term = new RegExp(params.search, "i");
+      const term = new RegExp(escapeRegex(params.search.trim()), "i");
       filter.$or = [{ email: term }, { name: term }];
     }
     const docs = await this.documents
@@ -354,8 +374,14 @@ export class MongoCandidateRepository
   async jobAlertCandidates(): Promise<Candidate[]> {
     const docs = await this.documents
       .find({ jobAlertsOptIn: true, popiaConsent: true })
+      .limit(CANDIDATE_QUERY_HARD_CAP)
       .lean()
       .exec();
+    if (docs.length === CANDIDATE_QUERY_HARD_CAP) {
+      this.logger.warn(
+        `jobAlertCandidates hit the ${CANDIDATE_QUERY_HARD_CAP}-row hard cap — results truncated`,
+      );
+    }
     return this.toDomainList(docs);
   }
 
@@ -417,9 +443,11 @@ export class MongoCandidateRepository
     const docs = await this.documents
       .find(filter)
       .sort({ createdAt: -1 })
+      .limit(CANDIDATE_QUERY_HARD_CAP)
       .populate("jobPosting")
       .lean()
       .exec();
+    this.warnIfTruncated("funnelExportCandidates", docs.length, companyId);
     return this.toDomainList(docs);
   }
 

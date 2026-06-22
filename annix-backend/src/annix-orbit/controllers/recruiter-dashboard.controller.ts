@@ -1,5 +1,7 @@
 import { Controller, Get, Header, Query, Request, UseGuards } from "@nestjs/common";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { RecruiterDashboardService } from "../services/recruiter-dashboard.service";
 
 interface RecruiterAuthRequest {
@@ -7,7 +9,8 @@ interface RecruiterAuthRequest {
 }
 
 @Controller("annix-orbit/recruiter")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.VIEWER)
 export class RecruiterDashboardController {
   constructor(private readonly dashboardService: RecruiterDashboardService) {}
 

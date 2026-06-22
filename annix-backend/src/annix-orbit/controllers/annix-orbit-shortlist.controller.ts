@@ -16,12 +16,15 @@ import {
   CreateAnnixOrbitShortlistDto,
   UpdateAnnixOrbitShortlistDto,
 } from "../dto/annix-orbit-shortlist.dto";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { AnnixOrbitShortlistService } from "../services/annix-orbit-shortlist.service";
 import { AnnixOrbitShortlistDeliveryService } from "../services/annix-orbit-shortlist-delivery.service";
 
 @Controller("annix-orbit/shortlists")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.VIEWER)
 export class AnnixOrbitShortlistController {
   constructor(
     private readonly shortlistService: AnnixOrbitShortlistService,
@@ -41,6 +44,7 @@ export class AnnixOrbitShortlistController {
   }
 
   @Post(":id/email")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   emailToClient(
     @Request() req: { user: { companyId: number; id: number; name?: string } },
     @Param("id", ParseIntPipe) id: number,
@@ -56,6 +60,7 @@ export class AnnixOrbitShortlistController {
   }
 
   @Post(":id/share")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   createShareLink(
     @Request() req: { user: { companyId: number; id: number; name?: string } },
     @Param("id", ParseIntPipe) id: number,
@@ -67,6 +72,7 @@ export class AnnixOrbitShortlistController {
   }
 
   @Delete(":id/share")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   revokeShareLink(
     @Request() req: { user: { companyId: number } },
     @Param("id", ParseIntPipe) id: number,
@@ -85,6 +91,7 @@ export class AnnixOrbitShortlistController {
   }
 
   @Post()
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   create(
     @Request() req: { user: { companyId: number } },
     @Body() dto: CreateAnnixOrbitShortlistDto,
@@ -93,6 +100,7 @@ export class AnnixOrbitShortlistController {
   }
 
   @Put(":id")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   update(
     @Request() req: { user: { companyId: number; id: number; name: string } },
     @Param("id", ParseIntPipe) id: number,
@@ -107,6 +115,7 @@ export class AnnixOrbitShortlistController {
   }
 
   @Delete(":id")
+  @AnnixOrbitRoles(AnnixOrbitRole.ADMIN)
   async remove(
     @Request() req: { user: { companyId: number } },
     @Param("id", ParseIntPipe) id: number,

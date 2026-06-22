@@ -15,7 +15,9 @@ import {
   UpdateAnnixOrbitMemberRoleDto,
 } from "../dto/annix-orbit-team.dto";
 import type { AnnixOrbitRecruiterRole } from "../entities/annix-orbit-profile.entity";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { AnnixOrbitTeamService } from "../services/annix-orbit-team.service";
 
 type TeamRequest = {
@@ -23,7 +25,8 @@ type TeamRequest = {
 };
 
 @Controller("annix-orbit/team")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.VIEWER)
 export class AnnixOrbitTeamController {
   constructor(private readonly teamService: AnnixOrbitTeamService) {}
 
@@ -33,6 +36,7 @@ export class AnnixOrbitTeamController {
   }
 
   @Post("invites")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   invite(@Request() req: TeamRequest, @Body() dto: CreateAnnixOrbitTeamInviteDto) {
     return this.teamService.createInvite(
       req.user.companyId,
@@ -42,6 +46,7 @@ export class AnnixOrbitTeamController {
   }
 
   @Put("members/:userId/role")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   updateRole(
     @Request() req: TeamRequest,
     @Param("userId", ParseIntPipe) userId: number,
@@ -56,6 +61,7 @@ export class AnnixOrbitTeamController {
   }
 
   @Delete("members/:userId")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   removeMember(@Request() req: TeamRequest, @Param("userId", ParseIntPipe) userId: number) {
     return this.teamService.removeMember(
       req.user.companyId,
@@ -65,6 +71,7 @@ export class AnnixOrbitTeamController {
   }
 
   @Delete("invites/:id")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   cancelInvite(@Request() req: TeamRequest, @Param("id", ParseIntPipe) id: number) {
     return this.teamService.cancelInvite(
       req.user.companyId,

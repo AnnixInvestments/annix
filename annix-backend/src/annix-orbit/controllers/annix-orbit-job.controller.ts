@@ -11,11 +11,14 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { CreateAnnixOrbitJobDto, UpdateAnnixOrbitJobDto } from "../dto/annix-orbit-job.dto";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { AnnixOrbitJobService } from "../services/annix-orbit-job.service";
 
 @Controller("annix-orbit/recruiter-jobs")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.VIEWER)
 export class AnnixOrbitJobController {
   constructor(private readonly jobService: AnnixOrbitJobService) {}
 
@@ -38,11 +41,13 @@ export class AnnixOrbitJobController {
   }
 
   @Post()
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   create(@Request() req: { user: { companyId: number } }, @Body() dto: CreateAnnixOrbitJobDto) {
     return this.jobService.createWithEmbedding(req.user.companyId, dto);
   }
 
   @Put(":id")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   update(
     @Request() req: { user: { companyId: number } },
     @Param("id", ParseIntPipe) id: number,
@@ -52,6 +57,7 @@ export class AnnixOrbitJobController {
   }
 
   @Delete(":id")
+  @AnnixOrbitRoles(AnnixOrbitRole.ADMIN)
   async remove(
     @Request() req: { user: { companyId: number } },
     @Param("id", ParseIntPipe) id: number,

@@ -22,6 +22,7 @@ import {
 } from "@/app/lib/query/hooks";
 
 const STATUS_OPTIONS: { value: SeekerApplicationStatus; label: string }[] = [
+  { value: "saved", label: "Saved" },
   { value: "applied", label: "Applied" },
   { value: "interviewing", label: "Interviewing" },
   { value: "rejected", label: "Rejected" },
@@ -30,6 +31,7 @@ const STATUS_OPTIONS: { value: SeekerApplicationStatus; label: string }[] = [
 ];
 
 const STATUS_CLASS: Record<SeekerApplicationStatus, string> = {
+  saved: "bg-slate-50 text-slate-700 border-slate-200 dark:text-slate-300",
   applied: "bg-blue-50 text-blue-700 border-blue-200 dark:text-blue-300",
   interviewing: "bg-amber-50 text-amber-800 border-amber-200",
   rejected: "bg-red-50 text-red-700 border-red-200 dark:text-red-300",

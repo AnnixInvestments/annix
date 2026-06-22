@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -17,9 +18,15 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { now } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
-import { UpdateCandidateProfileDto, UpdateCandidateStatusDto } from "../dto/candidate.dto";
+import {
+  CandidateReasonDto,
+  UpdateCandidateProfileDto,
+  UpdateCandidateStatusDto,
+} from "../dto/candidate.dto";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { CandidateStatus } from "../entities/candidate.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { CandidateService } from "../services/candidate.service";
 import { EeDisclosureService } from "../services/ee-disclosure.service";
 import { IndividualProfileService } from "../services/individual-profile.service";
@@ -28,7 +35,8 @@ import { ReferenceService } from "../services/reference.service";
 import { WorkflowAutomationService } from "../services/workflow-automation.service";
 
 @Controller("annix-orbit/candidates")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.VIEWER)
 export class CandidateController {
   constructor(
     @Inject(STORAGE_SERVICE)
@@ -87,6 +95,7 @@ export class CandidateController {
   }
 
   @Patch(":id/status")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   async updateStatus(
     @Request() req: { user: { id: number; companyId: number } },
     @Param("id", ParseIntPipe) id: number,
@@ -102,6 +111,7 @@ export class CandidateController {
   }
 
   @Get(":id/data-export")
+  @AnnixOrbitRoles(AnnixOrbitRole.ADMIN)
   async dataExport(
     @Request() req: { user: { companyId: number } },
     @Param("id", ParseIntPipe) id: number,
@@ -135,10 +145,11 @@ export class CandidateController {
   }
 
   @Post(":id/reject")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   async reject(
     @Request() req: { user: { id: number; companyId: number } },
     @Param("id", ParseIntPipe) id: number,
-    @Body() body: { reason?: string | null } = {},
+    @Body() body: CandidateReasonDto = {},
   ) {
     await this.workflowService.manualReject(
       id,
@@ -150,10 +161,11 @@ export class CandidateController {
   }
 
   @Post(":id/shortlist")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   async shortlist(
     @Request() req: { user: { id: number; companyId: number } },
     @Param("id", ParseIntPipe) id: number,
-    @Body() body: { reason?: string | null } = {},
+    @Body() body: CandidateReasonDto = {},
   ) {
     await this.workflowService.manualShortlist(
       id,
@@ -165,10 +177,11 @@ export class CandidateController {
   }
 
   @Post(":id/accept")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   async accept(
     @Request() req: { user: { id: number; companyId: number } },
     @Param("id", ParseIntPipe) id: number,
-    @Body() body: { reason?: string | null } = {},
+    @Body() body: CandidateReasonDto = {},
   ) {
     await this.workflowService.manualAccept(
       id,
@@ -180,6 +193,7 @@ export class CandidateController {
   }
 
   @Post(":id/send-reference-requests")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   async sendReferenceRequests(
     @Request() req: { user: { companyId: number } },
     @Param("id", ParseIntPipe) id: number,
@@ -190,6 +204,7 @@ export class CandidateController {
   }
 
   @Patch(":id/profile")
+  @AnnixOrbitRoles(AnnixOrbitRole.ADMIN)
   async updateProfile(
     @Request() req: { user: { companyId: number } },
     @Param("id", ParseIntPipe) id: number,
@@ -214,6 +229,7 @@ export class CandidateController {
   }
 
   @Delete(":id/erasure")
+  @AnnixOrbitRoles(AnnixOrbitRole.ADMIN)
   async rightToErasure(
     @Request() req: { user: { companyId: number } },
     @Param("id", ParseIntPipe) id: number,
@@ -222,11 +238,13 @@ export class CandidateController {
   }
 
   @Get("popia/retention-stats")
+  @AnnixOrbitRoles(AnnixOrbitRole.ADMIN)
   async retentionStats(@Request() req: { user: { companyId: number } }) {
     return this.popiaService.retentionStats(req.user.companyId);
   }
 
   @Post(":id/ee-disclosure-invite")
+  @AnnixOrbitRoles(AnnixOrbitRole.ADMIN)
   async sendEeDisclosureInvite(
     @Request() req: { user: { companyId: number } },
     @Param("id", ParseIntPipe) id: number,
@@ -236,6 +254,7 @@ export class CandidateController {
   }
 
   @Get(":id/ee-attributes")
+  @AnnixOrbitRoles(AnnixOrbitRole.ADMIN)
   async eeAttributes(
     @Request() req: { user: { id: number; companyId: number } },
     @Param("id", ParseIntPipe) id: number,
@@ -245,6 +264,7 @@ export class CandidateController {
   }
 
   @Post("upload")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   @UseInterceptors(
     FileInterceptor("file", {
       fileFilter: (req, file, cb) => {
@@ -265,12 +285,17 @@ export class CandidateController {
     @Body("name") name?: string,
     @Body("popiaConsent") popiaConsent?: string,
   ) {
+    const postingId = Number.parseInt(jobPostingId, 10);
+    if (!Number.isInteger(postingId)) {
+      throw new BadRequestException("A valid job posting is required");
+    }
+
     const subPath = `annix-orbit/candidates/${req.user.companyId}`;
     const storageResult = await this.storageService.upload(file, subPath);
 
     const hasConsent = popiaConsent === "true" || popiaConsent === "1";
 
-    const candidate = await this.candidateService.create(parseInt(jobPostingId, 10), {
+    const candidate = await this.candidateService.createForCompany(req.user.companyId, postingId, {
       email: email || null,
       name: name || null,
       cvFilePath: storageResult.path,

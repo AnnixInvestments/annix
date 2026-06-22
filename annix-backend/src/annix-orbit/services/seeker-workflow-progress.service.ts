@@ -39,10 +39,6 @@ export class SeekerWorkflowProgressService {
     private readonly users: UserRepository,
   ) {}
 
-  // Some steps fire telemetry before the seeker's Candidate row exists (the
-  // Candidate is upserted later from extracted CV data), so those events carry a
-  // null candidateId and reconcile drops them. Derive those steps from durable
-  // profile state instead — the same approach used for registered_account.
   private async derivedSteps(candidateId: number): Promise<Map<string, Date>> {
     const derived = new Map<string, Date>();
     const candidate = await this.candidates.findById(candidateId).catch(() => null);
@@ -67,6 +63,17 @@ export class SeekerWorkflowProgressService {
     if (profile.cvUploadedAt) {
       derived.set("uploaded_cv", new Date(profile.cvUploadedAt));
     }
+    if (profile.careerScoreGeneratedAt) {
+      const careerScoreAt = new Date(profile.careerScoreGeneratedAt);
+      derived.set("ai_cv_analysis", careerScoreAt);
+      derived.set("career_score_generated", careerScoreAt);
+    }
+    if (profile.nixGeneratedCvAt) {
+      derived.set("cv_improvement_generated", new Date(profile.nixGeneratedCvAt));
+    }
+    if (profile.interviewPrepUsedAt) {
+      derived.set("used_interview_prep", new Date(profile.interviewPrepUsedAt));
+    }
     return derived;
   }
 
@@ -79,10 +86,6 @@ export class SeekerWorkflowProgressService {
     return all.length > 0 ? String(all[0].id) : null;
   }
 
-  // Reconcile runs on every admin seeker-testing dashboard view (and the daily
-  // cron). Overlapping views would otherwise race to create the same progress /
-  // step rows and trip the unique indexes (E11000). Collapse concurrent callers
-  // onto a single in-flight run.
   async reconcile(): Promise<{ participants: number; events: number }> {
     if (this.reconcileInFlight) {
       return this.reconcileInFlight;
@@ -142,9 +145,6 @@ export class SeekerWorkflowProgressService {
       return acc;
     }, new Map());
 
-    // Steps whose telemetry can fire before the Candidate row exists (registered,
-    // completed_profile, uploaded_cv) are derived from durable state so they are
-    // not lost to null-candidateId orphan events.
     const derived = await this.derivedSteps(candidateId);
     Array.from(derived.entries()).forEach(([stepKey, ts]) => {
       if (!firstTsByStep.has(stepKey)) {

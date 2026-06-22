@@ -22,11 +22,14 @@ import {
   CreateAnnixOrbitClientDto,
   UpdateAnnixOrbitClientDto,
 } from "../dto/annix-orbit-client.dto";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { AnnixOrbitClientService } from "../services/annix-orbit-client.service";
 
 @Controller("annix-orbit/clients")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.VIEWER)
 export class AnnixOrbitClientController {
   constructor(private readonly clientService: AnnixOrbitClientService) {}
 
@@ -41,11 +44,13 @@ export class AnnixOrbitClientController {
   }
 
   @Post()
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   create(@Request() req: { user: { companyId: number } }, @Body() dto: CreateAnnixOrbitClientDto) {
     return this.clientService.create(req.user.companyId, dto);
   }
 
   @Put(":id")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   update(
     @Request() req: { user: { companyId: number } },
     @Param("id", ParseIntPipe) id: number,
@@ -55,6 +60,7 @@ export class AnnixOrbitClientController {
   }
 
   @Delete(":id")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   async remove(
     @Request() req: { user: { companyId: number; recruiterRole?: string | null } },
     @Param("id", ParseIntPipe) id: number,

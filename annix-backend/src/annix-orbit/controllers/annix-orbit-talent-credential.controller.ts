@@ -15,7 +15,9 @@ import {
   CreateAnnixOrbitTalentCredentialDto,
   UpdateAnnixOrbitTalentCredentialDto,
 } from "../dto/annix-orbit-talent-credential.dto";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { AnnixOrbitTalentCredentialService } from "../services/annix-orbit-talent-credential.service";
 import { DEFAULT_EXPIRY_WARN_DAYS } from "../services/credential-expiry";
 import { OrbitCredentialTypeService } from "../services/orbit-credential-type.service";
@@ -25,7 +27,8 @@ interface RecruiterAuthRequest {
 }
 
 @Controller("annix-orbit")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.VIEWER)
 export class AnnixOrbitTalentCredentialController {
   constructor(
     private readonly credentialService: AnnixOrbitTalentCredentialService,
@@ -72,6 +75,7 @@ export class AnnixOrbitTalentCredentialController {
   }
 
   @Post("talent-candidates/:candidateId/credentials")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   create(
     @Request() req: RecruiterAuthRequest,
     @Param("candidateId", ParseIntPipe) candidateId: number,
@@ -81,6 +85,7 @@ export class AnnixOrbitTalentCredentialController {
   }
 
   @Patch("talent-candidates/:candidateId/credentials/:id")
+  @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   update(
     @Request() req: RecruiterAuthRequest,
     @Param("id", ParseIntPipe) id: number,
@@ -90,6 +95,7 @@ export class AnnixOrbitTalentCredentialController {
   }
 
   @Delete("talent-candidates/:candidateId/credentials/:id")
+  @AnnixOrbitRoles(AnnixOrbitRole.ADMIN)
   async remove(@Request() req: RecruiterAuthRequest, @Param("id", ParseIntPipe) id: number) {
     await this.credentialService.remove(id, req.user.companyId);
     return { success: true };

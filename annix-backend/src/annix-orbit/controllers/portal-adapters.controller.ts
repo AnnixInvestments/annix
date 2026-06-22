@@ -8,7 +8,9 @@ import {
   Request,
   UseGuards,
 } from "@nestjs/common";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { JobPostingRepository } from "../repositories/job-posting.repository";
 import { AssistedPostingInstructions, PortalAdapter } from "../services/portal-adapter.interface";
 import { PortalAdapterRegistry } from "../services/portal-adapter-registry.service";
@@ -27,7 +29,8 @@ interface AssistedPostingPackEntry extends AssistedPostingInstructions {
 }
 
 @Controller("annix-orbit")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.VIEWER)
 export class PortalAdaptersController {
   constructor(
     private readonly registry: PortalAdapterRegistry,

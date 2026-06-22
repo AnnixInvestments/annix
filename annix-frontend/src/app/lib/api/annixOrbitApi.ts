@@ -1331,6 +1331,16 @@ export interface NixSeekerCvAssessment {
   rewriteSummary: string | null;
 }
 
+export interface InterviewPrepPack {
+  roleSummary: string;
+  likelyQuestions: Array<{ question: string; whyAsked: string }>;
+  starTalkingPoints: Array<{ competency: string; prompt: string; pointers: string[] }>;
+  gapsToBridge: string[];
+  companyContext: string[];
+  questionsToAsk: string[];
+  logistics: string[];
+}
+
 export interface NixGeneratedCvExperience {
   role: string;
   employer: string;
@@ -3126,6 +3136,12 @@ class AnnixOrbitApiClient {
     return this.request("/annix-orbit/me/nix-wizard/cv-improvements", { method: "POST" });
   }
 
+  async interviewPrepGenerate(interviewId: number): Promise<InterviewPrepPack> {
+    return this.request(`/annix-orbit/me/interview-prep/${interviewId}/generate`, {
+      method: "POST",
+    });
+  }
+
   async nixWizardGenerateCv(): Promise<NixGeneratedCv> {
     return this.request("/annix-orbit/me/nix-wizard/generate-cv", { method: "POST" });
   }
@@ -3714,6 +3730,7 @@ export interface OrbitCredentialTypeOption {
 }
 
 export type SeekerApplicationStatus =
+  | "saved"
   | "applied"
   | "interviewing"
   | "rejected"

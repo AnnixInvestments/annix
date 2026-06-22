@@ -1052,6 +1052,124 @@ Write it like a real person, not like AI. This matters because recruitment scree
   };
 }
 
+export interface NixInterviewPrepResponse {
+  roleSummary: string;
+  likelyQuestions: Array<{ question: string; whyAsked: string }>;
+  starTalkingPoints: Array<{ competency: string; prompt: string; pointers: string[] }>;
+  gapsToBridge: string[];
+  companyContext: string[];
+  questionsToAsk: string[];
+  logistics: string[];
+}
+
+export interface InterviewPrepPromptInput {
+  jobTitle: string;
+  jobCompany: string | null;
+  jobDescription: string | null;
+  jobRequirements: string[];
+  cvText: string;
+  extractedCv: {
+    candidateName: string | null;
+    summary: string | null;
+    skills: string[];
+    experienceYears: number | null;
+    education: string[];
+    certifications: string[];
+    professionalRegistrations: string[];
+    saQualifications: string[];
+    location: string | null;
+  } | null;
+}
+
+export function interviewPrepPrompt(input: InterviewPrepPromptInput): NixPrompt {
+  const extracted = input.extractedCv;
+  const skillSummary =
+    extracted && extracted.skills.length > 0 ? extracted.skills.join(", ") : "(none extracted)";
+  const educationSummary =
+    extracted && extracted.education.length > 0
+      ? extracted.education.join(" | ")
+      : "(none extracted)";
+  const certificationSummary =
+    extracted && extracted.certifications.length > 0
+      ? extracted.certifications.join(" | ")
+      : "(none extracted)";
+  const registrationSummary =
+    extracted && extracted.professionalRegistrations.length > 0
+      ? extracted.professionalRegistrations.join(", ")
+      : "(none)";
+
+  const requirementsSummary =
+    input.jobRequirements.length > 0 ? input.jobRequirements.join(" | ") : "(none specified)";
+
+  const cvBody =
+    input.cvText.length > 8000
+      ? `${input.cvText.slice(0, 8000)}\n\n[CV truncated for prompt — first 8 000 chars shown]`
+      : input.cvText;
+
+  const descriptionBlock = input.jobDescription
+    ? input.jobDescription
+    : "(no job description on file — build a generic but role-appropriate prep pack from the title and the seeker's CV)";
+
+  return {
+    system: `${SA_SYSTEM_PREAMBLE} You are preparing an individual South African job seeker for a specific upcoming interview. Ground every talking point in the seeker's ACTUAL CV — never invent achievements, employers or qualifications they do not have. Be specific to THIS role, practical, and encouraging.`,
+    user: `Prepare this job seeker for their interview. Use the job posting and their CV to build a focused, role-specific prep pack.
+
+Role being interviewed for: ${input.jobTitle}
+Company: ${input.jobCompany ?? "(not specified)"}
+Key requirements: ${requirementsSummary}
+
+Job description:
+"""
+${descriptionBlock}
+"""
+
+Seeker's CV — extracted details:
+Candidate name: ${extracted?.candidateName ?? "(unknown)"}
+Location: ${extracted?.location ?? "(unspecified)"}
+Years of experience: ${extracted?.experienceYears ?? "(unknown)"}
+Summary: ${extracted?.summary ?? "(none)"}
+Skills: ${skillSummary}
+Education: ${educationSummary}
+Certifications: ${certificationSummary}
+Professional registrations: ${registrationSummary}
+
+Seeker's raw CV text:
+"""
+${cvBody}
+"""
+
+Return JSON with this exact shape:
+{
+  "roleSummary": "string — 1-2 line framing of the role being interviewed for",
+  "likelyQuestions": [
+    { "question": "string — a question the interviewer is likely to ask", "whyAsked": "string — why they ask it / what they are probing for" },
+    ...
+  ],
+  "starTalkingPoints": [
+    {
+      "competency": "string — the competency or theme",
+      "prompt": "string — the kind of question this STAR story answers",
+      "pointers": ["string — a concrete Situation/Task/Action/Result pointer drawn from the seeker's actual CV", ...]
+    },
+    ...
+  ],
+  "gapsToBridge": ["string — where the CV is light vs the job, and how to address it honestly in the interview", ...],
+  "companyContext": ["string — role/company talking points the seeker can raise", ...],
+  "questionsToAsk": ["string — smart questions for the seeker to ask the interviewer", ...],
+  "logistics": ["string — format / what to bring / timing tips", ...]
+}
+
+Rules:
+- likelyQuestions: 5-8 items mixing role-specific technical questions and behavioural questions calibrated to the role and seniority.
+- starTalkingPoints: 3-5 STAR scaffolds, each grounded in something the seeker genuinely did per their CV. Never fabricate. If the CV is thin, build the scaffold around what is there and note in the pointers what the seeker should expand on.
+- gapsToBridge: be honest but constructive — identify where the CV is lighter than the requirements and give a practical way to address it in conversation. Empty array if there are no material gaps.
+- companyContext: practical talking points tied to THIS role/company; if the company is unknown, give sector-level points the seeker can raise.
+- questionsToAsk: 3-5 smart, specific questions that signal genuine interest.
+- logistics: 3-5 practical SA-context tips (what to bring, arriving early, traffic between SA hubs, ID/certified copies, online vs in-person etiquette).
+- Use South African hiring context (NQF, SAQA, ECSA/SAICA/SACPCMP where relevant). No markdown, no commentary, JSON only.`,
+  };
+}
+
 export function summariseSuccessMetrics(posting: JobPosting): { in3: string[]; in12: string[] } {
   const metrics = posting.successMetrics || [];
   const in3 = metrics.filter((m) => m.timeframe === "3_months").map((m) => m.metric);
