@@ -332,7 +332,7 @@ export class RubberPriceListService {
       id: existing.id,
       companyId,
     } as RubberPriceListItem;
-    return this.itemRepo.save(merged);
+    return this.itemRepo.saveForCompany(companyId, merged);
   }
 
   async remove(companyId: number, id: number): Promise<void> {
@@ -340,7 +340,7 @@ export class RubberPriceListService {
     if (!existing) {
       throw new NotFoundException(`Rubber price list item ${id} not found`);
     }
-    await this.itemRepo.remove(existing);
+    await this.itemRepo.removeForCompany(companyId, existing);
   }
 
   async clearAll(companyId: number): Promise<{ cleared: number }> {
@@ -351,7 +351,7 @@ export class RubberPriceListService {
   async setUpliftForAll(companyId: number, upliftPercent: number): Promise<{ updated: number }> {
     const items = await this.itemRepo.findAllForCompany(companyId);
     const updated = await Promise.all(
-      items.map((item) => this.itemRepo.save({ ...item, upliftPercent })),
+      items.map((item) => this.itemRepo.saveForCompany(companyId, { ...item, upliftPercent })),
     );
     return { updated: updated.length };
   }
@@ -379,7 +379,7 @@ export class RubberPriceListService {
   ): Promise<number> {
     const existing = await this.itemRepo.findAllForCompany(companyId);
     const toRemove = existing.filter((item) => item.supplier === supplier);
-    await Promise.all(toRemove.map((item) => this.itemRepo.remove(item)));
+    await Promise.all(toRemove.map((item) => this.itemRepo.removeForCompany(companyId, item)));
     return this.addMany(companyId, inputs);
   }
 
@@ -406,7 +406,7 @@ export class RubberPriceListService {
       if (!match) {
         return;
       }
-      await this.itemRepo.save({
+      await this.itemRepo.saveForCompany(companyId, {
         ...match,
         costPerKg: input.costPerKg ?? match.costPerKg,
       });

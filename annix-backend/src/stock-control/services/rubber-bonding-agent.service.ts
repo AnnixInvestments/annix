@@ -113,7 +113,7 @@ export class RubberBondingAgentService {
       id: existing.id,
       companyId,
     } as RubberBondingAgent;
-    return this.agentRepo.save(merged);
+    return this.agentRepo.saveForCompany(companyId, merged);
   }
 
   async remove(companyId: number, id: number): Promise<void> {
@@ -121,7 +121,7 @@ export class RubberBondingAgentService {
     if (!existing) {
       throw new NotFoundException(`Rubber bonding agent ${id} not found`);
     }
-    await this.agentRepo.remove(existing);
+    await this.agentRepo.removeForCompany(companyId, existing);
   }
 
   private async createSequentially(
@@ -147,7 +147,7 @@ export class RubberBondingAgentService {
   ): Promise<number> {
     const existing = await this.agentRepo.findAllForCompany(companyId);
     const toRemove = existing.filter((agent) => agent.supplier === supplier);
-    await Promise.all(toRemove.map((agent) => this.agentRepo.remove(agent)));
+    await Promise.all(toRemove.map((agent) => this.agentRepo.removeForCompany(companyId, agent)));
     return this.addMany(companyId, inputs);
   }
 
@@ -169,7 +169,7 @@ export class RubberBondingAgentService {
       if (!match) {
         return;
       }
-      await this.agentRepo.save({
+      await this.agentRepo.saveForCompany(companyId, {
         ...match,
         supplier: supplierName ?? match.supplier,
         packSizeLitres: input.packSizeLitres ?? match.packSizeLitres,
@@ -198,7 +198,7 @@ export class RubberBondingAgentService {
         if (!reference) {
           return done;
         }
-        const saved = await this.agentRepo.save({
+        const saved = await this.agentRepo.saveForCompany(companyId, {
           ...agent,
           coverageBasis: reference.coverageBasis,
           areaCoverPerLitre: reference.areaCoverPerLitre,
