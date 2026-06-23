@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useToast } from "@/app/components/Toast";
 import type {
   SeekerFunnelRow,
   SeekerLatencyStat,
   SeekerProgressRow,
   SeekerReadinessCriterion,
+  SeekerStepState,
   SeekerTestEventRow,
   SeekerTestingIssue,
   SeekerTestPhase,
@@ -29,6 +31,19 @@ import {
 } from "@/app/lib/query/hooks";
 
 const TOTAL_STEPS = 11;
+const STEP_LABELS: Record<string, string> = {
+  registered_account: "Registered account",
+  completed_profile: "Completed profile",
+  uploaded_cv: "Uploaded CV",
+  uploaded_qualification: "Uploaded qualification",
+  ai_cv_analysis: "AI CV analysis",
+  career_score_generated: "Career score generated",
+  cv_improvement_generated: "CV improvement generated",
+  viewed_matched_jobs: "Viewed matched jobs",
+  applied_job: "Applied to a job",
+  used_interview_prep: "Used interview prep",
+  updated_profile_after_suggestion: "Updated profile after suggestion",
+};
 const PHASE_STATUSES = ["pending", "active", "complete"];
 const ISSUE_STATUSES = ["open", "in_progress", "resolved", "ignored"];
 const SEVERITIES = ["low", "medium", "high", "critical"];
@@ -271,8 +286,119 @@ function PhaseRow(props: {
   );
 }
 
-function UsersTable(props: { users: SeekerProgressRow[] }) {
+function SeekerStepsModal(props: { user: SeekerProgressRow; onClose: () => void }) {
+  const user = props.user;
+  const onClose = props.onClose;
+  const rawSteps = user.steps;
+  const steps: SeekerStepState[] = rawSteps ?? [];
+  const completedCount = steps.filter((step) => step.completed).length;
+  const total = steps.length === 0 ? TOTAL_STEPS : steps.length;
+  const pct = total === 0 ? 0 : Math.round((completedCount / total) * 100);
+  const rawLabel = user.label;
+  const label = rawLabel || (user.candidateId !== null ? String(user.candidateId) : "Seeker");
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard for portal target
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Onboarding steps for ${label}`}
+    >
+      <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-slate-900 p-6 text-left text-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-semibold">{label}</h3>
+            <p className="mt-0.5 text-sm text-slate-400">Onboarding progress</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="rounded-lg px-2 py-1 text-slate-400 hover:bg-white/10 hover:text-white"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="mt-4">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-slate-300">
+              {completedCount} / {total} steps
+            </span>
+            <span className="text-slate-400">{pct}%</span>
+          </div>
+          <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-white/10">
+            <div
+              className="h-full rounded-full transition-all"
+              style={{ width: `${pct}%`, backgroundColor: "var(--brand-accent)" }}
+            />
+          </div>
+        </div>
+
+        <ol className="mt-5 space-y-2">
+          {steps.map((step, index) => {
+            const mappedLabel = STEP_LABELS[step.key];
+            const stepLabel = mappedLabel ?? humanise(step.key);
+            return (
+              <li
+                key={step.key}
+                className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 ${
+                  step.completed
+                    ? "border-green-500/30 bg-green-500/10"
+                    : "border-white/10 bg-white/5"
+                }`}
+              >
+                <span
+                  className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                    step.completed ? "bg-green-500 text-slate-950" : "bg-white/10 text-slate-400"
+                  }`}
+                >
+                  {step.completed ? "✓" : index + 1}
+                </span>
+                <span
+                  className={`min-w-0 flex-1 text-sm ${
+                    step.completed ? "text-white" : "text-slate-300"
+                  }`}
+                >
+                  {stepLabel}
+                </span>
+                <span className="flex-shrink-0 text-xs text-slate-400">
+                  {step.completed ? formatTs(step.completedAt) : "—"}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function UsersTable(props: {
+  users: SeekerProgressRow[];
+  onSelect: (user: SeekerProgressRow) => void;
+}) {
   const users = props.users;
+  const onSelect = props.onSelect;
   if (users.length === 0) {
     return (
       <div className="rounded-lg border border-white/10 bg-white/5 p-6 text-center text-sm text-slate-400">
@@ -298,7 +424,18 @@ function UsersTable(props: { users: SeekerProgressRow[] }) {
             const rawStatus = user.status;
             const candidateLabel = rawLabel || (user.candidateId !== null ? user.candidateId : "—");
             return (
-              <tr key={user.id} className="text-slate-200">
+              <tr
+                key={user.id}
+                tabIndex={0}
+                onClick={() => onSelect(user)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onSelect(user);
+                  }
+                }}
+                className="cursor-pointer text-slate-200 transition-colors hover:bg-white/5 focus:bg-white/5 focus:outline-none"
+              >
                 <td className="px-4 py-3 font-medium">
                   {candidateLabel}
                   {rawStatus ? (
@@ -458,6 +595,7 @@ export default function SeekerTestingPage() {
   const [issueTitle, setIssueTitle] = useState("");
   const [issueDescription, setIssueDescription] = useState("");
   const [issueSeverity, setIssueSeverity] = useState("medium");
+  const [selectedUser, setSelectedUser] = useState<SeekerProgressRow | null>(null);
 
   const branding = brandingQuery.data;
   const cssVars = branding ? brandingCssVars(branding) : {};
@@ -683,9 +821,16 @@ export default function SeekerTestingPage() {
         )}
       </SectionCard>
 
-      <SectionCard title="Test users" subtitle="Per-participant onboarding progress and activity.">
-        <UsersTable users={users} />
+      <SectionCard
+        title="Test users"
+        subtitle="Per-participant onboarding progress and activity. Click a row to see the 11-step breakdown."
+      >
+        <UsersTable users={users} onSelect={setSelectedUser} />
       </SectionCard>
+
+      {selectedUser ? (
+        <SeekerStepsModal user={selectedUser} onClose={() => setSelectedUser(null)} />
+      ) : null}
 
       <SectionCard title="Issues" subtitle="Log and triage issues raised during testing.">
         <form

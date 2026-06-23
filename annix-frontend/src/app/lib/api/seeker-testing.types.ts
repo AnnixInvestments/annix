@@ -57,6 +57,12 @@ export interface SeekerErrorsLatency {
   errorRate: { total: number; failed: number; ratePct: number };
 }
 
+export interface SeekerStepState {
+  key: string;
+  completed: boolean;
+  completedAt: string | null;
+}
+
 export interface SeekerProgressRow {
   id: string;
   participantId: string | null;
@@ -70,6 +76,7 @@ export interface SeekerProgressRow {
   timeToFirstValueSeconds: number | null;
   completedSteps: number;
   lastActiveAt: string | null;
+  steps?: SeekerStepState[];
 }
 
 export interface SeekerTestPhase {

@@ -21,6 +21,7 @@ import {
   UpdateSeekerTestPhaseDto,
 } from "../dto/seeker-testing.dto";
 import { Candidate } from "../entities/candidate.entity";
+import { SEEKER_WORKFLOW_STEPS } from "../lib/seeker-testing.constants";
 import { CandidateRepository } from "../repositories/candidate.repository";
 import { SeekerTestParticipantRepository } from "../repositories/seeker-test-participant.repository";
 import { SeekerTestPhaseRepository } from "../repositories/seeker-test-phase.repository";
@@ -162,24 +163,38 @@ export class AdminOrbitSeekerTestingController {
         }, new Map<number, (typeof progressRows)[number]>())
         .values(),
     );
+    const enrichedProgressRows = await Promise.all(
+      dedupedProgressRows.map(async (row) => ({
+        ...row,
+        steps: await this.progress.stepsForParticipant(row.participantId),
+      })),
+    );
     const prospects = (await this.userService.seekerProspects()).filter(
       (prospect) => !prospect.hasCandidate,
     );
-    const prospectRows = prospects.map((prospect) => ({
-      id: `prospect-${prospect.userId}`,
-      participantId: null,
-      candidateId: null,
-      label: prospect.name ? `${prospect.name} (${prospect.email})` : prospect.email,
-      registeredAt: prospect.isRegistered ? prospect.invitedAt : null,
-      cvUploadedAt: null,
-      careerScoreGeneratedAt: null,
-      firstJobsViewedAt: null,
-      timeToFirstValueSeconds: null,
-      completedSteps: prospect.hasLoggedIn || prospect.isRegistered ? 1 : 0,
-      lastActiveAt: prospect.lastLoginAt,
-      status: prospect.isRegistered || prospect.hasLoggedIn ? "registered" : "invited",
-    }));
-    return [...dedupedProgressRows, ...prospectRows];
+    const prospectRows = prospects.map((prospect) => {
+      const reached = prospect.hasLoggedIn || prospect.isRegistered;
+      return {
+        id: `prospect-${prospect.userId}`,
+        participantId: null,
+        candidateId: null,
+        label: prospect.name ? `${prospect.name} (${prospect.email})` : prospect.email,
+        registeredAt: prospect.isRegistered ? prospect.invitedAt : null,
+        cvUploadedAt: null,
+        careerScoreGeneratedAt: null,
+        firstJobsViewedAt: null,
+        timeToFirstValueSeconds: null,
+        completedSteps: reached ? 1 : 0,
+        lastActiveAt: prospect.lastLoginAt,
+        status: reached ? "registered" : "invited",
+        steps: SEEKER_WORKFLOW_STEPS.map((key) => ({
+          key,
+          completed: reached && key === "registered_account",
+          completedAt: null,
+        })),
+      };
+    });
+    return [...enrichedProgressRows, ...prospectRows];
   }
 
   @Get("readiness")

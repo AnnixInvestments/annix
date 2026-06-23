@@ -19,6 +19,12 @@ export interface FunnelRow {
   pct: number;
 }
 
+export interface SeekerStepState {
+  key: string;
+  completed: boolean;
+  completedAt: Date | null;
+}
+
 function isDuplicateKeyError(error: unknown): boolean {
   return typeof error === "object" && error !== null && (error as { code?: number }).code === 11000;
 }
@@ -288,6 +294,18 @@ export class SeekerWorkflowProgressService {
 
   listProgress(): Promise<SeekerWorkflowProgress[]> {
     return this.progress.listAll();
+  }
+
+  async stepsForParticipant(participantId: string): Promise<SeekerStepState[]> {
+    const rows = await this.steps.listByParticipant(participantId);
+    const completedByKey = new Map(
+      rows.filter((row) => row.completed).map((row) => [row.stepKey, row.completedAt ?? null]),
+    );
+    return SEEKER_WORKFLOW_STEPS.map((key) => ({
+      key,
+      completed: completedByKey.has(key),
+      completedAt: completedByKey.get(key) ?? null,
+    }));
   }
 
   async avgTimeToFirstValueSeconds(): Promise<number | null> {
