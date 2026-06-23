@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { ClientSession, Model, Schema } from "mongoose";
+import { fromISO } from "../datetime";
 import type { PaginatedResult } from "../dto/pagination-query.dto";
 import {
   CrudRepository,
@@ -180,9 +181,9 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
     for (const field of this.dateFields) {
       const value = entity[field];
       if (typeof value === "string") {
-        const parsed = new Date(value);
-        if (!Number.isNaN(parsed.getTime())) {
-          entity[field] = parsed;
+        const parsed = fromISO(value);
+        if (parsed.isValid) {
+          entity[field] = parsed.toJSDate();
         }
       }
     }
