@@ -1798,6 +1798,10 @@ class AnnixOrbitApiClient {
     return annixOrbitTokenStore.isAuthenticated();
   }
 
+  tryAdoptSessionFromAnotherTab(): Promise<boolean> {
+    return annixOrbitTokenStore.adoptSessionFromOtherTab();
+  }
+
   private request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     return apiClient.request<T>(endpoint, options);
   }

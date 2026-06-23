@@ -46,13 +46,18 @@ export function CustomerAuthProvider(props: { children: ReactNode }) {
 
   const checkAuth = useCallback(async () => {
     if (!customerApiClient.isAuthenticated()) {
-      setState({
-        isAuthenticated: false,
-        isLoading: false,
-        customer: null,
-        profile: null,
-      });
-      return;
+      // A fresh tab has empty sessionStorage. Ask other open tabs of this
+      // portal for their session before declaring the user logged out.
+      const adopted = await customerApiClient.tryAdoptSessionFromAnotherTab();
+      if (!adopted) {
+        setState({
+          isAuthenticated: false,
+          isLoading: false,
+          customer: null,
+          profile: null,
+        });
+        return;
+      }
     }
 
     const setAuthenticatedWithProfile = (profile: CustomerProfileResponse) => {

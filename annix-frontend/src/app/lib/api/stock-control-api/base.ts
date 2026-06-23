@@ -76,6 +76,10 @@ export class StockControlApiClient {
     return stockControlTokenStore.isAuthenticated();
   }
 
+  tryAdoptSessionFromAnotherTab(): Promise<boolean> {
+    return stockControlTokenStore.adoptSessionFromOtherTab();
+  }
+
   request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     return apiClient.request<T>(endpoint, options);
   }

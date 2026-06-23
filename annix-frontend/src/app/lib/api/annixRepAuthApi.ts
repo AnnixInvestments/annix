@@ -1,4 +1,5 @@
 import { throwIfNotOk } from "@/app/lib/api/apiError";
+import { annixRepTokenStore } from "@/app/lib/api/portalTokenStores";
 import { annixRepAuthHeaders, browserBaseUrl } from "@/lib/api-config";
 
 const apiUrl = () => browserBaseUrl();
@@ -164,5 +165,11 @@ export const annixRepAuthApi = {
 
   isAuthenticated: (): boolean => {
     return !!readAnnixRepToken("annixRepAccessToken");
+  },
+
+  // annixRepTokenStore reads/writes the same storage keys this api uses, so a
+  // fresh tab can adopt a logged-in tab's session via the BroadcastChannel relay.
+  tryAdoptSessionFromAnotherTab: (): Promise<boolean> => {
+    return annixRepTokenStore.adoptSessionFromOtherTab();
   },
 };

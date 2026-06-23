@@ -54,13 +54,18 @@ export function AdminAuthProvider(props: { children: ReactNode }) {
       clearRetryTimer();
 
       if (!adminApiClient.isAuthenticated()) {
-        setState({
-          isAuthenticated: false,
-          isLoading: false,
-          admin: null,
-          profile: null,
-        });
-        return;
+        // A fresh tab has empty sessionStorage. Ask other open tabs of this
+        // portal for their session before declaring the user logged out.
+        const adopted = await adminApiClient.tryAdoptSessionFromAnotherTab();
+        if (!adopted) {
+          setState({
+            isAuthenticated: false,
+            isLoading: false,
+            admin: null,
+            profile: null,
+          });
+          return;
+        }
       }
 
       try {

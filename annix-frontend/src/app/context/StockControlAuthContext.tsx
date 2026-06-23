@@ -35,16 +35,29 @@ export function StockControlAuthProvider(props: { children: ReactNode }) {
 
   const checkAuth = useCallback(async () => {
     if (!stockControlApiClient.isAuthenticated()) {
-      const adminToken =
-        // eslint-disable-next-line no-restricted-syntax -- SSR guard
-        typeof window !== "undefined"
-          ? localStorage.getItem("adminAccessToken") || sessionStorage.getItem("adminAccessToken")
-          : null;
+      // A fresh tab (e.g. opened from a link) has empty sessionStorage. Ask
+      // other open tabs of this portal for their session before giving up.
+      const adopted = await stockControlApiClient.tryAdoptSessionFromAnotherTab();
+      if (!adopted) {
+        const adminToken =
+          // eslint-disable-next-line no-restricted-syntax -- SSR guard
+          typeof window !== "undefined"
+            ? localStorage.getItem("adminAccessToken") || sessionStorage.getItem("adminAccessToken")
+            : null;
 
-      if (adminToken) {
-        try {
-          await stockControlApiClient.adminBridge(adminToken);
-        } catch {
+        if (adminToken) {
+          try {
+            await stockControlApiClient.adminBridge(adminToken);
+          } catch {
+            setState({
+              isAuthenticated: false,
+              isLoading: false,
+              user: null,
+              profile: null,
+            });
+            return;
+          }
+        } else {
           setState({
             isAuthenticated: false,
             isLoading: false,
@@ -53,14 +66,6 @@ export function StockControlAuthProvider(props: { children: ReactNode }) {
           });
           return;
         }
-      } else {
-        setState({
-          isAuthenticated: false,
-          isLoading: false,
-          user: null,
-          profile: null,
-        });
-        return;
       }
     }
 

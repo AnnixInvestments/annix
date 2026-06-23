@@ -19,9 +19,20 @@ export function InsightsAuthProvider(props: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const existing = insightsApi.currentUser();
-    setUser(existing);
-    setIsLoading(false);
+    const init = async () => {
+      let existing = insightsApi.currentUser();
+      if (!existing) {
+        // A fresh tab has empty sessionStorage. Ask other open tabs of this
+        // portal for their session before declaring the user logged out.
+        const adopted = await insightsTokenStore.adoptSessionFromOtherTab();
+        if (adopted) {
+          existing = insightsApi.currentUser();
+        }
+      }
+      setUser(existing);
+      setIsLoading(false);
+    };
+    init();
   }, []);
 
   const login = useCallback(async (input: InsightsLoginInput) => {

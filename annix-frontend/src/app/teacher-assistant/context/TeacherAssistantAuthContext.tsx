@@ -26,22 +26,34 @@ export function TeacherAssistantAuthProvider({ children }: { children: ReactNode
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const token = teacherAssistantTokenStore.accessToken();
-    if (!token) {
-      setIsLoading(false);
-      return;
-    }
-    teacherAssistantApi
-      .me()
-      .then((u) => setUser(u))
-      .catch((error) => {
+    const init = async () => {
+      let token = teacherAssistantTokenStore.accessToken();
+      if (!token) {
+        // A fresh tab has empty sessionStorage. Ask other open tabs of this
+        // portal for their session before declaring the user logged out.
+        const adopted = await teacherAssistantTokenStore.adoptSessionFromOtherTab();
+        if (adopted) {
+          token = teacherAssistantTokenStore.accessToken();
+        }
+      }
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        const u = await teacherAssistantApi.me();
+        setUser(u);
+      } catch (error) {
         const isAuthFailure = error instanceof ApiError && error.isAuthFailure();
         if (isAuthFailure) {
           teacherAssistantTokenStore.clear();
           setUser(null);
         }
-      })
-      .finally(() => setIsLoading(false));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    init();
   }, []);
 
   const login = useCallback(async (input: LoginTeacherInput) => {

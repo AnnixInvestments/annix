@@ -41,13 +41,18 @@ export function SupplierAuthProvider(props: { children: ReactNode }) {
 
   const checkAuth = useCallback(async () => {
     if (!supplierApiClient.isAuthenticated()) {
-      setState({
-        isAuthenticated: false,
-        isLoading: false,
-        supplier: null,
-        dashboard: null,
-      });
-      return;
+      // A fresh tab has empty sessionStorage. Ask other open tabs of this
+      // portal for their session before declaring the user logged out.
+      const adopted = await supplierApiClient.tryAdoptSessionFromAnotherTab();
+      if (!adopted) {
+        setState({
+          isAuthenticated: false,
+          isLoading: false,
+          supplier: null,
+          dashboard: null,
+        });
+        return;
+      }
     }
 
     try {

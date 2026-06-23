@@ -419,6 +419,10 @@ class SupplierApiClient {
     return this.tokens.isAuthenticated();
   }
 
+  tryAdoptSessionFromAnotherTab(): Promise<boolean> {
+    return this.tokens.adoptSessionFromOtherTab();
+  }
+
   request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     return apiClient.request<T>(endpoint, options);
   }

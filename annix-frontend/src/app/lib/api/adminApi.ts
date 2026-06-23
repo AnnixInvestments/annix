@@ -98,6 +98,10 @@ class AdminApiClient {
     return adminTokenStore.isAuthenticated();
   }
 
+  tryAdoptSessionFromAnotherTab(): Promise<boolean> {
+    return adminTokenStore.adoptSessionFromOtherTab();
+  }
+
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     try {
       return await apiClient.request<T>(endpoint, options);

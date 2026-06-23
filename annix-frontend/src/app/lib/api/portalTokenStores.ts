@@ -1,24 +1,36 @@
 import { PortalTokenStore } from "./portalTokenStore";
 
-export const adminTokenStore = new PortalTokenStore({
-  accessToken: "adminAccessToken",
-  refreshToken: "adminRefreshToken",
-});
+export const adminTokenStore = new PortalTokenStore(
+  {
+    accessToken: "adminAccessToken",
+    refreshToken: "adminRefreshToken",
+  },
+  { crossTabRelay: true },
+);
 
-export const customerTokenStore = new PortalTokenStore({
-  accessToken: "customerAccessToken",
-  refreshToken: "customerRefreshToken",
-});
+export const customerTokenStore = new PortalTokenStore(
+  {
+    accessToken: "customerAccessToken",
+    refreshToken: "customerRefreshToken",
+  },
+  { crossTabRelay: true },
+);
 
-export const supplierTokenStore = new PortalTokenStore({
-  accessToken: "supplierAccessToken",
-  refreshToken: "supplierRefreshToken",
-});
+export const supplierTokenStore = new PortalTokenStore(
+  {
+    accessToken: "supplierAccessToken",
+    refreshToken: "supplierRefreshToken",
+  },
+  { crossTabRelay: true },
+);
 
-export const stockControlTokenStore = new PortalTokenStore({
-  accessToken: "stockControlAccessToken",
-  refreshToken: "stockControlRefreshToken",
-});
+export const stockControlTokenStore = new PortalTokenStore(
+  {
+    accessToken: "stockControlAccessToken",
+    refreshToken: "stockControlRefreshToken",
+  },
+  { crossTabRelay: true },
+);
 
 export const auRubberTokenStore = new PortalTokenStore(
   {
@@ -28,25 +40,37 @@ export const auRubberTokenStore = new PortalTokenStore(
   { crossTabRelay: true },
 );
 
-export const teacherAssistantTokenStore = new PortalTokenStore({
-  accessToken: "teacherAssistantAccessToken",
-  refreshToken: "teacherAssistantRefreshToken",
-});
+export const teacherAssistantTokenStore = new PortalTokenStore(
+  {
+    accessToken: "teacherAssistantAccessToken",
+    refreshToken: "teacherAssistantRefreshToken",
+  },
+  { crossTabRelay: true },
+);
 
-export const annixRepTokenStore = new PortalTokenStore({
-  accessToken: "annixRepAccessToken",
-  refreshToken: "annixRepRefreshToken",
-});
+export const annixRepTokenStore = new PortalTokenStore(
+  {
+    accessToken: "annixRepAccessToken",
+    refreshToken: "annixRepRefreshToken",
+  },
+  { crossTabRelay: true },
+);
 
-export const annixOrbitTokenStore = new PortalTokenStore({
-  accessToken: "annixOrbitAccessToken",
-  refreshToken: "annixOrbitRefreshToken",
-});
+export const annixOrbitTokenStore = new PortalTokenStore(
+  {
+    accessToken: "annixOrbitAccessToken",
+    refreshToken: "annixOrbitRefreshToken",
+  },
+  { crossTabRelay: true },
+);
 
-export const insightsTokenStore = new PortalTokenStore({
-  accessToken: "insightsAccessToken",
-  refreshToken: "insightsRefreshToken",
-});
+export const insightsTokenStore = new PortalTokenStore(
+  {
+    accessToken: "insightsAccessToken",
+    refreshToken: "insightsRefreshToken",
+  },
+  { crossTabRelay: true },
+);
 
 /**
  * Every portal-scoped token store, in priority order. Cross-cutting clients

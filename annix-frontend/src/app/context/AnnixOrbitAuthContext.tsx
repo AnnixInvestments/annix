@@ -40,13 +40,18 @@ export function AnnixOrbitAuthProvider(props: { children: ReactNode }) {
 
   const checkAuth = useCallback(async () => {
     if (!annixOrbitApiClient.isAuthenticated()) {
-      setState({
-        isAuthenticated: false,
-        isLoading: false,
-        user: null,
-        profile: null,
-      });
-      return;
+      // A fresh tab has empty sessionStorage. Ask other open tabs of this
+      // portal for their session before declaring the user logged out.
+      const adopted = await annixOrbitApiClient.tryAdoptSessionFromAnotherTab();
+      if (!adopted) {
+        setState({
+          isAuthenticated: false,
+          isLoading: false,
+          user: null,
+          profile: null,
+        });
+        return;
+      }
     }
 
     try {

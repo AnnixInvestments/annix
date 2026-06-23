@@ -72,8 +72,13 @@ export function AnnixRepAuthProvider(props: { children: React.ReactNode }) {
   useEffect(() => {
     const initAuth = async () => {
       if (!annixRepAuthApi.isAuthenticated()) {
-        setIsLoading(false);
-        return;
+        // A fresh tab has empty sessionStorage. Ask other open tabs of this
+        // portal for their session before declaring the user logged out.
+        const adopted = await annixRepAuthApi.tryAdoptSessionFromAnotherTab();
+        if (!adopted) {
+          setIsLoading(false);
+          return;
+        }
       }
       await refreshProfile();
       setIsLoading(false);
