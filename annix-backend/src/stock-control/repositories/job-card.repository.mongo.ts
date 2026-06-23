@@ -232,11 +232,10 @@ export class MongoJobCardRepository
   }
 
   async findActiveOrDraftForCompany(companyId: number): Promise<JobCard[]> {
-    const docs = await this.documents
-      .find({ companyId, status: { $in: ["draft", "active"] } })
-      .lean()
-      .exec();
-    return this.toDomainList(docs);
+    return this.cappedFullLoad("findActiveOrDraftForCompany", {
+      companyId,
+      status: { $in: ["draft", "active"] },
+    });
   }
 
   async findActiveJobCardsWithDedupeFields(companyId: number): Promise<JobCard[]> {

@@ -197,63 +197,58 @@ export class MongoStockItemRepository
   }
 
   async findAllForCompany(companyId: number): Promise<StockItem[]> {
-    const docs = await this.documents.find({ companyId }).allowDiskUse(true).lean().exec();
-    return this.toDomainList(docs);
+    return this.cappedFullLoad("findAllForCompany", { companyId }, { allowDiskUse: true });
   }
 
   async findAllForCompanyOrderedByName(companyId: number): Promise<StockItem[]> {
-    const docs = await this.documents
-      .find({ companyId })
-      .sort({ name: 1 })
-      .allowDiskUse(true)
-      .lean()
-      .exec();
-    return this.toDomainList(docs);
+    return this.cappedFullLoad(
+      "findAllForCompanyOrderedByName",
+      { companyId },
+      { allowDiskUse: true, sort: { name: 1 } },
+    );
   }
 
   async findForCompanySelectMatch(companyId: number): Promise<StockItem[]> {
-    const docs = await this.documents.find({ companyId }).allowDiskUse(true).lean().exec();
-    return this.toDomainList(docs);
+    return this.cappedFullLoad("findForCompanySelectMatch", { companyId }, { allowDiskUse: true });
   }
 
   async findUncategorizedForCompany(companyId: number): Promise<StockItem[]> {
-    const docs = await this.documents
-      .find({ companyId, category: null })
-      .sort({ name: 1 })
-      .lean()
-      .exec();
-    return this.toDomainList(docs);
+    return this.cappedFullLoad(
+      "findUncategorizedForCompany",
+      { companyId, category: null },
+      { sort: { name: 1 } },
+    );
   }
 
   async findRubberCategoryForCompanyOrderedByName(companyId: number): Promise<StockItem[]> {
-    const docs = await this.documents
-      .find({ companyId, category: "RUBBER" })
-      .sort({ name: 1 })
-      .lean()
-      .exec();
-    return this.toDomainList(docs);
+    return this.cappedFullLoad(
+      "findRubberCategoryForCompanyOrderedByName",
+      { companyId, category: "RUBBER" },
+      { sort: { name: 1 } },
+    );
   }
 
   async findRubberInStockForCompanyOrdered(companyId: number): Promise<StockItem[]> {
-    const docs = await this.documents
-      .find({ companyId, category: { $regex: "rubber", $options: "i" }, quantity: { $gt: 0 } })
-      .sort({ thicknessMm: 1, widthMm: 1 })
-      .lean()
-      .exec();
-    return this.toDomainList(docs);
+    return this.cappedFullLoad(
+      "findRubberInStockForCompanyOrdered",
+      { companyId, category: { $regex: "rubber", $options: "i" }, quantity: { $gt: 0 } },
+      { sort: { thicknessMm: 1, widthMm: 1 } },
+    );
   }
 
   async findRubberInStockForCompany(companyId: number): Promise<StockItem[]> {
-    const docs = await this.documents
-      .find({ companyId, category: { $regex: "rubber", $options: "i" }, quantity: { $gt: 0 } })
-      .lean()
-      .exec();
-    return this.toDomainList(docs);
+    return this.cappedFullLoad("findRubberInStockForCompany", {
+      companyId,
+      category: { $regex: "rubber", $options: "i" },
+      quantity: { $gt: 0 },
+    });
   }
 
   async findLeftoverForCompany(companyId: number): Promise<StockItem[]> {
-    const docs = await this.documents.find({ companyId, isLeftover: true }).lean().exec();
-    return this.toDomainList(docs);
+    return this.cappedFullLoad("findLeftoverForCompany", {
+      companyId,
+      isLeftover: true,
+    });
   }
 
   async findByTermForCompany(companyId: number, term: string): Promise<StockItem[]> {

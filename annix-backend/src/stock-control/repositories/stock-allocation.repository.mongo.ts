@@ -71,13 +71,14 @@ export class MongoStockAllocationRepository
   }
 
   async findPendingForCompany(companyId: number): Promise<StockAllocation[]> {
-    const docs = await this.documents
-      .find({ companyId, pendingApproval: true })
-      .populate(["stockItem", "jobCard"])
-      .sort({ createdAt: -1 })
-      .lean()
-      .exec();
-    return this.toDomainList(docs);
+    return this.cappedFullLoad(
+      "findPendingForCompany",
+      { companyId, pendingApproval: true },
+      {
+        populate: ["stockItem", "jobCard"],
+        sort: { createdAt: -1 },
+      },
+    );
   }
 
   async findForJobCardWithRelations(

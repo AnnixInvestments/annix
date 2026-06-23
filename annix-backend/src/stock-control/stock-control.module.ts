@@ -33,7 +33,6 @@ import { CpoController } from "./controllers/cpo.controller";
 import { StockControlCustomersController } from "./controllers/customers.controller";
 import { DashboardController } from "./controllers/dashboard.controller";
 import { DeliveriesController } from "./controllers/deliveries.controller";
-import { GlossaryController } from "./controllers/glossary.controller";
 import { ImportController } from "./controllers/import.controller";
 import { InspectionPublicController } from "./controllers/inspection-public.controller";
 import { InventoryController } from "./controllers/inventory.controller";
@@ -47,15 +46,12 @@ import { QrCodeController } from "./controllers/qr-code.controller";
 import { ReconciliationController } from "./controllers/reconciliation.controller";
 import { ReportsController } from "./controllers/reports.controller";
 import { RequisitionsController } from "./controllers/requisitions.controller";
-import { RubberBondingAgentController } from "./controllers/rubber-bonding-agent.controller";
-import { RubberPricingController } from "./controllers/rubber-pricing.controller";
 import { SearchController } from "./controllers/search.controller";
 import { SignatureController } from "./controllers/signature.controller";
 import { StaffController } from "./controllers/staff.controller";
 import { StockTakeReconciliationController } from "./controllers/stock-take-reconciliation.controller";
-import { SupplierController } from "./controllers/supplier.controller";
-import { SupplierDocumentController } from "./controllers/supplier-document.controller";
 import { WorkflowController } from "./controllers/workflow.controller";
+import { GlossaryModule } from "./glossary/glossary.module";
 import { MessagingEnabledGuard } from "./guards/messaging-enabled.guard";
 import { StockControlAuthGuard } from "./guards/stock-control-auth.guard";
 import { StockControlOnboardingGuard } from "./guards/stock-control-onboarding.guard";
@@ -123,8 +119,6 @@ import { DispatchScanRepository } from "./repositories/dispatch-scan.repository"
 import { MongoDispatchScanRepository } from "./repositories/dispatch-scan.repository.mongo";
 import { DnExtractionCorrectionRepository } from "./repositories/dn-extraction-correction.repository";
 import { MongoDnExtractionCorrectionRepository } from "./repositories/dn-extraction-correction.repository.mongo";
-import { GlossaryTermRepository } from "./repositories/glossary-term.repository";
-import { MongoGlossaryTermRepository } from "./repositories/glossary-term.repository.mongo";
 import { InspectionBookingRepository } from "./repositories/inspection-booking.repository";
 import { MongoInspectionBookingRepository } from "./repositories/inspection-booking.repository.mongo";
 import { InvoiceClarificationRepository } from "./repositories/invoice-clarification.repository";
@@ -175,14 +169,10 @@ import { RequisitionRepository } from "./repositories/requisition.repository";
 import { MongoRequisitionRepository } from "./repositories/requisition.repository.mongo";
 import { RequisitionItemRepository } from "./repositories/requisition-item.repository";
 import { MongoRequisitionItemRepository } from "./repositories/requisition-item.repository.mongo";
-import { RubberBondingAgentRepository } from "./repositories/rubber-bonding-agent.repository";
-import { MongoRubberBondingAgentRepository } from "./repositories/rubber-bonding-agent.repository.mongo";
 import { RubberCuttingTrainingRepository } from "./repositories/rubber-cutting-training.repository";
 import { MongoRubberCuttingTrainingRepository } from "./repositories/rubber-cutting-training.repository.mongo";
 import { RubberDimensionOverrideRepository } from "./repositories/rubber-dimension-override.repository";
 import { MongoRubberDimensionOverrideRepository } from "./repositories/rubber-dimension-override.repository.mongo";
-import { RubberPriceListItemRepository } from "./repositories/rubber-price-list-item.repository";
-import { MongoRubberPriceListItemRepository } from "./repositories/rubber-price-list-item.repository.mongo";
 import { StaffMemberRepository } from "./repositories/staff-member.repository";
 import { MongoStaffMemberRepository } from "./repositories/staff-member.repository.mongo";
 import { StaffSignatureRepository } from "./repositories/staff-signature.repository";
@@ -223,8 +213,6 @@ import { StockReturnRepository } from "./repositories/stock-return.repository";
 import { MongoStockReturnRepository } from "./repositories/stock-return.repository.mongo";
 import { SupplierCertificateRepository } from "./repositories/supplier-certificate.repository";
 import { MongoSupplierCertificateRepository } from "./repositories/supplier-certificate.repository.mongo";
-import { SupplierDocumentRepository } from "./repositories/supplier-document.repository";
-import { MongoSupplierDocumentRepository } from "./repositories/supplier-document.repository.mongo";
 import { SupplierInvoiceRepository } from "./repositories/supplier-invoice.repository";
 import { MongoSupplierInvoiceRepository } from "./repositories/supplier-invoice.repository.mongo";
 import { SupplierInvoiceItemRepository } from "./repositories/supplier-invoice-item.repository";
@@ -239,6 +227,7 @@ import { WorkflowStepAssignmentRepository } from "./repositories/workflow-step-a
 import { MongoWorkflowStepAssignmentRepository } from "./repositories/workflow-step-assignment.repository.mongo";
 import { WorkflowStepConfigRepository } from "./repositories/workflow-step-config.repository";
 import { MongoWorkflowStepConfigRepository } from "./repositories/workflow-step-config.repository.mongo";
+import { RubberPricingModule } from "./rubber-pricing/rubber-pricing.module";
 import { ChatConversationSchema } from "./schemas/chat-conversation.schema";
 import { ChatConversationParticipantSchema } from "./schemas/chat-conversation-participant.schema";
 import { ChatMessageSchema } from "./schemas/chat-message.schema";
@@ -252,7 +241,6 @@ import { DispatchCdnSchema } from "./schemas/dispatch-cdn.schema";
 import { DispatchLoadPhotoSchema } from "./schemas/dispatch-load-photo.schema";
 import { DispatchScanSchema } from "./schemas/dispatch-scan.schema";
 import { DnExtractionCorrectionSchema } from "./schemas/dn-extraction-correction.schema";
-import { GlossaryTermSchema } from "./schemas/glossary-term.schema";
 import { InspectionBookingSchema } from "./schemas/inspection-booking.schema";
 import { InvoiceClarificationSchema } from "./schemas/invoice-clarification.schema";
 import { InvoiceExtractionCorrectionSchema } from "./schemas/invoice-extraction-correction.schema";
@@ -279,10 +267,8 @@ import { ReconciliationEventSchema } from "./schemas/reconciliation-event.schema
 import { ReconciliationItemSchema } from "./schemas/reconciliation-item.schema";
 import { RequisitionSchema } from "./schemas/requisition.schema";
 import { RequisitionItemSchema } from "./schemas/requisition-item.schema";
-import { RubberBondingAgentSchema } from "./schemas/rubber-bonding-agent.schema";
 import { RubberCuttingTrainingSchema } from "./schemas/rubber-cutting-training.schema";
 import { RubberDimensionOverrideSchema } from "./schemas/rubber-dimension-override.schema";
-import { RubberPriceListItemSchema } from "./schemas/rubber-price-list-item.schema";
 import { StaffMemberSchema } from "./schemas/staff-member.schema";
 import { StaffSignatureSchema } from "./schemas/staff-signature.schema";
 import { StockAllocationSchema } from "./schemas/stock-allocation.schema";
@@ -303,7 +289,6 @@ import { StockMovementSchema } from "./schemas/stock-movement.schema";
 import { StockPriceHistorySchema } from "./schemas/stock-price-history.schema";
 import { StockReturnSchema } from "./schemas/stock-return.schema";
 import { SupplierCertificateSchema } from "./schemas/supplier-certificate.schema";
-import { SupplierDocumentSchema } from "./schemas/supplier-document.schema";
 import { SupplierInvoiceSchema } from "./schemas/supplier-invoice.schema";
 import { SupplierInvoiceItemSchema } from "./schemas/supplier-invoice-item.schema";
 import { UserLocationAssignmentSchema } from "./schemas/user-location-assignment.schema";
@@ -333,7 +318,6 @@ import { DispatchService } from "./services/dispatch.service";
 import { DispatchCdnService } from "./services/dispatch-cdn.service";
 import { DispatchLoadPhotoService } from "./services/dispatch-load-photo.service";
 import { DrawingExtractionService } from "./services/drawing-extraction.service";
-import { GlossaryService } from "./services/glossary.service";
 import { ImportService } from "./services/import.service";
 import { InspectionBookingService } from "./services/inspection-booking.service";
 import { InventoryService } from "./services/inventory.service";
@@ -362,11 +346,7 @@ import { ReconciliationDocumentService } from "./services/reconciliation-documen
 import { ReconciliationExtractionService } from "./services/reconciliation-extraction.service";
 import { ReportsService } from "./services/reports.service";
 import { RequisitionService } from "./services/requisition.service";
-import { RubberBondingAgentService } from "./services/rubber-bonding-agent.service";
 import { RubberCuttingTrainingService } from "./services/rubber-cutting-training.service";
-import { RubberPriceListService } from "./services/rubber-price-list.service";
-import { RubberPriceListExtractionService } from "./services/rubber-price-list-extraction.service";
-import { RubberPricingService } from "./services/rubber-pricing.service";
 import { SageInvoiceAdapterService } from "./services/sage-invoice-adapter.service";
 import { SageJcDumpService } from "./services/sage-jc-dump.service";
 import { ScEmailAdapterService } from "./services/sc-email-adapter.service";
@@ -375,11 +355,11 @@ import { SignatureService } from "./services/signature.service";
 import { StaffService } from "./services/staff.service";
 import { StockAllocationService } from "./services/stock-allocation.service";
 import { StockTakeReconciliationService } from "./services/stock-take-reconciliation.service";
-import { SupplierDocumentService } from "./services/supplier-document.service";
 import { WebPushService } from "./services/web-push.service";
 import { WorkflowAssignmentService } from "./services/workflow-assignment.service";
 import { WorkflowNotificationService } from "./services/workflow-notification.service";
 import { WorkflowStepConfigService } from "./services/workflow-step-config.service";
+import { SuppliersModule } from "./suppliers/suppliers.module";
 
 @Module({
   imports: [
@@ -391,8 +371,6 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       },
       { name: "ChatMessage", schema: ChatMessageSchema },
       { name: "JobCardCoatingAnalysis", schema: JobCardCoatingAnalysisSchema },
-      { name: "RubberPriceListItem", schema: RubberPriceListItemSchema },
-      { name: "RubberBondingAgent", schema: RubberBondingAgentSchema },
       { name: "CpoCalloffRecord", schema: CpoCalloffRecordSchema },
       {
         name: "CustomerPurchaseOrderItem",
@@ -406,7 +384,6 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       { name: "DispatchLoadPhoto", schema: DispatchLoadPhotoSchema },
       { name: "DispatchScan", schema: DispatchScanSchema },
       { name: "DnExtractionCorrection", schema: DnExtractionCorrectionSchema },
-      { name: "GlossaryTerm", schema: GlossaryTermSchema },
       { name: "InspectionBooking", schema: InspectionBookingSchema },
       { name: "InvoiceClarification", schema: InvoiceClarificationSchema },
       {
@@ -475,7 +452,6 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       { name: "StockPriceHistory", schema: StockPriceHistorySchema },
       { name: "StockReturn", schema: StockReturnSchema },
       { name: "SupplierCertificate", schema: SupplierCertificateSchema },
-      { name: "SupplierDocument", schema: SupplierDocumentSchema },
       { name: "SupplierInvoice", schema: SupplierInvoiceSchema },
       { name: "SupplierInvoiceItem", schema: SupplierInvoiceItemSchema },
       { name: "UserLocationAssignment", schema: UserLocationAssignmentSchema },
@@ -518,8 +494,11 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
         fileSize: 10 * 1024 * 1024,
       },
     }),
+    GlossaryModule,
     PaintPricingModule,
     QcModule,
+    RubberPricingModule,
+    SuppliersModule,
     NixModule,
     MetricsModule,
     NbOdLookupModule,
@@ -552,13 +531,8 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     WorkflowController,
     SignatureController,
     InvoicesController,
-    RubberPricingController,
-    RubberBondingAgentController,
-    SupplierController,
     CpoController,
-    GlossaryController,
     CertificateController,
-    SupplierDocumentController,
     ChatController,
     ReconciliationController,
     StockControlCustomersController,
@@ -586,10 +560,6 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     JobCardImportJobService,
     M2CalculationService,
     CoatingAnalysisService,
-    RubberPricingService,
-    RubberPriceListService,
-    RubberPriceListExtractionService,
-    RubberBondingAgentService,
     CompanyEmailService,
     DashboardService,
     QrCodeService,
@@ -618,10 +588,8 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     SageInvoiceAdapterService,
     SearchService,
     CpoService,
-    GlossaryService,
     CertificateService,
     CertificateAnalysisService,
-    SupplierDocumentService,
     DataBookPdfService,
     ChatService,
     WorkflowStepConfigService,
@@ -645,8 +613,6 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     ),
     repositoryProvider(ChatMessageRepository, MongoChatMessageRepository),
     repositoryProvider(JobCardCoatingAnalysisRepository, MongoJobCardCoatingAnalysisRepository),
-    repositoryProvider(RubberPriceListItemRepository, MongoRubberPriceListItemRepository),
-    repositoryProvider(RubberBondingAgentRepository, MongoRubberBondingAgentRepository),
     repositoryProvider(CpoCalloffRecordRepository, MongoCpoCalloffRecordRepository),
     repositoryProvider(
       CustomerPurchaseOrderItemRepository,
@@ -660,7 +626,6 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     repositoryProvider(DispatchLoadPhotoRepository, MongoDispatchLoadPhotoRepository),
     repositoryProvider(DispatchScanRepository, MongoDispatchScanRepository),
     repositoryProvider(DnExtractionCorrectionRepository, MongoDnExtractionCorrectionRepository),
-    repositoryProvider(GlossaryTermRepository, MongoGlossaryTermRepository),
     repositoryProvider(InspectionBookingRepository, MongoInspectionBookingRepository),
     repositoryProvider(InvoiceClarificationRepository, MongoInvoiceClarificationRepository),
     repositoryProvider(
@@ -723,7 +688,6 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     repositoryProvider(StockPriceHistoryRepository, MongoStockPriceHistoryRepository),
     repositoryProvider(StockReturnRepository, MongoStockReturnRepository),
     repositoryProvider(SupplierCertificateRepository, MongoSupplierCertificateRepository),
-    repositoryProvider(SupplierDocumentRepository, MongoSupplierDocumentRepository),
     repositoryProvider(SupplierInvoiceRepository, MongoSupplierInvoiceRepository),
     repositoryProvider(SupplierInvoiceItemRepository, MongoSupplierInvoiceItemRepository),
     repositoryProvider(UserLocationAssignmentRepository, MongoUserLocationAssignmentRepository),

@@ -48,12 +48,11 @@ export class MongoPaintPriceListItemRepository
   }
 
   async findAllForCompany(companyId: number): Promise<PaintPriceListItem[]> {
-    const docs = await this.documents
-      .find({ companyId })
-      .sort({ supplierName: 1, productName: 1 })
-      .lean()
-      .exec();
-    return this.toDomainList(docs);
+    return this.cappedFullLoad(
+      "findAllForCompany",
+      { companyId },
+      { sort: { supplierName: 1, productName: 1 } },
+    );
   }
 
   async findOneForCompany(companyId: number, id: number): Promise<PaintPriceListItem | null> {

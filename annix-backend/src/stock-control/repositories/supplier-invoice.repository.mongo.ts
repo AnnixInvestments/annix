@@ -139,20 +139,18 @@ export class MongoSupplierInvoiceRepository
   }
 
   async findFailedForCompany(companyId: number): Promise<SupplierInvoice[]> {
-    const docs = await this.documents
-      .find({ companyId, extractionStatus: InvoiceExtractionStatus.FAILED })
-      .lean()
-      .exec();
-    return this.toDomainList(docs);
+    return this.cappedFullLoad("findFailedForCompany", {
+      companyId,
+      extractionStatus: InvoiceExtractionStatus.FAILED,
+    });
   }
 
   async findUnlinkedForCompany(companyId: number): Promise<SupplierInvoice[]> {
-    const docs = await this.documents
-      .find({ companyId, deliveryNoteId: null })
-      .sort({ createdAt: -1 })
-      .lean()
-      .exec();
-    return this.toDomainList(docs);
+    return this.cappedFullLoad(
+      "findUnlinkedForCompany",
+      { companyId, deliveryNoteId: null },
+      { sort: { createdAt: -1 } },
+    );
   }
 
   async findCompletedLinkedToDeliveryNote(
@@ -254,12 +252,9 @@ export class MongoSupplierInvoiceRepository
       query.exportedToSageAt = null;
     }
 
-    const docs = await this.documents
-      .find(query)
-      .populate(["items"])
-      .sort({ invoiceDate: 1 })
-      .lean()
-      .exec();
-    return this.toDomainList(docs);
+    return this.cappedFullLoad("findExportableForCompany", query, {
+      populate: ["items"],
+      sort: { invoiceDate: 1 },
+    });
   }
 }
