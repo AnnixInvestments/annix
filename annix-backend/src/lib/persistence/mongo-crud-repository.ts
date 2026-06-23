@@ -15,7 +15,28 @@ type MongoDocument = Record<string, unknown>;
 
 const COUNTERS_COLLECTION = "counters";
 
+const MAX_ID_GENERATION_RETRIES = 5;
+
 const MAX_RELATION_MAPPING_DEPTH = 4;
+
+function isDuplicateIdError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+  const candidate = error as {
+    code?: number;
+    keyPattern?: Record<string, unknown>;
+    message?: string;
+  };
+  if (candidate.code !== 11000) {
+    return false;
+  }
+  if (candidate.keyPattern) {
+    const keys = Object.keys(candidate.keyPattern);
+    return keys.length === 1 && keys[0] === "_id";
+  }
+  return typeof candidate.message === "string" && /index:\s*_id_\b/.test(candidate.message);
+}
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 25;
@@ -268,12 +289,30 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
 
   async create(data: DeepPartial<Entity>): Promise<Entity> {
     const ModelClass = this.documents;
-    const shaped = await this.withGeneratedId(
-      toMongoShape(mapRelationObjectsToFks(this.model.schema, data as MongoDocument)),
-    );
-    const document = new ModelClass(shaped);
-    await document.save(this.sessionOption);
-    return this.toDomain(document.toObject()) as Entity;
+    const base = toMongoShape(mapRelationObjectsToFks(this.model.schema, data as MongoDocument));
+    const idWasGenerated = base._id === undefined || base._id === null;
+    let shaped = await this.withGeneratedId(base);
+
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        const document = new ModelClass(shaped);
+        await document.save(this.sessionOption);
+        return this.toDomain(document.toObject()) as Entity;
+      } catch (error) {
+        const canRetry =
+          idWasGenerated &&
+          this.hasNumericId &&
+          attempt < MAX_ID_GENERATION_RETRIES &&
+          isDuplicateIdError(error);
+        if (!canRetry) {
+          throw error;
+        }
+        shaped = {
+          ...shaped,
+          _id: await this.reseedSequence(this.model.collection.collectionName),
+        };
+      }
+    }
   }
 
   async findById(id: EntityId, relations: string[] = []): Promise<Entity | null> {
