@@ -32,7 +32,7 @@ export class IssuanceSession {
   cpoId: number;
 
   @Prop({ type: [Number], required: false })
-  jobCardIds: number;
+  jobCardIds: number[];
 
   @Prop({ type: String, required: false })
   notes: string;

@@ -48,6 +48,7 @@ export class MongoStockPurchaseBatchRepository
     const docs = await this.documents
       .find({ companyId, productId, status: "active", quantityRemaining: { $gt: 0 } })
       .sort({ receivedAt: 1, _id: 1 })
+      .session(this.session)
       .lean()
       .exec();
     return this.toDomainList(docs);
