@@ -1,4 +1,4 @@
-import { forwardRef, Module } from "@nestjs/common";
+import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { MulterModule } from "@nestjs/platform-express";
 import { repositoryProvider } from "../../lib/persistence/repository-provider";
@@ -13,6 +13,7 @@ import { SignatureController } from "../controllers/signature.controller";
 import { WorkflowController } from "../controllers/workflow.controller";
 import { StockControlCoreModule } from "../core/stock-control-core.module";
 import { CpoModule } from "../cpo/cpo.module";
+import { M2CalculationModule } from "../m2-calculation/m2-calculation.module";
 import { QcModule } from "../qc/qc.module";
 import { DispatchCdnRepository } from "../repositories/dispatch-cdn.repository";
 import { MongoDispatchCdnRepository } from "../repositories/dispatch-cdn.repository.mongo";
@@ -52,8 +53,6 @@ import { StaffSignatureRepository } from "../repositories/staff-signature.reposi
 import { MongoStaffSignatureRepository } from "../repositories/staff-signature.repository.mongo";
 import { StockReturnRepository } from "../repositories/stock-return.repository";
 import { MongoStockReturnRepository } from "../repositories/stock-return.repository.mongo";
-import { WorkflowNotificationRecipientRepository } from "../repositories/workflow-notification-recipient.repository";
-import { MongoWorkflowNotificationRecipientRepository } from "../repositories/workflow-notification-recipient.repository.mongo";
 import { WorkflowStepConfigRepository } from "../repositories/workflow-step-config.repository";
 import { MongoWorkflowStepConfigRepository } from "../repositories/workflow-step-config.repository.mongo";
 import { RequisitionModule } from "../requisition/requisition.module";
@@ -76,7 +75,6 @@ import { RubberCuttingTrainingSchema } from "../schemas/rubber-cutting-training.
 import { RubberDimensionOverrideSchema } from "../schemas/rubber-dimension-override.schema";
 import { StaffSignatureSchema } from "../schemas/staff-signature.schema";
 import { StockReturnSchema } from "../schemas/stock-return.schema";
-import { WorkflowNotificationRecipientSchema } from "../schemas/workflow-notification-recipient.schema";
 import { WorkflowStepConfigSchema } from "../schemas/workflow-step-config.schema";
 import { BackgroundStepService } from "../services/background-step.service";
 import { DispatchService } from "../services/dispatch.service";
@@ -99,10 +97,8 @@ import { ReconciliationExtractionService } from "../services/reconciliation-extr
 import { RubberCuttingTrainingService } from "../services/rubber-cutting-training.service";
 import { SignatureService } from "../services/signature.service";
 import { StockAllocationService } from "../services/stock-allocation.service";
-import { WebPushService } from "../services/web-push.service";
-import { WorkflowAssignmentService } from "../services/workflow-assignment.service";
 import { WorkflowStepConfigService } from "../services/workflow-step-config.service";
-import { StockControlModule } from "../stock-control.module";
+import { WorkflowNotificationModule } from "../workflow-notification/workflow-notification.module";
 
 @Module({
   imports: [
@@ -112,8 +108,9 @@ import { StockControlModule } from "../stock-control.module";
     NixModule,
     MetricsModule,
     StorageModule,
-    forwardRef(() => CpoModule),
-    forwardRef(() => StockControlModule),
+    CpoModule,
+    M2CalculationModule,
+    WorkflowNotificationModule,
     MulterModule.register({
       limits: {
         fileSize: 10 * 1024 * 1024,
@@ -144,10 +141,6 @@ import { StockControlModule } from "../stock-control.module";
       { name: "RubberDimensionOverride", schema: RubberDimensionOverrideSchema },
       { name: "StaffSignature", schema: StaffSignatureSchema },
       { name: "StockReturn", schema: StockReturnSchema },
-      {
-        name: "WorkflowNotificationRecipient",
-        schema: WorkflowNotificationRecipientSchema,
-      },
       { name: "WorkflowStepConfig", schema: WorkflowStepConfigSchema },
       { name: "InspectionBooking", schema: InspectionBookingSchema },
     ]),
@@ -176,11 +169,9 @@ import { StockControlModule } from "../stock-control.module";
     JobCardImportService,
     JobCardImportJobService,
     JobCardPdfService,
-    WorkflowAssignmentService,
     WorkflowStepConfigService,
     QaProcessService,
     SignatureService,
-    WebPushService,
     InspectionBookingService,
     ReconciliationService,
     ReconciliationDocumentService,
@@ -206,13 +197,9 @@ import { StockControlModule } from "../stock-control.module";
     repositoryProvider(RubberDimensionOverrideRepository, MongoRubberDimensionOverrideRepository),
     repositoryProvider(StaffSignatureRepository, MongoStaffSignatureRepository),
     repositoryProvider(StockReturnRepository, MongoStockReturnRepository),
-    repositoryProvider(
-      WorkflowNotificationRecipientRepository,
-      MongoWorkflowNotificationRecipientRepository,
-    ),
     repositoryProvider(WorkflowStepConfigRepository, MongoWorkflowStepConfigRepository),
     repositoryProvider(InspectionBookingRepository, MongoInspectionBookingRepository),
   ],
-  exports: [JobCardService, JobCardImportService, WorkflowAssignmentService, WebPushService],
+  exports: [JobCardService, JobCardImportService],
 })
 export class JobCardsModule {}

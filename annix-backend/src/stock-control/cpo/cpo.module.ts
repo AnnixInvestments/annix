@@ -1,9 +1,10 @@
-import { forwardRef, Module } from "@nestjs/common";
+import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { repositoryProvider } from "../../lib/persistence/repository-provider";
 import { NixModule } from "../../nix/nix.module";
 import { StorageModule } from "../../storage/storage.module";
 import { StockControlCoreModule } from "../core/stock-control-core.module";
+import { M2CalculationModule } from "../m2-calculation/m2-calculation.module";
 import { QcModule } from "../qc/qc.module";
 import { CpoCalloffRecordRepository } from "../repositories/cpo-calloff-record.repository";
 import { MongoCpoCalloffRecordRepository } from "../repositories/cpo-calloff-record.repository.mongo";
@@ -17,7 +18,7 @@ import { CustomerPurchaseOrderSchema } from "../schemas/customer-purchase-order.
 import { CustomerPurchaseOrderItemSchema } from "../schemas/customer-purchase-order-item.schema";
 import { CoatingAnalysisService } from "../services/coating-analysis.service";
 import { CpoService } from "../services/cpo.service";
-import { StockControlModule } from "../stock-control.module";
+import { WorkflowNotificationModule } from "../workflow-notification/workflow-notification.module";
 
 @Module({
   imports: [
@@ -34,7 +35,8 @@ import { StockControlModule } from "../stock-control.module";
       },
       { name: "CustomerPurchaseOrder", schema: CustomerPurchaseOrderSchema },
     ]),
-    forwardRef(() => StockControlModule),
+    M2CalculationModule,
+    WorkflowNotificationModule,
   ],
   providers: [
     CpoService,

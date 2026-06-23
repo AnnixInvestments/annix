@@ -1,4 +1,4 @@
-import { forwardRef, Module } from "@nestjs/common";
+import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { MulterModule } from "@nestjs/platform-express";
 import { AdminModule } from "../admin/admin.module";
@@ -39,6 +39,7 @@ import { GlossaryModule } from "./glossary/glossary.module";
 import { MessagingEnabledGuard } from "./guards/messaging-enabled.guard";
 import { InventoryModule } from "./inventory/inventory.module";
 import { JobCardsModule } from "./job-cards/job-cards.module";
+import { M2CalculationModule } from "./m2-calculation/m2-calculation.module";
 import { MovementsModule } from "./movements/movements.module";
 import { PaintPricingModule } from "./paint-pricing/paint-pricing.module";
 import { QcModule } from "./qc/qc.module";
@@ -115,13 +116,11 @@ import { BrandingScraperService } from "./services/branding-scraper.service";
 import { CertificateService } from "./services/certificate.service";
 import { CertificateAnalysisService } from "./services/certificate-analysis.service";
 import { ChatService } from "./services/chat.service";
-import { CompanyEmailService } from "./services/company-email.service";
 import { DashboardService } from "./services/dashboard.service";
 import { DataBookPdfService } from "./services/data-book-pdf.service";
 import { ImportService } from "./services/import.service";
 import { StockControlInvitationService } from "./services/invitation.service";
 import { LookupService } from "./services/lookup.service";
-import { M2CalculationService } from "./services/m2-calculation.service";
 import { QrCodeService } from "./services/qr-code.service";
 import { ReportsService } from "./services/reports.service";
 import { SageJcDumpService } from "./services/sage-jc-dump.service";
@@ -129,8 +128,8 @@ import { ScEmailAdapterService } from "./services/sc-email-adapter.service";
 import { SearchService } from "./services/search.service";
 import { StaffService } from "./services/staff.service";
 import { StockTakeReconciliationService } from "./services/stock-take-reconciliation.service";
-import { WorkflowNotificationService } from "./services/workflow-notification.service";
 import { SuppliersModule } from "./suppliers/suppliers.module";
+import { WorkflowNotificationModule } from "./workflow-notification/workflow-notification.module";
 
 @Module({
   imports: [
@@ -163,8 +162,10 @@ import { SuppliersModule } from "./suppliers/suppliers.module";
     ]),
     StockControlCoreModule,
     DeliveriesInvoicingModule,
-    forwardRef(() => CpoModule),
-    forwardRef(() => JobCardsModule),
+    CpoModule,
+    JobCardsModule,
+    M2CalculationModule,
+    WorkflowNotificationModule,
     DeliverySupportModule,
     InventoryModule,
     AdminModule,
@@ -216,14 +217,11 @@ import { SuppliersModule } from "./suppliers/suppliers.module";
     StockControlInvitationService,
     ImportService,
     StockTakeReconciliationService,
-    M2CalculationService,
-    CompanyEmailService,
     DashboardService,
     QrCodeService,
     ReportsService,
     StaffService,
     LookupService,
-    WorkflowNotificationService,
     SearchService,
     CertificateService,
     CertificateAnalysisService,
@@ -259,11 +257,6 @@ import { SuppliersModule } from "./suppliers/suppliers.module";
     repositoryProvider(QcReleaseCertificateRepository, MongoQcReleaseCertificateRepository),
     repositoryProvider(QcShoreHardnessRepository, MongoQcShoreHardnessRepository),
   ],
-  exports: [
-    StockControlCoreModule,
-    WorkflowNotificationService,
-    M2CalculationService,
-    CompanyEmailService,
-  ],
+  exports: [StockControlCoreModule],
 })
 export class StockControlModule {}

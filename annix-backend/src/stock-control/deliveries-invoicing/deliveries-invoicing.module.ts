@@ -1,4 +1,4 @@
-import { forwardRef, Module } from "@nestjs/common";
+import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { AiUsageModule } from "../../ai-usage/ai-usage.module";
 import { repositoryProvider } from "../../lib/persistence/repository-provider";
@@ -52,7 +52,7 @@ import { SageInvoiceAdapterService } from "../services/sage-invoice-adapter.serv
     StockManagementModule,
     RubberLiningModule,
     SageExportModule,
-    forwardRef(() => CpoModule),
+    CpoModule,
   ],
   controllers: [DeliveriesController, InvoicesController],
   providers: [
