@@ -15,6 +15,8 @@ import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { JwtStrategy } from "./jwt.strategy";
 import { JwtAuthGuard } from "./jwt-auth.guard";
+import { UnifiedLoginController } from "./unified-login.controller";
+import { UnifiedLoginService } from "./unified-login.service";
 
 @Module({
   imports: [
@@ -38,13 +40,14 @@ import { JwtAuthGuard } from "./jwt-auth.guard";
   ],
   providers: [
     AuthService,
+    UnifiedLoginService,
     JwtStrategy,
     JwtAuthGuard,
     repositoryProvider(UserRepository, MongoUserRepository),
     repositoryProvider(AppRepository, MongoAppRepository),
     repositoryProvider(UserAppAccessRepository, MongoUserAppAccessRepository),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, UnifiedLoginController],
   exports: [AuthService, JwtModule, PassportModule, JwtAuthGuard],
 })
 export class AuthModule {}
