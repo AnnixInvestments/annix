@@ -233,17 +233,18 @@ export class AiChatService implements OnModuleInit {
     processingTimeMs: number,
     modelOverride?: string,
   ): void {
-    if (!usageLog) {
-      return;
-    }
+    const context: AiUsageLogContext = usageLog ?? {
+      app: AiApp.UNKNOWN,
+      actionType: "uncontextualized",
+    };
     const provider = providerName.startsWith("gemini") ? AiProvider.GEMINI : AiProvider.CLAUDE;
     const model =
       provider === AiProvider.GEMINI
         ? (modelOverride ?? process.env.GEMINI_CHAT_MODEL ?? "gemini-2.5-flash")
         : (process.env.ANTHROPIC_MODEL ?? null);
     this.aiUsageService.log({
-      app: usageLog.app,
-      actionType: usageLog.actionType,
+      app: context.app,
+      actionType: context.actionType,
       provider,
       model: model ?? undefined,
       inputTokens: usage?.inputTokens,
@@ -251,7 +252,7 @@ export class AiChatService implements OnModuleInit {
       cachedInputTokens: usage?.cachedInputTokens,
       tokensUsed: usage?.totalTokens,
       processingTimeMs,
-      contextInfo: usageLog.contextInfo,
+      contextInfo: context.contextInfo,
     });
   }
 

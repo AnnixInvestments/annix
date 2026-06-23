@@ -90,6 +90,11 @@ export class CareerjetService {
 
   private readonly logger = new Logger(CareerjetService.name);
 
+  private extractUnauthorizedIp(text: string): string | null {
+    const match = text.match(/Unauthorized access from IP\s+(\d{1,3}(?:\.\d{1,3}){3})/i);
+    return match ? match[1] : null;
+  }
+
   async searchJobs(
     affiliateId: string,
     options: { keywords?: string; resultsPerPage?: number } = {},
@@ -162,7 +167,20 @@ export class CareerjetService {
     target: number,
   ): Promise<{ jobs: IngestedJobResult[]; requests: number }> {
     const authHeader = `Basic ${Buffer.from(`${affiliateId}:`).toString("base64")}`;
-    const userIp = await this.resolveUserIp();
+    let userIp = await this.resolveUserIp();
+
+    const doFetch = (ip: string | null) => {
+      const params = new URLSearchParams({
+        locale_code: CAREERJET_LOCALE,
+        sort: "date",
+        page: "1",
+        page_size: String(CAREERJET_PAGE_SIZE),
+        user_agent: CAREERJET_USER_AGENT,
+      });
+      if (ip) params.set("user_ip", ip);
+      if (keywords) params.set("keywords", keywords);
+      return params;
+    };
 
     const pages = Array.from({ length: maxPages }, (_, index) => index + 1);
     const outcome = await pages.reduce(
@@ -170,24 +188,40 @@ export class CareerjetService {
         const acc = await accPromise;
         if (acc.stop || acc.jobs.length >= target) return acc;
 
-        const params = new URLSearchParams({
-          locale_code: CAREERJET_LOCALE,
-          sort: "date",
-          page: String(page),
-          page_size: String(CAREERJET_PAGE_SIZE),
-          user_agent: CAREERJET_USER_AGENT,
-        });
-        if (userIp) params.set("user_ip", userIp);
-        if (keywords) params.set("keywords", keywords);
+        const params = doFetch(userIp);
+        params.set("page", String(page));
 
-        const response = await fetch(`${CAREERJET_BASE_URL}?${params.toString()}`, {
-          headers: {
-            Authorization: authHeader,
-            Accept: "application/json",
-            Referer: CAREERJET_REFERER,
-          },
-        });
-        const requests = acc.requests + 1;
+        const fetchPage = (p: URLSearchParams) =>
+          fetch(`${CAREERJET_BASE_URL}?${p.toString()}`, {
+            headers: {
+              Authorization: authHeader,
+              Accept: "application/json",
+              Referer: CAREERJET_REFERER,
+            },
+          });
+
+        let response = await fetchPage(params);
+        let requests = acc.requests + 1;
+
+        // Careerjet 403s with the calling IP it actually saw. Fly's NAT egress IP
+        // can differ from the probed user_ip, so self-heal: adopt the IP from the
+        // error body, cache it for subsequent pages/keywords, and retry once.
+        if (response.status === 403) {
+          const body = await response.text();
+          const seenIp = this.extractUnauthorizedIp(body);
+          if (seenIp && seenIp !== userIp && !process.env.CAREERJET_USER_IP) {
+            this.logger.warn(`Careerjet 403 — adopting reported egress IP ${seenIp} and retrying`);
+            this.cachedEgressIp = seenIp;
+            userIp = seenIp;
+            const retryParams = doFetch(userIp);
+            retryParams.set("page", String(page));
+            response = await fetchPage(retryParams);
+            requests = acc.requests + 2;
+          } else {
+            this.logger.error(`Careerjet API error 403 on page ${page}: ${body}`);
+            throw new Error(`Careerjet API returned 403: ${body}`);
+          }
+        }
 
         if (!response.ok) {
           const errorText = await response.text();

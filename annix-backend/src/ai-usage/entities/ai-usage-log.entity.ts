@@ -3,6 +3,7 @@ export enum AiApp {
   NIX = "nix",
   ANNIX_ORBIT = "annix-orbit",
   STOCK_CONTROL = "stock-control",
+  UNKNOWN = "unknown",
 }
 
 export enum AiProvider {
