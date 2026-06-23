@@ -119,6 +119,11 @@ function stripItemNoSequence(itemNo: string): string {
   return itemNo.replace(/\s*\(\d+\)\s*$/, "").trim();
 }
 
+function safeQty(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 function isAsterisk(value: string): boolean {
   return ASTERISK_PATTERN.test(value.trim());
 }
@@ -291,7 +296,7 @@ export class SageJcDumpService {
 
     const existingJtNumbers = await this.jobCardRepo
       .findChildJobCardsByJobNumber(companyId, cpo.jobNumber)
-      .then((jcs) => jcs.map((jc) => jc.jtDnNumber).filter((jt): jt is string => jt !== null));
+      .then((jcs) => jcs.map((jc) => jc.jtDnNumber).filter((jt): jt is string => Boolean(jt)));
 
     const existingJtSet = new Set(existingJtNumbers.map((jt) => jt.toUpperCase()));
 
@@ -528,8 +533,8 @@ export class SageJcDumpService {
           const cpoItem = cpo.items.find((ci) => ci.id === alloc.cpoItemId);
           if (cpoItem) {
             const newFulfilled = Math.min(
-              Number(cpoItem.quantityFulfilled) + totalAllocated,
-              Number(cpoItem.quantityOrdered),
+              safeQty(cpoItem.quantityFulfilled) + totalAllocated,
+              safeQty(cpoItem.quantityOrdered),
             );
             cpoItem.quantityFulfilled = newFulfilled;
             await cpoItemTx.saveForCompany(cpo.companyId, cpoItem);
@@ -539,11 +544,11 @@ export class SageJcDumpService {
 
       const updatedItems = await cpoItemTx.findForCpoOrdered(cpo.id, cpo.companyId);
       const totalFulfilled = updatedItems.reduce(
-        (sum, item) => sum + Number(item.quantityFulfilled),
+        (sum, item) => sum + safeQty(item.quantityFulfilled),
         0,
       );
       const totalOrdered = updatedItems.reduce(
-        (sum, item) => sum + Number(item.quantityOrdered),
+        (sum, item) => sum + safeQty(item.quantityOrdered),
         0,
       );
 
@@ -837,8 +842,8 @@ export class SageJcDumpService {
       if (!cpoItem) return acc;
 
       const jtQtyInDump = jtQtyByItemBase[key] || 0;
-      const alreadyDelivered = Number(cpoItem.quantityFulfilled) + jtQtyInDump;
-      const remaining = Number(cpoItem.quantityOrdered) - alreadyDelivered;
+      const alreadyDelivered = safeQty(cpoItem.quantityFulfilled) + jtQtyInDump;
+      const remaining = safeQty(cpoItem.quantityOrdered) - alreadyDelivered;
       if (remaining <= 0) return acc;
 
       return [
@@ -849,7 +854,7 @@ export class SageJcDumpService {
           itemNo: representative.itemNo,
           itemNoBase: representative.itemNoBase,
           cpoItemId: cpoItem.id,
-          totalCpoQty: Number(cpoItem.quantityOrdered),
+          totalCpoQty: safeQty(cpoItem.quantityOrdered),
           alreadyDeliveredQty: alreadyDelivered,
           remainingQty: remaining,
           asteriskQtyInFile: totalAsteriskQty,
@@ -879,13 +884,13 @@ export class SageJcDumpService {
         continue;
       }
 
-      const remaining = Number(cpoItem.quantityOrdered) - Number(cpoItem.quantityFulfilled);
+      const remaining = safeQty(cpoItem.quantityOrdered) - safeQty(cpoItem.quantityFulfilled);
       if (remaining <= 0) {
         continue;
       }
 
       const qty = Math.min(item.quantity, remaining);
-      cpoItem.quantityFulfilled = Number(cpoItem.quantityFulfilled) + qty;
+      cpoItem.quantityFulfilled = safeQty(cpoItem.quantityFulfilled) + qty;
       await cpoItemTx.saveForCompany(cpo.companyId, cpoItem);
 
       gated.push({ item, qty });

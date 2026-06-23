@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -143,6 +144,11 @@ export class CpoController {
     @Req() req: any,
     @Param("id", ParseIntPipe) id: number,
   ) {
+    if (!file?.buffer) {
+      throw new BadRequestException(
+        "No file was received. It may be larger than the 10 MB limit, or no file was selected. Please choose a valid Sage Excel export and try again.",
+      );
+    }
     return this.sageJcDumpService.parseSageJcDump(file.buffer, req.user.companyId, id);
   }
 
