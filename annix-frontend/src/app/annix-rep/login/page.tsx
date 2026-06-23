@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { BrandLoginCard } from "@/app/components/BrandLoginCard";
 import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
+import { useTheme } from "@/app/components/ThemeProvider";
 import { useAnnixRepAuth } from "@/app/context/AnnixRepAuthContext";
 import { annixRepTokenStore } from "@/app/lib/api/portalTokenStores";
+import { brandHasAsset, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
 import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
-import { useRepProfileStatus } from "@/app/lib/query/hooks";
+import { useBranding, useRepProfileStatus } from "@/app/lib/query/hooks";
 
 interface LoginFormData {
   email: string;
@@ -92,6 +93,16 @@ function LoginPageContent() {
     }
   };
 
+  const { resolvedTheme } = useTheme();
+  const repBrandingData = useBranding("annix-rep").data;
+  const repBranding = repBrandingData ?? null;
+  const brandVariant = resolvedTheme === "light" ? "light" : "dark";
+  const hasRepLockup = repBranding ? brandHasAsset("logoLockup", repBranding, brandVariant) : false;
+  const repLockupUrl =
+    repBranding && hasRepLockup
+      ? resolveBrandAssetUrl("logoLockup", repBranding, brandVariant)
+      : null;
+
   if (authLoading || (isAuthenticated && profileLoading)) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -111,9 +122,15 @@ function LoginPageContent() {
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-8">
       <div className="max-w-md w-full">
-        <div className="mb-4">
-          <BrandLoginCard brand="annix-rep" />
-        </div>
+        {repLockupUrl ? (
+          <div className="mb-4 flex justify-center">
+            <img
+              src={repLockupUrl}
+              alt="Annix Pulse"
+              className="h-12 w-auto object-contain sm:h-14"
+            />
+          </div>
+        ) : null}
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl overflow-hidden">
           <div className="px-8 py-8 bg-gradient-to-br from-indigo-600 to-indigo-700 text-center">
             <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3">

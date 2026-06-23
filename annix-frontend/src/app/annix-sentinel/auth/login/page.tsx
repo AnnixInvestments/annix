@@ -5,10 +5,23 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { login } from "@/app/annix-sentinel/lib/api";
-import { BrandLoginCard } from "@/app/components/BrandLoginCard";
+import { useTheme } from "@/app/components/ThemeProvider";
+import { brandHasAsset, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
+import { useBranding } from "@/app/lib/query/hooks";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { resolvedTheme } = useTheme();
+  const sentinelBrandingData = useBranding("annix-sentinel").data;
+  const sentinelBranding = sentinelBrandingData ?? null;
+  const brandVariant = resolvedTheme === "light" ? "light" : "dark";
+  const hasSentinelLockup = sentinelBranding
+    ? brandHasAsset("logoLockup", sentinelBranding, brandVariant)
+    : false;
+  const sentinelLockupUrl =
+    sentinelBranding && hasSentinelLockup
+      ? resolveBrandAssetUrl("logoLockup", sentinelBranding, brandVariant)
+      : null;
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -41,9 +54,15 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
-        <Link href="/annix-sentinel" className="block mb-8">
-          <BrandLoginCard brand="annix-sentinel" />
-        </Link>
+        {sentinelLockupUrl ? (
+          <Link href="/annix-sentinel" className="mb-8 flex justify-center">
+            <img
+              src={sentinelLockupUrl}
+              alt="Annix Sentinel"
+              className="h-12 w-auto object-contain sm:h-14"
+            />
+          </Link>
+        ) : null}
 
         <div className="bg-[#1A2332] border border-slate-700 rounded-xl p-8">
           <h1 className="text-2xl font-bold text-white mb-6 text-center">Welcome Back</h1>
