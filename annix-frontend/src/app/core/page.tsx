@@ -1,7 +1,7 @@
 import { ArrowLeft, Package, ShieldCheck } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BrandLoginCard } from "@/app/components/BrandLoginCard";
+import { CoreBrandHeader } from "./CoreBrandHeader";
 
 export const metadata: Metadata = {
   title: "Annix Core",
@@ -17,8 +17,8 @@ export default function AnnixCorePage() {
       <div className="text-white">
         <div className="w-full px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center">
-            <div className="mx-auto mb-6 max-w-md">
-              <BrandLoginCard brand="annix-core" />
+            <div className="mb-6">
+              <CoreBrandHeader />
             </div>
             <p className="text-xl text-blue-200 max-w-2xl mx-auto">
               The operations platform for stock, production, documents, quality, and delivery.

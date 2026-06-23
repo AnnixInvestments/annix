@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useEffect, useRef, useState } from "react";
-import { BrandLoginCard } from "@/app/components/BrandLoginCard";
 import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
 import { useTheme } from "@/app/components/ThemeProvider";
 import { useCustomerAuth } from "@/app/context/CustomerAuthContext";
 import { useDeviceFingerprint } from "@/app/hooks/useDeviceFingerprint";
 import { customerEmailApi } from "@/app/lib/api/customerApi";
 import { customerTokenStore } from "@/app/lib/api/portalTokenStores";
+import { brandHasAsset, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
 import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
 import { useBranding } from "@/app/lib/query/hooks";
 
@@ -137,6 +137,16 @@ function CustomerLoginContent() {
 
   const { resolvedTheme } = useTheme();
   const masterBranding = useBranding("annix-investments").data;
+  const forgeBrandingData = useBranding("annix-forge").data;
+  const forgeBranding = forgeBrandingData ?? null;
+  const brandVariant = resolvedTheme === "light" ? "light" : "dark";
+  const hasForgeLockup = forgeBranding
+    ? brandHasAsset("logoLockup", forgeBranding, brandVariant)
+    : false;
+  const forgeLockupUrl =
+    forgeBranding && hasForgeLockup
+      ? resolveBrandAssetUrl("logoLockup", forgeBranding, brandVariant)
+      : null;
   const isLightTheme = resolvedTheme === "light";
   const screenBg = isLightTheme
     ? masterBranding
@@ -173,9 +183,15 @@ function CustomerLoginContent() {
       style={{ backgroundColor: "transparent" }}
     >
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <Link href="/" className="mb-6 block">
-          <BrandLoginCard brand="annix-forge" />
-        </Link>
+        {forgeLockupUrl ? (
+          <Link href="/" className="mb-6 flex justify-center">
+            <img
+              src={forgeLockupUrl}
+              alt="Annix Forge"
+              className="h-12 w-auto object-contain sm:h-14"
+            />
+          </Link>
+        ) : null}
         <div className="text-center">
           <h1 className="text-3xl font-bold" style={{ color: headingColor }}>
             Customer Portal
