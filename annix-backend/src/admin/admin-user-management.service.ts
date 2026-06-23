@@ -12,6 +12,7 @@ import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
 import { EmailService } from "../email/email.service";
 import { now } from "../lib/datetime";
+import { AppScope } from "../rbac/app-scope";
 import { User } from "../user/entities/user.entity";
 import { UserRepository } from "../user/user.repository";
 import { UserRoleRepository } from "../user-roles/user-roles.repository";
@@ -92,7 +93,10 @@ export class AdminUserManagementService {
    */
   async createAdminUser(dto: CreateAdminUserDto, createdBy: number): Promise<User> {
     // Check if user already exists
-    const existingUser = await this.userRepo.findOneByEmail(dto.email);
+    const existingUser = await this.userRepo.findOneByEmailAndScope(
+      dto.email,
+      AppScope.ANNIX_ADMIN,
+    );
 
     if (existingUser) {
       throw new ConflictException("A user with this email already exists");
@@ -111,6 +115,7 @@ export class AdminUserManagementService {
       email: dto.email,
       username: `${dto.firstName} ${dto.lastName}`,
       passwordHash: hashedPassword,
+      appScope: AppScope.ANNIX_ADMIN,
       roles: [userRole],
     });
 

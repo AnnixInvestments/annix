@@ -18,6 +18,7 @@ import type { TransactionContext } from "../lib/persistence/transaction-context"
 import { TransactionRunner } from "../lib/persistence/transaction-runner";
 import { CompanyRepository } from "../platform/company.repository";
 import { CompanyType } from "../platform/entities/company.entity";
+import { AppScope } from "../rbac/app-scope";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import {
   AUTH_CONSTANTS,
@@ -105,7 +106,10 @@ export class CustomerAuthService {
       );
     }
 
-    const existingUser = await this.userRepo.findOneByEmail(dto.user.email);
+    const existingUser = await this.userRepo.findOneByEmailAndScope(
+      dto.user.email,
+      AppScope.FORGE_CUSTOMER,
+    );
     if (existingUser) {
       throw new ConflictException("An account with this email already exists");
     }
@@ -151,6 +155,7 @@ export class CustomerAuthService {
         username: dto.user.email,
         email: dto.user.email,
         passwordHash,
+        appScope: AppScope.FORGE_CUSTOMER,
         roles: [customerRole],
       });
 
@@ -314,7 +319,10 @@ export class CustomerAuthService {
   ): Promise<CustomerLoginResponseDto> {
     await this.rateLimitingService.checkLoginAttempts(this.loginAttemptRepository, dto.email);
 
-    const user = await this.userRepo.findByEmailWithRoles(dto.email);
+    const user = await this.userRepo.findByEmailWithRolesAndScope(
+      dto.email,
+      AppScope.FORGE_CUSTOMER,
+    );
 
     if (!user) {
       await this.logLoginAttempt(
@@ -780,7 +788,7 @@ export class CustomerAuthService {
     email: string,
     clientIp: string,
   ): Promise<{ success: boolean; message: string }> {
-    const user = await this.userRepo.findOneByEmail(email);
+    const user = await this.userRepo.findOneByEmailAndScope(email, AppScope.FORGE_CUSTOMER);
     if (!user) {
       return {
         success: true,

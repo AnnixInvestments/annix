@@ -44,6 +44,8 @@ describe("PasskeyService", () => {
   const mockUserRepo = {
     findById: jest.fn(),
     findOneByEmail: jest.fn(),
+    findOneByEmailAndScope: jest.fn(),
+    findOneByEmailAnyScope: jest.fn(),
     findByIdWithRoles: jest.fn(),
   };
 

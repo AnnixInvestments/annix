@@ -22,6 +22,7 @@ import { AnnixRepAuthService } from "../annix-rep/auth/annix-rep-auth.service";
 import { AuthService } from "../auth/auth.service";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CustomerAuthService } from "../customer/customer-auth.service";
+import { scopeForAppCode } from "../rbac/app-scope";
 import { StockControlAuthService } from "../stock-control/services/auth.service";
 import { SupplierAuthService } from "../supplier/supplier-auth.service";
 import {
@@ -76,11 +77,14 @@ export class PasskeyController {
     @Body() body: PasskeyRegisterVerifyRequestDto,
   ): Promise<PasskeySummaryDto> {
     const userId = this.requireUserId(req);
+    const requestHost = this.requestHost(req);
+    const appScope = scopeForAppCode(this.resolveAppCode(requestHost, null));
     const passkey = await this.passkeyService.verifyRegistration(
       userId,
       body.response as unknown as RegistrationResponseJSON,
       body.deviceName ?? null,
-      this.requestHost(req),
+      requestHost,
+      appScope,
     );
     return this.toSummary(passkey);
   }
@@ -92,7 +96,9 @@ export class PasskeyController {
     @Body() body: PasskeyAuthOptionsRequestDto,
     @Req() req: { headers: Record<string, string | string[] | undefined> },
   ) {
-    return this.passkeyService.authenticationOptions(body.email, this.requestHost(req));
+    const requestHost = this.requestHost(req);
+    const appScope = scopeForAppCode(this.resolveAppCode(requestHost, body.appCode));
+    return this.passkeyService.authenticationOptions(body.email, requestHost, appScope);
   }
 
   @Post("login/verify")
@@ -104,15 +110,15 @@ export class PasskeyController {
     @Ip() clientIp: string,
   ) {
     const requestHost = this.requestHost(req);
+    const appCode = this.resolveAppCode(requestHost, body.appCode);
     const result = await this.passkeyService.verifyAuthentication(
       body.response as unknown as AuthenticationResponseJSON,
       requestHost,
+      scopeForAppCode(appCode),
     );
 
     const userAgentHeader = req.headers["user-agent"];
     const userAgent = (typeof userAgentHeader === "string" ? userAgentHeader : null) || "unknown";
-
-    const appCode = this.resolveAppCode(requestHost, body.appCode);
 
     if (appCode === "admin" || appCode === "au-rubber") {
       const adminResponse = await this.adminAuthService.issueTokensForAuthenticatedUser(

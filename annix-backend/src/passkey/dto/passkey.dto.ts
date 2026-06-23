@@ -6,6 +6,16 @@ export class PasskeyAuthOptionsRequestDto {
   @IsOptional()
   @IsEmail()
   email?: string;
+
+  @ApiProperty({
+    example: "customer",
+    required: false,
+    description: "Portal app code — scopes the credential lookup to that app's account",
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  appCode?: string;
 }
 
 export class PasskeyAuthVerifyRequestDto {

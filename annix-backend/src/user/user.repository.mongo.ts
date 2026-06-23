@@ -113,6 +113,14 @@ export class MongoUserRepository extends MongoCrudRepository<User> implements Us
     return this.withRolesAttached(doc);
   }
 
+  async findByEmailWithRolesAndScope(email: string, appScope: string): Promise<User | null> {
+    const doc = await this.documents
+      .findOne({ email: { $regex: `^${escapeRegExp(email)}$`, $options: "i" }, appScope })
+      .lean()
+      .exec();
+    return this.withRolesAttached(doc);
+  }
+
   async findByIds(ids: number[]): Promise<User[]> {
     const docs = await this.documents
       .find({ _id: { $in: ids } })
@@ -228,10 +236,14 @@ export class MongoUserRepository extends MongoCrudRepository<User> implements Us
     return this.withRolesAttached(doc);
   }
 
-  async updateByEmailCaseInsensitive(email: string, changes: DeepPartial<User>): Promise<void> {
+  async updateByEmailCaseInsensitiveAndScope(
+    email: string,
+    appScope: string,
+    changes: DeepPartial<User>,
+  ): Promise<void> {
     await this.documents
-      .updateMany(
-        { email: { $regex: `^${escapeRegExp(email)}$`, $options: "i" }, ...NON_ORBIT_SCOPE_FILTER },
+      .updateOne(
+        { email: { $regex: `^${escapeRegExp(email)}$`, $options: "i" }, appScope },
         { $set: changes },
       )
       .exec();

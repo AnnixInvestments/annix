@@ -12,6 +12,7 @@ import { JwtService } from "@nestjs/jwt";
 import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../../email/email.service";
 import { now } from "../../lib/datetime";
+import { AppScope } from "../../rbac/app-scope";
 import { AppRepository, UserAppAccessRepository } from "../../rbac/rbac.repository";
 import { PasswordService } from "../../shared/auth/password.service";
 import { S3StorageService } from "../../storage/s3-storage.service";
@@ -201,12 +202,16 @@ export class StockControlAuthService {
     user.emailVerificationExpires = null;
     await this.userRepo.saveForCompany(user.companyId, user);
 
-    await this.unifiedUserRepo.updateByEmailCaseInsensitive(user.email, {
-      emailVerified: true,
-      emailVerificationToken: null,
-      emailVerificationExpires: null,
-      status: "active",
-    });
+    await this.unifiedUserRepo.updateByEmailCaseInsensitiveAndScope(
+      user.email,
+      AppScope.STOCK_CONTROL,
+      {
+        emailVerified: true,
+        emailVerificationToken: null,
+        emailVerificationExpires: null,
+        status: "active",
+      },
+    );
 
     const result: Record<string, unknown> = {
       message: "Email verified successfully. You can now sign in.",
@@ -217,7 +222,10 @@ export class StockControlAuthService {
 
     if (!isInvitedUser) {
       // Issue unified JWT tokens for auto-login after verification
-      const unifiedUser = await this.unifiedUserRepo.findOneByEmail(user.email);
+      const unifiedUser = await this.unifiedUserRepo.findOneByEmailAndScope(
+        user.email,
+        AppScope.STOCK_CONTROL,
+      );
       const profile = unifiedUser ? await this.profileRepo.findOneByUserId(unifiedUser.id) : null;
       if (unifiedUser && profile) {
         const tokens = this.generateTokens(unifiedUser, profile, user.role);
@@ -247,10 +255,14 @@ export class StockControlAuthService {
     user.emailVerificationExpires = verificationExpires;
     await this.userRepo.saveForCompany(user.companyId, user);
 
-    await this.unifiedUserRepo.updateByEmailCaseInsensitive(user.email, {
-      emailVerificationToken: verificationToken,
-      emailVerificationExpires: verificationExpires,
-    });
+    await this.unifiedUserRepo.updateByEmailCaseInsensitiveAndScope(
+      user.email,
+      AppScope.STOCK_CONTROL,
+      {
+        emailVerificationToken: verificationToken,
+        emailVerificationExpires: verificationExpires,
+      },
+    );
 
     await this.emailService.sendStockControlVerificationEmail(email, verificationToken);
 
@@ -268,10 +280,14 @@ export class StockControlAuthService {
       user.resetPasswordExpires = resetExpires;
       await this.userRepo.saveForCompany(user.companyId, user);
 
-      await this.unifiedUserRepo.updateByEmailCaseInsensitive(user.email, {
-        resetPasswordToken: resetToken,
-        resetPasswordExpires: resetExpires,
-      });
+      await this.unifiedUserRepo.updateByEmailCaseInsensitiveAndScope(
+        user.email,
+        AppScope.STOCK_CONTROL,
+        {
+          resetPasswordToken: resetToken,
+          resetPasswordExpires: resetExpires,
+        },
+      );
 
       await this.emailService.sendStockControlPasswordResetEmail(email, resetToken);
     }
@@ -294,11 +310,15 @@ export class StockControlAuthService {
     user.resetPasswordExpires = null;
     await this.userRepo.saveForCompany(user.companyId, user);
 
-    await this.unifiedUserRepo.updateByEmailCaseInsensitive(user.email, {
-      passwordHash: newHash,
-      resetPasswordToken: null,
-      resetPasswordExpires: null,
-    });
+    await this.unifiedUserRepo.updateByEmailCaseInsensitiveAndScope(
+      user.email,
+      AppScope.STOCK_CONTROL,
+      {
+        passwordHash: newHash,
+        resetPasswordToken: null,
+        resetPasswordExpires: null,
+      },
+    );
 
     return { message: "Password reset successfully. You can now sign in with your new password." };
   }
@@ -307,7 +327,10 @@ export class StockControlAuthService {
     const normalizedEmail = email.toLowerCase().trim();
 
     // Look up the unified User for password verification
-    const unifiedUser = await this.unifiedUserRepo.findOneByEmailCaseInsensitive(normalizedEmail);
+    const unifiedUser = await this.unifiedUserRepo.findOneByEmailAndScope(
+      normalizedEmail,
+      AppScope.STOCK_CONTROL,
+    );
     if (!unifiedUser) {
       throw new UnauthorizedException("Invalid credentials");
     }
@@ -869,7 +892,10 @@ export class StockControlAuthService {
 
   async adminBridge(adminEmail: string) {
     const normalizedEmail = adminEmail.toLowerCase().trim();
-    const unifiedUser = await this.unifiedUserRepo.findOneByEmail(normalizedEmail);
+    const unifiedUser = await this.unifiedUserRepo.findOneByEmailAndScope(
+      normalizedEmail,
+      AppScope.STOCK_CONTROL,
+    );
 
     if (!unifiedUser) {
       throw new NotFoundException(
@@ -906,7 +932,10 @@ export class StockControlAuthService {
     verificationExpires: Date,
   ): Promise<void> {
     try {
-      const existingUnified = await this.unifiedUserRepo.findOneByEmail(email);
+      const existingUnified = await this.unifiedUserRepo.findOneByEmailAndScope(
+        email,
+        AppScope.STOCK_CONTROL,
+      );
 
       if (existingUnified) {
         existingUnified.passwordHash = passwordHash;
@@ -921,6 +950,7 @@ export class StockControlAuthService {
           passwordHash,
           firstName: nameParts[0],
           lastName: nameParts.length > 1 ? nameParts.slice(1).join(" ") : undefined,
+          appScope: AppScope.STOCK_CONTROL,
           status: "pending",
           emailVerified: false,
           emailVerificationToken: verificationToken,

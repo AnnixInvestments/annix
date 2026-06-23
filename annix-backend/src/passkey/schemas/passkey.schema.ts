@@ -16,6 +16,9 @@ export class Passkey {
   @Prop({ type: Number, required: true })
   userId: number;
 
+  @Prop({ type: String, required: false, default: null })
+  appScope: string | null;
+
   @Prop({ type: String, required: true })
   credentialId: string;
 

@@ -98,7 +98,16 @@ export class AnnixOrbitAuthService {
     if (scope === this.orbitScope(AnnixOrbitUserType.STUDENT)) {
       return AnnixOrbitUserType.STUDENT;
     }
-    return AnnixOrbitUserType.INDIVIDUAL;
+    if (scope === this.orbitScope(AnnixOrbitUserType.INDIVIDUAL)) {
+      return AnnixOrbitUserType.INDIVIDUAL;
+    }
+    // M2 (#389): a profile-less account whose scope is NOT a recognised Orbit
+    // scope is not an Orbit seeker — it is a foreign or incomplete record that
+    // must never be silently classified as INDIVIDUAL and handed an Orbit token.
+    this.logger.warn(
+      `Orbit fallbackUserType called on user ${user.id} with non-orbit scope '${scope ?? "null"}' — refusing to default to INDIVIDUAL`,
+    );
+    throw new UnauthorizedException("No Annix Orbit account exists for this login.");
   }
 
   private async assertOrbitAccountAvailable(

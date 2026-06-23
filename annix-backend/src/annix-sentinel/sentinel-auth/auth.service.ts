@@ -10,6 +10,7 @@ import { JwtService } from "@nestjs/jwt";
 import { EmailService } from "../../email/email.service";
 import { CompanyRepository } from "../../platform/company.repository";
 import { CompanyType } from "../../platform/entities/company.entity";
+import { AppScope } from "../../rbac/app-scope";
 import {
   AppRepository,
   AppRoleRepository,
@@ -54,7 +55,10 @@ export class AnnixSentinelAuthService {
       );
     }
 
-    const existingUser = await this.userRepo.findOneByEmail(dto.email);
+    const existingUser = await this.userRepo.findOneByEmailAndScope(
+      dto.email,
+      AppScope.SENTINEL_USER,
+    );
 
     if (existingUser !== null) {
       throw new ConflictException("An account with this email already exists");
@@ -103,6 +107,7 @@ export class AnnixSentinelAuthService {
       username: dto.email,
       passwordHash,
       firstName: dto.name,
+      appScope: AppScope.SENTINEL_USER,
       status: "pending",
       emailVerified: false,
       emailVerificationToken: verificationToken,
@@ -154,7 +159,7 @@ export class AnnixSentinelAuthService {
   }
 
   async resendVerification(email: string): Promise<{ sent: boolean }> {
-    const user = await this.userRepo.findOneByEmail(email);
+    const user = await this.userRepo.findOneByEmailAndScope(email, AppScope.SENTINEL_USER);
 
     if (user === null) {
       return { sent: true };
@@ -179,7 +184,7 @@ export class AnnixSentinelAuthService {
     emailVerified: boolean;
     termsOutdated: boolean;
   }> {
-    const user = await this.userRepo.findOneByEmail(dto.email);
+    const user = await this.userRepo.findOneByEmailAndScope(dto.email, AppScope.SENTINEL_USER);
 
     if (user === null) {
       throw new UnauthorizedException("Invalid credentials");
@@ -215,7 +220,7 @@ export class AnnixSentinelAuthService {
   }
 
   async forgotPassword(email: string): Promise<{ sent: boolean }> {
-    const user = await this.userRepo.findOneByEmail(email);
+    const user = await this.userRepo.findOneByEmailAndScope(email, AppScope.SENTINEL_USER);
 
     if (user === null) {
       return { sent: true };

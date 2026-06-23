@@ -18,6 +18,7 @@ import { UserRepository } from "../user/user.repository";
 import { UserSyncService } from "../user-sync/user-sync.service";
 import { createConsentToken } from "../whatsapp/consent-token";
 import { normalizeWaId } from "../whatsapp/wa-id";
+import { AppScope } from "./app-scope";
 import {
   AssignUserAccessDto,
   UpdateUserAccessDto,
@@ -577,7 +578,7 @@ export class RbacService {
       resolved.push({ grant, app });
     }
 
-    let user = await this.userRepo.findOneByEmail(dto.email);
+    let user = await this.userRepo.findOneByEmailAndScope(dto.email, AppScope.ANNIX_ADMIN);
     const isNewUser = !user;
     let inviteToken: string | null = null;
 
@@ -590,6 +591,7 @@ export class RbacService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         status: "invited",
+        appScope: AppScope.ANNIX_ADMIN,
         passwordHash: placeholderHash,
         resetPasswordToken: inviteToken,
         resetPasswordExpires: now().plus({ days: 7 }).toJSDate(),

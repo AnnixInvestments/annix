@@ -156,11 +156,12 @@ describe("StockControlAuthService", () => {
     findOne: unifiedUserFindOne,
     findOneByEmail: unifiedUserFindOne,
     findOneByEmailCaseInsensitive: unifiedUserFindOne,
+    findOneByEmailAndScope: unifiedUserFindOne,
     findById: unifiedUserFindOne,
     instantiate: jest.fn().mockImplementation((data: any) => ({ ...data })),
     create: jest.fn().mockImplementation((data: any) => ({ ...data })),
     save: jest.fn().mockImplementation((entity: any) => Promise.resolve({ id: 1, ...entity })),
-    updateByEmailCaseInsensitive: jest.fn().mockResolvedValue(undefined),
+    updateByEmailCaseInsensitiveAndScope: jest.fn().mockResolvedValue(undefined),
     createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
   };
 

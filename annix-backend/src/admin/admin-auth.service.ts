@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
 import { fromJSDate, now } from "../lib/datetime";
+import { AppScope } from "../rbac/app-scope";
 import { App } from "../rbac/entities/app.entity";
 import { AppRepository, AppRoleRepository, UserAppAccessRepository } from "../rbac/rbac.repository";
 import {
@@ -38,7 +39,10 @@ export class AdminAuthService {
     clientIp: string,
     userAgent: string,
   ): Promise<AdminLoginResponseDto> {
-    const user = await this.userRepo.findOneByEmailCaseInsensitiveWithRoles(loginDto.email);
+    const user = await this.userRepo.findByEmailWithRolesAndScope(
+      loginDto.email,
+      AppScope.ANNIX_ADMIN,
+    );
 
     if (!user) {
       await this.auditService.log({

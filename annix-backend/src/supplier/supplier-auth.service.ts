@@ -17,6 +17,7 @@ import { TransactionRunner } from "../lib/persistence/transaction-runner";
 import { DocumentVerificationService } from "../nix/services/document-verification.service";
 import { CompanyRepository } from "../platform/company.repository";
 import { CompanyType } from "../platform/entities/company.entity";
+import { AppScope } from "../rbac/app-scope";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import {
   AUTH_CONSTANTS,
@@ -106,7 +107,10 @@ export class SupplierAuthService {
     dto: CreateSupplierRegistrationDto,
     clientIp: string,
   ): Promise<SupplierLoginResponseDto> {
-    const existingUser = await this.userRepo.findOneByEmail(dto.email);
+    const existingUser = await this.userRepo.findOneByEmailAndScope(
+      dto.email,
+      AppScope.FORGE_SUPPLIER,
+    );
     if (existingUser) {
       throw new ConflictException("An account with this email already exists");
     }
@@ -126,6 +130,7 @@ export class SupplierAuthService {
         username: dto.email,
         email: dto.email,
         passwordHash,
+        appScope: AppScope.FORGE_SUPPLIER,
         roles: [supplierRole],
       });
 
@@ -239,7 +244,10 @@ export class SupplierAuthService {
     companyRegDocument?: Express.Multer.File,
     beeDocument?: Express.Multer.File,
   ): Promise<SupplierLoginResponseDto> {
-    const existingUser = await this.userRepo.findOneByEmail(dto.email);
+    const existingUser = await this.userRepo.findOneByEmailAndScope(
+      dto.email,
+      AppScope.FORGE_SUPPLIER,
+    );
     if (existingUser) {
       throw new ConflictException("An account with this email already exists");
     }
@@ -295,6 +303,7 @@ export class SupplierAuthService {
           username: dto.email,
           email: dto.email,
           passwordHash,
+          appScope: AppScope.FORGE_SUPPLIER,
           roles: [supplierRole],
         });
 
@@ -609,7 +618,7 @@ export class SupplierAuthService {
     email: string,
     clientIp: string,
   ): Promise<{ success: boolean; message: string }> {
-    const user = await this.userRepo.findOneByEmail(email);
+    const user = await this.userRepo.findOneByEmailAndScope(email, AppScope.FORGE_SUPPLIER);
     if (!user) {
       return {
         success: true,
@@ -656,7 +665,10 @@ export class SupplierAuthService {
   ): Promise<SupplierLoginResponseDto> {
     await this.rateLimitingService.checkLoginAttempts(this.loginAttemptRepository, dto.email);
 
-    const user = await this.userRepo.findByEmailWithRoles(dto.email);
+    const user = await this.userRepo.findByEmailWithRolesAndScope(
+      dto.email,
+      AppScope.FORGE_SUPPLIER,
+    );
 
     if (!user) {
       await this.logLoginAttempt(

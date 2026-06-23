@@ -8,6 +8,13 @@ export class Passkey {
   @ApiProperty({ description: "Owning user id" })
   userId: number;
 
+  @ApiProperty({
+    description:
+      "Identity scope of the portal that registered this credential. A passkey may only authenticate the app it was created for.",
+    nullable: true,
+  })
+  appScope: string | null;
+
   user: User;
 
   @ApiProperty({ description: "WebAuthn credential id (base64url encoded)" })

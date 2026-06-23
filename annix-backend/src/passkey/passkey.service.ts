@@ -101,6 +101,7 @@ export class PasskeyService {
     response: RegistrationResponseJSON,
     deviceName: string | null,
     requestHost?: string | null,
+    appScope?: string | null,
   ): Promise<Passkey> {
     const challenge = await this.consumeChallenge(userId, "registration");
 
@@ -120,6 +121,7 @@ export class PasskeyService {
 
     const saved = await this.passkeyRepo.create({
       userId,
+      appScope: appScope ?? null,
       credentialId: credential.id,
       publicKey: Buffer.from(credential.publicKey).toString("base64url"),
       counter: String(credential.counter ?? 0),
@@ -140,8 +142,13 @@ export class PasskeyService {
   async authenticationOptions(
     email: string | undefined,
     requestHost?: string | null,
+    appScope?: string | null,
   ): Promise<PublicKeyCredentialRequestOptionsJSON> {
-    const user = email ? await this.userRepo.findOneByEmail(email) : null;
+    const user = email
+      ? appScope
+        ? await this.userRepo.findOneByEmailAndScope(email, appScope)
+        : await this.userRepo.findOneByEmailAnyScope(email)
+      : null;
 
     const allowCredentials = user
       ? (await this.passkeyRepo.findByUserId(user.id)).map((passkey) => ({
@@ -164,11 +171,22 @@ export class PasskeyService {
   async verifyAuthentication(
     response: AuthenticationResponseJSON,
     requestHost?: string | null,
+    appScope?: string | null,
   ): Promise<PasskeyAuthenticationResult> {
     const passkey = await this.passkeyRepo.findByCredentialId(response.id);
 
     if (!passkey) {
       throw new UnauthorizedException("Unknown credential");
+    }
+
+    if (appScope && passkey.appScope && passkey.appScope !== appScope) {
+      await this.audit(passkey.userId, "passkey-login-failed", {
+        passkeyId: passkey.id,
+        reason: "app-scope-mismatch",
+        credentialScope: passkey.appScope,
+        attemptedScope: appScope,
+      });
+      throw new UnauthorizedException("This passkey is not valid for this application.");
     }
 
     const challenge = await this.consumeAuthenticationChallenge(passkey.userId);

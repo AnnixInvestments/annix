@@ -10,6 +10,7 @@ export abstract class UserRepository extends CrudRepository<User> {
   abstract findOrbitUserById(id: number): Promise<User | null>;
   abstract findOrbitUserByEmail(email: string): Promise<User | null>;
   abstract findByEmailWithRoles(email: string): Promise<User | null>;
+  abstract findByEmailWithRolesAndScope(email: string, appScope: string): Promise<User | null>;
   abstract findByIds(ids: number[]): Promise<User[]>;
   abstract findByIdsWithRoles(ids: number[]): Promise<User[]>;
   abstract deleteById(id: number): Promise<number>;
@@ -30,7 +31,11 @@ export abstract class UserRepository extends CrudRepository<User> {
   abstract findOneByEmailCaseInsensitive(email: string): Promise<User | null>;
   abstract findOneByEmailAnyScope(email: string): Promise<User | null>;
   abstract findOneByEmailCaseInsensitiveWithRoles(email: string): Promise<User | null>;
-  abstract updateByEmailCaseInsensitive(email: string, changes: DeepPartial<User>): Promise<void>;
+  abstract updateByEmailCaseInsensitiveAndScope(
+    email: string,
+    appScope: string,
+    changes: DeepPartial<User>,
+  ): Promise<void>;
   abstract updateCompanyId(userId: number, companyId: number | null): Promise<void>;
   abstract findAllOrderedByEmail(): Promise<User[]>;
   abstract searchByEmailOrName(query: string, limit: number): Promise<User[]>;

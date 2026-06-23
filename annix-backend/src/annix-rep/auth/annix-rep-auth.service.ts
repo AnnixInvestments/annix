@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, Logger, UnauthorizedException } from "@nestjs/common";
 import { v4 as uuidv4 } from "uuid";
 import { now } from "../../lib/datetime";
+import { AppScope } from "../../rbac/app-scope";
 import { RbacBridgeService } from "../../rbac/rbac-bridge.service";
 import { AUTH_CONSTANTS, PasswordService, TokenService } from "../../shared/auth";
 import { SessionInvalidationReason } from "../../shared/enums";
@@ -50,7 +51,7 @@ export class AnnixRepAuthService {
     clientIp: string,
     userAgent: string,
   ): Promise<AnnixRepAuthResponseDto> {
-    const existingUser = await this.userRepo.findOneByEmail(dto.email);
+    const existingUser = await this.userRepo.findOneByEmailAndScope(dto.email, AppScope.PULSE_REP);
     if (existingUser) {
       throw new ConflictException("An account with this email already exists");
     }
@@ -67,6 +68,7 @@ export class AnnixRepAuthService {
       passwordHash,
       firstName: dto.firstName,
       lastName: dto.lastName,
+      appScope: AppScope.PULSE_REP,
       roles: [annixRepRole],
     });
 
@@ -120,7 +122,7 @@ export class AnnixRepAuthService {
     clientIp: string,
     userAgent: string,
   ): Promise<AnnixRepAuthResponseDto> {
-    const user = await this.userRepo.findByEmailWithRoles(dto.email);
+    const user = await this.userRepo.findByEmailWithRolesAndScope(dto.email, AppScope.PULSE_REP);
 
     if (!user) {
       throw new UnauthorizedException("Invalid credentials");
@@ -310,7 +312,7 @@ export class AnnixRepAuthService {
   }
 
   async checkEmailAvailable(email: string): Promise<boolean> {
-    const existingUser = await this.userRepo.findOneByEmail(email);
+    const existingUser = await this.userRepo.findOneByEmailAndScope(email, AppScope.PULSE_REP);
     return !existingUser;
   }
 
@@ -369,7 +371,10 @@ export class AnnixRepAuthService {
       throw new UnauthorizedException("OAuth authentication failed");
     }
 
-    const existingOAuthUser = await this.userRepo.findByEmailWithRoles(result.email);
+    const existingOAuthUser = await this.userRepo.findByEmailWithRolesAndScope(
+      result.email,
+      AppScope.PULSE_REP,
+    );
 
     const annixRepRole =
       (await this.userRoleRepo.findByName("annixRep")) ??
@@ -383,6 +388,7 @@ export class AnnixRepAuthService {
           passwordHash: null,
           firstName: result.firstName || result.email.split("@")[0],
           lastName: result.lastName || "",
+          appScope: AppScope.PULSE_REP,
           roles: [annixRepRole],
           oauthProvider: provider,
           oauthId: result.oauthId,

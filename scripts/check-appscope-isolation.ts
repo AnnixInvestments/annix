@@ -1,32 +1,35 @@
 #!/usr/bin/env node
 /**
- * Cross-app identity isolation guard (Phase 1).
+ * Cross-app identity isolation guard (issue #389, Phase 1 + Phase 2).
  *
- * The `user` collection is SHARED across every Annix app, partitioned by
- * `appScope` (`orbit:*` vs non-orbit). Orbit auth/provisioning must NEVER
- * read, claim, or mutate a NON-orbit record — each email holds its own
- * per-app record. The original bug stamped `orbit:seeker` onto a Forge
- * customer's record in auth.service.ts and authenticated Orbit logins against
- * non-orbit records via the un-scoped `findOneByEmail`, hijacking those users.
+ * The `user` collection is SHARED across every Annix app, partitioned by the
+ * string `appScope`. Each app has its OWN registration + login: the same email
+ * may hold a SEPARATE account per app, and provisioning into app B must never
+ * read, mutate, or authenticate a record owned by app A.
  *
- * This static check scans annix-orbit/ source and FAILS (exit 1) on either
+ * This static check scans every app's source tree and FAILS (exit 1) on any
  * re-introduced footgun:
  *
  *   (a) a MUTATION of `appScope` on a fetched record (`<expr>.appScope =`).
- *       Stamping a scope onto a record read from the DB is the bug, and is
- *       NEVER allowed in an Orbit file — there is no legitimate reason to
- *       reassign appScope on an existing record. (Setting `appScope: "orbit:*"`
- *       as an object-literal field inside `userRepo.create({...})` at an
- *       allowlisted creation file is fine — that mints the app's own record.)
+ *       Stamping a scope onto a record read from the DB is the original bug and
+ *       is NEVER allowed — there is no legitimate reason to reassign appScope on
+ *       an existing record.
  *
- *   (b) a call to an un-scoped, cross-app lookup
- *       (`findOneByEmail` / `findByEmailWithRoles` /
- *       `findOneByEmailCaseInsensitive`) from an Orbit auth/provision file.
- *       These return NON-orbit records and must never gate Orbit identity.
+ *   (b) an `appScope: "<value>"` object-literal whose value belongs to a
+ *       DIFFERENT app — minting/claiming a record under a foreign scope. Each
+ *       app may only write its OWN scope, and only at an allowlisted creation
+ *       site.
  *
- * Conservative by design (small allowlist, narrow patterns) to avoid false
- * positives, but it MUST flag the auth.service.ts:956 stamping and the
- * resolveOrbitLoginUser `findOneByEmail` fallback if either returns.
+ *   (c) a call to an un-scoped, cross-app lookup (`findOneByEmail` /
+ *       `findByEmailWithRoles` / `findOneByEmailCaseInsensitive` /
+ *       `findOneByEmailCaseInsensitiveWithRoles`) from an app auth/provision
+ *       file. These return another app's records and must never gate identity.
+ *       Use the scoped variants (`findOneByEmailAndScope`,
+ *       `findByEmailWithRolesAndScope`) instead.
+ *
+ * Conservative by design (per-app allowlists, narrow patterns) to avoid false
+ * positives, but it MUST flag a cross-app scope stamp or an un-scoped identity
+ * lookup in any app's auth path.
  *
  * Pure Node — runs identically on Windows, macOS and Linux (no bash, no deps).
  *
@@ -40,23 +43,87 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-const ORBIT_DIR = "annix-backend/src/annix-orbit";
+const SRC = "annix-backend/src";
+
+interface AppRule {
+  /** Directory (relative to SRC) the app's identity code lives in. */
+  dir: string;
+  /** Scope value(s) this app legitimately owns. */
+  ownScopes: string[];
+  /**
+   * Files (relative to the app dir) allowed to read with an un-scoped lookup —
+   * read-only cross-app features (e.g. job feeds) that legitimately resolve a
+   * person across apps and never gate auth on the result.
+   */
+  unscopedLookupAllowlist: string[];
+}
 
 /**
- * Files where Orbit user records are FIRST created — the only legitimate place
- * an `appScope: "orbit:*"` literal may be written, because that record is the
- * app's own newly-minted account, never a pre-existing foreign one.
+ * Canonical scopes — MUST match annix-backend/src/rbac/app-scope.ts and the
+ * backfill migration. Listed here so the guard can tell an app's own scope from
+ * a foreign one without importing TypeScript at lint time.
  */
-const APPSCOPE_WRITE_ALLOWLIST = ["services/auth.service.ts"];
+const ALL_SCOPES = [
+  "forge:customer",
+  "forge:supplier",
+  "annix:admin",
+  "pulse:rep",
+  "sentinel:user",
+  "stock-control",
+  "orbit:seeker",
+  "orbit:company",
+  "orbit:recruiter",
+  "orbit:student",
+  "teacher-assistant",
+];
+
+const APPS: AppRule[] = [
+  { dir: "customer", ownScopes: ["forge:customer"], unscopedLookupAllowlist: [] },
+  { dir: "supplier", ownScopes: ["forge:supplier"], unscopedLookupAllowlist: [] },
+  {
+    dir: "admin",
+    ownScopes: ["annix:admin"],
+    unscopedLookupAllowlist: [],
+  },
+  { dir: "annix-rep", ownScopes: ["pulse:rep"], unscopedLookupAllowlist: [] },
+  { dir: "annix-sentinel", ownScopes: ["sentinel:user"], unscopedLookupAllowlist: [] },
+  {
+    dir: "annix-orbit",
+    ownScopes: ["orbit:seeker", "orbit:company", "orbit:recruiter", "orbit:student"],
+    // Read-only cross-app feed: resolves a person by email across apps, never
+    // authenticates on the result.
+    unscopedLookupAllowlist: ["services/seeker-job-feed.service.ts"],
+  },
+  {
+    dir: "teacher-assistant",
+    ownScopes: ["teacher-assistant"],
+    unscopedLookupAllowlist: [],
+  },
+];
 
 const UNSCOPED_LOOKUP_PATTERN =
-  /\.(findOneByEmail|findByEmailWithRoles|findOneByEmailCaseInsensitive)\b/;
+  /\.(findOneByEmail|findByEmailWithRoles|findOneByEmailCaseInsensitive|findOneByEmailCaseInsensitiveWithRoles)\b(?!AndScope)/;
 /** Mutation of appScope on a fetched record — `<expr>.appScope = ...`. Always the bug. */
 const APPSCOPE_MUTATION_PATTERN = /\.appScope\s*=(?!=)/;
-/** Object-literal field `appScope: "orbit:*"` — legitimate only at a creation site. */
-const APPSCOPE_LITERAL_PATTERN = /(?<![A-Za-z0-9_.])appScope\s*:/;
+/** Object-literal field `appScope: "<value>"`. */
+const APPSCOPE_LITERAL_PATTERN =
+  /(?<![A-Za-z0-9_.])appScope\s*:\s*(?:"([^"]*)"|'([^']*)'|AppScope\.(\w+))/;
 const TS_FILE = /\.ts$/;
 const SPEC_FILE = /\.spec\.ts$/;
+
+const APPSCOPE_ENUM_TO_VALUE: Record<string, string> = {
+  FORGE_CUSTOMER: "forge:customer",
+  FORGE_SUPPLIER: "forge:supplier",
+  ANNIX_ADMIN: "annix:admin",
+  PULSE_REP: "pulse:rep",
+  SENTINEL_USER: "sentinel:user",
+  STOCK_CONTROL: "stock-control",
+  ORBIT_SEEKER: "orbit:seeker",
+  ORBIT_COMPANY: "orbit:company",
+  ORBIT_RECRUITER: "orbit:recruiter",
+  ORBIT_STUDENT: "orbit:student",
+  TEACHER_ASSISTANT: "teacher-assistant",
+};
 
 interface Offender {
   file: string;
@@ -82,25 +149,38 @@ const walk = (dir: string): string[] => {
   });
 };
 
-const relativeWithin = (path: string): string =>
-  path.slice(ORBIT_DIR.length + 1).replace(/\\/g, "/");
+const relativeWithin = (path: string, appDir: string): string =>
+  path.slice(appDir.length + 1).replace(/\\/g, "/");
 
-const scanFile = (path: string): Offender[] => {
-  const relative = relativeWithin(path);
-  const isAppScopeCreationSite = APPSCOPE_WRITE_ALLOWLIST.includes(relative);
+const literalScopeValue = (match: RegExpExecArray): string | null => {
+  const direct = match[1] ?? match[2];
+  if (typeof direct === "string") {
+    return direct;
+  }
+  const enumKey = match[3];
+  if (typeof enumKey === "string") {
+    return APPSCOPE_ENUM_TO_VALUE[enumKey] ?? `AppScope.${enumKey}`;
+  }
+  return null;
+};
+
+const scanFile = (path: string, app: AppRule): Offender[] => {
+  const appDir = join(SRC, app.dir);
+  const relative = relativeWithin(path, appDir);
+  const lookupAllowed = app.unscopedLookupAllowlist.includes(relative);
   const lines = readFileSync(path, "utf8").split(/\r?\n/);
 
   return lines.flatMap((rawLine, index) => {
     const line = rawLine.replace(/\/\/.*$/, "");
     const found: Offender[] = [];
 
-    if (UNSCOPED_LOOKUP_PATTERN.test(line)) {
+    if (!lookupAllowed && UNSCOPED_LOOKUP_PATTERN.test(line)) {
       found.push({
         file: path,
         line: index + 1,
         text: rawLine.trim(),
         reason:
-          "un-scoped cross-app lookup (findOneByEmail / findByEmailWithRoles / findOneByEmailCaseInsensitive) returns NON-orbit records",
+          "un-scoped cross-app lookup returns ANOTHER app's record — use findOneByEmailAndScope / findByEmailWithRolesAndScope",
       });
     }
 
@@ -110,34 +190,34 @@ const scanFile = (path: string): Offender[] => {
         line: index + 1,
         text: rawLine.trim(),
         reason:
-          "appScope MUTATION on a fetched record — stamping a scope onto an existing user is never allowed in Orbit code",
+          "appScope MUTATION on a fetched record — never reassign appScope on an existing user",
       });
     }
 
-    if (!isAppScopeCreationSite && APPSCOPE_LITERAL_PATTERN.test(line)) {
-      found.push({
-        file: path,
-        line: index + 1,
-        text: rawLine.trim(),
-        reason: "appScope literal outside an allowlisted orbit-user creation site",
-      });
+    const literal = APPSCOPE_LITERAL_PATTERN.exec(line);
+    if (literal) {
+      const value = literalScopeValue(literal);
+      if (value !== null && ALL_SCOPES.includes(value) && !app.ownScopes.includes(value)) {
+        found.push({
+          file: path,
+          line: index + 1,
+          text: rawLine.trim(),
+          reason: `writes a FOREIGN appScope '${value}' — the ${app.dir} app may only mint its own scope (${app.ownScopes.join(", ")})`,
+        });
+      }
     }
 
     return found;
   });
 };
 
-const files = walk(ORBIT_DIR);
-
-if (files.length === 0) {
-  process.stdout.write("appScope isolation OK — no Orbit source files to check.\n");
-  process.exit(0);
-}
-
-const offenders = files.flatMap(scanFile);
+const offenders = APPS.flatMap((app) => {
+  const appDir = join(SRC, app.dir);
+  return walk(appDir).flatMap((path) => scanFile(path, app));
+});
 
 if (offenders.length === 0) {
-  process.stdout.write("appScope isolation OK — Orbit auth never touches non-orbit records.\n");
+  process.stdout.write("appScope isolation OK — no app auth path touches another app's records.\n");
   process.exit(0);
 }
 
@@ -148,21 +228,22 @@ const report = offenders
 process.stderr.write(`
 Cross-app identity isolation check FAILED
 
-The shared \`user\` collection is partitioned by \`appScope\` (orbit:* vs
-non-orbit). Orbit auth/provisioning must never read, claim, or mutate a
-non-orbit record. These lines re-introduce a cross-app footgun:
+The shared \`user\` collection is partitioned by \`appScope\`. Each app has its
+own per-app account; provisioning into one app must never read, claim, or
+mutate another app's record. These lines re-introduce a cross-app footgun:
 
 ${report}
 
 How to fix:
-  - Replace un-scoped lookups with the orbit-scoped methods
-    (findOrbitUserByEmail / findOneByEmailAndScope) on UserRepository.
-  - Only write \`appScope: "orbit:*"\` when CREATING a brand-new orbit user
-    (inside userRepo.create at an allowlisted creation site) — never stamp a
-    scope onto a record fetched from the DB.
+  - Replace un-scoped lookups with the scoped methods
+    (findOneByEmailAndScope / findByEmailWithRolesAndScope) on UserRepository.
+  - Only write your OWN app's appScope, and only when CREATING a brand-new
+    record (inside userRepo.create) — never stamp a scope onto a fetched record
+    and never write another app's scope value.
 
-If you are adding a genuinely-new orbit-user creation site, add its path to
-APPSCOPE_WRITE_ALLOWLIST in scripts/check-appscope-isolation.ts with a comment.
+If you are adding a genuinely read-only cross-app feature, add its file to that
+app's unscopedLookupAllowlist in scripts/check-appscope-isolation.ts with a
+comment explaining why it never gates auth.
 `);
 
 process.exit(1);
