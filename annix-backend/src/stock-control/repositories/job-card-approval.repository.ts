@@ -8,6 +8,10 @@ export abstract class JobCardApprovalRepository extends TenantScopedRepository<J
   abstract saveForCompany(companyId: number, entity: JobCardApproval): Promise<JobCardApproval>;
   abstract removeForCompany(companyId: number, entity: JobCardApproval): Promise<void>;
   abstract findForJobCardOrdered(companyId: number, jobCardId: number): Promise<JobCardApproval[]>;
+  abstract findApprovedStepsForJobCardIds(
+    companyId: number,
+    jobCardIds: number[],
+  ): Promise<Array<{ jobCardId: number; step: string }>>;
   abstract findForJobCardWithApprovedBy(
     companyId: number,
     jobCardId: number,

@@ -723,35 +723,92 @@ export class JobCardWorkflowService {
   }
 
   /**
-   * Foreground job cards whose CURRENT step is one the user is explicitly
-   * assigned to — i.e. cards genuinely awaiting THIS user's approval (the same
-   * rule as canUserApprove, applied across the company's active cards). Unlike
-   * pendingApprovalsForUser this is filtered by assignment, so it never returns
-   * cards merely sitting at someone else's step.
+   * Job cards genuinely awaiting THIS user RIGHT NOW. A card awaits the user iff
+   * the user is the PRIMARY assignee of an ACTIVE FRONTIER step:
+   *   - frontier background steps: incomplete AND their trigger is satisfied
+   *     (trigger is the workflow root, OR a foreground step already approved, OR
+   *     a background step already completed);
+   *   - the current foreground step (workflowStatus), UNLESS it is blocked by an
+   *     active blocking (rejoinAtStep === null) background step.
+   *
+   * Using PRIMARY assignee (the one shown on the workflow node) is essential:
+   * an admin is a secondary assignee on most steps, so an "assigned to the step"
+   * rule would mark almost every card as theirs. A card whose pointer sits at a
+   * step the user is assigned to but whose live work is a background step owned
+   * by someone else (e.g. `manager_final` still awaiting Requisition) is excluded.
    */
-  async actionableForegroundJobCardsForUser(
+  async actionableJobCardsForUser(
     user: UserContext,
   ): Promise<Array<{ id: number; label: string }>> {
     const fgSteps = await this.stepConfigService.orderedSteps(user.companyId);
-    const fgKeySet = new Set(fgSteps.map((s) => s.key));
+    const bgSteps = await this.stepConfigService.backgroundSteps(user.companyId);
     const assignments = await this.assignmentService.allAssignments(user.companyId);
-    const userStepKeys = assignments
-      .filter((a) => fgKeySet.has(a.step) && a.userIds.includes(user.id))
-      .map((a) => a.step);
-    if (userStepKeys.length === 0) {
+
+    const primaryByStep = new Map(assignments.map((a) => [a.step, a.primaryUserId]));
+    const userIsPrimaryOfAnyStep = assignments.some((a) => a.primaryUserId === user.id);
+    if (!userIsPrimaryOfAnyStep) {
       return [];
     }
+
+    const fgKeySet = new Set(fgSteps.map((s) => s.key));
+    const bgByKey = new Map(bgSteps.map((s) => [s.key, s]));
+
+    // All active cards (every active card's workflowStatus is a foreground key).
     const cards = await this.jobCardRepo.findPendingApprovalsForCompany(
       user.companyId,
-      userStepKeys,
+      fgSteps.map((s) => s.key),
       1,
-      200,
+      2000,
     );
-    return cards.map((jc) => {
-      const base = jc.jcNumber || jc.jobNumber;
-      const label = jc.jtDnNumber ? `${base} / ${jc.jtDnNumber}` : base;
-      return { id: jc.id, label };
-    });
+    if (cards.length === 0) {
+      return [];
+    }
+
+    const cardIds = cards.map((card) => card.id);
+    const [approvedRows, completionRows] = await Promise.all([
+      this.approvalRepo.findApprovedStepsForJobCardIds(user.companyId, cardIds),
+      this.bgCompletionRepo.findForCompanyAndJobCardIds(user.companyId, cardIds),
+    ]);
+    const approvedByCard = approvedRows.reduce<Map<number, Set<string>>>((acc, row) => {
+      const set = acc.get(row.jobCardId) ?? new Set<string>();
+      set.add(row.step);
+      acc.set(row.jobCardId, set);
+      return acc;
+    }, new Map());
+    const completedByCard = completionRows.reduce<Map<number, Set<string>>>((acc, row) => {
+      const set = acc.get(row.jobCardId) ?? new Set<string>();
+      set.add(row.stepKey);
+      acc.set(row.jobCardId, set);
+      return acc;
+    }, new Map());
+
+    const awaitsUser = (card: JobCard): boolean => {
+      const approved = approvedByCard.get(card.id) ?? new Set<string>();
+      const completed = completedByCard.get(card.id) ?? new Set<string>();
+      const triggerSatisfied = (trigger: string | null): boolean => {
+        if (!trigger) return true;
+        if (fgKeySet.has(trigger)) return approved.has(trigger);
+        if (bgByKey.has(trigger)) return completed.has(trigger);
+        return true;
+      };
+      const activeBg = bgSteps.filter(
+        (s) => !completed.has(s.key) && triggerSatisfied(s.triggerAfterStep),
+      );
+      const foregroundBlocked = activeBg.some((s) => !s.rejoinAtStep);
+      const frontierKeys = activeBg.map((s) => s.key);
+      if (card.workflowStatus && !foregroundBlocked) {
+        frontierKeys.push(card.workflowStatus);
+      }
+      return frontierKeys.some((key) => primaryByStep.get(key) === user.id);
+    };
+
+    return cards
+      .filter((card) => awaitsUser(card))
+      .map((card) => {
+        const base = card.jcNumber || card.jobNumber;
+        const label = card.jtDnNumber ? `${base} / ${card.jtDnNumber}` : base;
+        return { id: card.id, label };
+      });
   }
 
   async canUserApprove(user: UserContext, jobCardId: number): Promise<boolean> {

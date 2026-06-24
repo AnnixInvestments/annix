@@ -56,6 +56,21 @@ export class MongoJobCardApprovalRepository
     return this.toDomainList(docs);
   }
 
+  async findApprovedStepsForJobCardIds(
+    companyId: number,
+    jobCardIds: number[],
+  ): Promise<Array<{ jobCardId: number; step: string }>> {
+    const docs = await this.documents
+      .find({ companyId, jobCardId: { $in: jobCardIds }, status: "approved" })
+      .select("jobCardId step")
+      .lean()
+      .exec();
+    return docs.map((doc) => ({
+      jobCardId: doc.jobCardId as number,
+      step: doc.step as string,
+    }));
+  }
+
   async findForJobCardWithApprovedBy(
     companyId: number,
     jobCardId: number,
