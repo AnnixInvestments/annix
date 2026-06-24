@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Exo_2, Geist, Geist_Mono, Great_Vibes, Inter } from "next/font/google";
 import "./globals.css";
+import { AppUpdateBanner } from "./components/AppUpdateBanner";
 import ConditionalNavigation from "./components/ConditionalNavigation";
 import { GlobalBrandBackground } from "./components/GlobalBrandBackground";
 import { Providers } from "./components/Providers";
@@ -94,6 +95,7 @@ export default function RootLayout(
           <ConditionalNavigation />
           {children}
           <SessionExpiredModal />
+          <AppUpdateBanner />
         </Providers>
       </body>
     </html>

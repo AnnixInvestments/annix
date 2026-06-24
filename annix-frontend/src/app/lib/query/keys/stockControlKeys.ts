@@ -9,6 +9,8 @@ export const stockControlKeys = {
     recentActivity: () => [...stockControlKeys.dashboard.all, "recent-activity"] as const,
     reorderAlerts: () => [...stockControlKeys.dashboard.all, "reorder-alerts"] as const,
     pendingApprovals: () => [...stockControlKeys.dashboard.all, "pending-approvals"] as const,
+    pendingBackgroundSteps: () =>
+      [...stockControlKeys.dashboard.all, "pending-background-steps"] as const,
     cpoSummary: () => [...stockControlKeys.dashboard.all, "cpo-summary"] as const,
     roleSummary: (role: string) =>
       [...stockControlKeys.dashboard.all, "role-summary", role] as const,

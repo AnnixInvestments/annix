@@ -25,6 +25,11 @@ ARG NEXT_PUBLIC_API_URL=__NEXT_PUBLIC_API_URL__
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ARG NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=__NEXT_PUBLIC_GOOGLE_MAPS_API_KEY__
 ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
+# Build id baked into the bundle so a stale tab can detect a new deploy (the
+# deploy passes the git SHA). next.config.ts reads APP_BUILD_ID; without it the
+# frontend-builder layer has no .git to derive one.
+ARG APP_BUILD_ID=dev
+ENV APP_BUILD_ID=${APP_BUILD_ID}
 COPY --from=product-data-builder /app/packages/product-data/ ./packages/product-data/
 COPY packages/feedback-sdk/ ./packages/feedback-sdk/
 COPY packages/feedback-web/ ./packages/feedback-web/

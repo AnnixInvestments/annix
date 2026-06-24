@@ -1493,6 +1493,7 @@ export {
   useMarkNotificationAsRead,
   useMatchImportRows,
   useMovementHistoryReport,
+  useNextActionableJobCard,
   useOpenControlPlanPdf,
   usePaintCoatingSystems,
   usePaintPricing,

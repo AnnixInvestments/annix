@@ -19,17 +19,9 @@ export interface NavItemDef {
   requiresFeatureFlag?: string;
 }
 
-export const NAV_GROUP_ORDER = [
-  "Staff",
-  "Stock",
-  "Supplier",
-  "Customer",
-  "Quality",
-  "Resources",
-] as const;
+export const NAV_GROUP_ORDER = ["Stock", "Supplier", "Customer", "Quality", "Resources"] as const;
 
 export const NAV_GROUP_HUB_PATHS: Record<string, string> = {
-  Staff: "/stock-control/portal/staff",
   Stock: "/stock-control/portal/stock",
   Supplier: "/stock-control/portal/supplier",
   Customer: "/stock-control/portal/customer",
@@ -263,7 +255,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     href: "/stock-control/portal/staff/members",
     label: "Staff Members",
     defaultRoles: ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
-    group: "Staff",
+    group: "Resources",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -280,7 +272,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     href: "/stock-control/portal/staff/leave",
     label: "Staff Leave",
     defaultRoles: ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
-    group: "Staff",
+    group: "Resources",
     requiresStaffLeave: true,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

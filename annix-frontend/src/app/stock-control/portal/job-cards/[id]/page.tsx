@@ -26,6 +26,7 @@ import {
   useLoadReconciliationGateStatus,
   useLoadSourceFileUrl,
   useLoadWorkflowStatus,
+  useNextActionableJobCard,
 } from "@/app/lib/query/hooks";
 import { ApprovalModal } from "@/app/stock-control/components/ApprovalModal";
 import { WorkflowStatus } from "@/app/stock-control/components/WorkflowStatus";
@@ -203,6 +204,24 @@ export default function JobCardDetailPage() {
     isPreviewActive,
     isAdminView,
   });
+
+  const nextActionable = useNextActionableJobCard(jobId);
+  const canApproveHere = workflow.canApprove;
+  const canAcceptDraftHere = workflow.canAcceptDraft;
+  const pendingBgStepsHere = workflow.userPendingBgSteps;
+  const userHasPendingActionHere =
+    canApproveHere || canAcceptDraftHere || pendingBgStepsHere.length > 0;
+  const currentActionUserName = effectiveName ? effectiveName : authUserName;
+  const userActedHere = useMemo(() => {
+    if (!currentActionUserName) return false;
+    const approvedHere = approvals.some(
+      (approval) => approval.approvedByName === currentActionUserName,
+    );
+    const completedBgHere = backgroundSteps.some(
+      (step) => step.completedAt !== null && step.completedByName === currentActionUserName,
+    );
+    return approvedHere || completedBgHere;
+  }, [approvals, backgroundSteps, currentActionUserName]);
 
   useEffect(() => {
     fetchData();
@@ -678,6 +697,33 @@ export default function JobCardDetailPage() {
           />
         )}
         <div className="flex items-center space-x-3">
+          {(() => {
+            const next = nextActionable.next;
+            const showNext = userActedHere && !userHasPendingActionHere && next !== null;
+            if (!showNext || !next) {
+              return null;
+            }
+            return (
+              <button
+                type="button"
+                onClick={() => router.push(`/stock-control/portal/job-cards/${next.id}`)}
+                title={`Go to ${next.label} — your next job card with an action`}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-md shadow-sm text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              >
+                <span className="hidden sm:inline">Next job card</span>
+                <span className="sm:hidden">Next</span>
+                <span className="font-mono text-xs opacity-90">{next.label}</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 7l5 5m0 0l-5 5m5-5H6"
+                  />
+                </svg>
+              </button>
+            );
+          })()}
           <button
             onClick={handlePrintQr}
             disabled={isDownloadingQr}

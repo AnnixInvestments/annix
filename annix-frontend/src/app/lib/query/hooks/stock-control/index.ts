@@ -31,6 +31,11 @@ export {
   useUseCurrentStockDecision,
 } from "./useJobCardDetail";
 export {
+  type NextActionableJobCard,
+  useNextActionableJobCard,
+  usePendingBackgroundSteps,
+} from "./useNextActionableJobCard";
+export {
   useBulkUpliftPaintPrices,
   useCommitPaintPriceListImport,
   useCreateMultiCoatQuote,

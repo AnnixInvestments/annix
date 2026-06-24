@@ -20,6 +20,13 @@ export function middleware(request: NextRequest) {
   const url = request.nextUrl.clone();
   const pathname = url.pathname;
 
+  // The repo-wide update checker polls this from every host. Never rewrite or
+  // redirect it (portal-prefix hosts would otherwise 404 it) so it always
+  // resolves to the root /app-build-id route handler.
+  if (pathname === "/app-build-id") {
+    return NextResponse.next();
+  }
+
   if (portal && isAliasHost(host)) {
     const canonical = canonicalHostFor(host);
     if (canonical) {

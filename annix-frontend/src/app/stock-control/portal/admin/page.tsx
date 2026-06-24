@@ -4,6 +4,8 @@ import { HubPage } from "../../components/HubPage";
 import { useVisibleNavItems } from "../../hooks/useVisibleNavItems";
 
 const DESCRIPTIONS: Record<string, string> = {
+  staff: "Manage staff members, roles and contact details",
+  "staff-leave": "Record and track staff leave and availability",
   "inbound-emails": "Monitor and manage documents received via email",
   "boiler-control-docs":
     "Sequence of operations & I/O schedule for the steam boiler LOGO! controller (admin reference)",

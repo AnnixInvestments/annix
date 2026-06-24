@@ -1,26 +1,8 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { HubPage } from "../../components/HubPage";
-import { useVisibleNavItems } from "../../hooks/useVisibleNavItems";
-
-const DESCRIPTIONS: Record<string, string> = {
-  staff: "View, add, and manage staff members, photos, and ID cards",
-  "staff-leave": "Track and manage staff leave requests and balances",
-};
-
+// The Staff tab was folded into the Resources hub to free up navbar space; its
+// items (Staff Members, Staff Leave) now live under Resources. Anyone hitting
+// the old /staff hub URL lands on the staff members list.
 export default function StaffHubPage() {
-  const items = useVisibleNavItems("Staff");
-
-  const hubItems = items.map((item) => {
-    const desc = DESCRIPTIONS[item.key];
-    return { item, description: desc == null ? "" : desc };
-  });
-
-  return (
-    <HubPage
-      title="Staff"
-      description="Staff member management, ID cards, and leave tracking."
-      items={hubItems}
-    />
-  );
+  redirect("/stock-control/portal/staff/members");
 }

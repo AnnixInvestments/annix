@@ -1,7 +1,38 @@
-import type { NextConfig } from "next";
+import { execSync } from "node:child_process";
 import path from "node:path";
+import type { NextConfig } from "next";
+
+// A stable identifier for this build, baked into the client bundle AND returned
+// by the /app-build-id route handler. A stale open tab compares the two and
+// shows the "Update now" banner when they differ. Sourced from the APP_BUILD_ID
+// build-arg (the deploy passes the git SHA), then a local git SHA, then "dev".
+function resolveAppBuildId(): string {
+  const fromEnv = process.env.APP_BUILD_ID;
+  if (fromEnv && fromEnv.trim().length > 0) {
+    return fromEnv.trim().slice(0, 16);
+  }
+  try {
+    const sha = execSync("git rev-parse --short=12 HEAD", {
+      stdio: ["ignore", "pipe", "ignore"],
+    })
+      .toString()
+      .trim();
+    if (sha.length > 0) {
+      return sha;
+    }
+  } catch {
+    // git is unavailable (e.g. the Docker frontend-builder layer has no .git);
+    // the APP_BUILD_ID build-arg covers that path, so fall through to "dev".
+  }
+  return "dev";
+}
+
+const APP_BUILD_ID = resolveAppBuildId();
 
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_APP_BUILD_ID: APP_BUILD_ID,
+  },
   typescript: {
     ignoreBuildErrors: true,
   },

@@ -97,7 +97,7 @@ export function QuickLinksSection({ navItemVisible }: QuickLinksSectionProps) {
         </Link>
       )}
       {navItemVisible("staff") && (
-        <Link href="/stock-control/portal/staff" className={LINK_CLASS}>
+        <Link href="/stock-control/portal/staff/members" className={LINK_CLASS}>
           <StaffIcon />
           <p className="text-sm font-medium text-gray-700">Staff</p>
         </Link>
