@@ -1,4 +1,5 @@
 import { fromISO } from "../../lib/datetime";
+import { Address, ContactDetails } from "../../lib/value-objects";
 import { BrandingType, Company, CompanyType } from "../entities/company.entity";
 import { toCompanyResponse } from "./company-response.dto";
 
@@ -12,13 +13,17 @@ describe("toCompanyResponse", () => {
     registrationNumber: "2020/123456/07",
     customerCode: "C-001",
     vatNumber: "4123456789",
-    phone: "+27 21 000 0123",
-    email: "info@acme.example",
     contactPerson: "Jane Doe",
-    streetAddress: "456 Industrial Road",
-    city: "Cape Town",
-    province: "Western Cape",
-    postalCode: "8001",
+    address: Address.fromParts({
+      streetAddress: "456 Industrial Road",
+      city: "Cape Town",
+      province: "Western Cape",
+      postalCode: "8001",
+    }),
+    contact: ContactDetails.fromParts({
+      phone: "+27 21 000 0123",
+      email: "info@acme.example",
+    }),
     addressJsonb: { line1: "456 Industrial Road" },
     notes: "preferred",
     websiteUrl: "https://acme.example",
@@ -64,14 +69,24 @@ describe("toCompanyResponse", () => {
     updatedAt: testDate,
   };
 
-  it("maps every entity field onto the flat DTO with identical values", () => {
+  it("maps every entity field onto the flat DTO, flattening the nested value-objects", () => {
+    const { address, contact, ...flatRest } = fullCompany;
     const result = toCompanyResponse(fullCompany);
-    expect(result).toEqual(fullCompany);
+    expect(result).toEqual({
+      ...flatRest,
+      streetAddress: address?.streetAddress ?? null,
+      city: address?.city ?? null,
+      province: address?.province ?? null,
+      postalCode: address?.postalCode ?? null,
+      phone: contact?.phone ?? null,
+      email: contact?.email ?? null,
+    });
   });
 
-  it("produces identical JSON output to the raw entity", () => {
+  it("never exposes the nested address or contact value-objects on the DTO", () => {
     const result = toCompanyResponse(fullCompany);
-    expect(JSON.stringify(result)).toBe(JSON.stringify(fullCompany));
+    expect("address" in result).toBe(false);
+    expect("contact" in result).toBe(false);
   });
 
   it("preserves the flat address and contact fields", () => {

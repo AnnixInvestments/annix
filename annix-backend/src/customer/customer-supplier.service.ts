@@ -555,7 +555,7 @@ export class CustomerSupplierService {
         return {
           supplierProfileId: supplier.id,
           companyName: supplier.company?.tradingName || supplier.company?.legalName || "",
-          province: supplier.company?.province || "",
+          province: supplier.company?.address?.province || "",
           products,
           productLabels: products.map((p) => this.productLabelMap[p] || p),
           status,

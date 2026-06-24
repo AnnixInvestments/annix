@@ -1,5 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { fromISO } from "../lib/datetime";
+import { Address, ContactDetails } from "../lib/value-objects";
 import { BrandingType, Company, CompanyType } from "../platform/entities/company.entity";
 import { SupplierAuthGuard } from "./guards/supplier-auth.guard";
 import { SupplierController } from "./supplier.controller";
@@ -27,13 +28,17 @@ describe("SupplierController (company endpoints)", () => {
       registrationNumber: "2021/654321/07",
       customerCode: null,
       vatNumber: "4987654321",
-      phone: "+27 21 000 0100",
-      email: "info@abc.example",
       contactPerson: "John Smith",
-      streetAddress: "456 Supplier Avenue",
-      city: "Cape Town",
-      province: "Western Cape",
-      postalCode: "8001",
+      address: Address.fromParts({
+        streetAddress: "456 Supplier Avenue",
+        city: "Cape Town",
+        province: "Western Cape",
+        postalCode: "8001",
+      }),
+      contact: ContactDetails.fromParts({
+        phone: "+27 21 000 0100",
+        email: "info@abc.example",
+      }),
       addressJsonb: null,
       notes: null,
       websiteUrl: "https://abc.example",
@@ -126,13 +131,26 @@ describe("SupplierController (company endpoints)", () => {
       expect(result.phone).toBe("+27 21 000 0100");
     });
 
-    it("reproduces the raw entity values byte-for-byte (deep equal)", async () => {
+    it("flattens the nested entity value-objects into the flat response shape", async () => {
       const company = mockCompany();
       supplierService.saveCompanyDetails.mockResolvedValue(company);
 
       const result = await controller.saveCompanyDetails({} as any, mockRequest as any);
 
-      expect(JSON.parse(JSON.stringify(result))).toEqual(JSON.parse(JSON.stringify(company)));
+      const { address, contact, ...flatRest } = company;
+      expect(JSON.parse(JSON.stringify(result))).toEqual(
+        JSON.parse(
+          JSON.stringify({
+            ...flatRest,
+            streetAddress: address?.streetAddress ?? null,
+            city: address?.city ?? null,
+            province: address?.province ?? null,
+            postalCode: address?.postalCode ?? null,
+            phone: contact?.phone ?? null,
+            email: contact?.email ?? null,
+          }),
+        ),
+      );
     });
   });
 
@@ -163,15 +181,26 @@ describe("SupplierController (company endpoints)", () => {
       expect(result.company.phone).toBe("+27 21 000 0100");
     });
 
-    it("preserves the embedded company values byte-for-byte", async () => {
+    it("flattens the embedded company value-objects into the flat shape", async () => {
       const company = mockCompany();
       const profile = { id: SUPPLIER_ID, company };
       supplierService.getProfile.mockResolvedValue(profile as any);
 
       const result = await controller.getProfile(mockRequest as any);
 
+      const { address, contact, ...flatRest } = company;
       expect(JSON.parse(JSON.stringify(result.company))).toEqual(
-        JSON.parse(JSON.stringify(company)),
+        JSON.parse(
+          JSON.stringify({
+            ...flatRest,
+            streetAddress: address?.streetAddress ?? null,
+            city: address?.city ?? null,
+            province: address?.province ?? null,
+            postalCode: address?.postalCode ?? null,
+            phone: contact?.phone ?? null,
+            email: contact?.email ?? null,
+          }),
+        ),
       );
     });
   });

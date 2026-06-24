@@ -217,10 +217,10 @@ export class DocumentVerificationService {
       vatNumber: company.vatNumber ?? undefined,
       registrationNumber: company.registrationNumber ?? undefined,
       companyName: company.legalName ?? undefined,
-      streetAddress: company.streetAddress ?? undefined,
-      city: company.city ?? undefined,
-      provinceState: company.province ?? undefined,
-      postalCode: company.postalCode ?? undefined,
+      streetAddress: company.address?.streetAddress ?? undefined,
+      city: company.address?.city ?? undefined,
+      provinceState: company.address?.province ?? undefined,
+      postalCode: company.address?.postalCode ?? undefined,
       beeLevel: company.beeLevel ?? undefined,
     };
   }

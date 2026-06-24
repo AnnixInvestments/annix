@@ -146,12 +146,12 @@ export class QuotePdfService {
         return this.shapeCustomer({
           name: live.name,
           customerCode: live.customerCode,
-          streetAddress: live.streetAddress,
-          city: live.city,
-          province: live.province,
-          postalCode: live.postalCode,
+          streetAddress: live.address?.streetAddress ?? null,
+          city: live.address?.city ?? null,
+          province: live.address?.province ?? null,
+          postalCode: live.address?.postalCode ?? null,
           country: null,
-          email: live.email,
+          email: live.contact?.email ?? null,
         });
       }
     }

@@ -1,3 +1,4 @@
+import { Address, ContactDetails } from "../../lib/value-objects";
 import { CompanyModuleSubscription } from "./company-module-subscription.entity";
 import { Contact } from "./contact.entity";
 
@@ -26,19 +27,11 @@ export class Company {
 
   vatNumber: string | null;
 
-  phone: string | null;
-
-  email: string | null;
-
   contactPerson: string | null;
 
-  streetAddress: string | null;
+  address: Address | null;
 
-  city: string | null;
-
-  province: string | null;
-
-  postalCode: string | null;
+  contact: ContactDetails | null;
 
   addressJsonb: Record<string, string> | null;
 

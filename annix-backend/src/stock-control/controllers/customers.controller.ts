@@ -15,6 +15,7 @@ import {
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { AuditService } from "../../audit/audit.service";
 import { AuditAction } from "../../audit/entities/audit-log.entity";
+import { Address, ContactDetails } from "../../lib/value-objects";
 import { CompanyRepository } from "../../platform/company.repository";
 import { Company, CompanyType } from "../../platform/entities/company.entity";
 import { CreateCustomerDto, UpdateCustomerDto } from "../dto/customer.dto";
@@ -130,14 +131,27 @@ export class StockControlCustomersController {
     }
     if (body.customerCode !== undefined) row.customerCode = body.customerCode;
     if (body.contactPerson !== undefined) row.contactPerson = body.contactPerson;
-    if (body.email !== undefined) row.email = body.email;
-    if (body.phone !== undefined) row.phone = body.phone;
     if (body.vatNumber !== undefined) row.vatNumber = body.vatNumber;
     if (body.registrationNumber !== undefined) row.registrationNumber = body.registrationNumber;
-    if (body.streetAddress !== undefined) row.streetAddress = body.streetAddress;
-    if (body.city !== undefined) row.city = body.city;
-    if (body.province !== undefined) row.province = body.province;
-    if (body.postalCode !== undefined) row.postalCode = body.postalCode;
+    if (body.email !== undefined || body.phone !== undefined) {
+      row.contact = ContactDetails.fromParts({
+        phone: body.phone ?? row.contact?.phone,
+        email: body.email ?? row.contact?.email,
+      });
+    }
+    if (
+      body.streetAddress !== undefined ||
+      body.city !== undefined ||
+      body.province !== undefined ||
+      body.postalCode !== undefined
+    ) {
+      row.address = Address.fromParts({
+        streetAddress: body.streetAddress ?? row.address?.streetAddress,
+        city: body.city ?? row.address?.city,
+        province: body.province ?? row.address?.province,
+        postalCode: body.postalCode ?? row.address?.postalCode,
+      });
+    }
     if (body.country !== undefined && body.country !== null && body.country.length > 0) {
       row.country = body.country;
     }
@@ -177,14 +191,18 @@ export class StockControlCustomersController {
       ownerCompanyId: req.user.companyId,
       customerCode: body.customerCode ?? null,
       contactPerson: body.contactPerson ?? null,
-      email: body.email ?? null,
-      phone: body.phone ?? null,
+      contact: ContactDetails.fromParts({
+        phone: body.phone ?? null,
+        email: body.email ?? null,
+      }),
       vatNumber: body.vatNumber ?? null,
       registrationNumber: body.registrationNumber ?? null,
-      streetAddress: body.streetAddress ?? null,
-      city: body.city ?? null,
-      province: body.province ?? null,
-      postalCode: body.postalCode ?? null,
+      address: Address.fromParts({
+        streetAddress: body.streetAddress ?? null,
+        city: body.city ?? null,
+        province: body.province ?? null,
+        postalCode: body.postalCode ?? null,
+      }),
       country: body.country && body.country.length > 0 ? body.country : "South Africa",
     });
     const saved = await this.companyRepo.save(row);
@@ -213,14 +231,14 @@ function toDto(row: Company): QuoteCustomerDto {
     name: row.name,
     customerCode: row.customerCode,
     contactPerson: row.contactPerson,
-    email: row.email,
-    phone: row.phone,
+    email: row.contact?.email ?? null,
+    phone: row.contact?.phone ?? null,
     vatNumber: row.vatNumber,
     registrationNumber: row.registrationNumber,
-    streetAddress: row.streetAddress,
-    city: row.city,
-    province: row.province,
-    postalCode: row.postalCode,
+    streetAddress: row.address?.streetAddress ?? null,
+    city: row.address?.city ?? null,
+    province: row.address?.province ?? null,
+    postalCode: row.address?.postalCode ?? null,
     country: row.country,
   };
 }

@@ -82,8 +82,8 @@ export class AnnixSentinelAuthService {
       companyType: CompanyType.CUSTOMER,
       registrationNumber: dto.registrationNumber ?? null,
       industry: dto.industrySector ?? null,
-      province: companyAddress.province,
-      phone: companyContact.phone,
+      address: companyAddress,
+      contact: companyContact,
     });
 
     await this.companyDetailsRepo.create({

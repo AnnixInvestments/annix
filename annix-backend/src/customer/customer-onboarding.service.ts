@@ -7,8 +7,21 @@ import {
 import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
 import { now } from "../lib/datetime";
+import { Address, ContactDetails } from "../lib/value-objects";
 import { CompanyRepository } from "../platform/company.repository";
 import { Company } from "../platform/entities/company.entity";
+
+type CompanyDetailsInput = Partial<
+  Omit<Company, "address" | "contact"> & {
+    streetAddress: string | null;
+    city: string | null;
+    province: string | null;
+    postalCode: string | null;
+    phone: string | null;
+    email: string | null;
+  }
+>;
+
 import { CustomerDocumentRepository } from "./customer-document.repository";
 import { CustomerOnboardingRepository } from "./customer-onboarding.repository";
 import { CustomerProfileRepository } from "./customer-profile.repository";
@@ -99,18 +112,18 @@ export class CustomerOnboardingService {
       {
         field: "streetAddress",
         label: "Street Address",
-        complete: !!company.streetAddress,
+        complete: !!company.address?.streetAddress,
       },
-      { field: "city", label: "City", complete: !!company.city },
+      { field: "city", label: "City", complete: !!company.address?.city },
       {
         field: "primaryPhone",
         label: "Primary Phone",
-        complete: !!company.phone,
+        complete: !!company.contact?.phone,
       },
     ];
   }
 
-  async updateCompanyDetails(customerId: number, data: Partial<Company>, clientIp: string) {
+  async updateCompanyDetails(customerId: number, data: CompanyDetailsInput, clientIp: string) {
     const profile = await this.profileRepository.findById(customerId, ["company"]);
 
     if (!profile) {
@@ -134,16 +147,36 @@ export class CustomerOnboardingService {
 
     // Update company
     const company = profile.company;
-    Object.assign(company, data);
+    const { streetAddress, city, province, postalCode, phone, email, ...rest } = data;
+    Object.assign(company, rest);
+    if (
+      streetAddress !== undefined ||
+      city !== undefined ||
+      province !== undefined ||
+      postalCode !== undefined
+    ) {
+      company.address = Address.fromParts({
+        streetAddress: streetAddress ?? company.address?.streetAddress,
+        city: city ?? company.address?.city,
+        province: province ?? company.address?.province,
+        postalCode: postalCode ?? company.address?.postalCode,
+      });
+    }
+    if (phone !== undefined || email !== undefined) {
+      company.contact = ContactDetails.fromParts({
+        phone: phone ?? company.contact?.phone,
+        email: email ?? company.contact?.email,
+      });
+    }
     await this.companyRepo.save(company);
 
     // Check if company details are now complete
     const isComplete = !!(
       company.legalName &&
       company.registrationNumber &&
-      company.streetAddress &&
-      company.city &&
-      company.phone
+      company.address?.streetAddress &&
+      company.address?.city &&
+      company.contact?.phone
     );
 
     onboarding.companyDetailsComplete = isComplete;
@@ -224,7 +257,7 @@ export class CustomerOnboardingService {
     };
   }
 
-  async saveDraft(customerId: number, data: Partial<Company>, clientIp: string) {
+  async saveDraft(customerId: number, data: CompanyDetailsInput, clientIp: string) {
     return this.updateCompanyDetails(customerId, data, clientIp);
   }
 }

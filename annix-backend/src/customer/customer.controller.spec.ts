@@ -1,5 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { fromISO } from "../lib/datetime";
+import { Address, ContactDetails } from "../lib/value-objects";
 import { BrandingType, Company, CompanyType } from "../platform/entities/company.entity";
 import { CustomerController } from "./customer.controller";
 import { CustomerService } from "./customer.service";
@@ -28,13 +29,17 @@ describe("CustomerController (company endpoints)", () => {
       registrationNumber: "2020/123456/07",
       customerCode: null,
       vatNumber: "4123456789",
-      phone: "+27 21 000 0123",
-      email: "info@acme.example",
       contactPerson: "Jane Doe",
-      streetAddress: "456 Industrial Road",
-      city: "Cape Town",
-      province: "Western Cape",
-      postalCode: "8001",
+      address: Address.fromParts({
+        streetAddress: "456 Industrial Road",
+        city: "Cape Town",
+        province: "Western Cape",
+        postalCode: "8001",
+      }),
+      contact: ContactDetails.fromParts({
+        phone: "+27 21 000 0123",
+        email: "info@acme.example",
+      }),
       addressJsonb: null,
       notes: null,
       websiteUrl: "https://acme.example",
@@ -122,13 +127,26 @@ describe("CustomerController (company endpoints)", () => {
       expect(result.phone).toBe("+27 21 000 0123");
     });
 
-    it("reproduces the raw entity values byte-for-byte (deep equal)", async () => {
+    it("flattens the nested entity value-objects into the flat response shape", async () => {
       const company = mockCompany();
       customerService.getCompany.mockResolvedValue(company);
 
       const result = await controller.getCompany(mockRequest as any);
 
-      expect(JSON.parse(JSON.stringify(result))).toEqual(JSON.parse(JSON.stringify(company)));
+      const { address, contact, ...flatRest } = company;
+      expect(JSON.parse(JSON.stringify(result))).toEqual(
+        JSON.parse(
+          JSON.stringify({
+            ...flatRest,
+            streetAddress: address?.streetAddress ?? null,
+            city: address?.city ?? null,
+            province: address?.province ?? null,
+            postalCode: address?.postalCode ?? null,
+            phone: contact?.phone ?? null,
+            email: contact?.email ?? null,
+          }),
+        ),
+      );
     });
 
     it("exposes the documented flat address/contact contract keys", async () => {
@@ -163,11 +181,16 @@ describe("CustomerController (company endpoints)", () => {
         primaryPhone: "+27 31 000 0123",
       };
       const updated = mockCompany({
-        streetAddress: "1 New Street",
-        city: "Durban",
-        province: "KwaZulu-Natal",
-        postalCode: "4001",
-        phone: "+27 31 000 0123",
+        address: Address.fromParts({
+          streetAddress: "1 New Street",
+          city: "Durban",
+          province: "KwaZulu-Natal",
+          postalCode: "4001",
+        }),
+        contact: ContactDetails.fromParts({
+          phone: "+27 31 000 0123",
+          email: "info@acme.example",
+        }),
       });
       customerService.updateCompanyAddress.mockResolvedValue(updated);
 

@@ -52,12 +52,12 @@ export class SettingsService {
       name: company.name,
       industry: company.industry,
       companySize: company.companySize,
-      province: company.province,
-      city: company.city,
-      streetAddress: company.streetAddress,
-      postalCode: company.postalCode,
-      phone: company.phone,
-      contactEmail: company.email,
+      province: company.address?.province ?? null,
+      city: company.address?.city ?? null,
+      streetAddress: company.address?.streetAddress ?? null,
+      postalCode: company.address?.postalCode ?? null,
+      phone: company.contact?.phone ?? null,
+      contactEmail: company.contact?.email ?? null,
       websiteUrl: company.websiteUrl,
       registrationNumber: company.registrationNumber,
       vatNumber: company.vatNumber,
@@ -67,7 +67,7 @@ export class SettingsService {
       imapUser: emailConfig.emailUser,
       imapConfigured: Boolean(emailConfig.emailHost && emailConfig.emailUser),
       monitoringEnabled: emailConfig.enabled,
-      emailFromAddress: company.email,
+      emailFromAddress: company.contact?.email ?? null,
     };
   }
 
@@ -95,7 +95,10 @@ export class SettingsService {
     if (dto.emailFromAddress != null) {
       const company = await this.companyRepo.findById(companyId);
       if (company) {
-        company.email = ContactDetails.fromParts({ email: dto.emailFromAddress }).email;
+        company.contact = ContactDetails.fromParts({
+          phone: company.contact?.phone,
+          email: dto.emailFromAddress,
+        });
         await this.companyRepo.save(company);
       }
     }
@@ -110,25 +113,30 @@ export class SettingsService {
     }
 
     const address = Address.fromParts({
-      streetAddress: dto.streetAddress ?? company.streetAddress,
-      city: dto.city ?? company.city,
-      province: dto.province ?? company.province,
-      postalCode: dto.postalCode ?? company.postalCode,
+      streetAddress: dto.streetAddress ?? company.address?.streetAddress,
+      city: dto.city ?? company.address?.city,
+      province: dto.province ?? company.address?.province,
+      postalCode: dto.postalCode ?? company.address?.postalCode,
     });
     const contact = ContactDetails.fromParts({
-      phone: dto.phone ?? company.phone,
-      email: dto.contactEmail ?? company.email,
+      phone: dto.phone ?? company.contact?.phone,
+      email: dto.contactEmail ?? company.contact?.email,
     });
 
     if (dto.name != null) company.name = dto.name;
     if (dto.industry != null) company.industry = dto.industry;
     if (dto.companySize != null) company.companySize = dto.companySize;
-    if (dto.province != null) company.province = address.province;
-    if (dto.city != null) company.city = address.city;
-    if (dto.streetAddress != null) company.streetAddress = address.streetAddress;
-    if (dto.postalCode != null) company.postalCode = address.postalCode;
-    if (dto.phone != null) company.phone = contact.phone;
-    if (dto.contactEmail != null) company.email = contact.email;
+    if (
+      dto.province != null ||
+      dto.city != null ||
+      dto.streetAddress != null ||
+      dto.postalCode != null
+    ) {
+      company.address = address;
+    }
+    if (dto.phone != null || dto.contactEmail != null) {
+      company.contact = contact;
+    }
     if (dto.websiteUrl != null) company.websiteUrl = dto.websiteUrl;
     if (dto.registrationNumber != null) company.registrationNumber = dto.registrationNumber;
     if (dto.vatNumber != null) company.vatNumber = dto.vatNumber;

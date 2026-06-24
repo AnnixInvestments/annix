@@ -482,7 +482,7 @@ export class NixController {
     const customerCompanyId = session.customerCompanyId;
     if (customerCompanyId != null) {
       const live = await this.companyRepo.findById(customerCompanyId);
-      const liveEmail = live ? live.email : null;
+      const liveEmail = live ? (live.contact?.email ?? null) : null;
       if (liveEmail && liveEmail.trim().length > 0) return liveEmail.trim();
     }
     const snap = session.customerSnapshot;

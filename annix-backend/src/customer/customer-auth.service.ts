@@ -148,13 +148,9 @@ export class CustomerAuthService {
         vatNumber: dto.company.vatNumber,
         industry: dto.company.industry,
         companySize: dto.company.companySize,
-        streetAddress: companyAddress.streetAddress,
-        city: companyAddress.city,
-        province: companyAddress.province,
-        postalCode: companyAddress.postalCode,
+        address: companyAddress,
         country: dto.company.country || "South Africa",
-        phone: companyContact.phone,
-        email: companyContact.email,
+        contact: companyContact,
         websiteUrl: dto.company.website,
       });
 

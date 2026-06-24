@@ -2,6 +2,7 @@ import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { AuditService } from "../audit/audit.service";
 import { fromISO } from "../lib/datetime";
+import { Address, ContactDetails } from "../lib/value-objects";
 import { CompanyRepository } from "../platform/company.repository";
 import { BrandingType, Company, CompanyType } from "../platform/entities/company.entity";
 import { RfqRepository } from "../rfq/rfq.repository";
@@ -26,13 +27,17 @@ describe("CustomerService.updateCompanyAddress", () => {
       registrationNumber: "2020/123456/07",
       customerCode: null,
       vatNumber: "4123456789",
-      phone: "+27 21 000 0123",
-      email: "info@acme.example",
       contactPerson: "Jane Doe",
-      streetAddress: "456 Industrial Road",
-      city: "Cape Town",
-      province: "Western Cape",
-      postalCode: "8001",
+      address: Address.fromParts({
+        streetAddress: "456 Industrial Road",
+        city: "Cape Town",
+        province: "Western Cape",
+        postalCode: "8001",
+      }),
+      contact: ContactDetails.fromParts({
+        phone: "+27 21 000 0123",
+        email: "info@acme.example",
+      }),
       addressJsonb: null,
       notes: null,
       websiteUrl: null,
@@ -122,12 +127,12 @@ describe("CustomerService.updateCompanyAddress", () => {
 
     expect(companyRepo.save).toHaveBeenCalledTimes(1);
     const saved = companyRepo.save.mock.calls[0][0];
-    expect(saved.streetAddress).toBe("1 New Street");
-    expect(saved.city).toBe("Durban");
-    expect(saved.province).toBe("KwaZulu-Natal");
-    expect(saved.postalCode).toBe("4001");
-    expect(saved.phone).toBe("+27 31 000 0123");
-    expect(result.streetAddress).toBe("1 New Street");
+    expect(saved.address?.streetAddress).toBe("1 New Street");
+    expect(saved.address?.city).toBe("Durban");
+    expect(saved.address?.province).toBe("KwaZulu-Natal");
+    expect(saved.address?.postalCode).toBe("4001");
+    expect(saved.contact?.phone).toBe("+27 31 000 0123");
+    expect(result.address?.streetAddress).toBe("1 New Street");
   });
 
   it("leaves untouched fields unchanged when only a subset is provided", async () => {
@@ -141,10 +146,10 @@ describe("CustomerService.updateCompanyAddress", () => {
       "10.0.0.1",
     );
 
-    expect(result.city).toBe("Pretoria");
-    expect(result.streetAddress).toBe("456 Industrial Road");
-    expect(result.postalCode).toBe("8001");
-    expect(result.phone).toBe("+27 21 000 0123");
+    expect(result.address?.city).toBe("Pretoria");
+    expect(result.address?.streetAddress).toBe("456 Industrial Road");
+    expect(result.address?.postalCode).toBe("8001");
+    expect(result.contact?.phone).toBe("+27 21 000 0123");
   });
 
   it("throws NotFoundException when the profile does not exist", async () => {

@@ -242,14 +242,10 @@ export class SupplierService {
           tradingName: dto.tradingName,
           registrationNumber: dto.registrationNumber,
           vatNumber: dto.vatNumber,
-          streetAddress: address.streetAddress,
-          city: address.city,
-          province: address.province,
-          postalCode: address.postalCode,
+          address,
           country: dto.country || profile.company.country,
-          phone: contact.phone,
           contactPerson: dto.primaryContactName,
-          email: contact.email,
+          contact,
           websiteUrl: dto.website,
           industry: dto.industryType,
           companySize: dto.companySize,
@@ -276,14 +272,10 @@ export class SupplierService {
           tradingName: dto.tradingName,
           registrationNumber: dto.registrationNumber,
           vatNumber: dto.vatNumber,
-          streetAddress: address.streetAddress,
-          city: address.city,
-          province: address.province,
-          postalCode: address.postalCode,
+          address,
           country: dto.country || "South Africa",
-          phone: contact.phone,
           contactPerson: dto.primaryContactName,
-          email: contact.email,
+          contact,
           websiteUrl: dto.website,
           industry: dto.industryType,
           companySize: dto.companySize,
@@ -727,13 +719,13 @@ export class SupplierService {
     return !!(
       company.legalName &&
       company.registrationNumber &&
-      company.streetAddress &&
-      company.city &&
-      company.province &&
-      company.postalCode &&
+      company.address?.streetAddress &&
+      company.address?.city &&
+      company.address?.province &&
+      company.address?.postalCode &&
       company.contactPerson &&
-      company.email &&
-      company.phone
+      company.contact?.email &&
+      company.contact?.phone
     );
   }
 

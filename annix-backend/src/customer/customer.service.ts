@@ -57,12 +57,12 @@ export class CustomerService {
         id: profile.company.id,
         legalName: profile.company.legalName || "",
         tradingName: profile.company.tradingName || "",
-        streetAddress: profile.company.streetAddress || "",
-        city: profile.company.city || "",
-        provinceState: profile.company.province || "",
-        postalCode: profile.company.postalCode || "",
+        streetAddress: profile.company.address?.streetAddress || "",
+        city: profile.company.address?.city || "",
+        provinceState: profile.company.address?.province || "",
+        postalCode: profile.company.address?.postalCode || "",
         country: profile.company.country || "",
-        primaryPhone: profile.company.phone || "",
+        primaryPhone: profile.company.contact?.phone || "",
       },
       security: {
         deviceBound: !!activeBinding,
@@ -136,28 +136,24 @@ export class CustomerService {
 
     const company = profile.company;
     const oldValues = {
-      streetAddress: company.streetAddress,
-      city: company.city,
-      provinceState: company.province,
-      postalCode: company.postalCode,
-      primaryPhone: company.phone,
+      streetAddress: company.address?.streetAddress ?? null,
+      city: company.address?.city ?? null,
+      provinceState: company.address?.province ?? null,
+      postalCode: company.address?.postalCode ?? null,
+      primaryPhone: company.contact?.phone ?? null,
     };
 
     // Update allowed fields only (normalize via shared value-objects)
-    const address = Address.fromParts({
-      streetAddress: dto.streetAddress ?? company.streetAddress,
-      city: dto.city ?? company.city,
-      province: dto.provinceState ?? company.province,
-      postalCode: dto.postalCode ?? company.postalCode,
+    company.address = Address.fromParts({
+      streetAddress: dto.streetAddress ?? company.address?.streetAddress,
+      city: dto.city ?? company.address?.city,
+      province: dto.provinceState ?? company.address?.province,
+      postalCode: dto.postalCode ?? company.address?.postalCode,
     });
-    const contact = ContactDetails.fromParts({
-      phone: dto.primaryPhone ?? company.phone,
+    company.contact = ContactDetails.fromParts({
+      phone: dto.primaryPhone ?? company.contact?.phone,
+      email: company.contact?.email,
     });
-    if (dto.streetAddress !== undefined) company.streetAddress = address.streetAddress;
-    if (dto.city !== undefined) company.city = address.city;
-    if (dto.provinceState !== undefined) company.province = address.province;
-    if (dto.postalCode !== undefined) company.postalCode = address.postalCode;
-    if (dto.primaryPhone !== undefined) company.phone = contact.phone;
 
     await this.companyRepo.save(company);
 

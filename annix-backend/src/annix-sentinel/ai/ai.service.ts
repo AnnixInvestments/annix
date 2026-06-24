@@ -94,7 +94,7 @@ export class AnnixSentinelAiService {
       details !== null ? `Employees: ${details.employeeCount}` : null,
       details?.annualTurnover !== null ? `Annual Turnover: R${details?.annualTurnover}` : null,
       details?.vatRegistered ? "VAT Registered: Yes" : "VAT Registered: No",
-      company.province !== null ? `Province: ${company.province}` : null,
+      company.address?.province != null ? `Province: ${company.address.province}` : null,
     ].filter((part): part is string => part !== null);
 
     const statusSummary =

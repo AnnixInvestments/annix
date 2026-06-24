@@ -334,8 +334,7 @@ export class AnnixOrbitAuthService {
       companyType: "CUSTOMER" as never,
       industry: null,
       companySize: null,
-      province: null,
-      city: null,
+      address: Address.fromParts({ province: null, city: null }),
     });
     await this.mirrorIntoAnnixOrbitCompanies(savedCompany.id, companyName);
 
@@ -374,8 +373,7 @@ export class AnnixOrbitAuthService {
       companyType: "CUSTOMER" as any,
       industry,
       companySize,
-      province: companyAddress.province,
-      city: companyAddress.city,
+      address: companyAddress,
     });
     await this.mirrorIntoAnnixOrbitCompanies(savedCompany.id, companyName);
 
@@ -435,8 +433,7 @@ export class AnnixOrbitAuthService {
       companyType: "CUSTOMER" as any,
       industry: "Staffing & Recruitment",
       companySize: null,
-      province: companyAddress.province,
-      city: companyAddress.city,
+      address: companyAddress,
     });
     await this.mirrorIntoAnnixOrbitCompanies(savedCompany.id, agencyName);
 
@@ -621,8 +618,7 @@ export class AnnixOrbitAuthService {
         companyType: "CUSTOMER" as never,
         industry: userType === AnnixOrbitUserType.RECRUITER ? "Staffing & Recruitment" : null,
         companySize: null,
-        province: null,
-        city: null,
+        address: Address.fromParts({ province: null, city: null }),
       });
       await this.mirrorIntoAnnixOrbitCompanies(savedCompany.id, trimmedCompanyName);
       return savedCompany.id;
