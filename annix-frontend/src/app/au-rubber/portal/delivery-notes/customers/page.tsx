@@ -76,6 +76,22 @@ export default function CustomerDeliveryNotesPage() {
   const [filterType, setFilterType] = useState<DeliveryNoteType | "">("");
   const [filterStatus, setFilterStatus] = useState<DeliveryNoteStatus | "">("");
   const [currentPage, setCurrentPage] = useState(0);
+  // Customer CDNs ingested unsigned from email that still owe a signed POD.
+  const [awaitingPods, setAwaitingPods] = useState<RubberDeliveryNoteDto[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    auRubberApiClient
+      .deliveryNotesAwaitingSignedPod()
+      .then((rows) => {
+        if (!cancelled) setAwaitingPods(rows);
+      })
+      .catch(() => {
+        // Non-critical worklist surfacing — ignore load failures.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const tablePrefs = useTablePreferences("customerDeliveryNotes", {
     pageSize: 25,
     sortColumn: "deliveryNoteNumber",
@@ -430,6 +446,44 @@ export default function CustomerDeliveryNotesPage() {
   return (
     <div ref={scrollSentinelRef} className="space-y-6">
       <Breadcrumb items={[{ label: "Delivery Notes" }, { label: "Customers" }]} />
+      {awaitingPods.length > 0 && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-4">
+          <div className="flex items-start gap-3">
+            <FileText className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-900">
+                {awaitingPods.length} delivery note{awaitingPods.length === 1 ? "" : "s"} awaiting a
+                signed POD
+              </p>
+              <p className="text-xs text-amber-800 mt-0.5">
+                These CDNs were ingested unsigned from email. Upload the signed Proof of Delivery to
+                supersede each one.
+              </p>
+              <ul className="mt-2 flex flex-wrap gap-2">
+                {awaitingPods.slice(0, 12).map((dn) => {
+                  const dnDisplay = formatDeliveryNoteNumber(dn.deliveryNoteNumber).display;
+                  return (
+                    <li key={dn.id}>
+                      <Link
+                        href={`/au-rubber/portal/delivery-notes/${dn.id}`}
+                        className="inline-flex items-center rounded border border-amber-300 bg-white px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                      >
+                        {dnDisplay || `DN #${dn.id}`}
+                        {dn.supplierCompanyName ? ` · ${dn.supplierCompanyName}` : ""}
+                      </Link>
+                    </li>
+                  );
+                })}
+                {awaitingPods.length > 12 && (
+                  <li className="self-center text-xs text-amber-700">
+                    +{awaitingPods.length - 12} more
+                  </li>
+                )}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center">

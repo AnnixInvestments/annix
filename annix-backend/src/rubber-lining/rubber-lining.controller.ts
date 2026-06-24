@@ -1608,6 +1608,16 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
+  @Get("portal/delivery-notes/awaiting-signed-pod")
+  @ApiOperation({
+    summary: "List customer CDNs ingested unsigned from email that still owe a signed POD",
+  })
+  async deliveryNotesAwaitingSignedPod(): Promise<RubberDeliveryNoteDto[]> {
+    return this.rubberDeliveryNoteService.awaitingSignedPodDeliveryNotes();
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
+  @ApiBearerAuth()
   @Get("portal/delivery-notes/:id")
   @ApiOperation({ summary: "Get delivery note by ID" })
   @ApiParam({ name: "id", description: "Delivery note ID" })

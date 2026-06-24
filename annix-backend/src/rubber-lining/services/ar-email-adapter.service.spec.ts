@@ -413,6 +413,90 @@ describe("ArEmailAdapterService", () => {
     });
   });
 
+  describe("route - customer-direction documents ([CUST] marker)", () => {
+    it("delegates a [CUST] tax invoice from an approved sender to the central pipeline", async () => {
+      rubberInboundEmailMock.processInboundEmail.mockResolvedValue({
+        success: true,
+        cocIds: [],
+        deliveryNoteIds: [],
+        taxInvoiceIds: [777],
+        errors: [],
+      });
+      const attachment = {
+        documentType: ArDocumentType.TAX_INVOICE,
+        originalFilename: "Tax Invoice - 1351.pdf",
+        mimeType: "application/pdf",
+        fileSizeBytes: 4321,
+        s3Path: "path",
+      } as InboundEmailAttachment;
+
+      const result = await service.route(
+        attachment,
+        Buffer.from("pdf"),
+        null,
+        "info@auind.co.za",
+        "[CUST] Tax Invoice - 1351",
+      );
+
+      expect(rubberInboundEmailMock.processInboundEmail).toHaveBeenCalled();
+      expect(result.linkedEntityType).toBe("RubberTaxInvoice");
+      expect(result.linkedEntityId).toBe(777);
+      // Must NOT fall through to the supplier-side invoice creation.
+      expect(taxInvoiceRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("delegates a [CUST] delivery note to the central pipeline as a customer CDN", async () => {
+      rubberInboundEmailMock.processInboundEmail.mockResolvedValue({
+        success: true,
+        cocIds: [],
+        deliveryNoteIds: [888],
+        taxInvoiceIds: [],
+        errors: [],
+      });
+      const attachment = {
+        documentType: ArDocumentType.DELIVERY_NOTE,
+        originalFilename: "Delivery Note.pdf",
+        mimeType: "application/pdf",
+        fileSizeBytes: 1000,
+        s3Path: "path",
+      } as InboundEmailAttachment;
+
+      const result = await service.route(
+        attachment,
+        Buffer.from("dn"),
+        null,
+        "info@auind.co.za",
+        "[CUST] Delivery Note",
+      );
+
+      expect(result.linkedEntityType).toBe("RubberDeliveryNote");
+      expect(result.linkedEntityId).toBe(888);
+      expect(deliveryNoteRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("does NOT treat a [CUST] email from an unapproved sender as customer-direction", async () => {
+      companyRepo.findByCompoundOwner.mockResolvedValue([]);
+      const attachment = {
+        documentType: ArDocumentType.TAX_INVOICE,
+        s3Path: "path",
+        originalFilename: "inv.pdf",
+      } as InboundEmailAttachment;
+
+      const result = await service.route(
+        attachment,
+        Buffer.from(""),
+        null,
+        "stranger@example.com",
+        "[CUST] Tax Invoice",
+      );
+
+      // Falls through to the normal supplier-side invoice routing.
+      expect(rubberInboundEmailMock.processInboundEmail).not.toHaveBeenCalled();
+      expect(taxInvoiceRepo.save).toHaveBeenCalled();
+      expect(result.linkedEntityType).toBe("RubberTaxInvoice");
+    });
+  });
+
   describe("supplier resolution via emailConfig", () => {
     it("finds supplier by email domain in emailConfig values", async () => {
       companyRepo.findByCompoundOwner.mockResolvedValue([

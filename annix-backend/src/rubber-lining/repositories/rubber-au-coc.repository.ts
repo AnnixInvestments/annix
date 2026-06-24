@@ -29,5 +29,9 @@ export abstract class RubberAuCocRepository extends CrudRepository<RubberAuCoc> 
   abstract findByStatusWithCustomerOrderedByCocNumber(status: AuCocStatus): Promise<RubberAuCoc[]>;
   abstract findByStatus(status: AuCocStatus): Promise<RubberAuCoc[]>;
   abstract findRefsByDeliveryNoteIds(dnIds: number[]): Promise<AuCocDeliveryNoteRef[]>;
+  // Repoint AU CoCs whose sourceDeliveryNoteId is the superseded (unsigned) CDN
+  // onto the newly-authorized signed version, so an already-issued CoC stays
+  // attached to the live delivery note. Returns the number of CoCs updated.
+  abstract repointSourceDeliveryNoteId(oldId: number, newId: number): Promise<number>;
   abstract nextCocSequence(): Promise<number>;
 }

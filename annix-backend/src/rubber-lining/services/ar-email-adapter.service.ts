@@ -30,6 +30,10 @@ import { RubberCompanyRepository } from "../repositories/rubber-company.reposito
 import { RubberDeliveryNoteRepository } from "../repositories/rubber-delivery-note.repository";
 import { RubberTaxInvoiceRepository } from "../repositories/rubber-tax-invoice.repository";
 import { RubberInboundEmailService } from "../rubber-inbound-email.service";
+import {
+  CUSTOMER_EMAIL_SUBJECT_MARKER,
+  DEFAULT_CUSTOMER_DOC_SENDER_DOMAINS,
+} from "../rubber-lining.constants";
 import { RubberExtractionOrchestratorService } from "./rubber-extraction-orchestrator.service";
 
 export const ArDocumentType = {
@@ -253,6 +257,19 @@ Respond ONLY with JSON:
   ): Promise<RoutingResult> {
     const documentType = attachment.documentType;
 
+    // AU's own outbound customer documents (a customer Tax Invoice + the
+    // matching unsigned customer Delivery Note) are handed to the central
+    // pipeline, which files the CTI as a CUSTOMER invoice and the CDN as
+    // unsigned/awaiting-signed-POD. Supplier mail keeps the existing routing.
+    if (
+      this.isCustomerDirection(fromEmail, subject) &&
+      (documentType === ArDocumentType.TAX_INVOICE ||
+        documentType === ArDocumentType.DELIVERY_NOTE ||
+        documentType === ArDocumentType.CREDIT_NOTE)
+    ) {
+      return this.routeCustomerDocument(attachment, fileBuffer, fromEmail, subject);
+    }
+
     if (documentType === ArDocumentType.TAX_INVOICE) {
       return this.routeInvoice(attachment, fileBuffer, fromEmail, subject);
     }
@@ -308,6 +325,71 @@ Respond ONLY with JSON:
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to route CoC: ${msg}`);
+      return { linkedEntityType: null, linkedEntityId: null, extractionTriggered: false };
+    }
+  }
+
+  private isCustomerDirection(fromEmail: string, subject: string): boolean {
+    if (!(subject || "").toUpperCase().includes(CUSTOMER_EMAIL_SUBJECT_MARKER)) {
+      return false;
+    }
+    const configured = process.env.AU_RUBBER_CUSTOMER_DOC_SENDER_DOMAINS;
+    const senderDomains = (configured ? configured.split(",") : DEFAULT_CUSTOMER_DOC_SENDER_DOMAINS)
+      .map((domain) => domain.trim().toLowerCase())
+      .filter((domain) => domain.length > 0);
+    if (senderDomains.length === 0) {
+      return true;
+    }
+    const from = (fromEmail || "").toLowerCase();
+    return senderDomains.some((domain) => from.includes(domain));
+  }
+
+  // Delegate the single attachment to the central pipeline, which detects the
+  // customer-direction marker on the subject and files the CTI / unsigned CDN
+  // appropriately. Mirrors routeCoc — one attachment in, one entity out.
+  private async routeCustomerDocument(
+    attachment: InboundEmailAttachment,
+    fileBuffer: Buffer,
+    fromEmail: string,
+    subject: string,
+  ): Promise<RoutingResult> {
+    try {
+      const filename = attachment.originalFilename || "document.pdf";
+      const result = await this.rubberInboundEmailService.processInboundEmail({
+        from: fromEmail,
+        to: "",
+        subject,
+        attachments: [
+          {
+            filename,
+            content: fileBuffer,
+            contentType: attachment.mimeType,
+            size: attachment.fileSizeBytes ?? fileBuffer.length,
+          },
+        ],
+      });
+
+      if (result.taxInvoiceIds.length > 0) {
+        return {
+          linkedEntityType: "RubberTaxInvoice",
+          linkedEntityId: result.taxInvoiceIds[0],
+          extractionTriggered: true,
+        };
+      }
+      if (result.deliveryNoteIds.length > 0) {
+        return {
+          linkedEntityType: "RubberDeliveryNote",
+          linkedEntityId: result.deliveryNoteIds[0],
+          extractionTriggered: true,
+        };
+      }
+      this.logger.warn(
+        `Customer document "${filename}" from ${fromEmail} produced no entity: ${result.errors.join("; ")}`,
+      );
+      return { linkedEntityType: null, linkedEntityId: null, extractionTriggered: false };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to route customer document: ${msg}`);
       return { linkedEntityType: null, linkedEntityId: null, extractionTriggered: false };
     }
   }

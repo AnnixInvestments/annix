@@ -61,6 +61,15 @@ export class RubberDeliveryNote {
   @Prop({ type: String, required: false })
   stockCategory: string;
 
+  @Prop({ type: Boolean, required: false, default: false })
+  requiresSignedPod: boolean;
+
+  @Prop({ type: Boolean, required: false, default: false })
+  signedPodReceived: boolean;
+
+  @Prop({ type: String, required: false })
+  ingestionSource: string;
+
   @Prop({ type: Object, required: false })
   podPageNumbers: Record<string, unknown>;
 

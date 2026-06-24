@@ -122,6 +122,13 @@ export class MongoRubberAuCocRepository
     }));
   }
 
+  async repointSourceDeliveryNoteId(oldId: number, newId: number): Promise<number> {
+    const result = await this.documents
+      .updateMany({ sourceDeliveryNoteId: oldId }, { $set: { sourceDeliveryNoteId: newId } })
+      .exec();
+    return result.modifiedCount ?? 0;
+  }
+
   async nextCocSequence(): Promise<number> {
     const database = this.model.db.db;
     if (!database) {

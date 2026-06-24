@@ -1146,6 +1146,11 @@ class AuRubberApiClient {
     return this.request(`/rubber-lining/portal/delivery-notes${query}`);
   }
 
+  // Customer CDNs ingested unsigned from email that still owe a signed POD.
+  async deliveryNotesAwaitingSignedPod(): Promise<RubberDeliveryNoteDto[]> {
+    return this.request("/rubber-lining/portal/delivery-notes/awaiting-signed-pod");
+  }
+
   deliveryNoteById = createEndpoint<[id: number], RubberDeliveryNoteDto>(apiClient, "GET", {
     path: (id) => `/rubber-lining/portal/delivery-notes/${id}`,
   });

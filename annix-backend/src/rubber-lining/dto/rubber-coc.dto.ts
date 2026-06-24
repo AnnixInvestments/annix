@@ -2,6 +2,7 @@ import { ApiSchema } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
   IsArray,
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsNumber,
@@ -14,6 +15,7 @@ import { AuCocStatus } from "../entities/rubber-au-coc.entity";
 import type { TestDataSummary } from "../entities/rubber-au-coc-item.entity";
 import { BatchPassFailStatus } from "../entities/rubber-compound-batch.entity";
 import {
+  DeliveryNoteIngestionSource,
   DeliveryNoteStatus,
   DeliveryNoteType,
   ExtractedDeliveryNoteData,
@@ -296,6 +298,9 @@ export class RubberDeliveryNoteDto {
   versionStatusLabel: string;
   previousVersionId: number | null;
   stockCategory: string | null;
+  requiresSignedPod: boolean;
+  signedPodReceived: boolean;
+  ingestionSource: DeliveryNoteIngestionSource | null;
   podPageNumbers: number[] | null;
   sourcePageNumbers: number[] | null;
   siblingsBackfilledAt: string | null;
@@ -347,6 +352,16 @@ export class CreateDeliveryNoteDto {
   @IsOptional()
   @IsString()
   stockCategory?: string | null;
+
+  // When true, this CDN was ingested unsigned (e.g. from a Sage email) and the
+  // physically-signed POD must still be uploaded to supersede it.
+  @IsOptional()
+  @IsBoolean()
+  requiresSignedPod?: boolean;
+
+  @IsOptional()
+  @IsEnum(DeliveryNoteIngestionSource)
+  ingestionSource?: DeliveryNoteIngestionSource;
 }
 
 @ApiSchema({ name: "RubberLiningUpdateDeliveryNoteDto" })

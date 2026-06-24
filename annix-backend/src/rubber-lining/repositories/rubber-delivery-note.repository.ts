@@ -80,6 +80,8 @@ export abstract class RubberDeliveryNoteRepository extends CrudRepository<Rubber
     supplierCompanyId: number,
   ): Promise<RubberDeliveryNote | null>;
   abstract findNewerVersionsByPreviousId(id: number): Promise<RubberDeliveryNote[]>;
+  // Active CDNs ingested unsigned (from email) that still owe a signed POD.
+  abstract findAwaitingSignedPod(): Promise<RubberDeliveryNote[]>;
   abstract repointLinkedCocId(oldId: number, newId: number): Promise<void>;
   abstract findIdsWithRollsButNoItems(): Promise<number[]>;
   abstract findSupplierDnReconciliationRows(

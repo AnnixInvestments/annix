@@ -325,6 +325,20 @@ export class MongoRubberDeliveryNoteRepository
     return this.toDomainList(docs);
   }
 
+  async findAwaitingSignedPod(): Promise<RubberDeliveryNote[]> {
+    const docs = await this.documents
+      .find({
+        requiresSignedPod: true,
+        signedPodReceived: { $ne: true },
+        versionStatus: DocumentVersionStatus.ACTIVE,
+      })
+      .populate(["supplierCompany", "linkedCoc"])
+      .sort({ createdAt: 1 })
+      .lean()
+      .exec();
+    return this.toDomainList(docs);
+  }
+
   async repointLinkedCocId(oldId: number, newId: number): Promise<void> {
     await this.documents
       .updateMany({ linkedCocId: oldId }, { $set: { linkedCocId: newId } })

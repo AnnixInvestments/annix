@@ -162,6 +162,25 @@ export class RubberDeliveryNoteService {
     );
   }
 
+  // Active customer CDNs that were ingested unsigned from email and still owe a
+  // physically-signed POD. Drives the "Outstanding signed PODs" worklist.
+  async awaitingSignedPodDeliveryNotes(): Promise<RubberDeliveryNoteDto[]> {
+    const notes = await this.deliveryNoteRepository.findAwaitingSignedPod();
+    const noteIds = notes.map((n) => n.id);
+    const auCocMap = noteIds.length > 0 ? await this.auCocMapByDeliveryNoteIds(noteIds) : new Map();
+    const siblingCounts = await this.documentPathSiblingCounts(notes);
+    const rollNumbersMap = await this.rollNumbersByDeliveryNoteIds(noteIds);
+    return notes.map((dn) =>
+      this.mapDeliveryNoteToDto(
+        dn,
+        auCocMap.get(dn.id) ?? null,
+        siblingCounts.get(dn.id) ?? 1,
+        [],
+        rollNumbersMap.get(dn.id) ?? [],
+      ),
+    );
+  }
+
   async paginatedDeliveryNotes(filters?: {
     deliveryNoteType?: DeliveryNoteType;
     status?: DeliveryNoteStatus;
@@ -302,6 +321,9 @@ export class RubberDeliveryNoteService {
       supplierCompanyId: dto.supplierCompanyId,
       documentPath: dto.documentPath ?? null,
       stockCategory: dto.stockCategory ?? null,
+      requiresSignedPod: dto.requiresSignedPod ?? false,
+      signedPodReceived: false,
+      ingestionSource: dto.ingestionSource ?? null,
       status: DeliveryNoteStatus.PENDING,
       createdBy: createdBy ?? null,
       version: isDuplicate ? existingActive.version + 1 : 1,
@@ -1605,6 +1627,9 @@ export class RubberDeliveryNoteService {
       versionStatusLabel: DOCUMENT_VERSION_STATUS_LABELS[note.versionStatus],
       previousVersionId: note.previousVersionId,
       stockCategory: note.stockCategory || null,
+      requiresSignedPod: note.requiresSignedPod ?? false,
+      signedPodReceived: note.signedPodReceived ?? false,
+      ingestionSource: note.ingestionSource ?? null,
       podPageNumbers: note.podPageNumbers || null,
       sourcePageNumbers: note.sourcePageNumbers || null,
       siblingsBackfilledAt: note.siblingsBackfilledAt

@@ -6,6 +6,7 @@ import {
 import { RubberDeliveryNote } from "./entities/rubber-delivery-note.entity";
 import { RubberSupplierCoc, SupplierCocType } from "./entities/rubber-supplier-coc.entity";
 import { RubberTaxInvoice, TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
+import { RubberAuCocRepository } from "./repositories/rubber-au-coc.repository";
 import { RubberDeliveryNoteRepository } from "./repositories/rubber-delivery-note.repository";
 import { RubberSupplierCocRepository } from "./repositories/rubber-supplier-coc.repository";
 import { RubberTaxInvoiceRepository } from "./repositories/rubber-tax-invoice.repository";
@@ -37,6 +38,7 @@ export class RubberDocumentVersioningService {
     private taxInvoiceRepository: RubberTaxInvoiceRepository,
     private deliveryNoteRepository: RubberDeliveryNoteRepository,
     private supplierCocRepository: RubberSupplierCocRepository,
+    private auCocRepository: RubberAuCocRepository,
   ) {}
 
   async existingActiveTaxInvoice(
@@ -104,9 +106,10 @@ export class RubberDocumentVersioningService {
 
     const previousVersionId = (entity as VersionableEntity).previousVersionId;
     let supersededId: number | null = null;
+    let previousVersion: VersionableEntity | null = null;
 
     if (previousVersionId) {
-      const previousVersion = await repo.findById(previousVersionId);
+      previousVersion = await repo.findById(previousVersionId);
       if (
         previousVersion &&
         (previousVersion as VersionableEntity).versionStatus === DocumentVersionStatus.ACTIVE
@@ -116,6 +119,19 @@ export class RubberDocumentVersioningService {
         supersededId = previousVersionId;
 
         await this.updateDownstreamReferences(entityType, previousVersionId, id);
+      }
+    }
+
+    // A signed POD upload supersedes the unsigned CDN that was ingested from
+    // email. Authorizing it is the moment the outstanding "awaiting signed POD"
+    // obligation is satisfied — carry the flag onto the now-active version so
+    // it drops out of the outstanding list and records that the POD arrived.
+    if (entityType === "delivery-note") {
+      const newDn = entity as RubberDeliveryNote;
+      const prevDn = previousVersion as RubberDeliveryNote | null;
+      if (newDn.requiresSignedPod || prevDn?.requiresSignedPod) {
+        newDn.requiresSignedPod = true;
+        newDn.signedPodReceived = true;
       }
     }
 
@@ -223,6 +239,16 @@ export class RubberDocumentVersioningService {
       this.logger.log(
         `Updated supplier CoC linked_delivery_note_id references from #${oldId} to #${newId}`,
       );
+
+      // An AU CoC may already have been issued off the unsigned emailed CDN
+      // (sourceDeliveryNoteId). Repoint it onto the signed version so the
+      // issued certificate stays attached to the live delivery note.
+      const repointed = await this.auCocRepository.repointSourceDeliveryNoteId(oldId, newId);
+      if (repointed > 0) {
+        this.logger.log(
+          `Updated ${repointed} AU CoC source_delivery_note_id reference(s) from #${oldId} to #${newId}`,
+        );
+      }
     }
   }
 }

@@ -820,6 +820,15 @@ export interface RubberDeliveryNoteDto {
   versionStatus: string;
   versionStatusLabel: string;
   previousVersionId: number | null;
+  /**
+   * True when this CDN was ingested unsigned (e.g. a Sage email) and the
+   * physically-signed POD must still be uploaded. signedPodReceived flips true
+   * once the signed version supersedes it. ingestionSource records how it
+   * first entered the system ("EMAIL" | "UPLOAD").
+   */
+  requiresSignedPod: boolean;
+  signedPodReceived: boolean;
+  ingestionSource: string | null;
   podPageNumbers: number[] | null;
   sourcePageNumbers: number[] | null;
   siblingsBackfilledAt: string | null;

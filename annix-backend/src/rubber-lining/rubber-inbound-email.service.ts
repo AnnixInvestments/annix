@@ -11,7 +11,11 @@ import {
 import { AiChatService } from "../nix/ai-providers/ai-chat.service";
 import { IStorageService, STORAGE_SERVICE, StorageResult } from "../storage/storage.interface";
 import { CompanyType, RubberCompany } from "./entities/rubber-company.entity";
-import { DeliveryNoteStatus, DeliveryNoteType } from "./entities/rubber-delivery-note.entity";
+import {
+  DeliveryNoteIngestionSource,
+  DeliveryNoteStatus,
+  DeliveryNoteType,
+} from "./entities/rubber-delivery-note.entity";
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
 import { SupplierCocType } from "./entities/rubber-supplier-coc.entity";
 import { TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
@@ -20,6 +24,10 @@ import { RubberProductCodingRepository } from "./repositories/rubber-product-cod
 import { RubberCocService } from "./rubber-coc.service";
 import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
+import {
+  CUSTOMER_EMAIL_SUBJECT_MARKER,
+  DEFAULT_CUSTOMER_DOC_SENDER_DOMAINS,
+} from "./rubber-lining.constants";
 import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
 import { PdfSlicerService } from "./services/pdf-slicer.service";
 import { RubberExtractionOrchestratorService } from "./services/rubber-extraction-orchestrator.service";
@@ -193,12 +201,19 @@ export class RubberInboundEmailService {
       return result;
     }
 
-    const documentType = this.determineDocumentType(emailData.subject);
-
-    if (documentType === SharedDocumentType.COC) {
-      await this.processCocAttachments(supportedAttachments, emailData, result);
+    if (this.isCustomerDirectionEmail(emailData)) {
+      this.logger.log(
+        `Email "${emailData.subject}" flagged as customer-direction (${CUSTOMER_EMAIL_SUBJECT_MARKER}) — ingesting AU customer documents`,
+      );
+      await this.processCustomerDocuments(supportedAttachments, emailData, result);
     } else {
-      await this.processNonCocAttachments(supportedAttachments, emailData, documentType, result);
+      const documentType = this.determineDocumentType(emailData.subject);
+
+      if (documentType === SharedDocumentType.COC) {
+        await this.processCocAttachments(supportedAttachments, emailData, result);
+      } else {
+        await this.processNonCocAttachments(supportedAttachments, emailData, documentType, result);
+      }
     }
 
     result.success =
@@ -206,6 +221,159 @@ export class RubberInboundEmailService {
       result.deliveryNoteIds.length > 0 ||
       result.taxInvoiceIds.length > 0;
     return result;
+  }
+
+  // An email is "customer-direction" when its subject carries the configured
+  // marker AND it comes from an approved sender domain. Such emails carry AU's
+  // own outbound documents — a customer Tax Invoice (CTI) and the matching
+  // unsigned customer Delivery Note (CDN) — rather than supplier documents.
+  private isCustomerDirectionEmail(emailData: InboundEmailData): boolean {
+    const subject = (emailData.subject || "").toUpperCase();
+    if (!subject.includes(CUSTOMER_EMAIL_SUBJECT_MARKER)) {
+      return false;
+    }
+
+    const configured = process.env.AU_RUBBER_CUSTOMER_DOC_SENDER_DOMAINS;
+    const senderDomains = (configured ? configured.split(",") : DEFAULT_CUSTOMER_DOC_SENDER_DOMAINS)
+      .map((domain) => domain.trim().toLowerCase())
+      .filter((domain) => domain.length > 0);
+
+    if (senderDomains.length === 0) {
+      return true;
+    }
+
+    const from = (emailData.from || "").toLowerCase();
+    const allowed = senderDomains.some((domain) => from.includes(domain));
+    if (!allowed) {
+      this.logger.warn(
+        `Email subject carries ${CUSTOMER_EMAIL_SUBJECT_MARKER} but sender "${emailData.from}" is not an approved customer-document sender (${senderDomains.join(", ")}); not treating as customer-direction`,
+      );
+    }
+    return allowed;
+  }
+
+  // Ingest AU's own outbound customer documents from a single email: the
+  // customer Tax Invoice (CTI) is filed as a CUSTOMER tax invoice, and the
+  // customer Delivery Note (CDN) is filed unsigned with an outstanding
+  // "signed POD" obligation. CoC issuance is intentionally NOT gated on this.
+  private async processCustomerDocuments(
+    attachments: InboundEmailAttachment[],
+    emailData: InboundEmailData,
+    result: ProcessedEmailResult,
+  ): Promise<void> {
+    await attachments.reduce(async (accPromise, attachment) => {
+      await accPromise;
+      try {
+        const documentText = await this.extractTextFromAttachment(attachment);
+        const documentType = await this.classifyDocumentType(documentText, attachment.filename);
+
+        if (
+          documentType === SharedDocumentType.TAX_INVOICE ||
+          documentType === SharedDocumentType.CREDIT_NOTE
+        ) {
+          await this.ingestCustomerInvoice(attachment, emailData, documentType, result);
+        } else if (documentType === SharedDocumentType.DELIVERY_NOTE) {
+          await this.ingestCustomerDeliveryNote(attachment, emailData, result);
+        } else {
+          const msg = `Customer-direction email attachment "${attachment.filename}" classified as ${documentType}; expected a tax invoice or delivery note — skipping`;
+          result.errors = [...result.errors, msg];
+          this.logger.warn(msg);
+        }
+      } catch (error) {
+        const errorMsg = `Failed to process customer document ${attachment.filename}: ${error.message}`;
+        result.errors = [...result.errors, errorMsg];
+        this.logger.error(errorMsg);
+      }
+    }, Promise.resolve());
+  }
+
+  private async ingestCustomerInvoice(
+    attachment: InboundEmailAttachment,
+    emailData: InboundEmailData,
+    documentType: SharedDocumentType.TAX_INVOICE | SharedDocumentType.CREDIT_NOTE,
+    result: ProcessedEmailResult,
+  ): Promise<void> {
+    const isCreditNote = documentType === SharedDocumentType.CREDIT_NOTE;
+    const documentLabel = isCreditNote ? "Customer Credit Note" : "Customer Tax Invoice";
+
+    const companyId = await this.detectCompanyFromPdf(
+      attachment.content,
+      attachment.filename,
+      TaxInvoiceType.CUSTOMER,
+    );
+    const storageResult = await this.saveAttachment(attachment, companyId, documentType);
+
+    const invoiceNumber = `${isCreditNote ? "CN" : "INV"}-${nowMillis()}`;
+    const invoice = await this.taxInvoiceService.createTaxInvoice(
+      {
+        invoiceNumber,
+        invoiceType: TaxInvoiceType.CUSTOMER,
+        companyId,
+        documentPath: storageResult.path,
+        isCreditNote,
+      },
+      `inbound-email:${emailData.from}`,
+    );
+    result.taxInvoiceIds = [...result.taxInvoiceIds, invoice.id];
+    this.logger.log(`Created ${documentLabel} ${invoice.id} from email attachment`);
+
+    const company = await this.companyRepository.findById(companyId);
+    this.extractionOrchestrator.triggerTaxInvoiceExtraction(
+      invoice.id,
+      attachment.content,
+      attachment.filename,
+      company?.name ?? null,
+    );
+  }
+
+  private async ingestCustomerDeliveryNote(
+    attachment: InboundEmailAttachment,
+    emailData: InboundEmailData,
+    result: ProcessedEmailResult,
+  ): Promise<void> {
+    const multerFile = this.attachmentToMulterFile(attachment);
+    const analysis = await this.analyzeCustomerDeliveryNotes([multerFile]);
+
+    if (analysis.groups.length === 0) {
+      const msg = `No customer delivery note could be extracted from ${attachment.filename}`;
+      result.errors = [...result.errors, msg];
+      this.logger.warn(msg);
+      return;
+    }
+
+    // Every CDN ingested from email is unsigned: flag the outstanding signed-POD
+    // obligation so the operator must still upload the signed scan, which will
+    // supersede this version (see RubberDocumentVersioningService.authorizeVersion).
+    const overrides = analysis.groups.map(() => ({
+      requiresSignedPod: true,
+      ingestionSource: DeliveryNoteIngestionSource.EMAIL,
+    }));
+
+    const created = await this.createCustomerDnsFromAnalysis(
+      [multerFile],
+      analysis,
+      overrides,
+      `inbound-email:${emailData.from}`,
+    );
+    result.deliveryNoteIds = [...result.deliveryNoteIds, ...created.deliveryNoteIds];
+    this.logger.log(
+      `Ingested ${created.deliveryNoteIds.length} unsigned customer DN(s) awaiting signed POD from ${attachment.filename}`,
+    );
+  }
+
+  private attachmentToMulterFile(attachment: InboundEmailAttachment): Express.Multer.File {
+    return {
+      fieldname: "file",
+      originalname: attachment.filename,
+      encoding: "7bit",
+      mimetype: attachment.contentType,
+      size: attachment.size,
+      buffer: attachment.content,
+      stream: null as never,
+      destination: "",
+      filename: "",
+      path: "",
+    };
   }
 
   private async processCocAttachments(
@@ -2382,6 +2550,8 @@ ${truncatedText}`;
       customerReference?: string;
       deliveryDate?: string;
       stockCategory?: string;
+      requiresSignedPod?: boolean;
+      ingestionSource?: DeliveryNoteIngestionSource;
     }>,
     createdBy?: string,
   ): Promise<{ deliveryNoteIds: number[] }> {
@@ -2492,8 +2662,17 @@ ${truncatedText}`;
             customerId,
           );
 
+          // An unsigned CDN ingested from email that still owes a signed POD is
+          // NOT overwritten in place — uploading the signed scan is a new
+          // version that supersedes it (audit trail preserved). Every other
+          // existing DN keeps the existing in-place overwrite behaviour.
+          const isAwaitingPodEmailCdn =
+            existingDn != null &&
+            existingDn.requiresSignedPod === true &&
+            existingDn.signedPodReceived !== true;
+
           const dnId: number = await (async () => {
-            if (existingDn) {
+            if (existingDn && !isAwaitingPodEmailCdn) {
               this.logger.log(
                 `Found existing DN ${existingDn.id} for ${deliveryNoteNumber} - overwriting`,
               );
@@ -2506,6 +2685,11 @@ ${truncatedText}`;
               await this.deliveryNoteService.replaceDeliveryNoteItems(existingDn.id);
               return existingDn.id;
             } else {
+              if (isAwaitingPodEmailCdn) {
+                this.logger.log(
+                  `DN ${deliveryNoteNumber} matches unsigned emailed CDN ${existingDn?.id} awaiting POD - creating signed version to supersede it`,
+                );
+              }
               const dn = await this.deliveryNoteService.createDeliveryNote(
                 {
                   deliveryNoteType: DeliveryNoteType.ROLL,
@@ -2515,6 +2699,8 @@ ${truncatedText}`;
                   deliveryDate: deliveryDate || null,
                   customerReference: customerReference || null,
                   stockCategory: override.stockCategory || null,
+                  requiresSignedPod: override.requiresSignedPod ?? false,
+                  ingestionSource: override.ingestionSource,
                 },
                 createdBy,
               );

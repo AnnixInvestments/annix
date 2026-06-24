@@ -185,3 +185,56 @@ The entities are **complementary, not duplicative**. No consolidation required.
    ```
 
 3. Access the rubber portal at `http://localhost:3000/admin/portal/rubber`
+
+---
+
+## Customer Document Email Ingestion (CTI + CDN)
+
+AU Industries can email its **own outbound customer documents** straight into the
+AU-rubber app so they go live immediately and don't hold up CoC issuance. A
+single Sage-generated email carries two PDFs — the customer **Tax Invoice (CTI)**
+and the matching customer **Delivery Note (CDN)** — and both are ingested in one
+pass.
+
+### Sending the email
+
+Send (or BCC) the Sage email to the AU-rubber inbound mailbox
+(`au-rubber-app@annix.co.za`, IMAP-polled by `ArEmailAdapterService`) with the
+subject marker **`[CUST]`** prefixed, e.g. `[CUST] Tax Invoice - 1351`.
+
+An email is only treated as customer-direction when **both** hold:
+
+- the subject contains `[CUST]` (`CUSTOMER_EMAIL_SUBJECT_MARKER`), and
+- the sender domain is approved — defaults to `auind.co.za`, override with the
+  `AU_RUBBER_CUSTOMER_DOC_SENDER_DOMAINS` env var (comma-separated).
+
+Otherwise the email falls through to the normal supplier ingestion path.
+
+### What happens on ingestion
+
+`RubberInboundEmailService.processCustomerDocuments` classifies each attachment:
+
+| Attachment | Filed as | Notes |
+|------------|----------|-------|
+| Tax Invoice | `RubberTaxInvoice` (`invoiceType = CUSTOMER`) | Company resolved from the bill-to on the PDF; auto-extracted. |
+| Delivery Note | Customer CDN (`RubberDeliveryNote`) | Created **unsigned** with `requiresSignedPod = true`, `ingestionSource = EMAIL`. |
+
+CoC readiness is **not** gated on the signed POD, so CoCs are never held up by
+this flow.
+
+### Signed POD lifecycle
+
+The emailed CDN is unsigned. The physically-signed Proof of Delivery must still
+be uploaded:
+
+1. Unsigned CDN ingested from email → `v1 ACTIVE`, `requiresSignedPod = true`,
+   `signedPodReceived = false`. It appears on the **"awaiting signed POD"**
+   worklist (`GET /rubber-lining/portal/delivery-notes/awaiting-signed-pod`,
+   surfaced as a banner on the Customer Delivery Notes page).
+2. The operator uploads the signed scan through the normal customer-DN upload.
+   Because the DN number + customer match the unsigned CDN, it is created as a
+   new **`v2 PENDING_AUTHORIZATION`** version (not an in-place overwrite).
+3. On authorize (`RubberDocumentVersioningService.authorizeVersion`): `v1` →
+   `SUPERSEDED`, `v2` → `ACTIVE` with `signedPodReceived = true`. Downstream
+   references — including any AU CoC `sourceDeliveryNoteId` already issued off
+   the unsigned CDN — are repointed onto `v2`, and the DN drops off the worklist.

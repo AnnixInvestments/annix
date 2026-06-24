@@ -16,6 +16,14 @@ export enum DeliveryNoteStatus {
   FAILED = "FAILED",
 }
 
+// How a delivery note first entered the system. EMAIL means it was ingested
+// automatically from an inbound email (e.g. a Sage-generated customer CDN);
+// UPLOAD means a user uploaded it through the portal (e.g. a signed POD scan).
+export enum DeliveryNoteIngestionSource {
+  EMAIL = "EMAIL",
+  UPLOAD = "UPLOAD",
+}
+
 export interface ExtractedDeliveryNoteRoll {
   rollNumber: string | null;
   compoundCode?: string | null;
@@ -124,6 +132,16 @@ export class RubberDeliveryNote {
   versionStatus: DocumentVersionStatus;
 
   stockCategory: string | null;
+
+  // Customer-direction CDNs ingested unsigned from email still require the
+  // physically-signed Proof of Delivery to be uploaded later. requiresSignedPod
+  // marks the obligation; signedPodReceived flips true once the signed version
+  // supersedes this one (see RubberDocumentVersioningService.authorizeVersion).
+  requiresSignedPod: boolean;
+
+  signedPodReceived: boolean;
+
+  ingestionSource: DeliveryNoteIngestionSource | null;
 
   podPageNumbers: number[] | null;
 
