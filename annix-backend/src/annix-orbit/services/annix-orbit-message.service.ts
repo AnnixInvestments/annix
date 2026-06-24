@@ -1,12 +1,14 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { EmailService } from "../../email/email.service";
+import { maskEmail } from "../../lib/pii-log";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import {
   DraftAnnixOrbitMessageDto,
   SendAnnixOrbitMessageDto,
 } from "../dto/annix-orbit-message.dto";
+import { AnnixOrbitAuditService } from "./annix-orbit-audit.service";
 import { AnnixOrbitTalentCandidateService } from "./annix-orbit-talent-candidate.service";
 
 const TEMPLATE_INTENTS: Record<string, string> = {
@@ -29,6 +31,7 @@ export class AnnixOrbitMessageService {
     private readonly configService: ConfigService,
     private readonly metrics: ExtractionMetricService,
     private readonly talentCandidateService: AnnixOrbitTalentCandidateService,
+    private readonly auditService: AnnixOrbitAuditService,
   ) {}
 
   async draft(dto: DraftAnnixOrbitMessageDto): Promise<{ body: string }> {
@@ -60,6 +63,7 @@ export class AnnixOrbitMessageService {
   async send(
     dto: SendAnnixOrbitMessageDto,
     companyId: number,
+    actor: { id: number; name: string },
   ): Promise<{ sent: boolean; simulated: boolean }> {
     const recipient = await this.resolveRecipient(dto, companyId);
     const isProduction = this.configService.get<string>("NODE_ENV") === "production";
@@ -72,6 +76,13 @@ export class AnnixOrbitMessageService {
       text: dto.body,
       html: dto.body.replace(/\n/g, "<br/>"),
       isTransactional: false,
+    });
+    // POPIA: every outbound message to a real recipient is audited (who sent,
+    // to whom — masked, about which candidate). Recipient is never logged in clear.
+    await this.auditService.record(companyId, actor, {
+      action: "message_sent",
+      candidateId: dto.candidateId ?? null,
+      detail: `to=${maskEmail(recipient)} subject="${dto.subject.slice(0, 120)}" sent=${ok}`,
     });
     return { sent: ok, simulated: false };
   }

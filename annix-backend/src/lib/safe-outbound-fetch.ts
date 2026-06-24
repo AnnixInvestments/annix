@@ -1,14 +1,27 @@
+import { lookup as dnsLookupCb } from "node:dns";
 import { lookup } from "node:dns/promises";
-import { isIP } from "node:net";
+import * as http from "node:http";
+import * as https from "node:https";
+import { isIP, type LookupFunction } from "node:net";
+import * as zlib from "node:zlib";
 
 const BLOCKED_HOSTNAMES = new Set(["localhost", "metadata.google.internal", "metadata"]);
 const DEFAULT_MAX_REDIRECTS = 5;
+const MAX_RESPONSE_BYTES = 20 * 1024 * 1024;
 
 export class UnsafeOutboundUrlError extends Error {
   constructor(message = "Invalid URL") {
     super(message);
     this.name = "UnsafeOutboundUrlError";
   }
+}
+
+export interface SafeFetchResponse {
+  ok: boolean;
+  status: number;
+  headers: { get(name: string): string | null };
+  text(): Promise<string>;
+  arrayBuffer(): Promise<ArrayBuffer>;
 }
 
 function isPrivateIpv4(ip: string): boolean {
@@ -92,14 +105,100 @@ export async function assertSafeOutboundUrl(rawUrl: string): Promise<void> {
   }
 }
 
+// The address actually used for the socket is validated here, at connect time —
+// so a DNS-rebinding answer that differs from the pre-flight resolution cannot
+// reach a private host (closes the validate-then-connect TOCTOU).
+const guardedLookup: LookupFunction = (hostname, options, callback) => {
+  dnsLookupCb(hostname, options, (err, address, family) => {
+    if (err) {
+      callback(err, address as string, family as number);
+      return;
+    }
+    const single = typeof address === "string" ? address : "";
+    if (!single || isBlockedIp(single)) {
+      callback(new UnsafeOutboundUrlError(), "", 0);
+      return;
+    }
+    callback(null, address as string, family as number);
+  });
+};
+
+function headersToObject(headers: HeadersInit | undefined): Record<string, string> {
+  if (!headers) {
+    return {};
+  }
+  return Object.fromEntries(new Headers(headers).entries());
+}
+
+function decodedStream(response: http.IncomingMessage): NodeJS.ReadableStream {
+  const encoding = String(response.headers["content-encoding"] ?? "").toLowerCase();
+  if (encoding === "gzip") return response.pipe(zlib.createGunzip());
+  if (encoding === "deflate") return response.pipe(zlib.createInflate());
+  if (encoding === "br") return response.pipe(zlib.createBrotliDecompress());
+  return response;
+}
+
+function guardedRequest(rawUrl: string, init: RequestInit): Promise<SafeFetchResponse> {
+  return new Promise<SafeFetchResponse>((resolve, reject) => {
+    const parsed = new URL(rawUrl);
+    const transport = parsed.protocol === "https:" ? https : http;
+    const request = transport.request(
+      rawUrl,
+      {
+        method: init.method ?? "GET",
+        // Default to identity so servers return uncompressed bodies (we don't
+        // auto-negotiate gzip like global fetch did); the caller can override.
+        headers: { "accept-encoding": "identity", ...headersToObject(init.headers ?? undefined) },
+        signal: init.signal ?? undefined,
+        lookup: guardedLookup,
+      },
+      (response) => {
+        const status = response.statusCode ?? 0;
+        const stream = decodedStream(response);
+        const chunks: Buffer[] = [];
+        let size = 0;
+        stream.on("data", (chunk: Buffer) => {
+          size += chunk.length;
+          if (size > MAX_RESPONSE_BYTES) {
+            request.destroy();
+            reject(new UnsafeOutboundUrlError("Response too large"));
+            return;
+          }
+          chunks.push(chunk);
+        });
+        stream.on("end", () => {
+          const body = Buffer.concat(chunks);
+          resolve({
+            ok: status >= 200 && status < 300,
+            status,
+            headers: {
+              get(name: string): string | null {
+                const value = response.headers[name.toLowerCase()];
+                if (Array.isArray(value)) return value[0] ?? null;
+                return value ?? null;
+              },
+            },
+            text: async () => body.toString("utf8"),
+            arrayBuffer: async () =>
+              body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength),
+          });
+        });
+        stream.on("error", reject);
+      },
+    );
+    request.on("error", reject);
+    request.end();
+  });
+}
+
 export async function safeFetch(
   url: string,
   init: RequestInit,
   maxRedirects: number = DEFAULT_MAX_REDIRECTS,
-): Promise<Response> {
+): Promise<SafeFetchResponse> {
   await assertSafeOutboundUrl(url);
 
-  const response = await fetch(url, { ...init, redirect: "manual" });
+  const response = await guardedRequest(url, init);
 
   if (response.status >= 300 && response.status < 400) {
     if (maxRedirects <= 0) {

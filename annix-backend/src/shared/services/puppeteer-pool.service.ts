@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
+import { assertSafeOutboundUrl } from "../../lib/safe-outbound-fetch";
 
 export interface PdfOptions {
   format?: "A4" | "Letter";
@@ -99,6 +100,22 @@ export class PuppeteerPoolService implements OnModuleDestroy {
       try {
         page = await browser.newPage();
         page.setDefaultTimeout(timeout ?? 30000);
+
+        // SSRF guard: re-validate every http(s) navigation (initial load,
+        // redirects, discovered internal links) against the private-IP blocklist;
+        // sub-resources (images/css/js) and non-http schemes pass through.
+        await page.setRequestInterception(true);
+        page.on("request", (request) => {
+          const requestUrl = request.url();
+          const isNavigation = request.resourceType() === "document";
+          if (isNavigation && /^https?:/i.test(requestUrl)) {
+            assertSafeOutboundUrl(requestUrl)
+              .then(() => request.continue())
+              .catch(() => request.abort("blockedbyclient"));
+          } else {
+            request.continue();
+          }
+        });
 
         await page.setUserAgent(
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",

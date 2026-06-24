@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import {
   assertSafeOutboundUrl,
+  type SafeFetchResponse,
   safeFetch,
   UnsafeOutboundUrlError,
 } from "../lib/safe-outbound-fetch";
@@ -34,7 +35,7 @@ export class RubberBrandingService {
     }
   }
 
-  private async safeFetch(url: string, init: RequestInit): Promise<Response> {
+  private async safeFetch(url: string, init: RequestInit): Promise<SafeFetchResponse> {
     try {
       return await safeFetch(url, init);
     } catch (err) {

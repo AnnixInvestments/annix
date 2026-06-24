@@ -26,7 +26,13 @@ export class AnnixOrbitMessageController {
   @Post("send")
   @AnnixOrbitRoles(AnnixOrbitRole.RECRUITER)
   @Throttle({ default: { limit: 10, ttl: 60000 } })
-  send(@Request() req: { user: { companyId: number } }, @Body() dto: SendAnnixOrbitMessageDto) {
-    return this.messageService.send(dto, req.user.companyId);
+  send(
+    @Request() req: { user: { id: number; companyId: number; name: string } },
+    @Body() dto: SendAnnixOrbitMessageDto,
+  ) {
+    return this.messageService.send(dto, req.user.companyId, {
+      id: req.user.id,
+      name: req.user.name,
+    });
   }
 }

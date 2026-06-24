@@ -3,6 +3,7 @@ export const ORBIT_AUDIT_ACTIONS = [
   "shortlist_sent",
   "consent_given",
   "consent_withdrawn",
+  "message_sent",
 ] as const;
 export type AnnixOrbitAuditAction = (typeof ORBIT_AUDIT_ACTIONS)[number];
 

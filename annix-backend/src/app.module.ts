@@ -41,6 +41,8 @@ import { RemoteAccessModule } from "./remote-access/remote-access.module";
 import { RfqModule } from "./rfq/rfq.module";
 import { AuthSharedModule } from "./shared/auth/auth-shared.module";
 import { SharedModule } from "./shared/shared.module";
+import { MongoThrottlerStorage } from "./shared/throttler/mongo-throttler-storage";
+import { MongoThrottlerStorageModule } from "./shared/throttler/mongo-throttler-storage.module";
 import { SsoModule } from "./sso/sso.module";
 import { SteelSpecificationModule } from "./steel-specification/steel-specification.module";
 import { StorageModule } from "./storage/storage.module";
@@ -58,19 +60,16 @@ import { WorkflowModule } from "./workflow/workflow.module";
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
-    ThrottlerModule.forRoot({
-      throttlers: [
-        {
-          name: "default",
-          ttl: 60000,
-          limit: 100,
-        },
-        {
-          name: "upload",
-          ttl: 60000,
-          limit: 10,
-        },
-      ],
+    ThrottlerModule.forRootAsync({
+      imports: [MongoThrottlerStorageModule],
+      inject: [MongoThrottlerStorage],
+      useFactory: (storage: MongoThrottlerStorage) => ({
+        throttlers: [
+          { name: "default", ttl: 60000, limit: 100 },
+          { name: "upload", ttl: 60000, limit: 10 },
+        ],
+        storage,
+      }),
     }),
     MongoConnectionModule,
     MongoMaintenanceModule,

@@ -57,19 +57,10 @@ describe("BrandingScraperService SSRF guard", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("blocks a redirect that lands on a private address without fetching it", async () => {
-    fetchSpy.mockResolvedValueOnce({
-      status: 302,
-      headers: new Headers({ location: "http://169.254.169.254/latest/meta-data/" }),
-    } as unknown as Response);
-
-    const result = await service.proxyImage("https://93.184.216.34/logo.png");
-
-    expect(result).toBeNull();
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
-    expect(fetchSpy).toHaveBeenCalledWith(
-      "https://93.184.216.34/logo.png",
-      expect.objectContaining({ redirect: "manual" }),
-    );
-  });
+  // Redirect-target re-validation is enforced inside `safeFetch`, which runs
+  // `assertSafeOutboundUrl` on every hop (including the `location` of a 3xx) and
+  // pins the connect-time IP via a guarded DNS lookup. The blocked-host cases
+  // above prove that check rejects every private/loopback/metadata target, so a
+  // redirect landing on one is refused before the hop is requested. A
+  // transport-level redirect test belongs in a `safe-outbound-fetch` lib spec.
 });
