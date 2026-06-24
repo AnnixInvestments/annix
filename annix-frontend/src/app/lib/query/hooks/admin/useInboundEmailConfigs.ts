@@ -20,3 +20,15 @@ export function useSetInboundEmailEnabled() {
     },
   });
 }
+
+export function usePollInboundEmails() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => adminApiClient.pollInboundEmails(),
+    onSuccess: () => {
+      // Refresh the configs so the "Last poll" column updates.
+      queryClient.invalidateQueries({ queryKey: adminKeys.inboundEmails.all });
+    },
+  });
+}

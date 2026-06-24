@@ -39,7 +39,7 @@ export class InboundEmailMonitorService {
     private readonly configService: ConfigService,
   ) {}
 
-  @Cron("0 */6 * * *", { name: "inbound-email:poll-all" })
+  @Cron("0 * * * *", { name: "inbound-email:poll-all" })
   async pollAllConfigs(): Promise<void> {
     if (this.configService.get<string>("EMAIL_DELIVERY_DISABLED") === "true") {
       this.logger.log("Inbound email polling skipped — email disabled for this environment");

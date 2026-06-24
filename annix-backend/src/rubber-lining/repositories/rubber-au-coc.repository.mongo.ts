@@ -134,12 +134,29 @@ export class MongoRubberAuCocRepository
     if (!database) {
       throw new Error("Mongo connection is not ready for CoC sequencing");
     }
+
+    // Self-heal: some AU CoCs were imported with explicit numbers without ever
+    // touching this counter, so it can lag the highest existing number and
+    // re-mint duplicates. Raise the counter to at least the current max before
+    // incrementing, so the next number is always unique and monotonic.
+    const docs = await this.documents.find({}).select("cocNumber").lean().exec();
+    const maxExisting = docs.reduce((max, doc) => {
+      const raw = (doc as { cocNumber?: string }).cocNumber ?? "";
+      const n = Number.parseInt(String(raw).replace(/\D/g, ""), 10);
+      return Number.isNaN(n) ? max : Math.max(max, n);
+    }, 0);
+
     const counters = database.collection<{ _id: string; seq: number }>("counters");
+    await counters.updateOne(
+      { _id: COC_SEQUENCE_KEY },
+      { $max: { seq: maxExisting } },
+      { upsert: true },
+    );
     const incremented = await counters.findOneAndUpdate(
       { _id: COC_SEQUENCE_KEY },
       { $inc: { seq: 1 } },
       { returnDocument: "after", upsert: true },
     );
-    return incremented ? incremented.seq : 1;
+    return incremented ? incremented.seq : maxExisting + 1;
   }
 }

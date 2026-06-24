@@ -168,6 +168,7 @@ export { useExtractionMetricsUsage } from "./admin/useExtractionMetricsUsage";
 export { useFeatureFlags, useToggleFeatureFlag } from "./admin/useFeatureFlags";
 export {
   useInboundEmailConfigs,
+  usePollInboundEmails,
   useSetInboundEmailEnabled,
 } from "./admin/useInboundEmailConfigs";
 export {

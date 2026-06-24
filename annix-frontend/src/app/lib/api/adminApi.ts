@@ -1043,6 +1043,12 @@ class AdminApiClient {
     body: (_app, companyId, enabled) => ({ companyId, enabled }),
   });
 
+  // Trigger an immediate poll of all enabled inbound mailboxes instead of
+  // waiting for the 6-hour cron.
+  pollInboundEmails = createEndpoint<[], { message: string }>(apiClient, "POST", {
+    path: "/admin/inbound-emails/poll",
+  });
+
   async orbitJobMarketProviders(): Promise<JobSourceProviderInfo[]> {
     return this.request("/admin/annix-orbit/job-market/providers");
   }
