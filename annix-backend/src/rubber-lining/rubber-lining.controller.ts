@@ -1738,7 +1738,15 @@ Formula: totalPrice = totalKg × salePricePerKg
 
     const supplierDns = customerResult.deliveryNotes.filter((dn) => {
       const supplier = (dn.supplierName || "").toLowerCase();
-      return !(supplier.includes("au industrie") || supplier.includes("au industries"));
+      const looksLikeKnownSupplier =
+        supplier.includes("impilo") ||
+        supplier.includes("s&n") ||
+        supplier.includes("s & n") ||
+        supplier.includes("calendered products");
+      const isAuOutgoing =
+        (supplier.includes("au industrie") || supplier.includes("au industries")) &&
+        !looksLikeKnownSupplier;
+      return !isAuOutgoing;
     });
 
     const dnsToProcess = supplierDns.length > 0 ? supplierDns : customerResult.deliveryNotes;

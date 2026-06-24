@@ -201,19 +201,27 @@ export class RubberInboundEmailService {
       return result;
     }
 
-    if (this.isCustomerDirectionEmail(emailData)) {
-      this.logger.log(
-        `Email "${emailData.subject}" flagged as customer-direction (${CUSTOMER_EMAIL_SUBJECT_MARKER}) — ingesting AU customer documents`,
+    // Only mail from AU's own address can carry customer-direction documents
+    // (suppliers email from their own domains). When it might, Nix reads each
+    // document to decide its channel — AU as seller → customer doc, AU as
+    // bill-to → supplier doc — so a forwarded supplier invoice isn't mistaken
+    // for a customer one. Everything else goes straight to the supplier path.
+    if (this.couldCarryCustomerDocs(emailData)) {
+      const { customer, supplier } = await this.splitAttachmentsByDirection(
+        supportedAttachments,
+        emailData,
       );
-      await this.processCustomerDocuments(supportedAttachments, emailData, result);
-    } else {
-      const documentType = this.determineDocumentType(emailData.subject);
-
-      if (documentType === SharedDocumentType.COC) {
-        await this.processCocAttachments(supportedAttachments, emailData, result);
-      } else {
-        await this.processNonCocAttachments(supportedAttachments, emailData, documentType, result);
+      this.logger.log(
+        `Email "${emailData.subject}" from ${emailData.from}: Nix routed ${customer.length} customer-direction + ${supplier.length} supplier-direction document(s)`,
+      );
+      if (customer.length > 0) {
+        await this.processCustomerDocuments(customer, emailData, result);
       }
+      if (supplier.length > 0) {
+        await this.routeSupplierAttachments(supplier, emailData, result);
+      }
+    } else {
+      await this.routeSupplierAttachments(supportedAttachments, emailData, result);
     }
 
     result.success =
@@ -223,33 +231,119 @@ export class RubberInboundEmailService {
     return result;
   }
 
-  // An email is "customer-direction" when its subject carries the configured
-  // marker AND it comes from an approved sender domain. Such emails carry AU's
-  // own outbound documents — a customer Tax Invoice (CTI) and the matching
-  // unsigned customer Delivery Note (CDN) — rather than supplier documents.
-  private isCustomerDirectionEmail(emailData: InboundEmailData): boolean {
-    const subject = (emailData.subject || "").toUpperCase();
-    if (!subject.includes(CUSTOMER_EMAIL_SUBJECT_MARKER)) {
-      return false;
+  // The existing supplier-side routing: CoCs (and their graph PDFs) go through
+  // the CoC pipeline; tax invoices / delivery notes go through the non-CoC
+  // pipeline. Subject hints the type; per-attachment content re-classifies.
+  private async routeSupplierAttachments(
+    attachments: InboundEmailAttachment[],
+    emailData: InboundEmailData,
+    result: ProcessedEmailResult,
+  ): Promise<void> {
+    const documentType = this.determineDocumentType(emailData.subject);
+    if (documentType === SharedDocumentType.COC) {
+      await this.processCocAttachments(attachments, emailData, result);
+    } else {
+      await this.processNonCocAttachments(attachments, emailData, documentType, result);
+    }
+  }
+
+  // Split attachments into customer-direction vs supplier-direction by asking
+  // Nix to read each document and determine AU Industries' role on it.
+  private async splitAttachmentsByDirection(
+    attachments: InboundEmailAttachment[],
+    emailData: InboundEmailData,
+  ): Promise<{ customer: InboundEmailAttachment[]; supplier: InboundEmailAttachment[] }> {
+    const classified = await Promise.all(
+      attachments.map(async (attachment) => {
+        try {
+          const text = await this.extractTextFromAttachment(attachment);
+          const direction = await this.classifyDocumentDirection(text, attachment.filename);
+          return { attachment, direction };
+        } catch (error) {
+          this.logger.warn(
+            `Direction classification failed for ${attachment.filename}, defaulting to supplier: ${error.message}`,
+          );
+          return { attachment, direction: "supplier" as const };
+        }
+      }),
+    );
+    return {
+      customer: classified.filter((c) => c.direction === "customer").map((c) => c.attachment),
+      supplier: classified.filter((c) => c.direction === "supplier").map((c) => c.attachment),
+    };
+  }
+
+  // Determine AU Industries' role on a document: "customer" when AU is the
+  // seller/issuer (a document AU sends to its customer — CTI/CDN), "supplier"
+  // when AU is the bill-to/recipient (a document AU received from a supplier).
+  // Certificates are always supplier-issued. Defaults to "supplier" when
+  // uncertain so an ambiguous document is never mis-filed as a customer one.
+  private async classifyDocumentDirection(
+    pdfText: string,
+    filename: string,
+  ): Promise<"customer" | "supplier"> {
+    const textLower = pdfText.toLowerCase();
+    if (
+      textLower.includes("certificate of conformance") ||
+      textLower.includes("certificate of compliance") ||
+      textLower.includes("test report") ||
+      textLower.includes("test certificate") ||
+      textLower.includes("batch certificate")
+    ) {
+      return "supplier";
     }
 
+    if (!(await this.aiChatService.isAvailable())) {
+      this.logger.warn(
+        `AI unavailable for direction classification of ${filename}; using supplier`,
+      );
+      return "supplier";
+    }
+
+    const systemPrompt = `You route documents for "AU Industries" (also "AU Industries (Pty) Ltd", "AUIND", "AU Industrial"). Determine AU Industries' role on THIS document:
+- "seller": AU Industries ISSUED/SENT this document — its name is the supplier/seller/"from", its banking or VAT details head the page, and the Bill To / customer is a DIFFERENT company. These are documents AU sends to its customers.
+- "buyer": AU Industries is the RECIPIENT — it appears as the Bill To / Sold To / Deliver To / account holder and a DIFFERENT company issued the document. These are documents AU received from a supplier.
+Respond ONLY with JSON: {"role":"seller"|"buyer","counterparty":"other company name or null","reason":"brief"}`;
+
+    const truncated = pdfText.length > 3000 ? pdfText.substring(0, 3000) : pdfText;
+    try {
+      const response = await this.aiChatService.chat(
+        [{ role: "user", content: `Filename: ${filename}\n\nContent:\n${truncated}` }],
+        systemPrompt,
+      );
+      const match = response.content.match(/\{[\s\S]*\}/);
+      if (match) {
+        const parsed = JSON.parse(match[0]);
+        const direction = parsed.role === "seller" ? "customer" : "supplier";
+        this.logger.log(
+          `Nix direction for ${filename}: ${direction} (AU is ${parsed.role}, counterparty: ${parsed.counterparty ?? "?"}, ${parsed.reason ?? ""})`,
+        );
+        return direction;
+      }
+    } catch (error) {
+      this.logger.warn(`Nix direction classification failed for ${filename}: ${error.message}`);
+    }
+    return "supplier";
+  }
+
+  // Cheap pre-filter: an email CAN only carry AU's own outbound customer
+  // documents when it comes from AU's address (the Sage/AU domain) — suppliers
+  // email from their own domains. The optional [CUST] subject marker also
+  // qualifies. This just gates whether the (more expensive) Nix per-document
+  // direction check runs; it does NOT by itself classify a document as customer.
+  private couldCarryCustomerDocs(emailData: InboundEmailData): boolean {
     const configured = process.env.AU_RUBBER_CUSTOMER_DOC_SENDER_DOMAINS;
     const senderDomains = (configured ? configured.split(",") : DEFAULT_CUSTOMER_DOC_SENDER_DOMAINS)
       .map((domain) => domain.trim().toLowerCase())
       .filter((domain) => domain.length > 0);
 
-    if (senderDomains.length === 0) {
-      return true;
-    }
-
     const from = (emailData.from || "").toLowerCase();
-    const allowed = senderDomains.some((domain) => from.includes(domain));
-    if (!allowed) {
-      this.logger.warn(
-        `Email subject carries ${CUSTOMER_EMAIL_SUBJECT_MARKER} but sender "${emailData.from}" is not an approved customer-document sender (${senderDomains.join(", ")}); not treating as customer-direction`,
-      );
-    }
-    return allowed;
+    const fromApprovedSender = senderDomains.some((domain) => from.includes(domain));
+    const hasMarker = (emailData.subject || "")
+      .toUpperCase()
+      .includes(CUSTOMER_EMAIL_SUBJECT_MARKER);
+
+    return fromApprovedSender || hasMarker;
   }
 
   // Ingest AU's own outbound customer documents from a single email: the

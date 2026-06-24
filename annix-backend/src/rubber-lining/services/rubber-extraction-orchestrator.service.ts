@@ -1,7 +1,10 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { extractTextFromPdf, extractTextFromWord } from "../../lib/document-extraction";
 import { CompanyType } from "../entities/rubber-company.entity";
-import { DeliveryNoteType } from "../entities/rubber-delivery-note.entity";
+import {
+  DeliveryNoteType,
+  type ExtractedCustomerDeliveryNoteData,
+} from "../entities/rubber-delivery-note.entity";
 import { SupplierCocType } from "../entities/rubber-supplier-coc.entity";
 import { TaxInvoiceType } from "../entities/rubber-tax-invoice.entity";
 import { RubberAuCocReadinessService } from "../rubber-au-coc-readiness.service";
@@ -158,6 +161,7 @@ export class RubberExtractionOrchestratorService {
           ? await this.deliveryNoteService.correctionHintsForDnSupplier(supplierName)
           : null;
 
+        let detectedSupplierDns: ExtractedCustomerDeliveryNoteData[] = [];
         const extractedData = await (async () => {
           if (isRoll) {
             const customerResult =
@@ -169,16 +173,24 @@ export class RubberExtractionOrchestratorService {
 
             const supplierDns = customerResult.deliveryNotes.filter((dn) => {
               const supplier = (dn.supplierName || "").toLowerCase();
-              const isCdn = supplier.includes("au industrie") || supplier.includes("au industries");
-              if (isCdn) {
+              const looksLikeKnownSupplier =
+                supplier.includes("impilo") ||
+                supplier.includes("s&n") ||
+                supplier.includes("s & n") ||
+                supplier.includes("calendered products");
+              const isAuOutgoing =
+                (supplier.includes("au industrie") || supplier.includes("au industries")) &&
+                !looksLikeKnownSupplier;
+              if (isAuOutgoing) {
                 this.logger.log(
                   `[SupplierDN] Filtering out customer DN "${dn.deliveryNoteNumber}" (supplier: ${dn.supplierName}) from supplier extraction`,
                 );
               }
-              return !isCdn;
+              return !isAuOutgoing;
             });
             const dnsToProcess =
               supplierDns.length > 0 ? supplierDns : customerResult.deliveryNotes;
+            detectedSupplierDns = dnsToProcess;
 
             const allRolls = dnsToProcess.flatMap((dn, dnIdx) =>
               (dn.lineItems || [])
@@ -246,16 +258,24 @@ export class RubberExtractionOrchestratorService {
           );
         }
 
+        const backfilledIds =
+          detectedSupplierDns.length > 1
+            ? await this.backfillMissedSiblings(deliveryNoteId, detectedSupplierDns)
+            : [];
+        const allDeliveryNoteIds = Array.from(
+          new Set([...splitResult.deliveryNoteIds, ...backfilledIds]),
+        );
+
         const parentNote = await this.deliveryNoteService.deliveryNoteById(deliveryNoteId);
         if (parentNote?.documentPath) {
           await this.documentFilerService.fileDeliveryNoteSlices({
             parentDocumentPath: parentNote.documentPath,
-            deliveryNoteIds: splitResult.deliveryNoteIds,
+            deliveryNoteIds: allDeliveryNoteIds,
           });
         }
 
         await Promise.all(
-          splitResult.deliveryNoteIds.map((dnId) => this.dispatchRollsForDeliveryNote(dnId)),
+          allDeliveryNoteIds.map((dnId) => this.dispatchRollsForDeliveryNote(dnId)),
         );
       } catch (error) {
         this.logger.error(
@@ -270,6 +290,33 @@ export class RubberExtractionOrchestratorService {
       );
       void this.deliveryNoteService.markExtractionFailed(deliveryNoteId);
     });
+  }
+
+  private async backfillMissedSiblings(
+    parentId: number,
+    detectedDns: ExtractedCustomerDeliveryNoteData[],
+  ): Promise<number[]> {
+    const dnsWithLineItems = detectedDns.filter((dn) => (dn.lineItems?.length ?? 0) > 0);
+    if (dnsWithLineItems.length === 0) {
+      return [];
+    }
+    try {
+      const result = await this.deliveryNoteService.backfillSiblingsFromExtractedDeliveryNotes(
+        parentId,
+        dnsWithLineItems,
+      );
+      if (result.created > 0) {
+        this.logger.log(
+          `Auto-backfilled ${result.created} missed sibling DN(s) for parent ${parentId} from ${dnsWithLineItems.length} detected note(s): ${result.deliveryNoteIds.join(", ")}`,
+        );
+      }
+      return result.deliveryNoteIds;
+    } catch (error) {
+      this.logger.error(
+        `Auto-backfill of siblings failed for delivery note ${parentId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return [];
+    }
   }
 
   async dispatchRollsForDeliveryNote(deliveryNoteId: number): Promise<void> {

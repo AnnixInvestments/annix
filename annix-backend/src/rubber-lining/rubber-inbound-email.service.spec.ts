@@ -380,3 +380,63 @@ describe("RubberInboundEmailService", () => {
     });
   });
 });
+
+describe("RubberInboundEmailService.classifyDocumentDirection (Nix)", () => {
+  let service: RubberInboundEmailService;
+  const aiChat = { isAvailable: jest.fn(), chat: jest.fn() };
+
+  const mockRepo = () => ({ find: jest.fn().mockResolvedValue([]), findOne: jest.fn() });
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        RubberInboundEmailService,
+        { provide: RubberCompanyRepository, useValue: mockRepo() },
+        { provide: RubberProductCodingRepository, useValue: mockRepo() },
+        { provide: STORAGE_SERVICE, useValue: {} },
+        { provide: RubberCocService, useValue: {} },
+        { provide: RubberDeliveryNoteService, useValue: {} },
+        { provide: RubberTaxInvoiceService, useValue: {} },
+        { provide: AiChatService, useValue: aiChat },
+        { provide: RubberCocExtractionService, useValue: {} },
+        { provide: RubberExtractionOrchestratorService, useValue: {} },
+        { provide: PdfSlicerService, useValue: {} },
+      ],
+    }).compile();
+    service = module.get(RubberInboundEmailService);
+    jest.clearAllMocks();
+    aiChat.isAvailable.mockResolvedValue(true);
+  });
+
+  // biome-ignore lint/suspicious/noExplicitAny: reach private method under test
+  const classify = (text: string, file = "doc.pdf") =>
+    (service as any).classifyDocumentDirection(text, file);
+
+  it("routes certificates to supplier without calling AI", async () => {
+    await expect(classify("BATCH CERTIFICATE\nTest Report\nShore A 40")).resolves.toBe("supplier");
+    expect(aiChat.chat).not.toHaveBeenCalled();
+  });
+
+  it("routes a doc where AU is the seller to customer", async () => {
+    aiChat.chat.mockResolvedValue({
+      content:
+        '{"role":"seller","counterparty":"Polymer Lining Systems","reason":"AU billed them"}',
+    });
+    await expect(
+      classify("Tax Invoice from AU Industries to Polymer Lining Systems"),
+    ).resolves.toBe("customer");
+  });
+
+  it("routes a doc where AU is the buyer (forwarded supplier invoice) to supplier", async () => {
+    aiChat.chat.mockResolvedValue({
+      content: '{"role":"buyer","counterparty":"Some Supplier","reason":"AU is bill-to"}',
+    });
+    await expect(classify("COD invoice billed to AU Industries Pty Ltd")).resolves.toBe("supplier");
+  });
+
+  it("defaults to supplier when AI is unavailable", async () => {
+    aiChat.isAvailable.mockResolvedValue(false);
+    await expect(classify("ambiguous document")).resolves.toBe("supplier");
+    expect(aiChat.chat).not.toHaveBeenCalled();
+  });
+});

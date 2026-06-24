@@ -1283,6 +1283,8 @@ export class RubberDeliveryNoteService {
           documentPath: note.documentPath,
           status: DeliveryNoteStatus.EXTRACTED,
           createdBy: note.createdBy,
+          version: 1,
+          versionStatus: DocumentVersionStatus.ACTIVE,
           extractedData: rollExtractedData,
           sourcePageNumbers: this.sourcePagesFromRolls(rolls),
         });
@@ -1393,6 +1395,8 @@ export class RubberDeliveryNoteService {
           documentPath: parent.documentPath,
           status: DeliveryNoteStatus.EXTRACTED,
           createdBy: "backfill-siblings",
+          version: 1,
+          versionStatus: DocumentVersionStatus.ACTIVE,
           extractedData: rollExtractedData,
           sourcePageNumbers: this.sourcePagesFromRolls(rolls),
         });

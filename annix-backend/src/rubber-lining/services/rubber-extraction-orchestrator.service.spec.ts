@@ -60,6 +60,9 @@ describe("RubberExtractionOrchestratorService", () => {
     setExtractedData: jest.fn().mockResolvedValue(undefined),
     setPodPageNumbers: jest.fn().mockResolvedValue(undefined),
     acceptExtractAndSplit: jest.fn().mockResolvedValue({ deliveryNoteIds: [1] }),
+    backfillSiblingsFromExtractedDeliveryNotes: jest
+      .fn()
+      .mockResolvedValue({ created: 0, deliveryNoteIds: [], skipped: [] }),
     deliveryNoteById: jest.fn().mockResolvedValue({ supplierCompanyName: "Test Supplier" }),
     deliveryNoteEntityById: jest.fn().mockResolvedValue(null),
     correctionHintsForDnSupplier: jest.fn().mockResolvedValue(null),
@@ -198,6 +201,63 @@ describe("RubberExtractionOrchestratorService", () => {
 
       expect(cocExtractionMock.extractCustomerDeliveryNoteFromImages).toHaveBeenCalled();
       expect(deliveryNoteMock.setExtractedData).toHaveBeenCalled();
+    });
+
+    it("auto-backfills missed siblings and slices the union when a multi-DN roll PDF is detected", async () => {
+      cocExtractionMock.extractCustomerDeliveryNoteFromImages.mockResolvedValueOnce({
+        deliveryNotes: [
+          { deliveryNoteNumber: "DN-1", lineItems: [{ rollNumber: "R1" }], supplierName: "Impilo" },
+          { deliveryNoteNumber: "DN-2", lineItems: [{ rollNumber: "R2" }], supplierName: "Impilo" },
+        ],
+        podPages: [],
+      });
+      deliveryNoteMock.acceptExtractAndSplit.mockResolvedValueOnce({ deliveryNoteIds: [1] });
+      deliveryNoteMock.backfillSiblingsFromExtractedDeliveryNotes.mockResolvedValueOnce({
+        created: 1,
+        deliveryNoteIds: [2],
+        skipped: [],
+      });
+      deliveryNoteMock.deliveryNoteById.mockResolvedValue({
+        supplierCompanyName: "Test Supplier",
+        documentPath: "doc.pdf",
+      });
+
+      service.triggerDeliveryNoteExtraction(20, Buffer.from("pdf"), DeliveryNoteType.ROLL);
+
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(deliveryNoteMock.backfillSiblingsFromExtractedDeliveryNotes).toHaveBeenCalledWith(
+        20,
+        expect.arrayContaining([
+          expect.objectContaining({ deliveryNoteNumber: "DN-1" }),
+          expect.objectContaining({ deliveryNoteNumber: "DN-2" }),
+        ]),
+      );
+      expect(documentFilerMock.fileDeliveryNoteSlices).toHaveBeenCalledWith({
+        parentDocumentPath: "doc.pdf",
+        deliveryNoteIds: [1, 2],
+      });
+
+      deliveryNoteMock.deliveryNoteById.mockResolvedValue({ supplierCompanyName: "Test Supplier" });
+    });
+
+    it("excludes detected notes with no line items from auto-backfill", async () => {
+      cocExtractionMock.extractCustomerDeliveryNoteFromImages.mockResolvedValueOnce({
+        deliveryNotes: [
+          { deliveryNoteNumber: "DN-1", lineItems: [{ rollNumber: "R1" }], supplierName: "Impilo" },
+          { deliveryNoteNumber: "DN-3", lineItems: [], supplierName: "Impilo" },
+        ],
+        podPages: [],
+      });
+      deliveryNoteMock.acceptExtractAndSplit.mockResolvedValueOnce({ deliveryNoteIds: [1] });
+
+      service.triggerDeliveryNoteExtraction(20, Buffer.from("pdf"), DeliveryNoteType.ROLL);
+
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(deliveryNoteMock.backfillSiblingsFromExtractedDeliveryNotes).toHaveBeenCalledWith(20, [
+        expect.objectContaining({ deliveryNoteNumber: "DN-1" }),
+      ]);
     });
   });
 

@@ -221,7 +221,12 @@ export class InboundEmailService {
     classificationConfidence: number | null;
     classificationSource: string | null;
   }): Promise<InboundEmailAttachment> {
-    return this.attachmentRepo.create(data);
+    // extractionStatus is schema-required; it starts PENDING and is updated to
+    // the real outcome (completed/skipped/failed) once routing finishes.
+    return this.attachmentRepo.create({
+      ...data,
+      extractionStatus: AttachmentExtractionStatus.PENDING,
+    });
   }
 
   async updateAttachment(

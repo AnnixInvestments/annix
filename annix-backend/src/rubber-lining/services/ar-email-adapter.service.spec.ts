@@ -413,8 +413,8 @@ describe("ArEmailAdapterService", () => {
     });
   });
 
-  describe("route - customer-direction documents ([CUST] marker)", () => {
-    it("delegates a [CUST] tax invoice from an approved sender to the central pipeline", async () => {
+  describe("route - customer-direction documents (sender-based)", () => {
+    it("delegates a tax invoice from the AU/Sage sender to the central pipeline (no marker needed)", async () => {
       rubberInboundEmailMock.processInboundEmail.mockResolvedValue({
         success: true,
         cocIds: [],
@@ -434,8 +434,8 @@ describe("ArEmailAdapterService", () => {
         attachment,
         Buffer.from("pdf"),
         null,
-        "info@auind.co.za",
-        "[CUST] Tax Invoice - 1351",
+        "Andy@auind.co.za",
+        "Fw: Tax Invoice - 1351",
       );
 
       expect(rubberInboundEmailMock.processInboundEmail).toHaveBeenCalled();
@@ -445,7 +445,7 @@ describe("ArEmailAdapterService", () => {
       expect(taxInvoiceRepo.save).not.toHaveBeenCalled();
     });
 
-    it("delegates a [CUST] delivery note to the central pipeline as a customer CDN", async () => {
+    it("delegates a delivery note from the AU sender to the central pipeline as a customer CDN", async () => {
       rubberInboundEmailMock.processInboundEmail.mockResolvedValue({
         success: true,
         cocIds: [],
@@ -466,7 +466,7 @@ describe("ArEmailAdapterService", () => {
         Buffer.from("dn"),
         null,
         "info@auind.co.za",
-        "[CUST] Delivery Note",
+        "Delivery Note 1351",
       );
 
       expect(result.linkedEntityType).toBe("RubberDeliveryNote");
@@ -474,7 +474,7 @@ describe("ArEmailAdapterService", () => {
       expect(deliveryNoteRepo.save).not.toHaveBeenCalled();
     });
 
-    it("does NOT treat a [CUST] email from an unapproved sender as customer-direction", async () => {
+    it("does NOT treat a non-AU sender (no marker) as customer-direction", async () => {
       companyRepo.findByCompoundOwner.mockResolvedValue([]);
       const attachment = {
         documentType: ArDocumentType.TAX_INVOICE,
@@ -486,14 +486,43 @@ describe("ArEmailAdapterService", () => {
         attachment,
         Buffer.from(""),
         null,
-        "stranger@example.com",
-        "[CUST] Tax Invoice",
+        "accounts@some-supplier.com",
+        "Tax Invoice INV-9",
       );
 
       // Falls through to the normal supplier-side invoice routing.
       expect(rubberInboundEmailMock.processInboundEmail).not.toHaveBeenCalled();
       expect(taxInvoiceRepo.save).toHaveBeenCalled();
       expect(result.linkedEntityType).toBe("RubberTaxInvoice");
+    });
+
+    it("still honours the optional [CUST] subject marker regardless of sender", async () => {
+      rubberInboundEmailMock.processInboundEmail.mockResolvedValue({
+        success: true,
+        cocIds: [],
+        deliveryNoteIds: [],
+        taxInvoiceIds: [779],
+        errors: [],
+      });
+      const attachment = {
+        documentType: ArDocumentType.TAX_INVOICE,
+        s3Path: "path",
+        originalFilename: "inv.pdf",
+        mimeType: "application/pdf",
+        fileSizeBytes: 10,
+      } as InboundEmailAttachment;
+
+      const result = await service.route(
+        attachment,
+        Buffer.from(""),
+        null,
+        "someone@elsewhere.com",
+        "[CUST] Tax Invoice",
+      );
+
+      expect(rubberInboundEmailMock.processInboundEmail).toHaveBeenCalled();
+      expect(result.linkedEntityType).toBe("RubberTaxInvoice");
+      expect(taxInvoiceRepo.save).not.toHaveBeenCalled();
     });
   });
 

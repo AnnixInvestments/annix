@@ -892,7 +892,7 @@ export class RubberCocExtractionService {
 
     const response = await this.callGeminiWithImages(
       systemPrompt,
-      "Analyze these delivery note images. In the header box at the top, find the REFERENCE: field (between NUMBER: and DATE:) and extract the PO/reference number. This is CRITICAL. Return ONLY valid JSON.",
+      `Analyze these ${images.length} delivery note page image(s). CRITICAL: walk EVERY page in order and group by delivery-note number. If the document contains multiple distinct delivery-note numbers, you MUST return one element per delivery note in the "deliveryNotes" array — collapsing two separate notes into one is a hard error. Do not drop a delivery note just because some of its line items are hard to read; return the note with whatever line items you can read. In the header box at the top of each note, find the REFERENCE: field (between NUMBER: and DATE:) and extract the PO/reference number. Return ONLY valid JSON.`,
       images,
       "customer-dn-ocr-extraction",
     );

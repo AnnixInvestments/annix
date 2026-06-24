@@ -329,19 +329,19 @@ Respond ONLY with JSON:
     }
   }
 
+  // Cheap pre-filter: only mail from AU's own address (or a [CUST]-marked
+  // subject) CAN carry customer documents — suppliers email from their own
+  // domains. When this passes, the attachment is handed to the central pipeline
+  // where Nix reads each document and makes the final customer-vs-supplier call.
   private isCustomerDirection(fromEmail: string, subject: string): boolean {
-    if (!(subject || "").toUpperCase().includes(CUSTOMER_EMAIL_SUBJECT_MARKER)) {
-      return false;
-    }
     const configured = process.env.AU_RUBBER_CUSTOMER_DOC_SENDER_DOMAINS;
     const senderDomains = (configured ? configured.split(",") : DEFAULT_CUSTOMER_DOC_SENDER_DOMAINS)
       .map((domain) => domain.trim().toLowerCase())
       .filter((domain) => domain.length > 0);
-    if (senderDomains.length === 0) {
-      return true;
-    }
     const from = (fromEmail || "").toLowerCase();
-    return senderDomains.some((domain) => from.includes(domain));
+    const fromApprovedSender = senderDomains.some((domain) => from.includes(domain));
+    const hasMarker = (subject || "").toUpperCase().includes(CUSTOMER_EMAIL_SUBJECT_MARKER);
+    return fromApprovedSender || hasMarker;
   }
 
   // Delegate the single attachment to the central pipeline, which detects the
