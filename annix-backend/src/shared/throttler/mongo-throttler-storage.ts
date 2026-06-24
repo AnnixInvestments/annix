@@ -47,7 +47,7 @@ export class MongoThrottlerStorage implements ThrottlerStorage {
             },
           },
         ],
-        { upsert: true, new: true, lean: true },
+        { upsert: true, new: true, lean: true, updatePipeline: true },
       )
       .exec();
 
