@@ -246,6 +246,8 @@ export class RubberTaxInvoiceService {
         ? DocumentVersionStatus.PENDING_AUTHORIZATION
         : DocumentVersionStatus.ACTIVE,
       isCreditNote: dto.isCreditNote ?? false,
+      // Required by the schema; populated later from extraction for credit notes.
+      creditNoteRollNumbers: [],
     });
 
     if (isDuplicate) {

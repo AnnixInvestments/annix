@@ -300,6 +300,9 @@ export class RubberInboundEmailService {
       attachment.content,
       attachment.filename,
       TaxInvoiceType.CUSTOMER,
+      // AU Industries is the seller on its own outbound invoices — never the
+      // bill-to customer — so exclude it from customer resolution.
+      ["au industri", "au-industri"],
     );
     const storageResult = await this.saveAttachment(attachment, companyId, documentType);
 
@@ -1551,6 +1554,7 @@ ${truncatedText}`;
     pdfBuffer: Buffer,
     filename: string,
     invoiceType: TaxInvoiceType,
+    excludeNamePatterns: string[] = [],
   ): Promise<number> {
     const targetType =
       invoiceType === TaxInvoiceType.CUSTOMER ? CompanyType.CUSTOMER : CompanyType.SUPPLIER;
@@ -1560,7 +1564,14 @@ ${truncatedText}`;
     const filenameLower = filename.toLowerCase();
 
     const companies = await this.companyRepository.findAll();
-    const candidates = companies.filter((c) => String(c.companyType) === String(targetType));
+    // On AU's own outbound customer documents the seller (AU Industries) also
+    // appears on the letterhead and is itself a CUSTOMER-type company, so it
+    // must be excluded or it out-matches the real bill-to customer.
+    const candidates = companies.filter(
+      (c) =>
+        String(c.companyType) === String(targetType) &&
+        !excludeNamePatterns.some((p) => (c.name?.toLowerCase() ?? "").includes(p)),
+    );
 
     const named = candidates.find((c) => {
       const name = c.name?.toLowerCase().trim();
@@ -2662,17 +2673,20 @@ ${truncatedText}`;
             customerId,
           );
 
-          // An unsigned CDN ingested from email that still owes a signed POD is
-          // NOT overwritten in place — uploading the signed scan is a new
-          // version that supersedes it (audit trail preserved). Every other
-          // existing DN keeps the existing in-place overwrite behaviour.
-          const isAwaitingPodEmailCdn =
+          // Uploading the physically-signed POD scan supersedes the unsigned
+          // emailed CDN as a new version (audit trail preserved). This applies
+          // ONLY to a manual upload — a re-sent *unsigned* email (which carries
+          // requiresSignedPod itself) must NOT be mistaken for the signed POD;
+          // it just refreshes the existing unsigned CDN in place. Every other
+          // existing DN also keeps the in-place overwrite behaviour.
+          const isSignedPodUpload =
             existingDn != null &&
             existingDn.requiresSignedPod === true &&
-            existingDn.signedPodReceived !== true;
+            existingDn.signedPodReceived !== true &&
+            override.requiresSignedPod !== true;
 
           const dnId: number = await (async () => {
-            if (existingDn && !isAwaitingPodEmailCdn) {
+            if (existingDn && !isSignedPodUpload) {
               this.logger.log(
                 `Found existing DN ${existingDn.id} for ${deliveryNoteNumber} - overwriting`,
               );
@@ -2685,7 +2699,7 @@ ${truncatedText}`;
               await this.deliveryNoteService.replaceDeliveryNoteItems(existingDn.id);
               return existingDn.id;
             } else {
-              if (isAwaitingPodEmailCdn) {
+              if (isSignedPodUpload) {
                 this.logger.log(
                   `DN ${deliveryNoteNumber} matches unsigned emailed CDN ${existingDn?.id} awaiting POD - creating signed version to supersede it`,
                 );
