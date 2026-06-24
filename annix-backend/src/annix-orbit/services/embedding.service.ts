@@ -212,12 +212,15 @@ export class EmbeddingService {
       return false;
     }
 
-    await this.updateTargetCategories(candidate);
-
     const textHash = embeddingTextHash(text);
     if (candidate.embedding != null && candidate.embeddingTextHash === textHash) {
       return true;
     }
+
+    // Only re-derive target categories when the CV text actually changed (i.e.
+    // we are about to re-embed) — avoids re-running the categoriser + a candidate
+    // write on every embedCandidate call when nothing changed (#396 finding 9).
+    await this.updateTargetCategories(candidate);
 
     const embedding = await this.generateEmbedding(text);
     if (!embedding) {
