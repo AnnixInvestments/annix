@@ -74,6 +74,7 @@ import { ReconciliationItemSchema } from "../schemas/reconciliation-item.schema"
 import { RubberCuttingTrainingSchema } from "../schemas/rubber-cutting-training.schema";
 import { RubberDimensionOverrideSchema } from "../schemas/rubber-dimension-override.schema";
 import { StaffSignatureSchema } from "../schemas/staff-signature.schema";
+import { StockControlCompanySchema } from "../schemas/stock-control-company.schema";
 import { StockReturnSchema } from "../schemas/stock-return.schema";
 import { WorkflowStepConfigSchema } from "../schemas/workflow-step-config.schema";
 import { BackgroundStepService } from "../services/background-step.service";
@@ -142,6 +143,7 @@ import { WorkflowNotificationModule } from "../workflow-notification/workflow-no
       { name: "StaffSignature", schema: StaffSignatureSchema },
       { name: "StockReturn", schema: StockReturnSchema },
       { name: "WorkflowStepConfig", schema: WorkflowStepConfigSchema },
+      { name: "StockControlCompany", schema: StockControlCompanySchema },
       { name: "InspectionBooking", schema: InspectionBookingSchema },
     ]),
   ],

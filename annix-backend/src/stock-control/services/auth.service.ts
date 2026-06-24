@@ -12,6 +12,7 @@ import { JwtService } from "@nestjs/jwt";
 import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../../email/email.service";
 import { now } from "../../lib/datetime";
+import { Address, ContactDetails } from "../../lib/value-objects";
 import { AppScope } from "../../rbac/app-scope";
 import { AppRepository, UserAppAccessRepository } from "../../rbac/rbac.repository";
 import { PasswordService } from "../../shared/auth/password.service";
@@ -569,12 +570,19 @@ export class StockControlAuthService {
     if (dto.name != null) company.name = dto.name;
     if (dto.registrationNumber != null) company.registrationNumber = dto.registrationNumber;
     if (dto.vatNumber != null) company.vatNumber = dto.vatNumber;
-    if (dto.streetAddress != null) company.streetAddress = dto.streetAddress;
-    if (dto.city != null) company.city = dto.city;
-    if (dto.province != null) company.province = dto.province;
-    if (dto.postalCode != null) company.postalCode = dto.postalCode;
-    if (dto.phone != null) company.phone = dto.phone;
-    if (dto.email != null) company.email = dto.email;
+
+    company.address = Address.fromParts({
+      streetAddress: dto.streetAddress ?? company.address?.streetAddress ?? null,
+      city: dto.city ?? company.address?.city ?? null,
+      province: dto.province ?? company.address?.province ?? null,
+      postalCode: dto.postalCode ?? company.address?.postalCode ?? null,
+    });
+
+    company.contact = ContactDetails.fromParts({
+      phone: dto.phone ?? company.contact?.phone ?? null,
+      email: dto.email ?? company.contact?.email ?? null,
+    });
+
     if (dto.websiteUrl != null) company.websiteUrl = dto.websiteUrl;
     if (dto.pipingLossFactorPct != null) company.pipingLossFactorPct = dto.pipingLossFactorPct;
     if (dto.flatPlateLossFactorPct != null)
@@ -602,12 +610,16 @@ export class StockControlAuthService {
       legacy.name = dto.legalName;
       legacy.registrationNumber = dto.registrationNumber;
       legacy.vatNumber = dto.vatNumber ?? null;
-      legacy.streetAddress = dto.streetAddress;
-      legacy.city = dto.city;
-      legacy.province = dto.province ?? null;
-      legacy.postalCode = dto.postalCode;
-      legacy.phone = dto.phone;
-      legacy.email = dto.email;
+      legacy.address = Address.fromParts({
+        streetAddress: dto.streetAddress ?? null,
+        city: dto.city ?? null,
+        province: dto.province ?? null,
+        postalCode: dto.postalCode ?? null,
+      });
+      legacy.contact = ContactDetails.fromParts({
+        phone: dto.phone ?? null,
+        email: dto.email ?? null,
+      });
       await this.companyRepo.save(legacy);
     }
 

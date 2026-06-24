@@ -87,9 +87,9 @@ export class QuotePdfService {
     }
 
     const addressParts: string[] = [];
-    const street = tenant.streetAddress;
-    const city = tenant.city;
-    const postal = tenant.postalCode;
+    const street = tenant.address?.streetAddress ?? null;
+    const city = tenant.address?.city ?? null;
+    const postal = tenant.address?.postalCode ?? null;
     if (street && street.length > 0) addressParts.push(street);
     if (city && city.length > 0) addressParts.push(city);
     if (postal && postal.length > 0) addressParts.push(postal);
@@ -110,8 +110,8 @@ export class QuotePdfService {
       addressLine: addressParts.length > 0 ? addressParts.join(", ") : null,
       registrationNumber: tenant.registrationNumber,
       vatNumber: tenant.vatNumber,
-      phone: tenant.phone,
-      email: tenant.email,
+      phone: tenant.contact?.phone ?? null,
+      email: tenant.contact?.email ?? null,
     };
   }
 

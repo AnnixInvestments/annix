@@ -1,4 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { StockControlCompanyRepository } from "../repositories/stock-control-company.repository";
 import { StockControlRbacConfigRepository } from "../repositories/stock-control-rbac-config.repository";
 import { ActionPermissionService } from "./action-permission.service";
 import { RbacConfigService } from "./rbac-config.service";
@@ -12,13 +13,23 @@ describe("RbacConfigService", () => {
     create: jest.fn().mockImplementation((data) => Promise.resolve(data)),
   };
 
-  const createdRows = () => mockRepo.create.mock.calls.map(([row]) => row);
+  const mockCompanyRepo = {
+    findById: jest.fn(),
+    updateById: jest.fn().mockResolvedValue(undefined),
+  };
+
+  const savedConfig = () => {
+    const calls = mockCompanyRepo.updateById.mock.calls;
+    const last = calls[calls.length - 1];
+    return last ? (last[1].rbacConfig as Record<string, string[]>) : {};
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RbacConfigService,
         { provide: StockControlRbacConfigRepository, useValue: mockRepo },
+        { provide: StockControlCompanyRepository, useValue: mockCompanyRepo },
         {
           provide: ActionPermissionService,
           useValue: { permissionsForCompany: jest.fn().mockResolvedValue({}) },
@@ -29,6 +40,11 @@ describe("RbacConfigService", () => {
     service = module.get<RbacConfigService>(RbacConfigService);
     jest.clearAllMocks();
     mockRepo.findForCompany.mockResolvedValue([]);
+    mockCompanyRepo.findById.mockResolvedValue(null);
+    mockCompanyRepo.updateById.mockImplementation((id: number, updates) => {
+      mockCompanyRepo.findById.mockResolvedValue({ id, ...updates });
+      return Promise.resolve(undefined);
+    });
   });
 
   it("should be defined", () => {
@@ -102,9 +118,7 @@ describe("RbacConfigService", () => {
       mockRepo.findForCompany.mockResolvedValue([]);
     });
 
-    it("should delete existing config and insert new rows", async () => {
-      const existingRow = { id: 3, companyId: 1, navKey: "dashboard", role: "manager" };
-      mockRepo.findForCompany.mockResolvedValueOnce([existingRow]);
+    it("should atomically persist the whole map onto the company doc", async () => {
       const config = {
         dashboard: ["viewer", "admin"],
         inventory: ["admin"],
@@ -112,9 +126,19 @@ describe("RbacConfigService", () => {
 
       await service.updateNavConfig(1, config);
 
-      expect(mockRepo.findForCompany).toHaveBeenCalledWith(1);
-      expect(mockRepo.removeForCompany).toHaveBeenCalledWith(1, existingRow);
-      expect(mockRepo.create).toHaveBeenCalled();
+      expect(mockCompanyRepo.updateById).toHaveBeenCalledWith(1, {
+        rbacConfig: expect.objectContaining({
+          dashboard: expect.arrayContaining(["viewer", "admin"]),
+          inventory: expect.arrayContaining(["admin"]),
+        }),
+      });
+    });
+
+    it("should not delete-and-recreate per-row documents", async () => {
+      await service.updateNavConfig(1, { dashboard: ["admin"] });
+
+      expect(mockRepo.removeForCompany).not.toHaveBeenCalled();
+      expect(mockRepo.create).not.toHaveBeenCalled();
     });
 
     it("should always include admin role in every nav key", async () => {
@@ -125,15 +149,10 @@ describe("RbacConfigService", () => {
 
       await service.updateNavConfig(1, config);
 
-      const dashboardRoles = createdRows()
-        .filter((e: any) => e.navKey === "dashboard")
-        .map((e: any) => e.role);
-      const inventoryRoles = createdRows()
-        .filter((e: any) => e.navKey === "inventory")
-        .map((e: any) => e.role);
+      const saved = savedConfig();
 
-      expect(dashboardRoles).toContain("admin");
-      expect(inventoryRoles).toContain("admin");
+      expect(saved.dashboard).toContain("admin");
+      expect(saved.inventory).toContain("admin");
     });
 
     it("should force settings to admin-only even if other roles are provided", async () => {
@@ -144,11 +163,7 @@ describe("RbacConfigService", () => {
 
       await service.updateNavConfig(1, config);
 
-      const settingsRoles = createdRows()
-        .filter((e: any) => e.navKey === "settings")
-        .map((e: any) => e.role);
-
-      expect(settingsRoles).toEqual(["admin"]);
+      expect(savedConfig().settings).toEqual(["admin"]);
     });
 
     it("should not duplicate admin if already present", async () => {
@@ -158,46 +173,83 @@ describe("RbacConfigService", () => {
 
       await service.updateNavConfig(1, config);
 
-      const dashboardAdmins = createdRows().filter(
-        (e: any) => e.navKey === "dashboard" && e.role === "admin",
-      );
+      const dashboardAdmins = savedConfig().dashboard.filter((role) => role === "admin");
 
       expect(dashboardAdmins).toHaveLength(1);
     });
 
     it("should return the refreshed config after update", async () => {
-      mockRepo.findForCompany.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
-
       const result = await service.updateNavConfig(1, { dashboard: ["admin"] });
 
       expect(result).toBeDefined();
       expect(result.dashboard).toBeDefined();
-      expect(mockRepo.findForCompany).toHaveBeenCalledTimes(2);
     });
 
-    it("should scope delete to the correct companyId", async () => {
+    it("should scope the write to the correct companyId", async () => {
       await service.updateNavConfig(99, { dashboard: ["admin"] });
 
-      expect(mockRepo.findForCompany).toHaveBeenCalledWith(99);
+      expect(mockCompanyRepo.updateById).toHaveBeenCalledWith(99, expect.anything());
     });
 
-    it("should create entities with correct companyId, navKey, and role", async () => {
+    it("should persist entities with correct navKey and roles", async () => {
       const config = {
         reports: ["manager", "admin"],
       };
 
       await service.updateNavConfig(5, config);
 
-      expect(mockRepo.create).toHaveBeenCalledWith({
-        companyId: 5,
-        navKey: "reports",
-        role: "manager",
+      expect(savedConfig().reports).toEqual(expect.arrayContaining(["manager", "admin"]));
+    });
+  });
+
+  // ── Embedded read with legacy fallback ──────────────────────────────
+
+  describe("navConfig — embedded company field", () => {
+    it("should read from the embedded company.rbacConfig when present", async () => {
+      mockCompanyRepo.findById.mockResolvedValue({
+        id: 1,
+        rbacConfig: { dashboard: ["storeman", "admin"] },
       });
-      expect(mockRepo.create).toHaveBeenCalledWith({
-        companyId: 5,
-        navKey: "reports",
-        role: "admin",
+
+      const result = await service.navConfig(1);
+
+      expect(result.dashboard).toEqual(["storeman", "admin"]);
+      expect(mockRepo.findForCompany).not.toHaveBeenCalled();
+    });
+
+    it("should fall back to legacy collection when embedded field is absent", async () => {
+      mockCompanyRepo.findById.mockResolvedValue({ id: 1, rbacConfig: null });
+      mockRepo.findForCompany.mockResolvedValue([
+        { companyId: 1, navKey: "dashboard", role: "storeman" },
+        { companyId: 1, navKey: "dashboard", role: "admin" },
+      ]);
+
+      const result = await service.navConfig(1);
+
+      expect(mockRepo.findForCompany).toHaveBeenCalledWith(1);
+      expect(result.dashboard).toEqual(["storeman", "admin"]);
+    });
+
+    it("should fall back to defaults when neither embedded nor legacy data exists", async () => {
+      mockCompanyRepo.findById.mockResolvedValue({ id: 1, rbacConfig: null });
+      mockRepo.findForCompany.mockResolvedValue([]);
+
+      const result = await service.navConfig(1);
+
+      expect(result.settings).toEqual(["admin"]);
+      expect(result.dashboard).toContain("viewer");
+    });
+
+    it("should merge embedded config with defaults for unconfigured nav keys", async () => {
+      mockCompanyRepo.findById.mockResolvedValue({
+        id: 1,
+        rbacConfig: { dashboard: ["admin"] },
       });
+
+      const result = await service.navConfig(1);
+
+      expect(result.dashboard).toEqual(["admin"]);
+      expect(result.inventory).toContain("viewer");
     });
   });
 
@@ -256,9 +308,7 @@ describe("RbacConfigService", () => {
         dashboard: ["storeman", "accounts", "manager", "admin"],
       });
 
-      const dashboardRoles = createdRows()
-        .filter((e: any) => e.navKey === "dashboard")
-        .map((e: any) => e.role);
+      const dashboardRoles = savedConfig().dashboard;
 
       expect(dashboardRoles).not.toContain("viewer");
       expect(dashboardRoles).toContain("admin");
@@ -271,11 +321,7 @@ describe("RbacConfigService", () => {
         "job-cards": ["manager", "admin"],
       });
 
-      const roles = createdRows()
-        .filter((e: any) => e.navKey === "job-cards")
-        .map((e: any) => e.role);
-
-      expect(roles).not.toContain("viewer");
+      expect(savedConfig()["job-cards"]).not.toContain("viewer");
     });
 
     it("admin can grant viewer access to reports (non-default)", async () => {
@@ -285,11 +331,7 @@ describe("RbacConfigService", () => {
         reports: ["viewer", "manager", "admin"],
       });
 
-      const roles = createdRows()
-        .filter((e: any) => e.navKey === "reports")
-        .map((e: any) => e.role);
-
-      expect(roles).toContain("viewer");
+      expect(savedConfig().reports).toContain("viewer");
     });
 
     it("admin can grant viewer access to issue-stock (non-default)", async () => {
@@ -299,11 +341,7 @@ describe("RbacConfigService", () => {
         "issue-stock": ["viewer", "storeman", "manager", "admin"],
       });
 
-      const roles = createdRows()
-        .filter((e: any) => e.navKey === "issue-stock")
-        .map((e: any) => e.role);
-
-      expect(roles).toContain("viewer");
+      expect(savedConfig()["issue-stock"]).toContain("viewer");
     });
 
     it("stored config with viewer removed from all pages is respected", async () => {

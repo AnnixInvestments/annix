@@ -1223,9 +1223,9 @@ export class DataBookPdfService {
 
     doc.fontSize(7).font(FONT.REGULAR);
     const companyName = ctx.company?.name ?? "";
-    const companyAddress = ctx.company?.streetAddress ?? "";
-    const companyPhone = ctx.company?.phone ?? "";
-    const companyEmail = ctx.company?.email ?? "";
+    const companyAddress = ctx.company?.address?.streetAddress ?? "";
+    const companyPhone = ctx.company?.contact?.phone ?? "";
+    const companyEmail = ctx.company?.contact?.email ?? "";
     const companyWebsite = ctx.company?.websiteUrl ?? "";
 
     doc.text(companyName, leftColX, y, { width: pg.contentWidth * 0.4 });

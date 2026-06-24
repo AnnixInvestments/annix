@@ -1,5 +1,7 @@
+import { Address, ContactDetails } from "../../lib/value-objects";
 import { PaintPricingConfig } from "./paint-pricing-config";
 import { RubberPricingConfig } from "./rubber-pricing-config";
+import { WorkflowStepConfig } from "./workflow-step-config.entity";
 
 export enum BrandingType {
   ANNIX = "annix",
@@ -29,17 +31,9 @@ export class StockControlCompany {
 
   vatNumber: string | null;
 
-  streetAddress: string | null;
+  address: Address | null;
 
-  city: string | null;
-
-  province: string | null;
-
-  postalCode: string | null;
-
-  phone: string | null;
-
-  email: string | null;
+  contact: ContactDetails | null;
 
   smtpHost: string | null;
 
@@ -65,6 +59,10 @@ export class StockControlCompany {
 
   rubberPricingConfig: RubberPricingConfig | null;
   actionPermissions: Record<string, string[]> | null;
+
+  rbacConfig: Record<string, string[]> | null;
+
+  workflowStepConfigs: WorkflowStepConfig[] | null;
 
   qcEnabled: boolean;
 

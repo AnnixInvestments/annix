@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { StockControlCompanyRepository } from "../repositories/stock-control-company.repository";
 import { StockControlRbacConfigRepository } from "../repositories/stock-control-rbac-config.repository";
 import { ActionPermissionService } from "./action-permission.service";
 
@@ -26,22 +27,17 @@ const NAV_TO_ACTION_KEYS: Record<string, string[]> = {
 export class RbacConfigService {
   constructor(
     private readonly rbacRepo: StockControlRbacConfigRepository,
+    private readonly companyRepo: StockControlCompanyRepository,
     private readonly actionPermissionService: ActionPermissionService,
   ) {}
 
   async navConfig(companyId: number): Promise<Record<string, string[]>> {
-    const rows = await this.rbacRepo.findForCompany(companyId);
+    const company = await this.companyRepo.findById(companyId);
+    const embedded = company?.rbacConfig ?? null;
 
-    const config: Record<string, string[]> =
-      rows.length > 0
-        ? rows.reduce(
-            (acc, row) => {
-              const existing = acc[row.navKey] || [];
-              return { ...acc, [row.navKey]: [...existing, row.role] };
-            },
-            {} as Record<string, string[]>,
-          )
-        : {};
+    const config: Record<string, string[]> = embedded
+      ? { ...embedded }
+      : await this.legacyNavConfig(companyId);
 
     Object.keys(DEFAULT_NAV_CONFIG).forEach((key) => {
       if (!config[key]) {
@@ -68,6 +64,20 @@ export class RbacConfigService {
     return config;
   }
 
+  private async legacyNavConfig(companyId: number): Promise<Record<string, string[]>> {
+    const rows = await this.rbacRepo.findForCompany(companyId);
+
+    return rows.length > 0
+      ? rows.reduce(
+          (acc, row) => {
+            const existing = acc[row.navKey] || [];
+            return { ...acc, [row.navKey]: [...existing, row.role] };
+          },
+          {} as Record<string, string[]>,
+        )
+      : {};
+  }
+
   async updateNavConfig(
     companyId: number,
     config: Record<string, string[]>,
@@ -84,13 +94,7 @@ export class RbacConfigService {
       }
     });
 
-    const existingRows = await this.rbacRepo.findForCompany(companyId);
-    await Promise.all(existingRows.map((row) => this.rbacRepo.removeForCompany(companyId, row)));
-
-    const newRows = Object.entries(mergedConfig).flatMap(([navKey, roles]) =>
-      roles.map((role) => ({ companyId, navKey, role })),
-    );
-    await Promise.all(newRows.map((row) => this.rbacRepo.create(row)));
+    await this.companyRepo.updateById(companyId, { rbacConfig: mergedConfig });
 
     return this.navConfig(companyId);
   }

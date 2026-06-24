@@ -293,12 +293,8 @@ describe("StockControlAuthService", () => {
       heroImageUrl: null,
       registrationNumber: null,
       vatNumber: null,
-      streetAddress: null,
-      city: null,
-      province: null,
-      postalCode: null,
-      phone: null,
-      email: null,
+      address: null,
+      contact: null,
       smtpHost: null,
       smtpPort: null,
       smtpUser: null,
@@ -312,6 +308,8 @@ describe("StockControlAuthService", () => {
       paintPricingConfig: null,
       rubberPricingConfig: null,
       actionPermissions: null,
+      rbacConfig: null,
+      workflowStepConfigs: null,
       qcEnabled: false,
       messagingEnabled: false,
       staffLeaveEnabled: false,
@@ -1000,6 +998,53 @@ describe("StockControlAuthService", () => {
       });
 
       expect(result.message).toContain("Company details updated");
+    });
+
+    it("persists nested address and contact value-objects", async () => {
+      mockCompanyRepo.findOne.mockResolvedValue({ ...baseUser.company, id: 10 });
+
+      await service.updateCompanyDetails(10, {
+        streetAddress: "1 Main Rd",
+        city: "Cape Town",
+        province: "WC",
+        postalCode: "8001",
+        phone: "012 345 6789",
+        email: "Info@Test.example.com",
+      });
+
+      const saved = mockCompanyRepo.save.mock.calls.at(-1)?.[0];
+      expect(saved.address).toEqual({
+        streetAddress: "1 Main Rd",
+        city: "Cape Town",
+        province: "WC",
+        postalCode: "8001",
+      });
+      expect(saved.contact).toEqual({ phone: "012 345 6789", email: "info@test.example.com" });
+    });
+
+    it("preserves unspecified nested fields when merging", async () => {
+      mockCompanyRepo.findOne.mockResolvedValue({
+        ...baseUser.company,
+        id: 10,
+        address: {
+          streetAddress: "Old Street",
+          city: "Old City",
+          province: "Old Province",
+          postalCode: "0001",
+        },
+        contact: { phone: "111", email: "old@test.example.com" },
+      });
+
+      await service.updateCompanyDetails(10, { city: "New City" });
+
+      const saved = mockCompanyRepo.save.mock.calls.at(-1)?.[0];
+      expect(saved.address).toEqual({
+        streetAddress: "Old Street",
+        city: "New City",
+        province: "Old Province",
+        postalCode: "0001",
+      });
+      expect(saved.contact).toEqual({ phone: "111", email: "old@test.example.com" });
     });
 
     it("throws NotFoundException for non-existent company", async () => {
