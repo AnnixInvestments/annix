@@ -2,6 +2,7 @@ import { Body, Controller, Get, Patch, Req, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiHeader, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { Request } from "express";
 
+import { CompanyResponseDto, toCompanyResponse } from "../platform/dto/company-response.dto";
 import { CustomerService } from "./customer.service";
 import {
   ChangePasswordDto,
@@ -56,21 +57,26 @@ export class CustomerController {
 
   @Get("company")
   @ApiOperation({ summary: "Get company details" })
-  @ApiResponse({ status: 200, description: "Company retrieved" })
+  @ApiResponse({ status: 200, description: "Company retrieved", type: CompanyResponseDto })
   @ApiResponse({ status: 401, description: "Unauthorized" })
-  async getCompany(@Req() req: Request) {
+  async getCompany(@Req() req: Request): Promise<CompanyResponseDto> {
     const customerId = req["customer"].customerId;
-    return this.customerService.getCompany(customerId);
+    const company = await this.customerService.getCompany(customerId);
+    return toCompanyResponse(company);
   }
 
   @Patch("company/address")
   @ApiOperation({ summary: "Update company address (limited fields)" })
-  @ApiResponse({ status: 200, description: "Company address updated" })
+  @ApiResponse({ status: 200, description: "Company address updated", type: CompanyResponseDto })
   @ApiResponse({ status: 401, description: "Unauthorized" })
-  async updateCompanyAddress(@Body() dto: UpdateCompanyAddressDto, @Req() req: Request) {
+  async updateCompanyAddress(
+    @Body() dto: UpdateCompanyAddressDto,
+    @Req() req: Request,
+  ): Promise<CompanyResponseDto> {
     const customerId = req["customer"].customerId;
     const clientIp = this.getClientIp(req);
-    return this.customerService.updateCompanyAddress(customerId, dto, clientIp);
+    const company = await this.customerService.updateCompanyAddress(customerId, dto, clientIp);
+    return toCompanyResponse(company);
   }
 
   @Patch("profile/password")

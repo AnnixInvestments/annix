@@ -23,14 +23,20 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { Request } from "express";
+import { CompanyResponseDto, toCompanyResponse } from "../platform/dto/company-response.dto";
 import {
   SaveSupplierCapabilitiesDto,
   SupplierCompanyDto,
   UpdateSupplierProfileDto,
   UploadSupplierDocumentDto,
 } from "./dto";
+import { SupplierProfile } from "./entities";
 import { SupplierAuthGuard } from "./guards/supplier-auth.guard";
 import { SupplierService } from "./supplier.service";
+
+type SupplierProfileResponseDto = Omit<SupplierProfile, "company"> & {
+  company: CompanyResponseDto;
+};
 
 @ApiTags("Supplier Portal")
 @Controller("supplier")
@@ -44,9 +50,10 @@ export class SupplierController {
   @Get("profile")
   @ApiOperation({ summary: "Get supplier profile" })
   @ApiResponse({ status: 200, description: "Profile retrieved" })
-  async getProfile(@Req() req: Request) {
+  async getProfile(@Req() req: Request): Promise<SupplierProfileResponseDto> {
     const supplierId = req["supplier"].supplierId;
-    return this.supplierService.getProfile(supplierId);
+    const profile = await this.supplierService.getProfile(supplierId);
+    return { ...profile, company: toCompanyResponse(profile.company) };
   }
 
   @Patch("profile")
@@ -76,11 +83,15 @@ export class SupplierController {
 
   @Post("onboarding/company")
   @ApiOperation({ summary: "Save company details for onboarding" })
-  @ApiResponse({ status: 200, description: "Company details saved" })
-  async saveCompanyDetails(@Body() dto: SupplierCompanyDto, @Req() req: Request) {
+  @ApiResponse({ status: 200, description: "Company details saved", type: CompanyResponseDto })
+  async saveCompanyDetails(
+    @Body() dto: SupplierCompanyDto,
+    @Req() req: Request,
+  ): Promise<CompanyResponseDto> {
     const supplierId = req["supplier"].supplierId;
     const clientIp = this.getClientIp(req);
-    return this.supplierService.saveCompanyDetails(supplierId, dto, clientIp);
+    const company = await this.supplierService.saveCompanyDetails(supplierId, dto, clientIp);
+    return toCompanyResponse(company);
   }
 
   @Get("onboarding/documents")
