@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
+import { chunk } from "es-toolkit/compat";
 import { DateTime, fromISO, now } from "../../lib/datetime";
 import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
 import type {
@@ -385,9 +386,17 @@ export class AnalyticsService {
 
     const activeJobs = await this.jobPostingRepo.activeJobsForFairness();
 
-    const reports = await Promise.all(
-      activeJobs.map((job) => this.analyseJobFairness(job.id, job.companyId, job.title)),
-    );
+    // Bound concurrency so a large active-job set can't fan out one fairness
+    // analysis per job all at once against M0 (#396 finding 11).
+    const reports = await chunk(activeJobs, FAIRNESS_CONCURRENCY).reduce<
+      Promise<JobFairnessReport[]>
+    >(async (prev, batch) => {
+      const acc = await prev;
+      const batchReports = await Promise.all(
+        batch.map((job) => this.analyseJobFairness(job.id, job.companyId, job.title)),
+      );
+      return [...acc, ...batchReports];
+    }, Promise.resolve([]));
 
     const breachReports = reports.filter((r) => r.breaches.length > 0);
     const skippedNoData = reports.filter((r) => r.totalAnalysed < FAIRNESS_MIN_GROUP_SAMPLE).length;
@@ -481,6 +490,7 @@ export interface JobFairnessReport {
 const FAIRNESS_WINDOW = 100;
 const FAIRNESS_THRESHOLD = 0.8;
 const FAIRNESS_MIN_GROUP_SAMPLE = 5;
+const FAIRNESS_CONCURRENCY = 5;
 const PASS_STATUSES = new Set<CandidateStatus>([
   CandidateStatus.SHORTLISTED,
   CandidateStatus.REFERENCE_CHECK,
