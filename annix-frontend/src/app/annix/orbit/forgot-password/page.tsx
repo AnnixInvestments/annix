@@ -52,7 +52,7 @@ export default function AnnixOrbitForgotPasswordPage() {
             </p>
             <Link
               href="/annix/orbit/login"
-              className="inline-block bg-[#323288] text-white py-3 px-6 rounded-lg font-medium hover:bg-[#252560] transition-colors"
+              className="inline-block bg-[var(--brand-navbar,#323288)] text-white py-3 px-6 rounded-lg font-medium hover:bg-[var(--brand-navbar-active,#252560)] transition-colors"
             >
               Back to sign in
             </Link>
@@ -67,9 +67,9 @@ export default function AnnixOrbitForgotPasswordPage() {
       <div className="max-w-md w-full">
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-[#e0e0f5] rounded-2xl mb-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-[var(--brand-navbar-100,#e0e0f5)] rounded-2xl mb-4">
               <svg
-                className="w-8 h-8 text-[#323288]"
+                className="w-8 h-8 text-[var(--brand-navbar,#323288)]"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -105,7 +105,7 @@ export default function AnnixOrbitForgotPasswordPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-navbar-50,#f0f0fc)] focus:border-transparent"
                 placeholder="you@example.com"
               />
             </div>
@@ -113,7 +113,7 @@ export default function AnnixOrbitForgotPasswordPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-[#323288] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#252560] focus:outline-none focus:ring-2 focus:ring-[#f0f0fc] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full bg-[var(--brand-navbar,#323288)] text-white py-3 px-4 rounded-lg font-medium hover:bg-[var(--brand-navbar-active,#252560)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-navbar-50,#f0f0fc)] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isLoading ? "Sending link..." : "Send reset link"}
             </button>
@@ -122,7 +122,7 @@ export default function AnnixOrbitForgotPasswordPage() {
           <div className="mt-6 text-center">
             <Link
               href="/annix/orbit/login"
-              className="text-[#323288] hover:text-[#252560] text-sm font-medium"
+              className="text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)] text-sm font-medium"
             >
               Back to sign in
             </Link>

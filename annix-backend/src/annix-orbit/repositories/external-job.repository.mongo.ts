@@ -145,6 +145,13 @@ export class MongoExternalJobRepository
     const hasCountries = countries !== null && countries.length > 0;
     const unfiltered = !hasCategory && !hasCountries;
 
+    // Perf #396 finding 5: the filtered branch streams the matching jobs and
+    // their embedding via a single aggregation join, instead of materialising
+    // every eligible job _id into one array and feeding it to an unbounded `$in`.
+    // The category + country match runs against the jobs collection (where those
+    // fields live), the `$lookup` pulls the sibling embedding, and `$match` keeps
+    // only jobs that actually have one — the identical result set + `_id`
+    // ordering as the old find({ _id: { $in: [...] } }).sort({ _id: 1 }).
     const cursor = unfiltered
       ? this.embeddingDocuments
           .find({})
@@ -152,11 +159,27 @@ export class MongoExternalJobRepository
           .sort({ _id: 1 })
           .lean()
           .cursor()
-      : this.embeddingDocuments
-          .find({ _id: { $in: await this.eligibleJobIds(categoryPool, countries) } })
-          .select({ _id: 1, embedding: 1 })
-          .sort({ _id: 1 })
-          .lean()
+      : this.documents
+          .aggregate<{ _id: number; embedding: Buffer | null }>([
+            { $match: this.embeddingFilter(categoryPool, countries) },
+            { $sort: { _id: 1 } },
+            {
+              $lookup: {
+                from: "cv_assistant_external_job_embeddings",
+                localField: "_id",
+                foreignField: "_id",
+                as: "embeddingDoc",
+              },
+            },
+            { $match: { "embeddingDoc.0": { $exists: true } } },
+            {
+              $project: {
+                _id: 1,
+                embedding: { $arrayElemAt: ["$embeddingDoc.embedding", 0] },
+              },
+            },
+          ])
+          .allowDiskUse(true)
           .cursor();
 
     let yielded = 0;
@@ -187,18 +210,6 @@ export class MongoExternalJobRepository
         `Embedding coverage collapse: ${jobCount} external jobs exist but the embeddings collection is empty — matching will return zero matches until the embedding backfill runs.`,
       );
     }
-  }
-
-  private async eligibleJobIds(
-    categoryPool: string[] | null,
-    countries: string[] | null = null,
-  ): Promise<number[]> {
-    const rows = await this.documents
-      .find(this.embeddingFilter(categoryPool, countries))
-      .select({ _id: 1 })
-      .lean()
-      .exec();
-    return rows.map((row) => Number(row._id));
   }
 
   private async embeddedJobIds(): Promise<number[]> {

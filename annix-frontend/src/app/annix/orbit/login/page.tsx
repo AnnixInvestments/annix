@@ -206,7 +206,7 @@ function AnnixOrbitLoginContent() {
                 required
                 defaultValue=""
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-navbar-50,#f0f0fc)] focus:border-transparent"
                 placeholder="you@example.com"
               />
             </div>
@@ -224,7 +224,7 @@ function AnnixOrbitLoginContent() {
                   autoComplete="current-password"
                   required
                   defaultValue=""
-                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
+                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-navbar-50,#f0f0fc)] focus:border-transparent"
                   placeholder="Enter your password"
                 />
                 <button
@@ -244,13 +244,13 @@ function AnnixOrbitLoginContent() {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 text-[#323288] focus:ring-[#f0f0fc] border-gray-300 rounded"
+                  className="h-4 w-4 text-[var(--brand-navbar,#323288)] focus:ring-[var(--brand-navbar-50,#f0f0fc)] border-gray-300 rounded"
                 />
                 <span className="ml-2 text-sm text-gray-600">Remember me</span>
               </label>
               <Link
                 href="/annix/orbit/forgot-password"
-                className="text-sm text-[#323288] hover:text-[#252560]"
+                className="text-sm text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)]"
               >
                 Forgot password?
               </Link>
@@ -267,7 +267,7 @@ function AnnixOrbitLoginContent() {
                     onClick={() => setPhoneType("apple")}
                     className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                       phoneType === "apple"
-                        ? "border-[#323288] bg-[#f0f0fc] text-[#323288]"
+                        ? "border-[var(--brand-navbar,#323288)] bg-[var(--brand-navbar-50,#f0f0fc)] text-[var(--brand-navbar,#323288)]"
                         : "border-gray-300 text-gray-600 hover:bg-gray-50"
                     }`}
                   >
@@ -278,7 +278,7 @@ function AnnixOrbitLoginContent() {
                     onClick={() => setPhoneType("android")}
                     className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                       phoneType === "android"
-                        ? "border-[#323288] bg-[#f0f0fc] text-[#323288]"
+                        ? "border-[var(--brand-navbar,#323288)] bg-[var(--brand-navbar-50,#f0f0fc)] text-[var(--brand-navbar,#323288)]"
                         : "border-gray-300 text-gray-600 hover:bg-gray-50"
                     }`}
                   >
@@ -294,7 +294,7 @@ function AnnixOrbitLoginContent() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-[#323288] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#252560] focus:outline-none focus:ring-2 focus:ring-[#f0f0fc] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full bg-[var(--brand-navbar,#323288)] text-white py-3 px-4 rounded-lg font-medium hover:bg-[var(--brand-navbar-active,#252560)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-navbar-50,#f0f0fc)] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isLoading ? "Signing in..." : "Sign in"}
             </button>
@@ -335,7 +335,7 @@ function AnnixOrbitLoginContent() {
                 Do not have an account?{" "}
                 <Link
                   href={registerHref}
-                  className="text-[#323288] hover:text-[#252560] font-medium"
+                  className="text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)] font-medium"
                 >
                   Register
                 </Link>
@@ -346,7 +346,10 @@ function AnnixOrbitLoginContent() {
 
         {!isTestEnv && (
           <div className="text-center mt-6 space-x-4">
-            <Link href="/annix/orbit" className="text-[#c0c0eb] hover:text-white text-sm">
+            <Link
+              href="/annix/orbit"
+              className="text-[var(--brand-navbar-200,#c0c0eb)] hover:text-white text-sm"
+            >
               Choose a different account type
             </Link>
           </div>
@@ -361,7 +364,7 @@ export default function AnnixOrbitLoginPage() {
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#7373c2]" />
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--brand-navbar-400,#7373c2)]" />
         </div>
       }
     >

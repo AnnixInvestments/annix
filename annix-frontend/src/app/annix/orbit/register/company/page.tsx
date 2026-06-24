@@ -113,7 +113,7 @@ export default function AnnixOrbitRegisterCompanyPage() {
             </p>
             <Link
               href="/annix/orbit/login?type=company"
-              className="inline-block bg-[#323288] text-white py-3 px-6 rounded-lg font-medium hover:bg-[#252560] transition-colors"
+              className="inline-block bg-[var(--brand-navbar,#323288)] text-white py-3 px-6 rounded-lg font-medium hover:bg-[var(--brand-navbar-active,#252560)] transition-colors"
             >
               Back to login
             </Link>
@@ -130,9 +130,9 @@ export default function AnnixOrbitRegisterCompanyPage() {
         <BackToHubLink />
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-[#e0e0f5] rounded-2xl mb-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-[var(--brand-navbar-100,#e0e0f5)] rounded-2xl mb-4">
               <svg
-                className="w-8 h-8 text-[#323288]"
+                className="w-8 h-8 text-[var(--brand-navbar,#323288)]"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -160,7 +160,7 @@ export default function AnnixOrbitRegisterCompanyPage() {
                 type="text"
                 autoComplete="name"
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-navbar-50,#f0f0fc)] focus:border-transparent"
                 placeholder="John Smith"
               />
             </div>
@@ -175,7 +175,7 @@ export default function AnnixOrbitRegisterCompanyPage() {
                 type="email"
                 autoComplete="email"
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-navbar-50,#f0f0fc)] focus:border-transparent"
                 placeholder="you@example.com"
               />
             </div>
@@ -190,7 +190,7 @@ export default function AnnixOrbitRegisterCompanyPage() {
                 type="text"
                 autoComplete="organization"
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-navbar-50,#f0f0fc)] focus:border-transparent"
                 placeholder="Your Company"
               />
             </div>
@@ -204,7 +204,7 @@ export default function AnnixOrbitRegisterCompanyPage() {
                 name="industry"
                 defaultValue=""
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent bg-white"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-navbar-50,#f0f0fc)] focus:border-transparent bg-white"
               >
                 <option value="" disabled>
                   Select your industry
@@ -226,7 +226,7 @@ export default function AnnixOrbitRegisterCompanyPage() {
                 name="companySize"
                 defaultValue=""
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent bg-white"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-navbar-50,#f0f0fc)] focus:border-transparent bg-white"
               >
                 <option value="" disabled>
                   Select company size
@@ -250,7 +250,7 @@ export default function AnnixOrbitRegisterCompanyPage() {
                   autoComplete="address-level1"
                   defaultValue=""
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent bg-white"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-navbar-50,#f0f0fc)] focus:border-transparent bg-white"
                 >
                   <option value="" disabled>
                     Select province
@@ -272,7 +272,7 @@ export default function AnnixOrbitRegisterCompanyPage() {
                   type="text"
                   autoComplete="address-level2"
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-navbar-50,#f0f0fc)] focus:border-transparent"
                   placeholder="Johannesburg"
                 />
               </div>
@@ -289,7 +289,7 @@ export default function AnnixOrbitRegisterCompanyPage() {
                 autoComplete="new-password"
                 required
                 minLength={8}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-navbar-50,#f0f0fc)] focus:border-transparent"
                 placeholder="At least 8 characters"
               />
             </div>
@@ -301,11 +301,11 @@ export default function AnnixOrbitRegisterCompanyPage() {
                 checked={popiaConsent}
                 onChange={(e) => setPopiaConsent(e.target.checked)}
                 required
-                className="mt-1 h-4 w-4 text-[#323288] focus:ring-[#f0f0fc] border-gray-300 rounded"
+                className="mt-1 h-4 w-4 text-[var(--brand-navbar,#323288)] focus:ring-[var(--brand-navbar-50,#f0f0fc)] border-gray-300 rounded"
               />
               <label htmlFor="popiaConsent" className="ml-2 text-sm text-gray-600">
                 I consent to the processing of my personal information in accordance with the{" "}
-                <span className="text-[#323288] font-medium">
+                <span className="text-[var(--brand-navbar,#323288)] font-medium">
                   Protection of Personal Information Act (POPIA)
                 </span>
                 . I understand that my data will be retained for 12 months from my last activity and
@@ -316,7 +316,7 @@ export default function AnnixOrbitRegisterCompanyPage() {
             <button
               type="submit"
               disabled={isLoading || !popiaConsent}
-              className="w-full bg-[#323288] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#252560] focus:outline-none focus:ring-2 focus:ring-[#f0f0fc] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full bg-[var(--brand-navbar,#323288)] text-white py-3 px-4 rounded-lg font-medium hover:bg-[var(--brand-navbar-active,#252560)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-navbar-50,#f0f0fc)] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isLoading ? "Creating account..." : "Create account"}
             </button>
@@ -327,7 +327,7 @@ export default function AnnixOrbitRegisterCompanyPage() {
               Already have an account?{" "}
               <Link
                 href="/annix/orbit/login?type=company"
-                className="text-[#323288] hover:text-[#252560] font-medium"
+                className="text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)] font-medium"
               >
                 Sign in
               </Link>
@@ -337,7 +337,10 @@ export default function AnnixOrbitRegisterCompanyPage() {
 
         {!isTestEnv && (
           <div className="text-center mt-6 space-x-4">
-            <Link href="/annix/orbit" className="text-[#c0c0eb] hover:text-white text-sm">
+            <Link
+              href="/annix/orbit"
+              className="text-[var(--brand-navbar-200,#c0c0eb)] hover:text-white text-sm"
+            >
               Choose a different account type
             </Link>
           </div>

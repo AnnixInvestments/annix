@@ -26,7 +26,7 @@ export default function AnnixOrbitHomePage() {
           >
             {branding.tagline}
           </p>
-          <p className="text-lg text-gray-600 dark:text-[#c0c0eb] max-w-2xl mx-auto">
+          <p className="text-lg text-gray-600 dark:text-[var(--brand-navbar-200,#c0c0eb)] max-w-2xl mx-auto">
             {branding.description}
           </p>
         </div>
@@ -42,7 +42,7 @@ export default function AnnixOrbitHomePage() {
             secondaryLabel="Sign in"
             icon={
               <svg
-                className="w-7 h-7 text-[#323288]"
+                className="w-7 h-7 text-[var(--brand-navbar,#323288)]"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -67,7 +67,7 @@ export default function AnnixOrbitHomePage() {
             secondaryLabel="Sign in"
             icon={
               <svg
-                className="w-7 h-7 text-[#323288]"
+                className="w-7 h-7 text-[var(--brand-navbar,#323288)]"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -92,7 +92,7 @@ export default function AnnixOrbitHomePage() {
             secondaryLabel="Sign in"
             icon={
               <svg
-                className="w-7 h-7 text-[#323288]"
+                className="w-7 h-7 text-[var(--brand-navbar,#323288)]"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -120,7 +120,7 @@ export default function AnnixOrbitHomePage() {
             comingSoon
             icon={
               <svg
-                className="w-7 h-7 text-[#323288]"
+                className="w-7 h-7 text-[var(--brand-navbar,#323288)]"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -153,7 +153,7 @@ export default function AnnixOrbitHomePage() {
             comingSoon
             icon={
               <svg
-                className="w-7 h-7 text-[#323288]"
+                className="w-7 h-7 text-[var(--brand-navbar,#323288)]"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -178,7 +178,7 @@ export default function AnnixOrbitHomePage() {
           </Link>
           <Link
             href="/"
-            className="block text-[#3a3a8a] hover:text-[#1a1a4e] dark:text-[#c0c0eb] dark:hover:text-white text-sm"
+            className="block text-[#3a3a8a] hover:text-[#1a1a4e] dark:text-[var(--brand-navbar-200,#c0c0eb)] dark:hover:text-white text-sm"
           >
             Back to Annix Platform
           </Link>
@@ -226,24 +226,24 @@ function CvHomeCard(props: {
   }
   return (
     <div className="bg-white rounded-2xl shadow-2xl p-8 flex flex-col">
-      <div className="inline-flex items-center justify-center w-14 h-14 bg-[#e0e0f5] rounded-xl mb-5">
+      <div className="inline-flex items-center justify-center w-14 h-14 bg-[var(--brand-navbar-100,#e0e0f5)] rounded-xl mb-5">
         {props.icon}
       </div>
       <h2 className="text-2xl font-bold text-gray-900">{props.title}</h2>
-      <p className="text-sm text-[#323288] dark:text-[#9ea0e8] font-medium mt-1">
+      <p className="text-sm text-[var(--brand-navbar,#323288)] dark:text-[#9ea0e8] font-medium mt-1">
         {props.subtitle}
       </p>
       <p className="text-gray-600 mt-4 flex-1">{props.description}</p>
       <div className="mt-6 space-y-3">
         <Link
           href={props.primaryHref}
-          className="block text-center bg-[#323288] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#252560] transition-colors"
+          className="block text-center bg-[var(--brand-navbar,#323288)] text-white py-3 px-4 rounded-lg font-medium hover:bg-[var(--brand-navbar-active,#252560)] transition-colors"
         >
           {props.primaryLabel}
         </Link>
         <Link
           href={props.secondaryHref}
-          className="block text-center bg-white text-[#252560] py-3 px-4 rounded-lg font-medium border border-[#c0c0eb] hover:bg-[#f0f0fc] dark:text-white dark:border-[#4a4da3] dark:hover:bg-white/10 transition-colors"
+          className="block text-center bg-white text-[var(--brand-navbar-active,#252560)] py-3 px-4 rounded-lg font-medium border border-[var(--brand-navbar-200,#c0c0eb)] hover:bg-[var(--brand-navbar-50,#f0f0fc)] dark:text-white dark:border-[#4a4da3] dark:hover:bg-white/10 transition-colors"
         >
           {props.secondaryLabel}
         </Link>

@@ -79,11 +79,14 @@ export function targetCountriesOf(countries: string[] | null | undefined): strin
 // maxJobResults is null ("unlimited", e.g. Trailblazer). The feed only ever shows
 // the top 100, so this stays modest.
 const UNLIMITED_MATCH_CEILING = 150;
-// How many matches the unlimited tier STORES per run. Set high enough to cover the
-// whole live job pool so a single candidate-side run ranks + persists every job
-// against the CV — identical to what the per-job ingestion matching produces over
-// time, but independent of whether jobs were ingested before or after the CV.
-const UNLIMITED_STORAGE_CEILING = 25000;
+// How many matches the unlimited tier STORES per run, and the backstop the
+// nightly prune trims every seeker to. Perf #396 finding 3: lowered 25000 → 3000.
+// The feed only ever surfaces the top 100 (UNLIMITED_MATCH_CEILING 150), and a
+// single seeker's genuinely-relevant pool is in the low thousands, not the whole
+// 15000-cap job collection. 3000 still comfortably covers an unlimited-tier
+// seeker's relevant matches while bounding per-rematch reads + stored rows per
+// seeker ~8x — the key memory lever on the single-process M0 backend.
+const UNLIMITED_STORAGE_CEILING = 3000;
 // Score + persist matches in bounded batches so a full-pool run doesn't open
 // thousands of concurrent writes against the database at once.
 const MATCH_PERSIST_CHUNK = 200;

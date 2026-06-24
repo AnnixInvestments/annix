@@ -95,8 +95,8 @@ function VerifyEmailContent() {
         <div className="bg-white rounded-2xl shadow-2xl p-8 text-center">
           {status === "pending" && (
             <>
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-[#e0e0f5] rounded-full mb-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#323288]" />
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-[var(--brand-navbar-100,#e0e0f5)] rounded-full mb-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--brand-navbar,#323288)]" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Verifying your email</h2>
               <p className="text-gray-600">Hold on while we confirm your verification link.</p>
@@ -125,7 +125,7 @@ function VerifyEmailContent() {
               {!autoSignedIn && (
                 <Link
                   href={`/annix/orbit/login?email=${encodeURIComponent(verifiedEmail)}`}
-                  className="inline-block bg-[#323288] text-white py-3 px-6 rounded-lg font-medium hover:bg-[#252560] transition-colors"
+                  className="inline-block bg-[var(--brand-navbar,#323288)] text-white py-3 px-6 rounded-lg font-medium hover:bg-[var(--brand-navbar-active,#252560)] transition-colors"
                 >
                   Sign in
                 </Link>
@@ -165,13 +165,13 @@ function VerifyEmailContent() {
                   value={resendEmail}
                   onChange={(e) => setResendEmail(e.target.value)}
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-navbar-50,#f0f0fc)] focus:border-transparent"
                   placeholder="you@example.com"
                 />
                 <button
                   type="submit"
                   disabled={isResending}
-                  className="w-full bg-[#323288] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#252560] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="w-full bg-[var(--brand-navbar,#323288)] text-white py-3 px-4 rounded-lg font-medium hover:bg-[var(--brand-navbar-active,#252560)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {isResending ? "Sending..." : "Resend verification email"}
                 </button>
@@ -183,7 +183,7 @@ function VerifyEmailContent() {
               <div className="mt-6">
                 <Link
                   href="/annix/orbit/login"
-                  className="text-[#323288] hover:text-[#252560] text-sm font-medium"
+                  className="text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)] text-sm font-medium"
                 >
                   Back to sign in
                 </Link>
@@ -201,7 +201,7 @@ export default function AnnixOrbitVerifyEmailPage() {
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#7373c2]" />
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--brand-navbar-400,#7373c2)]" />
         </div>
       }
     >

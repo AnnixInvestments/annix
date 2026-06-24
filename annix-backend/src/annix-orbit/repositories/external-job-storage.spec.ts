@@ -60,6 +60,45 @@ function applySort(rows: Doc[], sort: Record<string, number> | null): Doc[] {
   });
 }
 
+function resolvePath(value: unknown, path: string): unknown {
+  if (path === "") return value;
+  return path.split(".").reduce<unknown>((acc, seg) => {
+    if (acc == null) return undefined;
+    const idx = Number(seg);
+    if (Array.isArray(acc) && Number.isInteger(idx)) return acc[idx];
+    return (acc as Doc)[seg];
+  }, value);
+}
+
+// Mirrors the $match subset the aggregation pipeline uses, including the dotted
+// "embeddingDoc.0" $exists path that the plain matchesFilter does not resolve.
+function aggregateMatch(doc: Doc, filter: Doc): boolean {
+  return toPairs(filter).every(([key, condition]) => {
+    if (!key.includes(".")) return matchesFilter(doc, { [key]: condition });
+    const value = resolvePath(doc, key);
+    if (condition !== null && isObject(condition) && "$exists" in (condition as Doc)) {
+      return (value !== undefined) === (condition as Doc).$exists;
+    }
+    return value === condition;
+  });
+}
+
+function aggregateProject(doc: Doc, projection: Doc): Doc {
+  const out: Doc = {};
+  for (const [key, spec] of toPairs(projection)) {
+    if (spec === 1) {
+      out[key] = doc[key];
+    } else if (isObject(spec) && "$arrayElemAt" in (spec as Doc)) {
+      const [pathExpr, index] = (spec as Doc).$arrayElemAt as [string, number];
+      const [arrayField, ...rest] = pathExpr.replace(/^\$/, "").split(".");
+      const arr = doc[arrayField];
+      const mapped = Array.isArray(arr) ? arr.map((el) => resolvePath(el, rest.join("."))) : [];
+      out[key] = mapped[index] ?? null;
+    }
+  }
+  return out;
+}
+
 // A chainable query thenable mirroring Mongoose's find()/findById() builder.
 // `single` mirrors findById/findOne (resolves to one doc or null).
 function buildQuery(getRows: () => Doc[], single = false) {
@@ -115,6 +154,7 @@ function project(rows: Doc[], projection: Record<string, number> | null): Doc[] 
 
 class FakeCollection {
   rows: Doc[] = [];
+  lookupSources = new Map<string, FakeCollection>();
 
   seed(docs: Doc[]): void {
     this.rows = docs.map((d) => ({ ...d }));
@@ -124,6 +164,45 @@ class FakeCollection {
     const q = buildQuery(() => this.rows.filter((r) => matchesFilter(r, filter)));
     if (projOpt?.projection) (q as { select: (p: unknown) => unknown }).select(projOpt.projection);
     return q;
+  }
+
+  aggregate(pipeline: Doc[]) {
+    let rows: Doc[] = this.rows.map((r) => ({ ...r }));
+    for (const stage of pipeline) {
+      if ("$match" in stage) {
+        rows = rows.filter((r) => aggregateMatch(r, stage.$match as Doc));
+      } else if ("$sort" in stage) {
+        rows = applySort(rows, stage.$sort as Record<string, number>);
+      } else if ("$lookup" in stage) {
+        const lookup = stage.$lookup as {
+          from: string;
+          localField: string;
+          foreignField: string;
+          as: string;
+        };
+        const sourceRows = this.lookupSources.get(lookup.from)?.rows ?? [];
+        rows = rows.map((r) => ({
+          ...r,
+          [lookup.as]: sourceRows
+            .filter((sr) => sr[lookup.foreignField] === r[lookup.localField])
+            .map((sr) => ({ ...sr })),
+        }));
+      } else if ("$project" in stage) {
+        rows = rows.map((r) => aggregateProject(r, stage.$project as Doc));
+      }
+    }
+    const builder = {
+      allowDiskUse() {
+        return builder;
+      },
+      async exec() {
+        return rows;
+      },
+      async *cursor() {
+        for (const row of rows) yield row;
+      },
+    };
+    return builder;
   }
 
   findById(id: unknown) {
@@ -180,6 +259,7 @@ function buildHarness(retentionCap: number | null = null): Harness {
   const embeddings = new FakeCollection();
   const matches = new FakeCollection();
   const alternates = new FakeCollection();
+  jobs.lookupSources.set("cv_assistant_external_job_embeddings", embeddings);
 
   const settingsCollection = {
     async findOne() {
@@ -215,6 +295,7 @@ function asModel(collection: FakeCollection): Record<string, unknown> {
     deleteMany: (f: Doc) => collection.deleteMany(f),
     findByIdAndDelete: (id: unknown) => collection.findByIdAndDelete(id),
     updateMany: (f: Doc, u: Doc) => collection.updateMany(f, u),
+    aggregate: (pipeline: Doc[]) => collection.aggregate(pipeline),
   };
 }
 
