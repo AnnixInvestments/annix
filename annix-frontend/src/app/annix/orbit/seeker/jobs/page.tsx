@@ -951,6 +951,7 @@ export default function SeekerJobsPage() {
           {filtered.map((match, index) => (
             <div
               key={match.matchId}
+              className="[content-visibility:auto] [contain-intrinsic-size:auto_320px]"
               {...(index === 0 ? { "data-nix-target": "jobs-apply-card" } : {})}
             >
               <SeekerJobCard

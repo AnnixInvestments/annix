@@ -71,6 +71,18 @@ const MANUAL_REMATCH_STORAGE_LIMIT = 500;
 // matches" count is the true total (counted in the DB, not loaded), so a seeker
 // sees the real number without us shipping thousands of populated job rows.
 const RECOMMENDED_DISPLAY_LIMIT = 100;
+// The feed cards render title/company/skills/source-link only — the full job
+// description is read on the job detail page, not in the list. Shipping every
+// row's full description bloats a 100-row payload over mobile networks for
+// nothing (perf #396 finding 10), so the list carries a short preview snippet
+// and the detail route serves the full text.
+const FEED_DESCRIPTION_SNIPPET_LIMIT = 280;
+function feedDescriptionSnippet(description: string | null): string | null {
+  if (description == null) return null;
+  const trimmed = description.trim();
+  if (trimmed.length <= FEED_DESCRIPTION_SNIPPET_LIMIT) return trimmed;
+  return `${trimmed.slice(0, FEED_DESCRIPTION_SNIPPET_LIMIT).trimEnd()}…`;
+}
 // The facet rows for a candidate are filter-independent, so cache them briefly:
 // rapid filter changes then derive the count + every facet in memory with no
 // repeated database join. Invalidated whenever the candidate's matches change.
@@ -1633,7 +1645,7 @@ function toSeekerMatch(
       salaryMin: job.salaryMin,
       salaryMax: job.salaryMax,
       salaryCurrency: job.salaryCurrency,
-      description: job.description,
+      description: feedDescriptionSnippet(job.description),
       extractedSkills: job.extractedSkills ?? [],
       category: job.category,
       canonicalCategory: job.canonicalCategory,
@@ -1682,7 +1694,7 @@ function toColdStartSeekerMatch(
       salaryMin: job.salaryMin,
       salaryMax: job.salaryMax,
       salaryCurrency: job.salaryCurrency,
-      description: job.description,
+      description: feedDescriptionSnippet(job.description),
       extractedSkills: job.extractedSkills ?? [],
       category: job.category,
       canonicalCategory: job.canonicalCategory,
