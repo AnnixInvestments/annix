@@ -8,11 +8,6 @@ export interface NixAssistantPanelProps {
   saveStatus: AutoSaveStatus;
 }
 
-/**
- * Phase 1 placeholder. Phase 2 fills in: title suggestions, description
- * draft, skill suggestions. Phase 3: live quality score with inclusivity
- * scan + recommended fixes.
- */
 export function NixAssistantPanel(props: NixAssistantPanelProps) {
   const { draft, saveStatus } = props;
   const draftSkills = draft?.skills;
@@ -35,9 +30,11 @@ export function NixAssistantPanel(props: NixAssistantPanelProps) {
       </header>
 
       <div className="rounded-lg bg-[#f5f5fc] p-4 text-sm text-gray-700">
-        I&apos;ll guide you through creating a strong job post. Phase 2 will plug me into the form —
-        title suggestions, description drafting, skill ideas, salary intelligence, and a live
-        quality score will all come from here.
+        I&apos;ll guide you through a strong job post. Capture the role&apos;s essentials, skills,
+        outcomes and screening as you go — the counters below track what you&apos;ve added. When you
+        reach the final <span className="font-semibold">Review &amp; Publish</span> step, I&apos;ll
+        score the post for clarity, salary fit, candidate attraction, screening strength and
+        inclusive language, and predict how many applicants to expect.
       </div>
 
       <div className="grid grid-cols-3 gap-3 text-center">

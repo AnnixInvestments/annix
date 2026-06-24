@@ -45,7 +45,7 @@ export function UploadCvModal({ jobs, onClose }: { jobs: JobPosting[]; onClose: 
               value={selectedJobId}
               onChange={(e) => setSelectedJobId(e.target.value)}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
             >
               <option value="">Select a job...</option>
               {jobs
@@ -65,7 +65,7 @@ export function UploadCvModal({ jobs, onClose }: { jobs: JobPosting[]; onClose: 
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
             />
           </div>
           <div>
@@ -76,7 +76,7 @@ export function UploadCvModal({ jobs, onClose }: { jobs: JobPosting[]; onClose: 
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
             />
           </div>
           <div>
@@ -89,7 +89,7 @@ export function UploadCvModal({ jobs, onClose }: { jobs: JobPosting[]; onClose: 
                 setFile(selectedFile || null);
               }}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
             />
           </div>
           <div className="flex justify-end space-x-3 pt-4">

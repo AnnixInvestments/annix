@@ -20,6 +20,8 @@ export default function SeekerPlansPage() {
   const plansData = plansQuery.data;
   const plans = plansData ?? [];
   const isLoading = plansQuery.isLoading;
+  const isPlansError = plansQuery.isError;
+  const isRefetchingPlans = plansQuery.isFetching;
 
   const entitlementsQuery = useOrbitSeekerEntitlements();
   const entitlements = entitlementsQuery.data;
@@ -85,17 +87,40 @@ export default function SeekerPlansPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="max-w-2xl">
-        <h1 className="text-2xl font-bold text-white">Plans</h1>
+        {inOnboarding ? (
+          <p className="text-xs font-semibold uppercase tracking-wide text-white/60">
+            Account setup · Step 2 of 2
+          </p>
+        ) : null}
+        <h1 className="mt-1 text-2xl font-bold text-white">Plans</h1>
         <p className="mt-2 text-sm text-white/70">
           Choose how far you want to go. Start free on Explorer, or switch to a higher plan any time
           for sharper matching, more Nix Job Finds and the full toolkit. It's free while Annix Orbit
           is in testing — billing comes later.
+          {inOnboarding
+            ? " This wraps up account setup — next, we'll help you build your profile."
+            : ""}
         </p>
       </div>
 
       <div className="mt-8" data-nix-target="seeker-plans-tiers">
         {isLoading ? (
           <p className="text-sm text-white/60">Loading plans…</p>
+        ) : isPlansError ? (
+          <div className="max-w-md rounded-xl border border-white/15 bg-white/5 p-5">
+            <p className="text-sm font-semibold text-white">We couldn't load the plans</p>
+            <p className="mt-1 text-sm text-white/70">
+              That's on us, not you — please try again in a moment.
+            </p>
+            <button
+              type="button"
+              onClick={() => plansQuery.refetch()}
+              disabled={isRefetchingPlans}
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[var(--brand-accent,#FF8A00)] px-4 py-2 text-sm font-semibold text-[#1a1a40] transition-colors hover:bg-[var(--brand-accent-light,#FF9C33)] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isRefetchingPlans ? "Trying again…" : "Try again"}
+            </button>
+          </div>
         ) : plans.length === 0 ? (
           <p className="text-sm text-white/60">Plans are being set up. Please check back soon.</p>
         ) : (
@@ -117,7 +142,9 @@ export default function SeekerPlansPage() {
           disabled={completeOnboarding.isPending}
           className={`inline-flex items-center gap-1 rounded-lg px-5 py-2.5 text-sm font-semibold transition-colors disabled:opacity-60 ${finishPalette}`}
         >
-          {inOnboarding ? "Finish setup — go to dashboard →" : "Continue to your dashboard →"}
+          {inOnboarding
+            ? "Finish setup — start building your profile →"
+            : "Continue to your dashboard →"}
         </button>
       </div>
       {ConfirmDialog}

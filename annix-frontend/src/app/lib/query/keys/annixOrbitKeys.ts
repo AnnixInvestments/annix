@@ -178,6 +178,12 @@ export const annixOrbitKeys = {
     job: (jobPostingId: number) => ["annix-orbit", "interview-slots", "job", jobPostingId] as const,
   },
 
+  publicInterviewBooking: {
+    all: ["annix-orbit", "public-interview-booking"] as const,
+    byToken: (token: string) =>
+      ["annix-orbit", "public-interview-booking", "by-token", token] as const,
+  },
+
   compliance: {
     all: ["annix-orbit", "compliance"] as const,
     eeReport: (dateFrom: string, dateTo: string) =>

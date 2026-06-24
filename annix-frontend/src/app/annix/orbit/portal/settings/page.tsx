@@ -275,7 +275,7 @@ export default function SettingsPage() {
                 type="text"
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
               />
             </div>
             <div>
@@ -283,7 +283,7 @@ export default function SettingsPage() {
               <select
                 value={companyIndustry}
                 onChange={(e) => setCompanyIndustry(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent bg-white"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent bg-white"
               >
                 <option value="">Select industry</option>
                 {industryOptions.map((opt) => (
@@ -298,7 +298,7 @@ export default function SettingsPage() {
               <select
                 value={companySize}
                 onChange={(e) => setCompanySize(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent bg-white"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent bg-white"
               >
                 <option value="">Select company size</option>
                 {COMPANY_SIZE_OPTIONS.map((opt) => (
@@ -315,7 +315,7 @@ export default function SettingsPage() {
                 value={websiteUrl}
                 onChange={(e) => setWebsiteUrl(e.target.value)}
                 placeholder="https://yourcompany.co.za"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
               />
             </div>
           </div>
@@ -326,7 +326,7 @@ export default function SettingsPage() {
               <select
                 value={companyProvince}
                 onChange={(e) => setCompanyProvince(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent bg-white"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent bg-white"
               >
                 <option value="">Select province</option>
                 {SOUTH_AFRICAN_PROVINCES.map((p) => (
@@ -343,7 +343,7 @@ export default function SettingsPage() {
                 value={companyCity}
                 onChange={(e) => setCompanyCity(e.target.value)}
                 placeholder="Johannesburg"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
               />
             </div>
             <div>
@@ -353,7 +353,7 @@ export default function SettingsPage() {
                 value={postalCode}
                 onChange={(e) => setPostalCode(e.target.value)}
                 placeholder="2000"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
               />
             </div>
           </div>
@@ -365,7 +365,7 @@ export default function SettingsPage() {
               value={streetAddress}
               onChange={(e) => setStreetAddress(e.target.value)}
               placeholder="123 Main Road, Sandton"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
             />
           </div>
 
@@ -377,7 +377,7 @@ export default function SettingsPage() {
                 value={companyPhone}
                 onChange={(e) => setCompanyPhone(e.target.value)}
                 placeholder="+27 11 000 0000"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
               />
             </div>
             <div>
@@ -387,7 +387,7 @@ export default function SettingsPage() {
                 value={contactEmail}
                 onChange={(e) => setContactEmail(e.target.value)}
                 placeholder="hr@yourcompany.co.za"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
               />
             </div>
           </div>
@@ -402,7 +402,7 @@ export default function SettingsPage() {
                 value={registrationNumber}
                 onChange={(e) => setRegistrationNumber(e.target.value)}
                 placeholder="2020/123456/07"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
               />
             </div>
             <div>
@@ -412,7 +412,7 @@ export default function SettingsPage() {
                 value={vatNumber}
                 onChange={(e) => setVatNumber(e.target.value)}
                 placeholder="4000000000"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
               />
             </div>
             <div>
@@ -420,7 +420,7 @@ export default function SettingsPage() {
               <select
                 value={beeLevel}
                 onChange={(e) => setBeeLevel(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent bg-white"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent bg-white"
               >
                 <option value="">Not specified</option>
                 {BEE_LEVELS.map((opt) => (
@@ -461,7 +461,7 @@ export default function SettingsPage() {
               id="monitoringEnabled"
               checked={monitoringEnabled}
               onChange={(e) => setMonitoringEnabled(e.target.checked)}
-              className="h-4 w-4 text-[#323288] focus:ring-[#f0f0fc]0 border-gray-300 rounded"
+              className="h-4 w-4 text-[#323288] focus:ring-[#f0f0fc] border-gray-300 rounded"
             />
             <label htmlFor="monitoringEnabled" className="ml-2 text-sm text-gray-700">
               Enable email monitoring
@@ -476,7 +476,7 @@ export default function SettingsPage() {
                 value={imapHost}
                 onChange={(e) => setImapHost(e.target.value)}
                 placeholder="imap.gmail.com"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
               />
             </div>
             <div>
@@ -486,7 +486,7 @@ export default function SettingsPage() {
                 value={imapPort}
                 onChange={(e) => setImapPort(e.target.value)}
                 placeholder="993"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
               />
             </div>
           </div>
@@ -498,7 +498,7 @@ export default function SettingsPage() {
               value={imapUser}
               onChange={(e) => setImapUser(e.target.value)}
               placeholder="recruiting@example.com"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
             />
           </div>
 
@@ -514,7 +514,7 @@ export default function SettingsPage() {
               value={imapPassword}
               onChange={(e) => setImapPassword(e.target.value)}
               placeholder="App password"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
             />
           </div>
 
@@ -527,7 +527,7 @@ export default function SettingsPage() {
               value={emailFromAddress}
               onChange={(e) => setEmailFromAddress(e.target.value)}
               placeholder="noreply@example.com"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
             />
           </div>
 
@@ -599,7 +599,7 @@ export default function SettingsPage() {
               id="digestEnabled"
               checked={digestEnabled}
               onChange={(e) => setDigestEnabled(e.target.checked)}
-              className="h-4 w-4 text-[#323288] focus:ring-[#f0f0fc]0 border-gray-300 rounded"
+              className="h-4 w-4 text-[#323288] focus:ring-[#f0f0fc] border-gray-300 rounded"
             />
             <label htmlFor="digestEnabled" className="ml-2 text-sm text-gray-700">
               Weekly email digest of matching jobs and candidate activity
@@ -618,7 +618,7 @@ export default function SettingsPage() {
                   setPushEnabled(false);
                 }
               }}
-              className="h-4 w-4 text-[#323288] focus:ring-[#f0f0fc]0 border-gray-300 rounded"
+              className="h-4 w-4 text-[#323288] focus:ring-[#f0f0fc] border-gray-300 rounded"
             />
             <label htmlFor="pushEnabled" className="ml-2 text-sm text-gray-700">
               Push notifications for high-scoring matches

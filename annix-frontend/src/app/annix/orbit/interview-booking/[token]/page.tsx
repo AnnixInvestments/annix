@@ -2,11 +2,16 @@
 
 import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { isApiError } from "@/app/lib/api/apiError";
 import { fromISO } from "@/app/lib/datetime";
 import { useAlert } from "@/app/lib/hooks/useAlert";
-import { API_BASE_URL } from "@/lib/api-config";
+import {
+  usePublicBookInterviewSlot,
+  usePublicCancelInterviewBooking,
+  usePublicInterviewBooking,
+} from "@/app/lib/query/hooks";
 
 type LibraryName = "places" | "geocoding";
 const libraries: LibraryName[] = ["places", "geocoding"];
@@ -14,26 +19,28 @@ const libraries: LibraryName[] = ["places", "geocoding"];
 const rawMapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 const GOOGLE_MAPS_API_KEY = rawMapsKey || "";
 
-interface InterviewSlotView {
-  id: number;
-  startsAt: string;
-  endsAt: string;
-  locationLabel: string | null;
-  locationAddress: string | null;
-  locationLat: number | null;
-  locationLng: number | null;
-  capacity: number;
-  notes: string | null;
-  available: boolean;
+const INVALID_LINK_MESSAGE = "This invitation link is no longer valid.";
+const EXPIRED_LINK_MESSAGE = "This invitation link has expired. Ask the company for a new one.";
+const TRANSIENT_LOAD_MESSAGE = "We couldn't load this invitation right now. Please try again.";
+
+interface LoadErrorView {
+  title: string;
+  message: string;
+  recoverable: boolean;
 }
 
-interface InterviewBookingLookupResponse {
-  candidate: { name: string | null; email: string | null; location: string | null };
-  job: { id: number; title: string; location: string | null; province: string | null };
-  currentBooking: { id: number; slotId: number; bookedAt: string } | null;
-  slots: InterviewSlotView[];
-  expiresAt: string;
-}
+const classifyLoadError = (error: unknown): LoadErrorView => {
+  if (isApiError(error)) {
+    const errorStatus = error.status;
+    if (errorStatus === 403) {
+      return { title: "Invitation expired", message: EXPIRED_LINK_MESSAGE, recoverable: false };
+    }
+    if (errorStatus === 404) {
+      return { title: "Invitation unavailable", message: INVALID_LINK_MESSAGE, recoverable: false };
+    }
+  }
+  return { title: "Couldn't load invitation", message: TRANSIENT_LOAD_MESSAGE, recoverable: true };
+};
 
 export default function InterviewBookingPage() {
   const params = useParams<{ token: string }>();
@@ -41,42 +48,26 @@ export default function InterviewBookingPage() {
   const token = rawToken ?? "";
   const { showToast } = useToast();
   const { alert, AlertDialog } = useAlert();
-  const [data, setData] = useState<InterviewBookingLookupResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [submittingSlotId, setSubmittingSlotId] = useState<number | null>(null);
   const [candidateOrigin, setCandidateOrigin] = useState<{ lat: number; lng: number } | null>(null);
   const [travelMinutesBySlotId, setTravelMinutesBySlotId] = useState<Record<number, number>>({});
+
+  const bookingQuery = usePublicInterviewBooking(token);
+  const queryData = bookingQuery.data;
+  const data = queryData ?? null;
+  const loading = bookingQuery.isLoading;
+  const queryError = bookingQuery.error;
+
+  const bookMutation = usePublicBookInterviewSlot(token);
+  const cancelMutation = usePublicCancelInterviewBooking(token);
+  const isBooking = bookMutation.isPending;
+  const isCancelling = cancelMutation.isPending;
+  const bookingSlotId = isBooking ? bookMutation.variables : null;
+  const isMutating = isBooking || isCancelling;
 
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: GOOGLE_MAPS_API_KEY || "placeholder",
     libraries,
   });
-
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(`${API_BASE_URL}/public/annix/orbit/interview-booking/${token}`);
-      if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { message?: string } | null;
-        const message = body ? body.message : null;
-        throw new Error(message || "Couldn't load this invitation.");
-      }
-      const json = (await res.json()) as InterviewBookingLookupResponse;
-      setData(json);
-      setError(null);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Couldn't load this invitation.";
-      setError(message);
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    if (token) void load();
-  }, [token, load]);
 
   const candidateLocationText = useMemo(() => {
     if (!data) return null;
@@ -136,48 +127,29 @@ export default function InterviewBookingPage() {
     );
   }, [isLoaded, candidateOrigin, slotsWithCoords]);
 
-  const handleBook = async (slotId: number) => {
-    setSubmittingSlotId(slotId);
-    try {
-      const res = await fetch(
-        `${API_BASE_URL}/public/annix/orbit/interview-booking/${token}/book/${slotId}`,
-        { method: "POST" },
-      );
-      if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { message?: string } | null;
-        const message = body ? body.message : null;
-        throw new Error(message || "Couldn't book this slot.");
-      }
-      showToast("Interview booked. Check your email for a confirmation.", "success");
-      await load();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Couldn't book this slot.";
-      alert({ message, variant: "error" });
-    } finally {
-      setSubmittingSlotId(null);
-    }
+  const handleBook = (slotId: number) => {
+    bookMutation.mutate(slotId, {
+      onSuccess: () =>
+        showToast("Interview booked. Check your email for a confirmation.", "success"),
+      onError: (err) => {
+        const friendly =
+          isApiError(err) && err.status < 500
+            ? err.message
+            : "Couldn't book this slot — please try again.";
+        alert({ message: friendly, variant: "error" });
+      },
+    });
   };
 
-  const handleCancel = async (bookingId: number) => {
-    setSubmittingSlotId(-1);
-    try {
-      const res = await fetch(
-        `${API_BASE_URL}/public/annix/orbit/interview-booking/${token}/cancel/${bookingId}`,
-        { method: "POST" },
-      );
-      if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { message?: string } | null;
-        const message = body ? body.message : null;
-        throw new Error(message || "Couldn't cancel.");
-      }
-      showToast("Booking cancelled. You can pick a new time below.", "success");
-      await load();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Couldn't cancel.";
-      alert({ message, variant: "error" });
-    } finally {
-      setSubmittingSlotId(null);
-    }
+  const handleCancel = (bookingId: number) => {
+    cancelMutation.mutate(bookingId, {
+      onSuccess: () => showToast("Booking cancelled. You can pick a new time below.", "success"),
+      onError: (err) => {
+        const friendly =
+          isApiError(err) && err.status < 500 ? err.message : "Couldn't cancel — please try again.";
+        alert({ message: friendly, variant: "error" });
+      },
+    });
   };
 
   if (loading) {
@@ -188,12 +160,23 @@ export default function InterviewBookingPage() {
     );
   }
 
-  if (error || !data) {
+  if (queryError || !data) {
+    const view = classifyLoadError(queryError);
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
-          <h1 className="text-xl font-bold text-[#1a1a40] mb-2">Invitation unavailable</h1>
-          <p className="text-sm text-gray-600">{error ?? "Couldn't load this invitation."}</p>
+          <h1 className="text-xl font-bold text-[#1a1a40] mb-2">{view.title}</h1>
+          <p className="text-sm text-gray-600">{view.message}</p>
+          {view.recoverable ? (
+            <button
+              type="button"
+              onClick={() => bookingQuery.refetch()}
+              disabled={bookingQuery.isFetching}
+              className="mt-5 inline-flex items-center gap-2 rounded-lg bg-[#FF8A00] px-5 py-2.5 text-sm font-semibold text-[#1a1a40] shadow-md transition-colors hover:bg-[#FF9C33] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {bookingQuery.isFetching ? "Trying again…" : "Try again"}
+            </button>
+          ) : null}
         </div>
       </div>
     );
@@ -234,10 +217,10 @@ export default function InterviewBookingPage() {
             <button
               type="button"
               onClick={() => handleCancel(currentBooking.id)}
-              disabled={submittingSlotId !== null}
+              disabled={isMutating}
               className="mt-3 text-xs px-3 py-1.5 bg-white border border-emerald-300 text-emerald-800 rounded-lg hover:bg-emerald-100 disabled:opacity-50"
             >
-              Cancel and pick a different time
+              {isCancelling ? "Cancelling…" : "Cancel and pick a different time"}
             </button>
           </div>
         ) : null}
@@ -254,8 +237,7 @@ export default function InterviewBookingPage() {
               {data.slots.map((slot) => {
                 const slotAvailable = slot.available;
                 const isBookedByMe = currentBooking && currentBooking.slotId === slot.id;
-                const isDisabled =
-                  !slotAvailable || submittingSlotId !== null || Boolean(isBookedByMe);
+                const isDisabled = !slotAvailable || isMutating || Boolean(isBookedByMe);
                 const slotLat = slot.locationLat;
                 const slotLng = slot.locationLng;
                 const hasCoords = slotLat !== null && slotLng !== null;
@@ -304,7 +286,7 @@ export default function InterviewBookingPage() {
                             : "bg-[#FF8A00] text-[#1a1a40] hover:bg-[#FF9C33]"
                         }`}
                       >
-                        {submittingSlotId === slot.id
+                        {bookingSlotId === slot.id
                           ? "Booking…"
                           : isBookedByMe
                             ? "Your slot"

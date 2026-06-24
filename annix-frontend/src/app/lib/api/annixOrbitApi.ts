@@ -1493,6 +1493,27 @@ export interface SeekerInterviewInvite {
   } | null;
 }
 
+export interface PublicInterviewSlotView {
+  id: number;
+  startsAt: string;
+  endsAt: string;
+  locationLabel: string | null;
+  locationAddress: string | null;
+  locationLat: number | null;
+  locationLng: number | null;
+  capacity: number;
+  notes: string | null;
+  available: boolean;
+}
+
+export interface PublicInterviewBookingLookup {
+  candidate: { name: string | null; email: string | null; location: string | null };
+  job: { id: number; title: string; location: string | null; province: string | null };
+  currentBooking: { id: number; slotId: number; bookedAt: string } | null;
+  slots: PublicInterviewSlotView[];
+  expiresAt: string;
+}
+
 export interface SeekerInterviewEvent {
   id: number;
   applyClickId: number | null;
@@ -3249,6 +3270,28 @@ class AnnixOrbitApiClient {
 
   async myInterviewInvites(): Promise<SeekerInterviewInvite[]> {
     return this.request("/annix-orbit/me/interview-invites");
+  }
+
+  async publicInterviewBookingLookup(token: string): Promise<PublicInterviewBookingLookup> {
+    return this.request(`/public/annix-orbit/interview-booking/${token}`);
+  }
+
+  async publicBookInterviewSlot(
+    token: string,
+    slotId: number,
+  ): Promise<{ id: number; slotId: number; status: string }> {
+    return this.request(`/public/annix-orbit/interview-booking/${token}/book/${slotId}`, {
+      method: "POST",
+    });
+  }
+
+  async publicCancelInterviewBooking(
+    token: string,
+    bookingId: number,
+  ): Promise<{ cancelled: boolean }> {
+    return this.request(`/public/annix-orbit/interview-booking/${token}/cancel/${bookingId}`, {
+      method: "POST",
+    });
   }
 
   async calendarAdvisory(

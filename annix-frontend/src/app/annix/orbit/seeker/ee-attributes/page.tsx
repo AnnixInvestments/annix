@@ -30,12 +30,13 @@ export default function SeekerEeAttributesPage() {
       {inOnboarding && (
         <div className="rounded-xl border border-[#e0e0f5] bg-white p-5">
           <p className="text-xs font-semibold uppercase tracking-wide text-[#7373c2]">
-            Step 1 of 2
+            Account setup · Step 1 of 2
           </p>
           <h2 className="mt-1 text-lg font-bold text-gray-900">A little about you (optional)</h2>
           <p className="mt-1 text-sm text-gray-600">
             Sharing your Employment Equity details is completely voluntary. It helps employers meet
-            fair-hiring goals, but you can continue without it.
+            fair-hiring goals, but you can continue without it. Next you&apos;ll pick a plan — then
+            we&apos;ll help you build your profile.
           </p>
         </div>
       )}

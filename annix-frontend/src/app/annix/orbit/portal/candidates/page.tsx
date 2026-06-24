@@ -338,7 +338,7 @@ export default function CandidatesPage() {
               id="job-filter"
               value={selectedJob}
               onChange={(e) => setSelectedJob(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
             >
               <option value="all">All Jobs</option>
               {jobs.map((job) => {
@@ -364,7 +364,7 @@ export default function CandidatesPage() {
               max={100}
               value={minScore}
               onChange={(e) => setMinScore(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
             />
           </div>
           <div>
@@ -380,7 +380,7 @@ export default function CandidatesPage() {
               onChange={(e) =>
                 setMaxScore(Math.max(0, Math.min(100, Number(e.target.value) || 100)))
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
             />
           </div>
           <div>

@@ -267,13 +267,13 @@ export default function AnalyticsPage() {
             <DateInput
               value={dateFrom}
               onChange={(value) => handleDateChange(value, dateTo)}
-              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-[#f0f0fc]0"
+              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-[#f0f0fc]0"
             />
             <span className="text-sm text-gray-500">to</span>
             <DateInput
               value={dateTo}
               onChange={(value) => handleDateChange(dateFrom, value)}
-              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-[#f0f0fc]0"
+              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-[#f0f0fc]0"
             />
           </div>
         </div>

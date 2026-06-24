@@ -160,7 +160,7 @@ export default function AnnixOrbitRegisterCompanyPage() {
                 type="text"
                 autoComplete="name"
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
                 placeholder="John Smith"
               />
             </div>
@@ -175,7 +175,7 @@ export default function AnnixOrbitRegisterCompanyPage() {
                 type="email"
                 autoComplete="email"
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
                 placeholder="you@example.com"
               />
             </div>
@@ -190,7 +190,7 @@ export default function AnnixOrbitRegisterCompanyPage() {
                 type="text"
                 autoComplete="organization"
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
                 placeholder="Your Company"
               />
             </div>
@@ -204,7 +204,7 @@ export default function AnnixOrbitRegisterCompanyPage() {
                 name="industry"
                 defaultValue=""
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent bg-white"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent bg-white"
               >
                 <option value="" disabled>
                   Select your industry
@@ -226,7 +226,7 @@ export default function AnnixOrbitRegisterCompanyPage() {
                 name="companySize"
                 defaultValue=""
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent bg-white"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent bg-white"
               >
                 <option value="" disabled>
                   Select company size
@@ -250,7 +250,7 @@ export default function AnnixOrbitRegisterCompanyPage() {
                   autoComplete="address-level1"
                   defaultValue=""
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent bg-white"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent bg-white"
                 >
                   <option value="" disabled>
                     Select province
@@ -272,7 +272,7 @@ export default function AnnixOrbitRegisterCompanyPage() {
                   type="text"
                   autoComplete="address-level2"
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
                   placeholder="Johannesburg"
                 />
               </div>
@@ -289,7 +289,7 @@ export default function AnnixOrbitRegisterCompanyPage() {
                 autoComplete="new-password"
                 required
                 minLength={8}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc] focus:border-transparent"
                 placeholder="At least 8 characters"
               />
             </div>
@@ -301,7 +301,7 @@ export default function AnnixOrbitRegisterCompanyPage() {
                 checked={popiaConsent}
                 onChange={(e) => setPopiaConsent(e.target.checked)}
                 required
-                className="mt-1 h-4 w-4 text-[#323288] focus:ring-[#f0f0fc]0 border-gray-300 rounded"
+                className="mt-1 h-4 w-4 text-[#323288] focus:ring-[#f0f0fc] border-gray-300 rounded"
               />
               <label htmlFor="popiaConsent" className="ml-2 text-sm text-gray-600">
                 I consent to the processing of my personal information in accordance with the{" "}
@@ -316,7 +316,7 @@ export default function AnnixOrbitRegisterCompanyPage() {
             <button
               type="submit"
               disabled={isLoading || !popiaConsent}
-              className="w-full bg-[#323288] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#252560] focus:outline-none focus:ring-2 focus:ring-[#f0f0fc]0 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full bg-[#323288] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#252560] focus:outline-none focus:ring-2 focus:ring-[#f0f0fc] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isLoading ? "Creating account..." : "Create account"}
             </button>

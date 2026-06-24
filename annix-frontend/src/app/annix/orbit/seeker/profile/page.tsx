@@ -4,6 +4,7 @@ import { isArray, isNumber } from "es-toolkit/compat";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import {
   type IndividualDocument,
@@ -11,6 +12,7 @@ import {
   SEEKER_AGE_GROUP_OPTIONS,
 } from "@/app/lib/api/annixOrbitApi";
 import { extractErrorMessage } from "@/app/lib/api/apiError";
+import { metricsApi } from "@/app/lib/api/metricsApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
@@ -29,6 +31,8 @@ import { IndividualDocumentUploader } from "../components/IndividualDocumentUplo
 import { MissingDocsWarningModal } from "../components/MissingDocsWarningModal";
 import { NixWizardPanel } from "../components/NixWizardPanel";
 import { ProfilePhotoAvatar } from "../components/ProfilePhotoAvatar";
+
+const IDENTITY_CHECK_ESTIMATED_MS = 20000;
 
 export default function SeekerProfilePage() {
   const router = useRouter();
@@ -273,8 +277,11 @@ export default function SeekerProfilePage() {
 
       <div className="bg-white rounded-xl border border-gray-200 px-2 py-4 sm:p-6 space-y-3">
         <h2 className="text-sm font-semibold text-gray-800 uppercase tracking-wide">
-          Your checklist
+          Build your profile
         </h2>
+        <p className="text-xs text-gray-500">
+          Account setup is done — these steps get your profile ready for job matching.
+        </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2">
           <StepPill
             num={1}
@@ -657,6 +664,33 @@ function IdentityVerifySection(props: {
   const uploadMutation = useOrbitUploadIdentityDocument();
   const isUploading = uploadMutation.isPending;
   const processing = status === "processing";
+  const { showExtraction, hideExtraction } = useExtractionProgress();
+  const [identityEstimateMs, setIdentityEstimateMs] = useState(IDENTITY_CHECK_ESTIMATED_MS);
+
+  useEffect(() => {
+    metricsApi
+      .extractionStats("annix-orbit-nix-seeker", "identity-document")
+      .then((stats) => {
+        if (stats.averageMs) setIdentityEstimateMs(stats.averageMs);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (processing) {
+      showExtraction({
+        brand: "annix-orbit",
+        label: "Nix is reading your document and checking the names…",
+        estimatedDurationMs: identityEstimateMs,
+        backgroundSafe: true,
+      });
+    } else {
+      hideExtraction();
+    }
+    return () => {
+      hideExtraction();
+    };
+  }, [processing, identityEstimateMs, showExtraction, hideExtraction]);
 
   const handleFile = (file: File) => {
     setError(null);
@@ -700,11 +734,9 @@ function IdentityVerifySection(props: {
         </div>
       ) : null}
       {processing ? (
-        <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-          <div className="h-4 w-4 shrink-0 animate-spin rounded-full border-b-2 border-blue-600" />
-          <span>
-            Nix is reading your document and checking the names — this takes under a minute.
-          </span>
+        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+          Nix is reading your document and checking the names — this takes under a minute. You can
+          keep working in the meantime; we'll update this section automatically when it's done.
         </div>
       ) : null}
       {status === "review" ? (

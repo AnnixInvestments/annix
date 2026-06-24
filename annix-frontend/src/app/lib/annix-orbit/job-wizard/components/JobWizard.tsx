@@ -2,9 +2,8 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { JobPosting, UpdateJobWizardPayload } from "@/app/lib/api/annixOrbitApi";
-import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useOrbitCreateJobDraft, useOrbitJobWizardDraft } from "@/app/lib/query/hooks";
 import { annixOrbitKeys } from "@/app/lib/query/keys";
 import { WIZARD_STEPS, type WizardStepId } from "../constants/wizard-steps";
@@ -30,7 +29,6 @@ export interface JobWizardProps {
 
 export function JobWizard({ jobId }: JobWizardProps) {
   const router = useRouter();
-  const { alert, AlertDialog } = useAlert();
   const queryClient = useQueryClient();
   const createDraft = useOrbitCreateJobDraft();
   const draftQuery = useOrbitJobWizardDraft(jobId);
@@ -49,13 +47,7 @@ export function JobWizard({ jobId }: JobWizardProps) {
     setHighestVisited((prev) => Math.max(prev, step.index));
   }, [step.index]);
 
-  // Bootstrap a draft if no id was passed
-  useEffect(() => {
-    if (jobId != null) {
-      setResolvedId(jobId);
-      return;
-    }
-    if (createTriggeredRef.current) return;
+  const bootstrapDraft = useCallback(() => {
     createTriggeredRef.current = true;
     createDraft
       .mutateAsync()
@@ -66,9 +58,25 @@ export function JobWizard({ jobId }: JobWizardProps) {
         });
       })
       .catch(() => {
-        alert({ message: "Couldn't start a new job draft. Please try again.", variant: "error" });
+        // The error surfaces inline below via createDraft.isError — the company
+        // can retry from there. No blocking alert needed.
       });
-  }, [jobId, createDraft, router, alert]);
+  }, [createDraft, router]);
+
+  // Bootstrap a draft if no id was passed
+  useEffect(() => {
+    if (jobId != null) {
+      setResolvedId(jobId);
+      return;
+    }
+    if (createTriggeredRef.current) return;
+    bootstrapDraft();
+  }, [jobId, bootstrapDraft]);
+
+  const handleRetryBootstrap = () => {
+    createDraft.reset();
+    bootstrapDraft();
+  };
 
   const draftData = draftQuery.data;
   const draft = draftData || null;
@@ -105,11 +113,34 @@ export function JobWizard({ jobId }: JobWizardProps) {
     router.push(`/annix/orbit/portal/jobs?published=${ref}`);
   };
 
+  const bootstrapFailed = jobId == null && resolvedId == null && createDraft.isError;
+  const isRetrying = createDraft.isPending;
+  if (bootstrapFailed) {
+    return (
+      <div className="flex items-center justify-center py-24 px-4">
+        <div className="max-w-md w-full rounded-2xl border border-white/15 bg-white/5 p-8 text-center">
+          <h1 className="text-lg font-bold text-white">We couldn't start your job draft</h1>
+          <p className="mt-2 text-sm text-white/70">
+            Something went wrong while setting up a new posting. Your work isn't lost — give it
+            another try.
+          </p>
+          <button
+            type="button"
+            onClick={handleRetryBootstrap}
+            disabled={isRetrying}
+            className="mt-5 inline-flex items-center gap-2 rounded-lg bg-[#FF8A00] px-5 py-2.5 text-sm font-semibold text-[#1a1a40] shadow-md transition-colors hover:bg-[#FF9C33] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isRetrying ? "Trying again…" : "Try again"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const isLoading = draftQuery.isLoading;
   if (isLoading || !draft) {
     return (
       <div className="flex items-center justify-center py-24">
-        {AlertDialog}
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white" />
       </div>
     );
