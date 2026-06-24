@@ -206,19 +206,19 @@ export default function JobCardDetailPage() {
   });
 
   const nextActionable = useNextActionableJobCard(jobId);
-  const canApproveHere = workflow.canApprove;
-  const canAcceptDraftHere = workflow.canAcceptDraft;
-  const pendingBgStepsHere = workflow.userPendingBgSteps;
-  const userHasPendingActionHere =
-    canApproveHere || canAcceptDraftHere || pendingBgStepsHere.length > 0;
+  // Assignment-based (NOT the admin-overridable workflow.canApprove): an admin can
+  // approve any card, so basing this on canApprove would keep the button hidden on
+  // every card for them. The server's "pending for me" lists only include cards
+  // genuinely awaiting this user.
+  const userHasPendingActionHere = nextActionable.currentCardHasMyAction;
   const currentActionUserName = effectiveName ? effectiveName : authUserName;
   const userActedHere = useMemo(() => {
     if (!currentActionUserName) return false;
-    const approvedHere = approvals.some(
-      (approval) => approval.approvedByName === currentActionUserName,
-    );
+    const me = currentActionUserName.trim().toLowerCase();
+    const nameMatches = (name: string | null) => name !== null && name.trim().toLowerCase() === me;
+    const approvedHere = approvals.some((approval) => nameMatches(approval.approvedByName));
     const completedBgHere = backgroundSteps.some(
-      (step) => step.completedAt !== null && step.completedByName === currentActionUserName,
+      (step) => step.completedAt !== null && nameMatches(step.completedByName),
     );
     return approvedHere || completedBgHere;
   }, [approvals, backgroundSteps, currentActionUserName]);

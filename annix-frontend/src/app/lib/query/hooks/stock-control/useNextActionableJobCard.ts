@@ -34,10 +34,16 @@ export function usePendingBackgroundSteps() {
  * the two existing "pending for me" endpoints. Drives the "Next job card" button
  * on the job-card detail page. Ordered by id ascending, picking the first card
  * after the current one (wrapping to the start) so repeated clicks cycle the queue.
+ *
+ * Also reports `currentCardHasMyAction`: whether the current card is itself in the
+ * user's pending lists. These lists are assignment-based and admin-override-free,
+ * so an admin (who can approve any card) is not falsely treated as having an
+ * action on every card they open.
  */
 export function useNextActionableJobCard(excludeJobCardId: number | null): {
   next: NextActionableJobCard | null;
   remainingCount: number;
+  currentCardHasMyAction: boolean;
 } {
   const approvals = usePendingApprovals();
   const backgroundSteps = usePendingBackgroundSteps();
@@ -48,6 +54,11 @@ export function useNextActionableJobCard(excludeJobCardId: number | null): {
   return useMemo(() => {
     const approvalList = approvalData ? approvalData : [];
     const backgroundList = backgroundData ? backgroundData : [];
+
+    const currentCardHasMyAction =
+      excludeJobCardId !== null &&
+      (approvalList.some((jobCard) => jobCard.id === excludeJobCardId) ||
+        backgroundList.some((step) => step.jobCardId === excludeJobCardId));
 
     const fromApprovals = approvalList
       .filter((jobCard) => jobCard.id !== excludeJobCardId)
@@ -62,7 +73,7 @@ export function useNextActionableJobCard(excludeJobCardId: number | null): {
     );
 
     if (actionable.length === 0) {
-      return { next: null, remainingCount: 0 };
+      return { next: null, remainingCount: 0, currentCardHasMyAction };
     }
 
     const nextHigher =
@@ -71,6 +82,6 @@ export function useNextActionableJobCard(excludeJobCardId: number | null): {
         : actionable.find((card) => card.id > excludeJobCardId);
     const next = nextHigher ? nextHigher : actionable[0];
 
-    return { next, remainingCount: actionable.length };
+    return { next, remainingCount: actionable.length, currentCardHasMyAction };
   }, [approvalData, backgroundData, excludeJobCardId]);
 }
