@@ -168,10 +168,13 @@ export class RubberOrderConfirmationService {
     const totalVat = totalExclusive * vatRate;
     const grandTotal = totalExclusive + totalVat;
 
-    const profileAddress = profile
-      ? ([profile.streetAddress, profile.city, profile.province, profile.postalCode].filter(
-          Boolean,
-        ) as string[])
+    const profileAddress = profile?.address
+      ? ([
+          profile.address.streetAddress,
+          profile.address.city,
+          profile.address.province,
+          profile.address.postalCode,
+        ].filter(Boolean) as string[])
       : [];
     const profilePostalAddress = profile?.postalAddress
       ? profile.postalAddress.split("\n").filter(Boolean)

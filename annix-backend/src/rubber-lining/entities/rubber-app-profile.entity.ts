@@ -1,3 +1,5 @@
+import { Address, ContactDetails } from "../../lib/value-objects";
+
 export class RubberAppProfile {
   id: number;
 
@@ -9,21 +11,13 @@ export class RubberAppProfile {
 
   registrationNumber: string | null;
 
-  streetAddress: string | null;
-
-  city: string | null;
-
-  province: string | null;
-
-  postalCode: string | null;
+  address: Address | null;
 
   postalAddress: string | null;
 
   deliveryAddress: string | null;
 
-  phone: string | null;
-
-  email: string | null;
+  contact: ContactDetails | null;
 
   websiteUrl: string | null;
 

@@ -25,17 +25,13 @@ export class RubberAppProfile {
   @Prop({ type: String, required: false })
   registrationNumber: string;
 
-  @Prop({ type: String, required: false })
-  streetAddress: string;
-
-  @Prop({ type: String, required: false })
-  city: string;
-
-  @Prop({ type: String, required: false })
-  province: string;
-
-  @Prop({ type: String, required: false })
-  postalCode: string;
+  @Prop({ type: Object, required: false })
+  address: {
+    streetAddress: string | null;
+    city: string | null;
+    province: string | null;
+    postalCode: string | null;
+  };
 
   @Prop({ type: String, required: false })
   postalAddress: string;
@@ -43,11 +39,11 @@ export class RubberAppProfile {
   @Prop({ type: String, required: false })
   deliveryAddress: string;
 
-  @Prop({ type: String, required: false })
-  phone: string;
-
-  @Prop({ type: String, required: false })
-  email: string;
+  @Prop({ type: Object, required: false })
+  contact: {
+    phone: string | null;
+    email: string | null;
+  };
 
   @Prop({ type: String, required: false })
   websiteUrl: string;

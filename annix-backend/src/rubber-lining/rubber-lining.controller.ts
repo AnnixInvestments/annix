@@ -41,6 +41,12 @@ import { type SageConfigDto, SageConnectionService } from "../sage-export/sage-c
 import { SageExportService } from "../sage-export/sage-export.service";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import {
+  applyRubberAppProfileDto,
+  RubberAppProfileDto,
+  type RubberAppProfileResponseDto,
+  toRubberAppProfileResponse,
+} from "./dto/rubber-app-profile.dto";
+import {
   CreateAuCocDto,
   CreateDeliveryNoteDto,
   CreateOpeningStockDto,
@@ -126,7 +132,6 @@ import {
   type RubberRollIssuanceDto,
   type RubberRollIssuanceRollDto,
 } from "./dto/rubber-roll-issuance.dto";
-import { RubberAppProfile } from "./entities/rubber-app-profile.entity";
 import { AuCocStatus } from "./entities/rubber-au-coc.entity";
 import { CompanyType } from "./entities/rubber-company.entity";
 import {
@@ -683,27 +688,36 @@ export class RubberLiningController {
   @ApiBearerAuth()
   @Get("portal/app-profile")
   @ApiOperation({ summary: "Get app owner company profile" })
-  async appProfile(): Promise<RubberAppProfile> {
+  async appProfile(): Promise<RubberAppProfileResponseDto> {
     const profile = await this.appProfileRepository.findById(1);
     if (!profile) {
       const newProfile = this.appProfileRepository.build({ id: 1 });
-      return this.appProfileRepository.save(newProfile);
+      const saved = await this.appProfileRepository.save(newProfile);
+      return toRubberAppProfileResponse(saved);
     }
-    return profile;
+    return toRubberAppProfileResponse(profile);
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/app-profile")
   @ApiOperation({ summary: "Update app owner company profile" })
-  async updateAppProfile(@Body() body: Partial<RubberAppProfile>): Promise<RubberAppProfile> {
+  async updateAppProfile(@Body() body: RubberAppProfileDto): Promise<RubberAppProfileResponseDto> {
     const existing = await this.appProfileRepository.findById(1);
     if (!existing) {
-      const newProfile = this.appProfileRepository.build({ id: 1, ...body });
-      return this.appProfileRepository.save(newProfile);
+      const newProfile = this.appProfileRepository.build({
+        id: 1,
+        ...applyRubberAppProfileDto(null, body),
+      });
+      const saved = await this.appProfileRepository.save(newProfile);
+      return toRubberAppProfileResponse(saved);
     }
-    const merged = this.appProfileRepository.mergeInto(existing, body);
-    return this.appProfileRepository.save(merged);
+    const merged = this.appProfileRepository.mergeInto(
+      existing,
+      applyRubberAppProfileDto(existing, body),
+    );
+    const saved = await this.appProfileRepository.save(merged);
+    return toRubberAppProfileResponse(saved);
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
