@@ -8,6 +8,7 @@ import {
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { EmailService } from "../../email/email.service";
+import { encryptField } from "../../lib/field-encryption";
 import { CompanyRepository } from "../../platform/company.repository";
 import { CompanyType } from "../../platform/entities/company.entity";
 import { AppScope } from "../../rbac/app-scope";
@@ -86,7 +87,7 @@ export class AnnixSentinelAuthService {
       companyId: savedUnifiedCompany.id,
       entityType,
       complianceAreas: (dto.complianceAreas as unknown as Record<string, unknown>) ?? null,
-      idNumber: dto.idNumber ?? null,
+      idNumber: encryptField(dto.idNumber ?? null),
       passportNumber: dto.passportNumber ?? null,
       passportCountry: dto.passportCountry ?? null,
       sarsTaxReference: dto.sarsTaxReference ?? null,

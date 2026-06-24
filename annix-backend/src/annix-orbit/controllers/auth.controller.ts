@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Post, Query, Request, UseGuards } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import { AcceptAnnixOrbitTeamInviteDto } from "../dto/annix-orbit-team.dto";
 import {
   ForgotPasswordDto,
@@ -11,13 +12,17 @@ import {
   ResetPasswordDto,
 } from "../dto/auth.dto";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitAuthThrottlerGuard } from "../guards/auth-throttler.guard";
 import { AnnixOrbitAuthService } from "../services/auth.service";
 
 @Controller("annix-orbit/auth")
+@UseGuards(AnnixOrbitAuthThrottlerGuard)
+@Throttle({ default: { limit: 10, ttl: 60000 } })
 export class AnnixOrbitAuthController {
   constructor(private readonly authService: AnnixOrbitAuthService) {}
 
   @Post("register")
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   async register(@Body() dto: RegisterDto) {
     return this.authService.register({
       email: dto.email,
@@ -32,6 +37,7 @@ export class AnnixOrbitAuthController {
   }
 
   @Post("register/recruiter")
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   async registerRecruiter(@Body() dto: RegisterRecruiterDto) {
     return this.authService.registerRecruiter({
       email: dto.email,
@@ -44,6 +50,7 @@ export class AnnixOrbitAuthController {
   }
 
   @Post("register/individual")
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   async registerIndividual(@Body() dto: RegisterIndividualDto) {
     return this.authService.registerIndividual(
       dto.email,
@@ -56,6 +63,7 @@ export class AnnixOrbitAuthController {
   }
 
   @Post("register/student")
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   async registerStudent(@Body() dto: RegisterStudentDto) {
     return this.authService.registerStudent(dto.email, dto.password, dto.name, dto.eeDisclosure);
   }
@@ -66,11 +74,13 @@ export class AnnixOrbitAuthController {
   }
 
   @Post("accept-team-invite")
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   async acceptTeamInvite(@Body() dto: AcceptAnnixOrbitTeamInviteDto) {
     return this.authService.acceptTeamInvite(dto.token, dto.name, dto.password);
   }
 
   @Post("login")
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.password, dto.accountType);
   }
@@ -81,16 +91,19 @@ export class AnnixOrbitAuthController {
   }
 
   @Post("resend-verification")
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   async resendVerification(@Body() dto: ResendVerificationDto) {
     return this.authService.resendVerification(dto.email);
   }
 
   @Post("forgot-password")
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto.email);
   }
 
   @Post("reset-password")
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   async resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto.token, dto.password);
   }

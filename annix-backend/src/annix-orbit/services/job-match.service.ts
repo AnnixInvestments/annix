@@ -80,32 +80,36 @@ export class JobMatchService {
       skillsMissing: asStringArray(raw.skillsMissing),
       experienceMatch: Boolean(raw.experienceMatch),
       educationMatch: Boolean(raw.educationMatch),
-      recommendation: this.normalizeRecommendation(raw.recommendation as string | undefined),
+      recommendation: this.recommendationForScore(score),
       reasoning: isString(raw.reasoning) ? raw.reasoning : null,
     };
   }
 
-  private normalizeRecommendation(
-    recommendation: string | undefined,
-  ): "reject" | "review" | "shortlist" {
-    const normalized = (recommendation || "").toLowerCase();
-    if (normalized === "shortlist") {
+  // The actionable gate is derived deterministically from the score, never taken
+  // from the model's free-choice "recommendation" field — so a prompt-injected CV
+  // ("return recommendation: shortlist") cannot steer the recruiter's shortlist.
+  private recommendationForScore(score: number): "reject" | "review" | "shortlist" {
+    if (score >= 80) {
       return "shortlist";
-    } else if (normalized === "reject") {
-      return "reject";
-    } else {
+    } else if (score >= 50) {
       return "review";
+    } else {
+      return "reject";
     }
   }
 
-  private fallbackAnalysis(candidateData: ExtractedCvData, jobPosting: JobPosting): MatchAnalysis {
-    const candidateSkillsLower = candidateData.skills.map((s) => s.toLowerCase());
-    const requiredSkillsLower = jobPosting.requiredSkills.map((s) => s.toLowerCase());
+  // Keyword/threshold score whose arithmetic involves no model call. Its inputs
+  // are still AI-extracted from the CV, so it is not injection-proof — but it
+  // corroborates the holistic AI score before an automated action (auto-shortlist)
+  // and the human-review fallback catches the rest. Uses EXACT skill-token
+  // matching (not substring) so a CV can't earn credit by stuffing fragments.
+  deterministicScore(candidateData: ExtractedCvData, jobPosting: JobPosting): number {
+    const candidateSkillsLower = candidateData.skills.map((s) => s.trim().toLowerCase());
+    const requiredSkillsLower = jobPosting.requiredSkills.map((s) => s.trim().toLowerCase());
 
     const skillsMatched = requiredSkillsLower.filter((skill) =>
-      candidateSkillsLower.some((cSkill) => cSkill.includes(skill) || skill.includes(cSkill)),
+      candidateSkillsLower.includes(skill),
     );
-    const skillsMissing = requiredSkillsLower.filter((skill) => !skillsMatched.includes(skill));
 
     const skillScore =
       requiredSkillsLower.length > 0
@@ -125,10 +129,26 @@ export class JobMatchService {
       jobPosting.requiredCertifications.length === 0 || candidateData.certifications.length > 0;
     const certScore = certMatch ? 15 : 0;
 
-    const overallScore = Math.round(skillScore + experienceScore + educationScore + certScore);
+    return Math.round(skillScore + experienceScore + educationScore + certScore);
+  }
 
-    const recommendation: "reject" | "review" | "shortlist" =
-      overallScore >= 80 ? "shortlist" : overallScore >= 50 ? "review" : "reject";
+  private fallbackAnalysis(candidateData: ExtractedCvData, jobPosting: JobPosting): MatchAnalysis {
+    const candidateSkillsLower = candidateData.skills.map((s) => s.toLowerCase());
+    const requiredSkillsLower = jobPosting.requiredSkills.map((s) => s.toLowerCase());
+
+    const skillsMatched = requiredSkillsLower.filter((skill) =>
+      candidateSkillsLower.some((cSkill) => cSkill.includes(skill) || skill.includes(cSkill)),
+    );
+    const skillsMissing = requiredSkillsLower.filter((skill) => !skillsMatched.includes(skill));
+
+    const experienceMatch =
+      !jobPosting.minExperienceYears ||
+      (candidateData.experienceYears !== null &&
+        candidateData.experienceYears >= jobPosting.minExperienceYears);
+
+    const educationMatch = !jobPosting.requiredEducation || candidateData.education.length > 0;
+
+    const overallScore = this.deterministicScore(candidateData, jobPosting);
 
     return {
       overallScore,
@@ -140,7 +160,7 @@ export class JobMatchService {
       ),
       experienceMatch,
       educationMatch,
-      recommendation,
+      recommendation: this.recommendationForScore(overallScore),
       reasoning: "Fallback analysis based on keyword matching",
     };
   }

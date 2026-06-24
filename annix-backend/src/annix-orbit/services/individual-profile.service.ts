@@ -11,6 +11,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../../email/email.service";
 import { now } from "../../lib/datetime";
+import { decryptField, encryptField, fieldEncryptionEnabled } from "../../lib/field-encryption";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { UserRepository } from "../../user/user.repository";
 import { isAcceptedDocumentMime, isImageMime } from "../config/individual-documents.config";
@@ -939,41 +940,33 @@ export class IndividualProfileService {
     const registrationName = user
       ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || null
       : null;
+    const cvName = profile.extractedCvData?.candidateName ?? null;
     const verdict = await this.nixSeekerAssistService.identityVerdict({
       registrationName,
-      cvName: profile.extractedCvData?.candidateName ?? null,
+      cvName,
       idSurname: doc.surname,
       idGivenNames: doc.givenNames,
     });
+    const gated = this.gateIdentityVerdict(verdict, doc.surname, doc.givenNames, [
+      registrationName,
+      cvName,
+    ]);
 
-    // POPIA minimisation: a verified seeker's raw document image is deleted
-    // immediately - the extracted fields plus the content hash are enough for
-    // phase 2. Review/mismatch keep it so an admin can look at the actual
-    // document; the retention sweep removes it if never resolved.
-    let documentFilePath: string | null = filePath;
-    if (verdict.verdict === "verified") {
-      try {
-        await this.storageService.delete(filePath);
-        documentFilePath = null;
-      } catch (err) {
-        this.logger.warn(
-          `Failed to delete verified identity document for profile ${profile.id}: ${err}`,
-        );
-      }
-    }
-
+    // The raw ID document is never auto-deleted on an AI verdict - the model is
+    // prompt-injectable, so deletion is gated behind admin confirmation and the
+    // 30-day identity-document retention sweep, never an automated "verified".
     profile.identityVerification = {
-      status: verdict.verdict === "verified" ? "ai-checked" : verdict.verdict,
-      verdict: verdict.verdict,
+      status: gated.status,
+      verdict: gated.verdict,
       confidence: verdict.confidence,
-      reasoning: verdict.reasoning,
+      reasoning: gated.reasoning,
       documentType: doc.documentType,
       surname: doc.surname,
       givenNames: doc.givenNames,
-      idNumber: doc.idNumber,
+      idNumber: this.encryptIdNumber(doc.idNumber),
       dateOfBirth: doc.dateOfBirth,
       documentExpiry: doc.expiry,
-      documentFilePath,
+      documentFilePath: filePath,
       documentHash: pending.documentHash,
       checkedAt: now().toISO(),
       provider: "nix-ai",
@@ -993,22 +986,122 @@ export class IndividualProfileService {
     const registrationName = user
       ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || null
       : null;
+    const cvName = profile.extractedCvData?.candidateName ?? null;
     const verdict = await this.nixSeekerAssistService.identityVerdict({
       registrationName,
-      cvName: profile.extractedCvData?.candidateName ?? null,
+      cvName,
       idSurname: iv.surname,
       idGivenNames: iv.givenNames,
     });
+    const gated = this.gateIdentityVerdict(verdict, iv.surname, iv.givenNames, [
+      registrationName,
+      cvName,
+    ]);
     profile.identityVerification = {
       ...iv,
-      status: verdict.verdict === "verified" ? "ai-checked" : verdict.verdict,
-      verdict: verdict.verdict,
+      status: gated.status,
+      verdict: gated.verdict,
       confidence: verdict.confidence,
-      reasoning: verdict.reasoning,
+      reasoning: gated.reasoning,
       checkedAt: now().toISO(),
       provider: "nix-ai",
     };
     await this.profileRepo.save(profile);
+  }
+
+  private maskIdNumber(idNumber: string | null): string | null {
+    if (!idNumber) return idNumber;
+    const trimmed = idNumber.trim();
+    if (trimmed.length <= 4) {
+      return "•".repeat(trimmed.length);
+    }
+    return `${"•".repeat(trimmed.length - 4)}${trimmed.slice(-4)}`;
+  }
+
+  private encryptIdNumber(idNumber: string | null): string | null {
+    if (!idNumber) {
+      return idNumber;
+    }
+    if (!fieldEncryptionEnabled()) {
+      // Fail closed: never persist special personal information in plaintext.
+      // The ID number is dropped (verification still works on the document +
+      // name match); set FIELD_ENCRYPTION_KEY to capture it encrypted.
+      this.logger.warn(
+        "FIELD_ENCRYPTION_KEY is not set — dropping the identity ID number rather than storing it in plaintext.",
+      );
+      return null;
+    }
+    return encryptField(idNumber);
+  }
+
+  private gateIdentityVerdict(
+    verdict: { verdict: "verified" | "review" | "mismatch"; confidence: number; reasoning: string },
+    idSurname: string | null,
+    idGivenNames: string[],
+    candidateNames: Array<string | null>,
+  ): {
+    status: IdentityVerification["status"];
+    verdict: IdentityVerification["verdict"];
+    reasoning: string;
+  } {
+    if (verdict.verdict !== "verified") {
+      return { status: verdict.verdict, verdict: verdict.verdict, reasoning: verdict.reasoning };
+    }
+    const deterministicMatch = candidateNames.some((name) =>
+      this.nameMatchesIdentity(idSurname, idGivenNames, name),
+    );
+    if (deterministicMatch) {
+      return { status: "ai-checked", verdict: "verified", reasoning: verdict.reasoning };
+    }
+    return {
+      status: "review",
+      verdict: "review",
+      reasoning:
+        `Flagged for manual review: an automated name comparison could not confirm the document name against the registration or CV name. ${verdict.reasoning}`.trim(),
+    };
+  }
+
+  private nameMatchesIdentity(
+    idSurname: string | null,
+    idGivenNames: string[],
+    candidateName: string | null,
+  ): boolean {
+    const candidateTokens = this.nameTokens(candidateName);
+    const surnameTokens = this.nameTokens(idSurname);
+    const givenTokens = idGivenNames.flatMap((given) => this.nameTokens(given));
+    if (candidateTokens.length === 0 || surnameTokens.length === 0 || givenTokens.length === 0) {
+      return false;
+    }
+    const surnameMatch = surnameTokens.every((surname) =>
+      candidateTokens.some((token) => this.tokensCorrespond(token, surname)),
+    );
+    const givenMatch = givenTokens.some((given) =>
+      candidateTokens.some((token) => this.tokensCorrespond(token, given)),
+    );
+    return surnameMatch && givenMatch;
+  }
+
+  private nameTokens(value: string | null): string[] {
+    if (!value) return [];
+    return value
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .split(/[^a-z]+/)
+      .filter((token) => token.length > 0);
+  }
+
+  private tokensCorrespond(a: string, b: string): boolean {
+    if (a === b) return true;
+    if (a.length === 1) return b.startsWith(a);
+    if (b.length === 1) return a.startsWith(b);
+    if (a.length === b.length && a.length >= 5) {
+      const differences = [...a].filter((char, index) => char !== b[index]).length;
+      return differences <= 1;
+    }
+    const shorter = a.length < b.length ? a : b;
+    const longer = a.length < b.length ? b : a;
+    return shorter.length >= 4 && longer.length - shorter.length <= 2 && longer.startsWith(shorter);
   }
 
   // Admin review queue (issue #359): every identity check that landed on
@@ -1054,7 +1147,7 @@ export class IndividualProfileService {
         registrationName,
         email: user?.email ?? null,
         cvName: profile.extractedCvData?.candidateName ?? null,
-        identity: iv,
+        identity: { ...iv, idNumber: this.maskIdNumber(decryptField(iv.idNumber)) },
         documentUrl,
       });
     }

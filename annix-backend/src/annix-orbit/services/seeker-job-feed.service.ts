@@ -14,6 +14,7 @@ import {
 } from "@nestjs/common";
 import { DateTime, fromJSDate, nowMillis } from "../../lib/datetime";
 import { dialCodeForCountry, formatInternationalPhone } from "../../lib/dial-codes";
+import { maskEmail } from "../../lib/pii-log";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { UserRepository } from "../../user/user.repository";
@@ -1574,7 +1575,9 @@ export class SeekerJobFeedService {
     await Promise.all(
       candidates.map((candidate) => this.candidateRepo.updateMatchTier(candidate.id, tier)),
     );
-    this.logger.log(`Set match tier "${tier}" for ${candidates.length} candidate(s) of ${email}`);
+    this.logger.log(
+      `Set match tier "${tier}" for ${candidates.length} candidate(s) of ${maskEmail(email)}`,
+    );
     return { candidatesAffected: candidates.length, matchTier: tier };
   }
 
@@ -1597,7 +1600,9 @@ export class SeekerJobFeedService {
     await Promise.all(
       candidates.map((candidate) => this.candidateRepo.setTrial(candidate.id, tier, trialEndsAt)),
     );
-    this.logger.log(`Granted "${tier}" trial (${freeDays}d) to ${candidates.length} of ${email}`);
+    this.logger.log(
+      `Granted "${tier}" trial (${freeDays}d) to ${candidates.length} of ${maskEmail(email)}`,
+    );
     return { candidatesAffected: candidates.length, trialEndsAt: trialEndsAt.toISOString() };
   }
 }

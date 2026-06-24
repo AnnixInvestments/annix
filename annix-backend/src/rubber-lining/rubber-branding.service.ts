@@ -1,4 +1,9 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import {
+  assertSafeOutboundUrl,
+  safeFetch,
+  UnsafeOutboundUrlError,
+} from "../lib/safe-outbound-fetch";
 import { PuppeteerPoolService } from "../shared/services/puppeteer-pool.service";
 
 export interface CandidateImage {
@@ -21,7 +26,24 @@ export class RubberBrandingService {
 
   constructor(private readonly puppeteerPool: PuppeteerPoolService) {}
 
+  private async assertSafeOutboundUrl(rawUrl: string): Promise<void> {
+    try {
+      await assertSafeOutboundUrl(rawUrl);
+    } catch (err) {
+      throw err instanceof UnsafeOutboundUrlError ? new BadRequestException("Invalid URL") : err;
+    }
+  }
+
+  private async safeFetch(url: string, init: RequestInit): Promise<Response> {
+    try {
+      return await safeFetch(url, init);
+    } catch (err) {
+      throw err instanceof UnsafeOutboundUrlError ? new BadRequestException("Invalid URL") : err;
+    }
+  }
+
   async scrapeCandidates(websiteUrl: string): Promise<ScrapedBrandingCandidates> {
+    await this.assertSafeOutboundUrl(websiteUrl);
     let puppeteerResult: ScrapedBrandingCandidates | null = null;
     try {
       this.logger.log(`Starting candidate scrape for ${websiteUrl}`);
@@ -55,7 +77,7 @@ export class RubberBrandingService {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 15000);
 
-      const response = await fetch(websiteUrl, {
+      const response = await this.safeFetch(websiteUrl, {
         signal: controller.signal,
         headers: {
           "User-Agent":
@@ -672,7 +694,7 @@ export class RubberBrandingService {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10000);
 
-      const response = await fetch(url, {
+      const response = await this.safeFetch(url, {
         signal: controller.signal,
         headers: {
           "User-Agent":

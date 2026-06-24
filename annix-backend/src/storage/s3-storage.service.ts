@@ -7,6 +7,7 @@ import {
   HeadObjectCommand,
   PutBucketCorsCommand,
   PutObjectCommand,
+  PutPublicAccessBlockCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -21,7 +22,7 @@ export class S3StorageService implements IStorageService, OnModuleInit {
   private readonly logger = new Logger(S3StorageService.name);
   private readonly s3Client: S3Client;
   private readonly bucketName: string;
-  private readonly serverSideEncryption: "aws:kms" | "AES256" | null;
+  private readonly serverSideEncryption: "aws:kms" | "AES256";
   private readonly kmsKeyId: string | null;
   private readonly regionName: string;
   private readonly presignedUrlExpiration: number;
@@ -30,8 +31,11 @@ export class S3StorageService implements IStorageService, OnModuleInit {
   constructor(private configService: ConfigService) {
     this.regionName = this.configService.get<string>("AWS_REGION") || "af-south-1";
     this.bucketName = this.configService.get<string>("AWS_S3_BUCKET") || "annix-sync-files";
+    // Encryption at rest is mandatory. AES256 (SSE-S3) is the default and needs
+    // no KMS key or extra permissions; set AWS_S3_SSE="aws:kms" (+ AWS_S3_KMS_KEY_ID)
+    // for a customer-managed key.
     const sse = this.configService.get<string>("AWS_S3_SSE");
-    this.serverSideEncryption = sse === "aws:kms" || sse === "AES256" ? sse : null;
+    this.serverSideEncryption = sse === "aws:kms" ? "aws:kms" : "AES256";
     this.kmsKeyId = this.configService.get<string>("AWS_S3_KMS_KEY_ID") || null;
     // 1 hour default
     this.presignedUrlExpiration = this.configService.get<number>("AWS_S3_URL_EXPIRATION") || 3600;
@@ -96,12 +100,14 @@ export class S3StorageService implements IStorageService, OnModuleInit {
       );
       this.logger.log(`S3 bucket '${this.bucketName}' created successfully`);
 
+      await this.blockPublicAccess();
       await this.configureCors();
       this.initialized = true;
     } catch (error: unknown) {
       const s3Error = this.parseS3Error(error);
       if (s3Error.name === "BucketAlreadyOwnedByYou") {
         this.logger.log(`S3 bucket '${this.bucketName}' already exists (owned by you)`);
+        await this.blockPublicAccess();
         await this.configureCors();
         this.initialized = true;
       } else if (s3Error.name === "BucketAlreadyExists") {
@@ -113,6 +119,26 @@ export class S3StorageService implements IStorageService, OnModuleInit {
         this.logger.error(`Failed to create S3 bucket: ${s3Error.message}`);
         throw error;
       }
+    }
+  }
+
+  private async blockPublicAccess(): Promise<void> {
+    try {
+      await this.s3Client.send(
+        new PutPublicAccessBlockCommand({
+          Bucket: this.bucketName,
+          PublicAccessBlockConfiguration: {
+            BlockPublicAcls: true,
+            IgnorePublicAcls: true,
+            BlockPublicPolicy: true,
+            RestrictPublicBuckets: true,
+          },
+        }),
+      );
+      this.logger.log(`Public access blocked for bucket '${this.bucketName}'`);
+    } catch (error: unknown) {
+      const s3Error = this.parseS3Error(error);
+      this.logger.warn(`Could not block public access: ${s3Error.message}`);
     }
   }
 
@@ -179,14 +205,11 @@ export class S3StorageService implements IStorageService, OnModuleInit {
           originalFilename: encodeURIComponent(file.originalname),
           uploadedAt: nowISO(),
         },
-        // Server-side encryption is opt-in via env so environments without a
-        // KMS key keep working: AWS_S3_SSE = "aws:kms" | "AES256", with an
-        // optional AWS_S3_KMS_KEY_ID for a customer-managed key.
-        ...(this.serverSideEncryption
-          ? {
-              ServerSideEncryption: this.serverSideEncryption,
-              ...(this.kmsKeyId ? { SSEKMSKeyId: this.kmsKeyId } : {}),
-            }
+        // Encryption at rest is always applied (AES256 by default, KMS when
+        // configured) so PII like uploaded ID documents is never stored in clear.
+        ServerSideEncryption: this.serverSideEncryption,
+        ...(this.serverSideEncryption === "aws:kms" && this.kmsKeyId
+          ? { SSEKMSKeyId: this.kmsKeyId }
           : {}),
       });
 

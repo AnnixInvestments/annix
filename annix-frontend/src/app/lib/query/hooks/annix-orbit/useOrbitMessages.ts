@@ -14,7 +14,7 @@ export function useOrbitDraftMessage() {
 
 export function useOrbitSendMessage() {
   return useMutation({
-    mutationFn: (dto: { to: string; subject: string; body: string }) =>
+    mutationFn: (dto: { to: string; subject: string; body: string; candidateId?: number | null }) =>
       annixOrbitApiClient.sendMessage(dto),
   });
 }

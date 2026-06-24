@@ -11,6 +11,7 @@ import { JwtService } from "@nestjs/jwt";
 import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../../email/email.service";
 import { now } from "../../lib/datetime";
+import { maskEmail } from "../../lib/pii-log";
 import { CompanyRepository } from "../../platform/company.repository";
 import {
   AppRepository,
@@ -135,7 +136,9 @@ export class AnnixOrbitAuthService {
       const signup = await this.earlyAccessRepo.findByEmailNormalized(email.trim().toLowerCase());
       invitedEnv = signup ? signup.invitedEnv : null;
     } catch (error) {
-      this.logger.warn(`Could not check invited environment for ${email}: ${String(error)}`);
+      this.logger.warn(
+        `Could not check invited environment for ${maskEmail(email)}: ${String(error)}`,
+      );
       return;
     }
     if (!invitedEnv) {

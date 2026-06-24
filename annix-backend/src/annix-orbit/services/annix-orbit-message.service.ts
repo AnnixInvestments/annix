@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { EmailService } from "../../email/email.service";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
@@ -7,6 +7,7 @@ import {
   DraftAnnixOrbitMessageDto,
   SendAnnixOrbitMessageDto,
 } from "../dto/annix-orbit-message.dto";
+import { AnnixOrbitTalentCandidateService } from "./annix-orbit-talent-candidate.service";
 
 const TEMPLATE_INTENTS: Record<string, string> = {
   request_documents:
@@ -27,6 +28,7 @@ export class AnnixOrbitMessageService {
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
     private readonly metrics: ExtractionMetricService,
+    private readonly talentCandidateService: AnnixOrbitTalentCandidateService,
   ) {}
 
   async draft(dto: DraftAnnixOrbitMessageDto): Promise<{ body: string }> {
@@ -55,18 +57,39 @@ export class AnnixOrbitMessageService {
     return { body: content.trim() };
   }
 
-  async send(dto: SendAnnixOrbitMessageDto): Promise<{ sent: boolean; simulated: boolean }> {
+  async send(
+    dto: SendAnnixOrbitMessageDto,
+    companyId: number,
+  ): Promise<{ sent: boolean; simulated: boolean }> {
+    const recipient = await this.resolveRecipient(dto, companyId);
     const isProduction = this.configService.get<string>("NODE_ENV") === "production";
     if (!isProduction) {
       return { sent: false, simulated: true };
     }
     const ok = await this.emailService.sendEmail({
-      to: dto.to,
+      to: recipient,
       subject: dto.subject,
       text: dto.body,
       html: dto.body.replace(/\n/g, "<br/>"),
       isTransactional: false,
     });
     return { sent: ok, simulated: false };
+  }
+
+  private async resolveRecipient(
+    dto: SendAnnixOrbitMessageDto,
+    companyId: number,
+  ): Promise<string> {
+    if (dto.candidateId == null) {
+      return dto.to;
+    }
+    const candidate = await this.talentCandidateService.findByIdForCompany(
+      dto.candidateId,
+      companyId,
+    );
+    if (!candidate.email) {
+      throw new BadRequestException("This candidate has no email address on file.");
+    }
+    return candidate.email;
   }
 }

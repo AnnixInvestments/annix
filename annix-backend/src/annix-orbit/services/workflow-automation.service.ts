@@ -21,6 +21,7 @@ import { formatMatchExplanation } from "./match-explanation";
 import { ReferenceService } from "./reference.service";
 
 const POPIA_RETENTION_MONTHS = 12;
+const AUTO_SHORTLIST_CORROBORATION_FLOOR = 50;
 
 @Injectable()
 export class WorkflowAutomationService {
@@ -150,14 +151,39 @@ export class WorkflowAutomationService {
 
       const score = candidate.matchScore;
       if (score !== null && score !== undefined && score >= jobPosting.autoAcceptThreshold) {
-        await this.autoShortlistCandidate(candidate);
-        await this.cvAuditService.logScreeningDecision(
-          candidate.id,
-          jobPosting.id,
-          "auto_shortlisted",
-          [`score ${score} >= auto-accept threshold ${jobPosting.autoAcceptThreshold}`],
-          null,
-        );
+        // The AI score is prompt-injectable via the CV, so a high score alone
+        // never auto-shortlists. A keyword/threshold score must also corroborate
+        // it (raising the bar from "one hidden instruction" to "actually claim
+        // the role's requirements"); otherwise the candidate is held for human
+        // review, which is the real safety net.
+        const deterministic = candidate.extractedData
+          ? this.jobMatchService.deterministicScore(candidate.extractedData, jobPosting)
+          : 0;
+        if (deterministic >= AUTO_SHORTLIST_CORROBORATION_FLOOR) {
+          await this.autoShortlistCandidate(candidate);
+          await this.cvAuditService.logScreeningDecision(
+            candidate.id,
+            jobPosting.id,
+            "auto_shortlisted",
+            [
+              `AI score ${score} >= threshold ${jobPosting.autoAcceptThreshold}; deterministic score ${deterministic} corroborates`,
+            ],
+            null,
+          );
+        } else {
+          await this.cvAuditService.logScreeningDecision(
+            candidate.id,
+            jobPosting.id,
+            "acknowledged",
+            [
+              `AI score ${score} >= threshold but deterministic score ${deterministic} < ${AUTO_SHORTLIST_CORROBORATION_FLOOR} — held for human review`,
+            ],
+            null,
+          );
+          this.logger.warn(
+            `Candidate ${candidate.id} AI score ${score} not corroborated (deterministic ${deterministic}) — auto-shortlist withheld`,
+          );
+        }
       }
     }
   }

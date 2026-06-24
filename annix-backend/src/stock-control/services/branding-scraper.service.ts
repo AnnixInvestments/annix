@@ -1,44 +1,12 @@
-import { lookup } from "node:dns/promises";
-import { isIP } from "node:net";
 import { BadRequestException, Inject, Injectable, Logger } from "@nestjs/common";
 import sharp from "sharp";
+import {
+  assertSafeOutboundUrl,
+  safeFetch,
+  UnsafeOutboundUrlError,
+} from "../../lib/safe-outbound-fetch";
 import { PuppeteerPoolService } from "../../shared/services/puppeteer-pool.service";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
-
-const BLOCKED_HOSTNAMES = new Set(["localhost", "metadata.google.internal", "metadata"]);
-
-function isPrivateIpv4(ip: string): boolean {
-  const parts = ip.split(".").map((p) => Number.parseInt(p, 10));
-  if (parts.length !== 4 || parts.some((p) => Number.isNaN(p))) {
-    return true;
-  }
-  const [a, b] = parts;
-  if (a === 10) return true;
-  if (a === 127) return true;
-  if (a === 0) return true;
-  if (a === 169 && b === 254) return true;
-  if (a === 172 && b >= 16 && b <= 31) return true;
-  if (a === 192 && b === 168) return true;
-  if (a >= 224) return true;
-  return false;
-}
-
-function isPrivateIpv6(ip: string): boolean {
-  const normalized = ip.toLowerCase().split("%")[0];
-  if (normalized === "::1" || normalized === "::") return true;
-  if (normalized.startsWith("fe80")) return true;
-  if (normalized.startsWith("fc") || normalized.startsWith("fd")) return true;
-  const mapped = normalized.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-  if (mapped) return isPrivateIpv4(mapped[1]);
-  return false;
-}
-
-function isBlockedIp(ip: string): boolean {
-  const family = isIP(ip);
-  if (family === 4) return isPrivateIpv4(ip);
-  if (family === 6) return isPrivateIpv6(ip);
-  return true;
-}
 
 export interface CandidateImage {
   url: string;
@@ -71,60 +39,19 @@ export class BrandingScraperService {
   ) {}
 
   private async assertSafeOutboundUrl(rawUrl: string): Promise<void> {
-    let parsed: URL;
     try {
-      parsed = new URL(rawUrl);
-    } catch {
-      throw new BadRequestException("Invalid URL");
-    }
-
-    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-      throw new BadRequestException("Invalid URL");
-    }
-
-    const hostname = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, "");
-
-    if (BLOCKED_HOSTNAMES.has(hostname)) {
-      throw new BadRequestException("Invalid URL");
-    }
-
-    if (isIP(hostname) !== 0) {
-      if (isBlockedIp(hostname)) {
-        throw new BadRequestException("Invalid URL");
-      }
-      return;
-    }
-
-    const resolved = await this.resolveHostname(hostname);
-    if (resolved.length === 0 || resolved.some((address) => isBlockedIp(address))) {
-      throw new BadRequestException("Invalid URL");
-    }
-  }
-
-  private async resolveHostname(hostname: string): Promise<string[]> {
-    try {
-      const records = await lookup(hostname, { all: true });
-      return records.map((record) => record.address);
-    } catch {
-      throw new BadRequestException("Invalid URL");
+      await assertSafeOutboundUrl(rawUrl);
+    } catch (err) {
+      throw err instanceof UnsafeOutboundUrlError ? new BadRequestException("Invalid URL") : err;
     }
   }
 
   private async safeFetch(url: string, init: RequestInit): Promise<Response> {
-    await this.assertSafeOutboundUrl(url);
-
-    const response = await fetch(url, { ...init, redirect: "manual" });
-
-    if (response.status >= 300 && response.status < 400) {
-      const location = response.headers.get("location");
-      if (!location) {
-        return response;
-      }
-      const nextUrl = new URL(location, url).href;
-      return this.safeFetch(nextUrl, init);
+    try {
+      return await safeFetch(url, init);
+    } catch (err) {
+      throw err instanceof UnsafeOutboundUrlError ? new BadRequestException("Invalid URL") : err;
     }
-
-    return response;
   }
 
   async scrapeCandidates(websiteUrl: string): Promise<ScrapedBrandingCandidates> {

@@ -1,4 +1,5 @@
-import { IsArray, IsObject, IsOptional } from "class-validator";
+import { Type } from "class-transformer";
+import { ArrayMaxSize, IsArray, IsObject, IsOptional, ValidateNested } from "class-validator";
 import { OptionalString, RequiredString } from "../../lib/dto/validation-decorators";
 
 export class SeekerAssistantMessageDto {
@@ -15,6 +16,9 @@ export class SeekerAssistantChatDto {
 
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(20)
+  @ValidateNested({ each: true })
+  @Type(() => SeekerAssistantMessageDto)
   history?: SeekerAssistantMessageDto[];
 
   @IsOptional()

@@ -259,6 +259,32 @@ function normaliseCorrectionKey(value: string): string {
   return value.trim().toLowerCase();
 }
 
+const MAX_CORRECTION_EXAMPLE_CHARS = 120;
+
+function sanitiseCorrectionText(value: string): string {
+  return [...value]
+    .filter((ch) => {
+      const code = ch.charCodeAt(0);
+      return (
+        code >= 0x20 &&
+        code !== 0x7f &&
+        code !== 0x3c &&
+        code !== 0x3e &&
+        !(code >= 0x80 && code <= 0x9f) &&
+        !(code >= 0x200b && code <= 0x200f) &&
+        !(code >= 0x202a && code <= 0x202e) &&
+        !(code >= 0x2066 && code <= 0x2069) &&
+        code !== 0xfeff
+      );
+    })
+    .join("")
+    .replaceAll('"', "")
+    .replaceAll("\\", "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, MAX_CORRECTION_EXAMPLE_CHARS);
+}
+
 // Deterministic guard so a role's place never appears twice (e.g. employer
 // "Selfridges - London" alongside location "London, UK") — a tell that flags
 // AI-built CVs. When the location's leading city token is also tacked onto the
@@ -316,7 +342,7 @@ export class NixSeekerAssistService {
 
   private async credentialCorrectionExamples(): Promise<string[]> {
     try {
-      const rules = await this.learningRepo.findActiveCorrectionsByCategoryTopByConfidence(
+      const rules = await this.learningRepo.findActiveAdminCorrectionsByCategoryTopByConfidence(
         CREDENTIAL_LEARNING_CATEGORY,
         12,
       );
@@ -324,9 +350,12 @@ export class NixSeekerAssistService {
         .filter((rule) => rule.originalValue && rule.learnedValue)
         .map((rule) => {
           const context = rule.context as { field?: string } | undefined;
-          const fieldLabel = context?.field ? context.field : "value";
-          return `for ${fieldLabel}, "${rule.originalValue}" should be "${rule.learnedValue}"`;
-        });
+          const fieldLabel = sanitiseCorrectionText(context?.field ? context.field : "value");
+          const original = sanitiseCorrectionText(rule.originalValue ?? "");
+          const learned = sanitiseCorrectionText(rule.learnedValue);
+          return `for ${fieldLabel}, "${original}" should be "${learned}"`;
+        })
+        .filter((example) => example.length > 0);
     } catch (err) {
       this.logger.warn(
         `Failed to load credential correction examples: ${

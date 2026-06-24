@@ -1,5 +1,6 @@
 import { Global, Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
+import { AuthModule } from "../auth/auth.module";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
 import { CertificateController } from "./certificate.controller";
 import { CertificateRepository } from "./certificate.repository";
@@ -34,6 +35,7 @@ import { PlatformInvoiceSchema } from "./schemas/platform-invoice.schema";
 @Global()
 @Module({
   imports: [
+    AuthModule,
     MongooseModule.forFeature([
       { name: "Company", schema: CompanySchema },
       { name: "CompanyModuleSubscription", schema: CompanyModuleSubscriptionSchema },

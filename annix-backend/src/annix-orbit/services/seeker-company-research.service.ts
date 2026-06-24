@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { safeFetch } from "../../lib/safe-outbound-fetch";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 
@@ -92,10 +93,9 @@ export class SeekerCompanyResearchService {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
-      const response = await fetch(url, {
+      const response = await safeFetch(url, {
         signal: controller.signal,
         headers: { "User-Agent": "AnnixOrbit/1.0 (+https://annix.co.za)" },
-        redirect: "follow",
       });
       if (!response.ok) return null;
       const html = await response.text();

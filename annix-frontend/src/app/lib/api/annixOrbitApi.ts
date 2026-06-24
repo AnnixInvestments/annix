@@ -2263,6 +2263,7 @@ class AnnixOrbitApiClient {
     to: string;
     subject: string;
     body: string;
+    candidateId?: number | null;
   }): Promise<{ sent: boolean; simulated: boolean }> {
     return this.request("/annix-orbit/messages/send", {
       method: "POST",

@@ -6,7 +6,10 @@ import {
   CreateAnnixOrbitTeamInviteDto,
   UpdateAnnixOrbitMemberRoleDto,
 } from "../dto/annix-orbit-team.dto";
-import type { AnnixOrbitRecruiterRole } from "../entities/annix-orbit-profile.entity";
+import {
+  type AnnixOrbitRecruiterRole,
+  ORBIT_RECRUITER_ROLES,
+} from "../entities/annix-orbit-profile.entity";
 import { AnnixOrbitCompanyRepository } from "../repositories/annix-orbit-company.repository";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import { AnnixOrbitTeamInviteRepository } from "../repositories/annix-orbit-team-invite.repository";
@@ -30,6 +33,19 @@ export class AnnixOrbitTeamService {
   private assertCanManage(actor: AnnixOrbitTeamActor): void {
     if (!actor.recruiterRole || !MANAGE_ROLES.includes(actor.recruiterRole)) {
       throw new ForbiddenException("Only an agency owner or manager can manage the team.");
+    }
+  }
+
+  private assertCanAssignRole(
+    actor: AnnixOrbitTeamActor,
+    targetRole: AnnixOrbitRecruiterRole,
+  ): void {
+    const actorRank = actor.recruiterRole
+      ? ORBIT_RECRUITER_ROLES.indexOf(actor.recruiterRole)
+      : ORBIT_RECRUITER_ROLES.length;
+    const targetRank = ORBIT_RECRUITER_ROLES.indexOf(targetRole);
+    if (targetRank < 0 || targetRank < actorRank) {
+      throw new ForbiddenException("You can't assign a role more senior than your own.");
     }
   }
 
@@ -58,6 +74,7 @@ export class AnnixOrbitTeamService {
     dto: CreateAnnixOrbitTeamInviteDto,
   ) {
     this.assertCanManage(actor);
+    this.assertCanAssignRole(actor, dto.recruiterRole as AnnixOrbitRecruiterRole);
     const token = uuidv4();
     const expiresAt = now().plus({ days: 7 }).toISO();
     await this.inviteRepo.create({
@@ -83,6 +100,7 @@ export class AnnixOrbitTeamService {
     dto: UpdateAnnixOrbitMemberRoleDto,
   ) {
     this.assertCanManage(actor);
+    this.assertCanAssignRole(actor, dto.recruiterRole as AnnixOrbitRecruiterRole);
     const profile = await this.profileRepo.findByUserId(targetUserId);
     if (!profile || profile.companyId !== companyId) {
       throw new BadRequestException("That teammate is not part of your agency.");

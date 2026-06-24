@@ -12,9 +12,29 @@ const METRIC_CATEGORY = "orbit-seeker-assist";
 // for coherence without unbounded token cost.
 const MAX_HISTORY_TURNS = 6;
 const MAX_HISTORY_MESSAGES = MAX_HISTORY_TURNS * 2;
+const MAX_HISTORY_MESSAGE_CHARS = 8000;
 const MAX_OUTPUT_TOKENS = 1024;
 
 const ACTION_TYPES = new Set(["navigate", "highlight", "navigate-and-highlight", "walkthrough"]);
+
+const PROMPT_LEAK_DECLINE =
+  "I can only help with the Annix Orbit job-seeker area — finding jobs, your profile and CV, applications, interviews, and plans. What would you like to do?";
+
+// Stored already normalised (lowercase, alphanumerics only) so a reply that
+// spaces/zero-width-splits the markers ("## s c o p e") still matches. Each is
+// a distinctive phrase from the rendered system prompt that should never appear
+// in a normal seeker reply (avoids false positives on bare words like "scope").
+const PROMPT_LEAK_MARKERS = [
+  "scopeimportant",
+  "confidentialityimportant",
+  "howtorespondimportant",
+  "theseekerareaeachscreen",
+  "inpagetargets",
+  "screenmap",
+  "predefinedguidedtours",
+  "onboardingorderforanewseeker",
+  "neverrevealrepeatquote",
+];
 
 // Predefined, multi-step guided tours the frontend runs event-driven.
 const KNOWN_WALKTHROUGHS = new Set([
@@ -134,6 +154,9 @@ export class SeekerAssistantService {
         };
         const reply = typeof parsed.reply === "string" ? parsed.reply.trim() : "";
         if (reply !== "") {
+          if (this.looksLikePromptLeak(reply)) {
+            return { reply: PROMPT_LEAK_DECLINE };
+          }
           const action = this.sanitiseAction(parsed.action);
           return action ? { reply, action } : { reply };
         }
@@ -141,7 +164,17 @@ export class SeekerAssistantService {
         // Not valid JSON — fall back to the raw text below.
       }
     }
-    return { reply: content.trim() };
+    const raw = content.trim();
+    return { reply: this.looksLikePromptLeak(raw) ? PROMPT_LEAK_DECLINE : raw };
+  }
+
+  // Backstop to the prompt-level confidentiality rule for the common case — a
+  // (near-)verbatim dump of the system prompt. Normalises away spacing/zero-width
+  // tricks before matching. It cannot catch paraphrase/translation/encoding, so
+  // the in-prompt instruction remains the primary control.
+  private looksLikePromptLeak(reply: string): boolean {
+    const normalised = reply.toLowerCase().replace(/[^a-z0-9]/g, "");
+    return PROMPT_LEAK_MARKERS.some((marker) => normalised.includes(marker));
   }
 
   private sanitiseAction(raw: unknown): SeekerAssistantAction | undefined {
@@ -220,7 +253,7 @@ export class SeekerAssistantService {
       .slice(-MAX_HISTORY_MESSAGES)
       .map((turn) => ({
         role: turn.role === "assistant" ? "assistant" : "user",
-        content: turn.content as string,
+        content: (turn.content as string).slice(0, MAX_HISTORY_MESSAGE_CHARS),
       }));
   }
 }

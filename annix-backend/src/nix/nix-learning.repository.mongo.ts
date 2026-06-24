@@ -81,6 +81,25 @@ export class MongoNixLearningRepository
     );
   }
 
+  async findActiveAdminCorrectionsByCategoryTopByConfidence(
+    category: string,
+    limit: number,
+  ): Promise<NixLearning[]> {
+    return this.toDomainList(
+      await this.documents
+        .find({
+          learningType: LearningType.CORRECTION,
+          category,
+          isActive: true,
+          source: LearningSource.ADMIN_SEEDED,
+        })
+        .sort({ confidence: -1 })
+        .limit(limit)
+        .lean()
+        .exec(),
+    );
+  }
+
   async findOneCorrectionByPatternKeyCategoryAndValue(
     patternKey: string,
     category: string,

@@ -14,6 +14,10 @@ export abstract class NixLearningRepository extends CrudRepository<NixLearning> 
     category: string,
     limit: number,
   ): Promise<NixLearning[]>;
+  abstract findActiveAdminCorrectionsByCategoryTopByConfidence(
+    category: string,
+    limit: number,
+  ): Promise<NixLearning[]>;
   abstract findOneCorrectionByPatternKeyCategoryAndValue(
     patternKey: string,
     category: string,

@@ -1,4 +1,9 @@
-import { OptionalString, RequiredString } from "../../lib/dto/validation-decorators";
+import {
+  OptionalInt,
+  OptionalString,
+  RequiredEmail,
+  RequiredString,
+} from "../../lib/dto/validation-decorators";
 
 export class DraftAnnixOrbitMessageDto {
   @RequiredString({ maxLength: 40 })
@@ -15,12 +20,15 @@ export class DraftAnnixOrbitMessageDto {
 }
 
 export class SendAnnixOrbitMessageDto {
-  @RequiredString({ maxLength: 255 })
+  @RequiredEmail({ maxLength: 255 })
   to: string;
 
-  @RequiredString({ maxLength: 255 })
+  @RequiredString({ maxLength: 200 })
   subject: string;
 
-  @RequiredString({ maxLength: 20000 })
+  @RequiredString({ maxLength: 8000 })
   body: string;
+
+  @OptionalInt({ min: 1 })
+  candidateId?: number | null;
 }

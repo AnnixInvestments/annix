@@ -205,13 +205,17 @@ export default function PublicJobPostingPage() {
   const mailtoLink = applyEmail ? `mailto:${applyEmail}?subject=${mailtoSubject}` : null;
 
   const jobPostingSchema = buildJobPostingSchema(job);
+  const jobPostingJsonLd = JSON.stringify(jobPostingSchema)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026");
 
   return (
     <div className="min-h-screen">
       <script
         type="application/ld+json"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD structured data for Google for Jobs indexing
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingSchema) }}
+        dangerouslySetInnerHTML={{ __html: jobPostingJsonLd }}
       />
       <header className="bg-white/10 backdrop-blur border-b border-white/20">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">

@@ -67,6 +67,7 @@ export default function RecruiterMessagesPage() {
   const firstTemplate = TEMPLATES[0];
   const [templateKey, setTemplateKey] = useState(firstTemplate.key);
   const [candidateName, setCandidateName] = useState("");
+  const [candidateId, setCandidateId] = useState<number | null>(null);
   const [to, setTo] = useState("");
   const [role, setRole] = useState("");
   const [notes, setNotes] = useState("");
@@ -98,13 +99,20 @@ export default function RecruiterMessagesPage() {
   const onPickCandidate = (value: string) => {
     if (!value) {
       setCandidateName("");
+      setCandidateId(null);
       return;
     }
     const found = candidates.find((c) => c.id === Number(value));
     if (found) {
       setCandidateName(found.fullName);
+      setCandidateId(found.id);
       if (found.email) setTo(found.email);
     }
+  };
+
+  const onChangeRecipient = (value: string) => {
+    setTo(value);
+    setCandidateId(null);
   };
 
   const fillFromTemplate = () => {
@@ -146,6 +154,7 @@ export default function RecruiterMessagesPage() {
         to: to.trim(),
         subject: subject.trim(),
         body,
+        candidateId,
       });
       if (result.simulated) {
         showToast("Send simulated (non-production) — no email was actually sent.", "info");
@@ -275,10 +284,16 @@ export default function RecruiterMessagesPage() {
               id="ms-to"
               type="email"
               value={to}
-              onChange={(e) => setTo(e.target.value)}
+              onChange={(e) => onChangeRecipient(e.target.value)}
               className={inputClasses}
               placeholder="candidate@example.com"
             />
+            {candidateId !== null && (
+              <p className="mt-1 text-xs text-gray-500">
+                Linked to {candidateName || "the selected candidate"} — sends to their email on
+                file.
+              </p>
+            )}
           </div>
 
           <div>
