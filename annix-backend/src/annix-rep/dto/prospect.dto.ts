@@ -16,8 +16,10 @@ import {
   OptionalString,
   RequiredString,
 } from "../../lib/dto/validation-decorators";
+import type { User } from "../../user/entities/user.entity";
 import {
   FollowUpRecurrence,
+  Prospect,
   ProspectActivityType,
   ProspectPriority,
   ProspectStatus,
@@ -172,6 +174,18 @@ export class ProspectResponseDto {
   @ApiPropertyOptional()
   longitude: number | null;
 
+  @ApiPropertyOptional()
+  googlePlaceId: string | null;
+
+  @ApiPropertyOptional()
+  discoverySource: string | null;
+
+  @ApiPropertyOptional()
+  discoveredAt: Date | null;
+
+  @ApiPropertyOptional()
+  externalId: string | null;
+
   @ApiProperty({ enum: ProspectStatus })
   status: ProspectStatus;
 
@@ -188,6 +202,15 @@ export class ProspectResponseDto {
   estimatedValue: number | null;
 
   @ApiPropertyOptional()
+  crmExternalId: string | null;
+
+  @ApiPropertyOptional()
+  crmSyncStatus: string | null;
+
+  @ApiPropertyOptional()
+  crmLastSyncedAt: Date | null;
+
+  @ApiPropertyOptional()
   lastContactedAt: Date | null;
 
   @ApiPropertyOptional()
@@ -196,11 +219,88 @@ export class ProspectResponseDto {
   @ApiProperty({ enum: FollowUpRecurrence })
   followUpRecurrence: FollowUpRecurrence;
 
+  @ApiPropertyOptional()
+  customFields: Record<string, unknown> | null;
+
+  @ApiProperty()
+  score: number;
+
+  @ApiPropertyOptional()
+  scoreUpdatedAt: Date | null;
+
+  @ApiPropertyOptional()
+  assignedToId: number | null;
+
+  @ApiPropertyOptional()
+  organizationId: number | null;
+
+  @ApiPropertyOptional()
+  territoryId: number | null;
+
+  @ApiProperty()
+  isSharedWithTeam: boolean;
+
+  @ApiProperty()
+  sharedNotesVisible: boolean;
+
   @ApiProperty()
   createdAt: Date;
 
   @ApiProperty()
   updatedAt: Date;
+}
+
+export function toProspectResponse(prospect: Prospect): ProspectResponseDto {
+  return {
+    id: prospect.id,
+    ownerId: prospect.ownerId,
+    companyName: prospect.companyName,
+    contactName: prospect.contactName,
+    contactEmail: prospect.contactEmail,
+    contactPhone: prospect.contactPhone,
+    contactTitle: prospect.contactTitle,
+    streetAddress: prospect.address?.streetAddress ?? null,
+    city: prospect.address?.city ?? null,
+    province: prospect.address?.province ?? null,
+    postalCode: prospect.address?.postalCode ?? null,
+    country: prospect.country,
+    latitude: prospect.latitude,
+    longitude: prospect.longitude,
+    googlePlaceId: prospect.googlePlaceId,
+    discoverySource: prospect.discoverySource,
+    discoveredAt: prospect.discoveredAt,
+    externalId: prospect.externalId,
+    status: prospect.status,
+    priority: prospect.priority,
+    notes: prospect.notes,
+    tags: prospect.tags,
+    estimatedValue: prospect.estimatedValue,
+    crmExternalId: prospect.crmExternalId,
+    crmSyncStatus: prospect.crmSyncStatus,
+    crmLastSyncedAt: prospect.crmLastSyncedAt,
+    lastContactedAt: prospect.lastContactedAt,
+    nextFollowUpAt: prospect.nextFollowUpAt,
+    followUpRecurrence: prospect.followUpRecurrence,
+    customFields: prospect.customFields,
+    score: prospect.score,
+    scoreUpdatedAt: prospect.scoreUpdatedAt,
+    assignedToId: prospect.assignedToId,
+    organizationId: prospect.organizationId,
+    territoryId: prospect.territoryId,
+    isSharedWithTeam: prospect.isSharedWithTeam,
+    sharedNotesVisible: prospect.sharedNotesVisible,
+    createdAt: prospect.createdAt,
+    updatedAt: prospect.updatedAt,
+  };
+}
+
+export type TerritoryProspectResponseDto = ProspectResponseDto & { owner: User | null };
+
+export function toTerritoryProspectResponse(prospect: Prospect): TerritoryProspectResponseDto {
+  return {
+    ...toProspectResponse(prospect),
+    owner: prospect.owner ?? null,
+  };
 }
 
 export class NearbyProspectsQueryDto {

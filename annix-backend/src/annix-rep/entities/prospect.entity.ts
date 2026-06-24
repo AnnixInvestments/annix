@@ -1,3 +1,4 @@
+import { Address } from "../../lib/value-objects";
 import { User } from "../../user/entities/user.entity";
 import { Organization } from "./organization.entity";
 import { Territory } from "./territory.entity";
@@ -43,13 +44,7 @@ export class Prospect {
 
   contactTitle: string | null;
 
-  streetAddress: string | null;
-
-  city: string | null;
-
-  province: string | null;
-
-  postalCode: string | null;
+  address: Address | null;
 
   country: string;
 

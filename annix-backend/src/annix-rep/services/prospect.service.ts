@@ -36,10 +36,7 @@ export class ProspectService {
       contactEmail: dto.contactEmail ?? null,
       contactPhone: dto.contactPhone ?? null,
       contactTitle: dto.contactTitle ?? null,
-      streetAddress: address.streetAddress,
-      city: address.city,
-      province: address.province,
-      postalCode: address.postalCode,
+      address,
       country: dto.country ?? "South Africa",
       latitude: dto.latitude ?? null,
       longitude: dto.longitude ?? null,
@@ -109,16 +106,12 @@ export class ProspectService {
       dto.province != null ||
       dto.postalCode != null
     ) {
-      const address = Address.fromParts({
-        streetAddress: dto.streetAddress ?? prospect.streetAddress,
-        city: dto.city ?? prospect.city,
-        province: dto.province ?? prospect.province,
-        postalCode: dto.postalCode ?? prospect.postalCode,
+      updateData.address = Address.fromParts({
+        streetAddress: dto.streetAddress ?? prospect.address?.streetAddress ?? null,
+        city: dto.city ?? prospect.address?.city ?? null,
+        province: dto.province ?? prospect.address?.province ?? null,
+        postalCode: dto.postalCode ?? prospect.address?.postalCode ?? null,
       });
-      if (dto.streetAddress != null) updateData.streetAddress = address.streetAddress;
-      if (dto.city != null) updateData.city = address.city;
-      if (dto.province != null) updateData.province = address.province;
-      if (dto.postalCode != null) updateData.postalCode = address.postalCode;
     }
     if (dto.country != null) updateData.country = dto.country ?? "South Africa";
     if (dto.latitude != null) updateData.latitude = dto.latitude ?? null;
@@ -356,10 +349,10 @@ export class ProspectService {
         escapeField(p.contactEmail),
         escapeField(p.contactPhone),
         escapeField(p.contactTitle),
-        escapeField(p.streetAddress),
-        escapeField(p.city),
-        escapeField(p.province),
-        escapeField(p.postalCode),
+        escapeField(p.address?.streetAddress ?? null),
+        escapeField(p.address?.city ?? null),
+        escapeField(p.address?.province ?? null),
+        escapeField(p.address?.postalCode ?? null),
         escapeField(p.country),
         p.latitude ?? "",
         p.longitude ?? "",
@@ -479,10 +472,7 @@ export class ProspectService {
           contactEmail: row.contactEmail?.trim() ?? null,
           contactPhone: row.contactPhone?.trim() ?? null,
           contactTitle: row.contactTitle?.trim() ?? null,
-          streetAddress: address.streetAddress,
-          city: address.city,
-          province: address.province,
-          postalCode: address.postalCode,
+          address,
           country: row.country?.trim() ?? "South Africa",
           status: status || ProspectStatus.NEW,
           priority: priority || ProspectPriority.MEDIUM,
@@ -550,16 +540,12 @@ export class ProspectService {
         dto.fieldOverrides.province ||
         dto.fieldOverrides.postalCode
       ) {
-        const address = Address.fromParts({
-          streetAddress: dto.fieldOverrides.streetAddress ?? primary.streetAddress,
-          city: dto.fieldOverrides.city ?? primary.city,
-          province: dto.fieldOverrides.province ?? primary.province,
-          postalCode: dto.fieldOverrides.postalCode ?? primary.postalCode,
+        primary.address = Address.fromParts({
+          streetAddress: dto.fieldOverrides.streetAddress ?? primary.address?.streetAddress ?? null,
+          city: dto.fieldOverrides.city ?? primary.address?.city ?? null,
+          province: dto.fieldOverrides.province ?? primary.address?.province ?? null,
+          postalCode: dto.fieldOverrides.postalCode ?? primary.address?.postalCode ?? null,
         });
-        if (dto.fieldOverrides.streetAddress) primary.streetAddress = address.streetAddress;
-        if (dto.fieldOverrides.city) primary.city = address.city;
-        if (dto.fieldOverrides.province) primary.province = address.province;
-        if (dto.fieldOverrides.postalCode) primary.postalCode = address.postalCode;
       }
       if (dto.fieldOverrides.priority) primary.priority = dto.fieldOverrides.priority;
       if (dto.fieldOverrides.estimatedValue != null) {
@@ -661,8 +647,8 @@ export class ProspectService {
       prospect.contactName ? 2 : 0,
       prospect.contactEmail ? 2 : 0,
       prospect.contactPhone ? 1 : 0,
-      prospect.streetAddress ? 1 : 0,
-      prospect.city ? 1 : 0,
+      prospect.address?.streetAddress ? 1 : 0,
+      prospect.address?.city ? 1 : 0,
       prospect.notes ? 1 : 0,
     ].reduce((sum, val) => sum + val, 0);
 

@@ -16,6 +16,10 @@ import { Request } from "express";
 import { AnnixRepAuthGuard, AnnixRepUser } from "../auth";
 import { TeamRoleGuard, TeamRoles } from "../auth/guards/team-role.guard";
 import {
+  type TerritoryProspectResponseDto,
+  toTerritoryProspectResponse,
+} from "../dto/prospect.dto";
+import {
   AssignTerritoryDto,
   CreateTerritoryDto,
   TerritoryResponseDto,
@@ -108,7 +112,8 @@ export class TerritoryController {
 
   @Get(":id/prospects")
   @ApiOperation({ summary: "Get prospects in territory" })
-  prospects(@Param("id", ParseIntPipe) id: number) {
-    return this.territoryService.prospectsInTerritory(id);
+  async prospects(@Param("id", ParseIntPipe) id: number): Promise<TerritoryProspectResponseDto[]> {
+    const prospects = await this.territoryService.prospectsInTerritory(id);
+    return prospects.map(toTerritoryProspectResponse);
   }
 }

@@ -63,6 +63,7 @@ export {
   UpdateMeetingDto,
   UpdateRecurringMeetingDto,
 } from "./meeting.dto";
+export type { TerritoryProspectResponseDto } from "./prospect.dto";
 export {
   BulkDeleteDto,
   BulkDeleteResponseDto,
@@ -79,6 +80,8 @@ export {
   NearbyProspectsQueryDto,
   ProspectActivityResponseDto,
   ProspectResponseDto,
+  toProspectResponse,
+  toTerritoryProspectResponse,
   UpdateProspectDto,
 } from "./prospect.dto";
 export {

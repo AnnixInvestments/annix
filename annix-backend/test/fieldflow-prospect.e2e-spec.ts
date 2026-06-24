@@ -4,6 +4,7 @@ import request from "supertest";
 import { AnnixRepModule } from "../src/annix-rep/annix-rep.module";
 import { Prospect, ProspectPriority, ProspectStatus } from "../src/annix-rep/entities";
 import { ProspectRepository } from "../src/annix-rep/prospect.repository";
+import { Address } from "../src/lib/value-objects";
 import { User } from "../src/user/entities/user.entity";
 import { UserRepository } from "../src/user/user.repository";
 
@@ -24,8 +25,7 @@ describe("ProspectController (e2e)", () => {
     contactName: "John Doe",
     contactEmail: "john@example.com",
     contactPhone: "+27123456789",
-    city: "Johannesburg",
-    province: "Gauteng",
+    address: Address.fromParts({ city: "Johannesburg", province: "Gauteng" }),
     country: "South Africa",
     status: ProspectStatus.NEW,
     priority: ProspectPriority.MEDIUM,

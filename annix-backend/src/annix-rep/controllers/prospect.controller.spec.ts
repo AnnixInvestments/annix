@@ -1,7 +1,9 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { fromISO } from "../../lib/datetime";
+import { Address } from "../../lib/value-objects";
 import { AnnixRepAuthGuard } from "../auth";
+import { toProspectResponse } from "../dto";
 import { FollowUpRecurrence, Prospect, ProspectPriority, ProspectStatus } from "../entities";
 import { ProspectActivityService, ProspectService } from "../services";
 import { ProspectController } from "./prospect.controller";
@@ -31,10 +33,12 @@ describe("ProspectController", () => {
       contactEmail: "john@example.com",
       contactPhone: "0821234567",
       contactTitle: "Procurement Manager",
-      streetAddress: "10 Main Rd",
-      city: "Johannesburg",
-      province: "Gauteng",
-      postalCode: "2000",
+      address: Address.fromParts({
+        streetAddress: "10 Main Rd",
+        city: "Johannesburg",
+        province: "Gauteng",
+        postalCode: "2000",
+      }),
       country: "South Africa",
       latitude: -26.2041,
       longitude: 28.0473,
@@ -141,7 +145,7 @@ describe("ProspectController", () => {
 
       const result = await controller.create(mockRequest as any, dto);
 
-      expect(result).toEqual(created);
+      expect(result).toEqual(toProspectResponse(created));
       expect(prospectService.create).toHaveBeenCalledWith(OWNER_ID, dto);
     });
   });
@@ -153,7 +157,7 @@ describe("ProspectController", () => {
 
       const result = await controller.findAll(mockRequest as any);
 
-      expect(result).toEqual(prospects);
+      expect(result).toEqual(prospects.map(toProspectResponse));
       expect(prospectService.findAll).toHaveBeenCalledWith(OWNER_ID);
     });
 
@@ -173,7 +177,7 @@ describe("ProspectController", () => {
 
       const result = await controller.findByStatus(mockRequest as any, ProspectStatus.QUALIFIED);
 
-      expect(result).toEqual(prospects);
+      expect(result).toEqual(prospects.map(toProspectResponse));
       expect(prospectService.findByStatus).toHaveBeenCalledWith(OWNER_ID, ProspectStatus.QUALIFIED);
     });
   });
@@ -191,7 +195,7 @@ describe("ProspectController", () => {
         "10",
       );
 
-      expect(result).toEqual(prospects);
+      expect(result).toEqual(prospects.map(toProspectResponse));
       expect(prospectService.findNearby).toHaveBeenCalledWith(OWNER_ID, {
         latitude: -26.2041,
         longitude: 28.0473,
@@ -240,7 +244,7 @@ describe("ProspectController", () => {
 
       const result = await controller.followUpsDue(mockRequest as any);
 
-      expect(result).toEqual(prospects);
+      expect(result).toEqual(prospects.map(toProspectResponse));
       expect(prospectService.followUpsDue).toHaveBeenCalledWith(OWNER_ID);
     });
   });
@@ -272,7 +276,12 @@ describe("ProspectController", () => {
 
       const result = await controller.findDuplicates(mockRequest as any);
 
-      expect(result).toEqual(duplicates);
+      expect(result).toEqual(
+        duplicates.map((group) => ({
+          ...group,
+          prospects: group.prospects.map(toProspectResponse),
+        })),
+      );
       expect(prospectService.findDuplicates).toHaveBeenCalledWith(OWNER_ID);
     });
   });
@@ -344,7 +353,7 @@ describe("ProspectController", () => {
       const dto = { primaryId: 1, mergeIds: [2, 3] };
       const result = await controller.mergeProspects(mockRequest as any, dto);
 
-      expect(result).toEqual(merged);
+      expect(result).toEqual(toProspectResponse(merged));
       expect(prospectService.mergeProspects).toHaveBeenCalledWith(OWNER_ID, dto);
     });
   });
@@ -493,7 +502,7 @@ describe("ProspectController", () => {
 
       const result = await controller.findOne(mockRequest as any, 1);
 
-      expect(result).toEqual(prospect);
+      expect(result).toEqual(toProspectResponse(prospect));
       expect(prospectService.findOne).toHaveBeenCalledWith(OWNER_ID, 1);
     });
   });
@@ -506,7 +515,7 @@ describe("ProspectController", () => {
       const dto = { companyName: "Updated Name" };
       const result = await controller.update(mockRequest as any, 1, dto);
 
-      expect(result).toEqual(updated);
+      expect(result).toEqual(toProspectResponse(updated));
       expect(prospectService.update).toHaveBeenCalledWith(OWNER_ID, 1, dto);
     });
   });
@@ -518,7 +527,7 @@ describe("ProspectController", () => {
 
       const result = await controller.updateStatus(mockRequest as any, 1, ProspectStatus.QUALIFIED);
 
-      expect(result).toEqual(updated);
+      expect(result).toEqual(toProspectResponse(updated));
       expect(prospectService.updateStatus).toHaveBeenCalledWith(
         OWNER_ID,
         1,
@@ -534,7 +543,7 @@ describe("ProspectController", () => {
 
       const result = await controller.markContacted(mockRequest as any, 1);
 
-      expect(result).toEqual(contacted);
+      expect(result).toEqual(toProspectResponse(contacted));
       expect(prospectService.markContacted).toHaveBeenCalledWith(OWNER_ID, 1);
     });
   });
@@ -546,7 +555,7 @@ describe("ProspectController", () => {
 
       const result = await controller.completeFollowUp(mockRequest as any, 1);
 
-      expect(result).toEqual(completed);
+      expect(result).toEqual(toProspectResponse(completed));
       expect(prospectService.completeFollowUp).toHaveBeenCalledWith(OWNER_ID, 1);
     });
   });
@@ -560,7 +569,7 @@ describe("ProspectController", () => {
 
       const result = await controller.snoozeFollowUp(mockRequest as any, 1, { days: 3 });
 
-      expect(result).toEqual(snoozed);
+      expect(result).toEqual(toProspectResponse(snoozed));
       expect(prospectService.snoozeFollowUp).toHaveBeenCalledWith(OWNER_ID, 1, 3);
     });
   });
@@ -573,6 +582,89 @@ describe("ProspectController", () => {
 
       expect(result).toBeUndefined();
       expect(prospectService.remove).toHaveBeenCalledWith(OWNER_ID, 1);
+    });
+  });
+
+  describe("flat response contract", () => {
+    it("should expose address fields flat at the top level with their values", async () => {
+      prospectService.findOne.mockResolvedValue(mockProspect());
+
+      const result = (await controller.findOne(mockRequest as any, 1)) as unknown as Record<
+        string,
+        unknown
+      >;
+
+      expect(result.streetAddress).toBe("10 Main Rd");
+      expect(result.city).toBe("Johannesburg");
+      expect(result.province).toBe("Gauteng");
+      expect(result.postalCode).toBe("2000");
+    });
+
+    it("should not expose a nested address key", async () => {
+      prospectService.findOne.mockResolvedValue(mockProspect());
+
+      const result = (await controller.findOne(mockRequest as any, 1)) as unknown as Record<
+        string,
+        unknown
+      >;
+
+      expect(result).not.toHaveProperty("address");
+    });
+
+    it("should keep contact fields flat and present", async () => {
+      prospectService.findOne.mockResolvedValue(mockProspect());
+
+      const result = (await controller.findOne(mockRequest as any, 1)) as unknown as Record<
+        string,
+        unknown
+      >;
+
+      expect(result.contactName).toBe("John Doe");
+      expect(result.contactEmail).toBe("john@example.com");
+      expect(result.contactPhone).toBe("0821234567");
+      expect(result.contactTitle).toBe("Procurement Manager");
+    });
+
+    it("should not leak owner/organization/territory relations", async () => {
+      prospectService.findOne.mockResolvedValue(mockProspect());
+
+      const result = (await controller.findOne(mockRequest as any, 1)) as unknown as Record<
+        string,
+        unknown
+      >;
+
+      expect(result).not.toHaveProperty("owner");
+      expect(result).not.toHaveProperty("organization");
+      expect(result).not.toHaveProperty("territory");
+    });
+
+    it("should map null address fields to null when address is absent", async () => {
+      prospectService.findOne.mockResolvedValue(mockProspect({ address: null }));
+
+      const result = (await controller.findOne(mockRequest as any, 1)) as unknown as Record<
+        string,
+        unknown
+      >;
+
+      expect(result.streetAddress).toBeNull();
+      expect(result.city).toBeNull();
+      expect(result.province).toBeNull();
+      expect(result.postalCode).toBeNull();
+    });
+
+    it("should produce flat entries for every item in a list response", async () => {
+      prospectService.findAll.mockResolvedValue([mockProspect({ id: 1 }), mockProspect({ id: 2 })]);
+
+      const result = (await controller.findAll(mockRequest as any)) as unknown as Array<
+        Record<string, unknown>
+      >;
+
+      expect(result).toHaveLength(2);
+      result.forEach((item) => {
+        expect(item.streetAddress).toBe("10 Main Rd");
+        expect(item).not.toHaveProperty("address");
+        expect(item).not.toHaveProperty("owner");
+      });
     });
   });
 });

@@ -1,4 +1,5 @@
 import { fromISO } from "../../lib/datetime";
+import { Address } from "../../lib/value-objects";
 import type { Meeting, Prospect } from "../entities";
 import { PipedriveAdapter } from "./pipedrive.adapter";
 
@@ -17,10 +18,12 @@ describe("PipedriveAdapter", () => {
     contactEmail: "john@example.com",
     contactPhone: "+27821234567",
     contactTitle: "Buyer",
-    streetAddress: "456 Industrial Rd",
-    city: "Pretoria",
-    province: "Gauteng",
-    postalCode: "0001",
+    address: Address.fromParts({
+      streetAddress: "456 Industrial Rd",
+      city: "Pretoria",
+      province: "Gauteng",
+      postalCode: "0001",
+    }),
     country: "South Africa",
     notes: null,
     status: "contacted" as any,

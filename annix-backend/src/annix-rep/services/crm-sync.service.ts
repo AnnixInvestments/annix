@@ -402,17 +402,13 @@ export class CrmSyncService {
     if (contact.phone) {
       prospect.contactPhone = contact.phone;
     }
-    if (contact.address) {
-      prospect.streetAddress = contact.address;
-    }
-    if (contact.city) {
-      prospect.city = contact.city;
-    }
-    if (contact.state) {
-      prospect.province = contact.state;
-    }
-    if (contact.postalCode) {
-      prospect.postalCode = contact.postalCode;
+    if (contact.address || contact.city || contact.state || contact.postalCode) {
+      prospect.address = Address.fromParts({
+        streetAddress: contact.address ?? prospect.address?.streetAddress ?? null,
+        city: contact.city ?? prospect.address?.city ?? null,
+        province: contact.state ?? prospect.address?.province ?? null,
+        postalCode: contact.postalCode ?? prospect.address?.postalCode ?? null,
+      });
     }
     if (contact.country) {
       prospect.country = contact.country;
@@ -443,10 +439,7 @@ export class CrmSyncService {
       contactName: contact.contactName,
       contactEmail: contact.email,
       contactPhone: contact.phone,
-      streetAddress: address.streetAddress,
-      city: address.city,
-      province: address.province,
-      postalCode: address.postalCode,
+      address,
       country: contact.country ?? "South Africa",
       notes: contact.notes,
       status: this.mapContactStatusToProspectStatus(contact.status),

@@ -653,10 +653,10 @@ export class RoutePlanningService {
 
   private formatAddress(prospect: Prospect): string {
     const parts = [
-      prospect.streetAddress,
-      prospect.city,
-      prospect.province,
-      prospect.postalCode,
+      prospect.address?.streetAddress,
+      prospect.address?.city,
+      prospect.address?.province,
+      prospect.address?.postalCode,
     ].filter(Boolean);
 
     return parts.join(", ");

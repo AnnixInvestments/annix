@@ -1,6 +1,7 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { fromISO } from "../../lib/datetime";
+import { Address } from "../../lib/value-objects";
 import { FollowUpRecurrence, Prospect, ProspectPriority, ProspectStatus } from "../entities";
 import { ProspectRepository } from "../prospect.repository";
 import { ProspectService } from "./prospect.service";
@@ -23,10 +24,12 @@ describe("ProspectService", () => {
       contactEmail: "john@example.com",
       contactPhone: "0821234567",
       contactTitle: "Procurement Manager",
-      streetAddress: "10 Main Rd",
-      city: "Johannesburg",
-      province: "Gauteng",
-      postalCode: "2000",
+      address: Address.fromParts({
+        streetAddress: "10 Main Rd",
+        city: "Johannesburg",
+        province: "Gauteng",
+        postalCode: "2000",
+      }),
       country: "South Africa",
       latitude: -26.2041,
       longitude: 28.0473,
@@ -139,8 +142,10 @@ describe("ProspectService", () => {
         followUpRecurrence: FollowUpRecurrence.WEEKLY,
       };
 
+      const { streetAddress, city, province, postalCode, ...dtoRest } = dto;
       const created = mockProspect({
-        ...dto,
+        ...dtoRest,
+        address: Address.fromParts({ streetAddress, city, province, postalCode }),
         nextFollowUpAt: fromISO(dto.nextFollowUpAt).toJSDate(),
       });
       (mockRepo.create as jest.Mock).mockResolvedValue(created);
@@ -991,8 +996,7 @@ describe("ProspectService", () => {
         contactName: null,
         contactEmail: null,
         contactPhone: null,
-        streetAddress: null,
-        city: null,
+        address: Address.fromParts({}),
         notes: null,
       });
 
@@ -1053,8 +1057,7 @@ describe("ProspectService", () => {
         contactName: "Full",
         contactEmail: "full@example.com",
         contactPhone: "111",
-        streetAddress: "123 St",
-        city: "JHB",
+        address: Address.fromParts({ streetAddress: "123 St", city: "JHB" }),
         notes: "Complete",
       });
 
@@ -1073,8 +1076,7 @@ describe("ProspectService", () => {
         contactName: null,
         contactEmail: null,
         contactPhone: null,
-        streetAddress: null,
-        city: null,
+        address: Address.fromParts({}),
         notes: null,
       });
 
@@ -1093,8 +1095,7 @@ describe("ProspectService", () => {
         contactName: null,
         contactEmail: null,
         contactPhone: null,
-        streetAddress: null,
-        city: null,
+        address: Address.fromParts({}),
         notes: null,
       });
       const complete = mockProspect({
@@ -1106,8 +1107,7 @@ describe("ProspectService", () => {
         contactName: "John",
         contactEmail: "john@example.com",
         contactPhone: "111",
-        streetAddress: "123 St",
-        city: "JHB",
+        address: Address.fromParts({ streetAddress: "123 St", city: "JHB" }),
         notes: "Some notes",
       });
 

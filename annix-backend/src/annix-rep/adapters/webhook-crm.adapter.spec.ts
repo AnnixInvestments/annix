@@ -1,4 +1,5 @@
 import { fromISO } from "../../lib/datetime";
+import { Address } from "../../lib/value-objects";
 import type { Meeting, Prospect } from "../entities";
 import type { CrmAdapterConfig } from "./crm-adapter.interface";
 import { WebhookCrmAdapter } from "./webhook-crm.adapter";
@@ -31,10 +32,12 @@ describe("WebhookCrmAdapter", () => {
     contactEmail: "john@example.com",
     contactPhone: "+27821234567",
     contactTitle: null,
-    streetAddress: "123 Main St",
-    city: "Johannesburg",
-    province: "Gauteng",
-    postalCode: "2000",
+    address: Address.fromParts({
+      streetAddress: "123 Main St",
+      city: "Johannesburg",
+      province: "Gauteng",
+      postalCode: "2000",
+    }),
     country: "South Africa",
     notes: null,
     status: "new" as any,

@@ -1,4 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { Address } from "../../lib/value-objects";
 import { MeetingStatus } from "../entities/meeting.entity";
 import { Prospect, ProspectPriority, ProspectStatus } from "../entities/prospect.entity";
 import { MeetingRepository } from "../meeting.repository";
@@ -213,10 +214,12 @@ describe("RoutePlanningService", () => {
     describe("formatAddress", () => {
       it("should combine address parts", () => {
         const prospect = {
-          streetAddress: "123 Main St",
-          city: "Johannesburg",
-          province: "Gauteng",
-          postalCode: "2000",
+          address: Address.fromParts({
+            streetAddress: "123 Main St",
+            city: "Johannesburg",
+            province: "Gauteng",
+            postalCode: "2000",
+          }),
         } as Prospect;
 
         const address = service["formatAddress"](prospect);
@@ -227,10 +230,12 @@ describe("RoutePlanningService", () => {
 
       it("should filter out null values", () => {
         const prospect = {
-          streetAddress: null,
-          city: "Johannesburg",
-          province: null,
-          postalCode: "2000",
+          address: Address.fromParts({
+            streetAddress: null,
+            city: "Johannesburg",
+            province: null,
+            postalCode: "2000",
+          }),
         } as Prospect;
 
         const address = service["formatAddress"](prospect);
@@ -241,10 +246,12 @@ describe("RoutePlanningService", () => {
 
       it("should handle empty address", () => {
         const prospect = {
-          streetAddress: null,
-          city: null,
-          province: null,
-          postalCode: null,
+          address: Address.fromParts({
+            streetAddress: null,
+            city: null,
+            province: null,
+            postalCode: null,
+          }),
         } as Prospect;
 
         const address = service["formatAddress"](prospect);

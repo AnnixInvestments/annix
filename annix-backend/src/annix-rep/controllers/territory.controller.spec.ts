@@ -1,7 +1,9 @@
 import { ForbiddenException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
+import { Address } from "../../lib/value-objects";
 import { AnnixRepAuthGuard } from "../auth";
 import { TeamRoleGuard } from "../auth/guards/team-role.guard";
+import { Prospect } from "../entities/prospect.entity";
 import { TeamRole } from "../entities/team-member.entity";
 import { Territory, TerritoryBounds } from "../entities/territory.entity";
 import { TerritoryService } from "../services/territory.service";
@@ -184,12 +186,85 @@ describe("TerritoryController", () => {
   });
 
   describe("prospects", () => {
-    it("should return prospects in territory", () => {
+    const mockOwner = { id: 200, firstName: "Jane", lastName: "Doe" } as any;
+
+    const mockProspect = (overrides: Partial<Prospect> = {}): Prospect =>
+      ({
+        id: 1,
+        owner: mockOwner,
+        ownerId: 200,
+        companyName: "Acme Inc",
+        contactName: "John Smith",
+        contactEmail: "john@example.com",
+        contactPhone: "0821234567",
+        contactTitle: "Buyer",
+        address: Address.fromParts({
+          streetAddress: "10 Main Rd",
+          city: "Johannesburg",
+          province: "Gauteng",
+          postalCode: "2000",
+        }),
+        country: "South Africa",
+        latitude: null,
+        longitude: null,
+        googlePlaceId: null,
+        discoverySource: null,
+        discoveredAt: null,
+        externalId: null,
+        status: "new" as any,
+        priority: "medium" as any,
+        notes: null,
+        tags: null,
+        estimatedValue: null,
+        crmExternalId: null,
+        crmSyncStatus: null,
+        crmLastSyncedAt: null,
+        lastContactedAt: null,
+        nextFollowUpAt: null,
+        followUpRecurrence: "none" as any,
+        customFields: null,
+        score: 0,
+        scoreUpdatedAt: null,
+        assignedToId: null,
+        organization: null,
+        organizationId: null,
+        territory: null,
+        territoryId: 1,
+        isSharedWithTeam: false,
+        sharedNotesVisible: true,
+        createdAt: new Date("2026-01-15T10:00:00Z"),
+        updatedAt: new Date("2026-01-15T10:00:00Z"),
+        ...overrides,
+      }) as Prospect;
+
+    it("should return prospects in territory", async () => {
       service.prospectsInTerritory.mockResolvedValue([]);
 
-      controller.prospects(1);
+      await controller.prospects(1);
 
       expect(service.prospectsInTerritory).toHaveBeenCalledWith(1);
+    });
+
+    it("should expose address fields flat and preserve the populated owner", async () => {
+      service.prospectsInTerritory.mockResolvedValue([mockProspect()]);
+
+      const result = (await controller.prospects(1)) as unknown as Array<Record<string, unknown>>;
+
+      expect(result).toHaveLength(1);
+      expect(result[0].streetAddress).toBe("10 Main Rd");
+      expect(result[0].city).toBe("Johannesburg");
+      expect(result[0].province).toBe("Gauteng");
+      expect(result[0].postalCode).toBe("2000");
+      expect(result[0]).not.toHaveProperty("address");
+      expect(result[0].owner).toBe(mockOwner);
+    });
+
+    it("should set owner to null when the relation is absent", async () => {
+      service.prospectsInTerritory.mockResolvedValue([mockProspect({ owner: null as any })]);
+
+      const result = (await controller.prospects(1)) as unknown as Array<Record<string, unknown>>;
+
+      expect(result[0].owner).toBeNull();
     });
   });
 });

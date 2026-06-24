@@ -135,17 +135,17 @@ export class PipedriveAdapter implements ICrmAdapter {
         org_id: orgId,
       };
 
-      if (prospect.streetAddress) {
-        personData.postal_address = prospect.streetAddress;
+      if (prospect.address?.streetAddress) {
+        personData.postal_address = prospect.address.streetAddress;
       }
-      if (prospect.city) {
-        personData.postal_address_city = prospect.city;
+      if (prospect.address?.city) {
+        personData.postal_address_city = prospect.address.city;
       }
-      if (prospect.province) {
-        personData.postal_address_state = prospect.province;
+      if (prospect.address?.province) {
+        personData.postal_address_state = prospect.address.province;
       }
-      if (prospect.postalCode) {
-        personData.postal_address_postal_code = prospect.postalCode;
+      if (prospect.address?.postalCode) {
+        personData.postal_address_postal_code = prospect.address.postalCode;
       }
       if (prospect.country) {
         personData.postal_address_country = prospect.country;
@@ -227,10 +227,10 @@ export class PipedriveAdapter implements ICrmAdapter {
 
       const orgData: Record<string, string | null> = {
         name: prospect.companyName,
-        address: prospect.streetAddress,
-        address_locality: prospect.city,
-        address_admin_area_level_1: prospect.province,
-        address_postal_code: prospect.postalCode,
+        address: prospect.address?.streetAddress ?? null,
+        address_locality: prospect.address?.city ?? null,
+        address_admin_area_level_1: prospect.address?.province ?? null,
+        address_postal_code: prospect.address?.postalCode ?? null,
         address_country: prospect.country,
       };
 

@@ -7,7 +7,9 @@ import {
   ColdCallSuggestionsQueryDto,
   OptimizeRouteDto,
   PlanDayRouteQueryDto,
+  type ProspectResponseDto,
   ScheduleGapsQueryDto,
+  toProspectResponse,
 } from "../dto";
 import { ColdCallSuggestion, OptimizedRoute, RoutePlanningService, ScheduleGap } from "../services";
 
@@ -47,15 +49,19 @@ export class RouteController {
   async coldCallSuggestions(
     @Req() req: AnnixRepRequest,
     @Query() query: ColdCallSuggestionsQueryDto,
-  ): Promise<ColdCallSuggestion[]> {
+  ): Promise<Array<Omit<ColdCallSuggestion, "prospect"> & { prospect: ProspectResponseDto }>> {
     const date = fromISO(query.date).toJSDate();
-    return this.routePlanningService.coldCallSuggestions(
+    const suggestions = await this.routePlanningService.coldCallSuggestions(
       req.annixRepUser.userId,
       date,
       query.currentLat,
       query.currentLng,
       query.maxSuggestions,
     );
+    return suggestions.map((suggestion) => ({
+      ...suggestion,
+      prospect: toProspectResponse(suggestion.prospect),
+    }));
   }
 
   @Post("optimize")

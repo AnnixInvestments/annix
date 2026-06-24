@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { now, nowMillis } from "../../lib/datetime";
+import { Address } from "../../lib/value-objects";
 import { ProspectStatus } from "../entities/prospect.entity";
 import { ProspectRepository } from "../prospect.repository";
 import { RepProfile } from "../rep-profile/rep-profile.entity";
@@ -100,9 +101,11 @@ export class DiscoveryService {
         const saved = await this.prospectRepository.create({
           ownerId: userId,
           companyName: business.companyName,
-          streetAddress: business.streetAddress,
-          city: business.city,
-          province: business.province,
+          address: Address.fromParts({
+            streetAddress: business.streetAddress,
+            city: business.city,
+            province: business.province,
+          }),
           latitude: business.latitude,
           longitude: business.longitude,
           contactPhone: business.phone,

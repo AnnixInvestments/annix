@@ -1,5 +1,6 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
+import { Address } from "../../lib/value-objects";
 import { Prospect } from "../entities/prospect.entity";
 import { Territory, TerritoryBounds } from "../entities/territory.entity";
 import { ProspectRepository } from "../prospect.repository";
@@ -42,10 +43,7 @@ describe("TerritoryService", () => {
     contactEmail: "john@example.com",
     contactPhone: null,
     contactTitle: null,
-    streetAddress: null,
-    city: "Johannesburg",
-    province: "Gauteng",
-    postalCode: null,
+    address: Address.fromParts({ city: "Johannesburg", province: "Gauteng" }),
     country: "South Africa",
     latitude: -26.2041,
     longitude: 28.0473,

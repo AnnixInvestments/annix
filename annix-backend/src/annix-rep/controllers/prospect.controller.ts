@@ -37,6 +37,7 @@ import {
   NearbyProspectsQueryDto,
   ProspectActivityResponseDto,
   ProspectResponseDto,
+  toProspectResponse,
   UpdateProspectDto,
 } from "../dto";
 import { ProspectStatus } from "../entities";
@@ -63,23 +64,32 @@ export class ProspectController {
   @Post()
   @ApiOperation({ summary: "Create a new prospect" })
   @ApiResponse({ status: 201, description: "Prospect created", type: ProspectResponseDto })
-  create(@Req() req: AnnixRepRequest, @Body() dto: CreateProspectDto) {
-    return this.prospectService.create(req.annixRepUser.userId, dto);
+  async create(
+    @Req() req: AnnixRepRequest,
+    @Body() dto: CreateProspectDto,
+  ): Promise<ProspectResponseDto> {
+    const prospect = await this.prospectService.create(req.annixRepUser.userId, dto);
+    return toProspectResponse(prospect);
   }
 
   @Get()
   @ApiOperation({ summary: "Get all prospects for current user" })
   @ApiResponse({ status: 200, description: "List of prospects", type: [ProspectResponseDto] })
-  findAll(@Req() req: AnnixRepRequest) {
-    return this.prospectService.findAll(req.annixRepUser.userId);
+  async findAll(@Req() req: AnnixRepRequest): Promise<ProspectResponseDto[]> {
+    const prospects = await this.prospectService.findAll(req.annixRepUser.userId);
+    return prospects.map(toProspectResponse);
   }
 
   @Get("status/:status")
   @ApiOperation({ summary: "Get prospects by status" })
   @ApiParam({ name: "status", enum: ProspectStatus })
   @ApiResponse({ status: 200, description: "List of prospects", type: [ProspectResponseDto] })
-  findByStatus(@Req() req: AnnixRepRequest, @Param("status") status: ProspectStatus) {
-    return this.prospectService.findByStatus(req.annixRepUser.userId, status);
+  async findByStatus(
+    @Req() req: AnnixRepRequest,
+    @Param("status") status: ProspectStatus,
+  ): Promise<ProspectResponseDto[]> {
+    const prospects = await this.prospectService.findByStatus(req.annixRepUser.userId, status);
+    return prospects.map(toProspectResponse);
   }
 
   @Get("nearby")
@@ -93,20 +103,21 @@ export class ProspectController {
     description: "List of nearby prospects",
     type: [ProspectResponseDto],
   })
-  findNearby(
+  async findNearby(
     @Req() req: AnnixRepRequest,
     @Query("latitude") latitude: string,
     @Query("longitude") longitude: string,
     @Query("radiusKm") radiusKm?: string,
     @Query("limit") limit?: string,
-  ) {
+  ): Promise<ProspectResponseDto[]> {
     const query: NearbyProspectsQueryDto = {
       latitude: parseFloat(latitude),
       longitude: parseFloat(longitude),
       radiusKm: radiusKm ? parseFloat(radiusKm) : undefined,
       limit: limit ? parseInt(limit, 10) : undefined,
     };
-    return this.prospectService.findNearby(req.annixRepUser.userId, query);
+    const prospects = await this.prospectService.findNearby(req.annixRepUser.userId, query);
+    return prospects.map(toProspectResponse);
   }
 
   @Get("stats")
@@ -119,8 +130,9 @@ export class ProspectController {
   @Get("follow-ups")
   @ApiOperation({ summary: "Get prospects with due follow-ups" })
   @ApiResponse({ status: 200, description: "List of prospects", type: [ProspectResponseDto] })
-  followUpsDue(@Req() req: AnnixRepRequest) {
-    return this.prospectService.followUpsDue(req.annixRepUser.userId);
+  async followUpsDue(@Req() req: AnnixRepRequest): Promise<ProspectResponseDto[]> {
+    const prospects = await this.prospectService.followUpsDue(req.annixRepUser.userId);
+    return prospects.map(toProspectResponse);
   }
 
   @Get("export/csv")
@@ -136,8 +148,14 @@ export class ProspectController {
   @Get("duplicates")
   @ApiOperation({ summary: "Find potential duplicate prospects" })
   @ApiResponse({ status: 200, description: "List of potential duplicates" })
-  findDuplicates(@Req() req: AnnixRepRequest) {
-    return this.prospectService.findDuplicates(req.annixRepUser.userId);
+  async findDuplicates(
+    @Req() req: AnnixRepRequest,
+  ): Promise<Array<{ field: string; value: string; prospects: ProspectResponseDto[] }>> {
+    const groups = await this.prospectService.findDuplicates(req.annixRepUser.userId);
+    return groups.map((group) => ({
+      ...group,
+      prospects: group.prospects.map(toProspectResponse),
+    }));
   }
 
   @Patch("bulk/status")
@@ -173,8 +191,12 @@ export class ProspectController {
   @ApiOperation({ summary: "Merge duplicate prospects into primary" })
   @ApiResponse({ status: 200, description: "Prospects merged", type: ProspectResponseDto })
   @ApiResponse({ status: 404, description: "One or more prospects not found" })
-  mergeProspects(@Req() req: AnnixRepRequest, @Body() dto: MergeProspectsDto) {
-    return this.prospectService.mergeProspects(req.annixRepUser.userId, dto);
+  async mergeProspects(
+    @Req() req: AnnixRepRequest,
+    @Body() dto: MergeProspectsDto,
+  ): Promise<ProspectResponseDto> {
+    const prospect = await this.prospectService.mergeProspects(req.annixRepUser.userId, dto);
+    return toProspectResponse(prospect);
   }
 
   @Patch("bulk/tags")
@@ -249,8 +271,12 @@ export class ProspectController {
   @ApiParam({ name: "id", type: Number })
   @ApiResponse({ status: 200, description: "Prospect details", type: ProspectResponseDto })
   @ApiResponse({ status: 404, description: "Prospect not found" })
-  findOne(@Req() req: AnnixRepRequest, @Param("id", ParseIntPipe) id: number) {
-    return this.prospectService.findOne(req.annixRepUser.userId, id);
+  async findOne(
+    @Req() req: AnnixRepRequest,
+    @Param("id", ParseIntPipe) id: number,
+  ): Promise<ProspectResponseDto> {
+    const prospect = await this.prospectService.findOne(req.annixRepUser.userId, id);
+    return toProspectResponse(prospect);
   }
 
   @Patch(":id")
@@ -258,12 +284,13 @@ export class ProspectController {
   @ApiParam({ name: "id", type: Number })
   @ApiResponse({ status: 200, description: "Prospect updated", type: ProspectResponseDto })
   @ApiResponse({ status: 404, description: "Prospect not found" })
-  update(
+  async update(
     @Req() req: AnnixRepRequest,
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: UpdateProspectDto,
-  ) {
-    return this.prospectService.update(req.annixRepUser.userId, id, dto);
+  ): Promise<ProspectResponseDto> {
+    const prospect = await this.prospectService.update(req.annixRepUser.userId, id, dto);
+    return toProspectResponse(prospect);
   }
 
   @Patch(":id/status/:status")
@@ -271,20 +298,25 @@ export class ProspectController {
   @ApiParam({ name: "id", type: Number })
   @ApiParam({ name: "status", enum: ProspectStatus })
   @ApiResponse({ status: 200, description: "Status updated", type: ProspectResponseDto })
-  updateStatus(
+  async updateStatus(
     @Req() req: AnnixRepRequest,
     @Param("id", ParseIntPipe) id: number,
     @Param("status") status: ProspectStatus,
-  ) {
-    return this.prospectService.updateStatus(req.annixRepUser.userId, id, status);
+  ): Promise<ProspectResponseDto> {
+    const prospect = await this.prospectService.updateStatus(req.annixRepUser.userId, id, status);
+    return toProspectResponse(prospect);
   }
 
   @Post(":id/contacted")
   @ApiOperation({ summary: "Mark prospect as contacted" })
   @ApiParam({ name: "id", type: Number })
   @ApiResponse({ status: 200, description: "Marked as contacted", type: ProspectResponseDto })
-  markContacted(@Req() req: AnnixRepRequest, @Param("id", ParseIntPipe) id: number) {
-    return this.prospectService.markContacted(req.annixRepUser.userId, id);
+  async markContacted(
+    @Req() req: AnnixRepRequest,
+    @Param("id", ParseIntPipe) id: number,
+  ): Promise<ProspectResponseDto> {
+    const prospect = await this.prospectService.markContacted(req.annixRepUser.userId, id);
+    return toProspectResponse(prospect);
   }
 
   @Post(":id/complete-followup")
@@ -297,8 +329,12 @@ export class ProspectController {
     description: "Follow-up completed, next scheduled if recurring",
     type: ProspectResponseDto,
   })
-  completeFollowUp(@Req() req: AnnixRepRequest, @Param("id", ParseIntPipe) id: number) {
-    return this.prospectService.completeFollowUp(req.annixRepUser.userId, id);
+  async completeFollowUp(
+    @Req() req: AnnixRepRequest,
+    @Param("id", ParseIntPipe) id: number,
+  ): Promise<ProspectResponseDto> {
+    const prospect = await this.prospectService.completeFollowUp(req.annixRepUser.userId, id);
+    return toProspectResponse(prospect);
   }
 
   @Post(":id/snooze-followup")
@@ -309,12 +345,17 @@ export class ProspectController {
     description: "Follow-up snoozed",
     type: ProspectResponseDto,
   })
-  snoozeFollowUp(
+  async snoozeFollowUp(
     @Req() req: AnnixRepRequest,
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: { days: number },
-  ) {
-    return this.prospectService.snoozeFollowUp(req.annixRepUser.userId, id, dto.days);
+  ): Promise<ProspectResponseDto> {
+    const prospect = await this.prospectService.snoozeFollowUp(
+      req.annixRepUser.userId,
+      id,
+      dto.days,
+    );
+    return toProspectResponse(prospect);
   }
 
   @Delete(":id")

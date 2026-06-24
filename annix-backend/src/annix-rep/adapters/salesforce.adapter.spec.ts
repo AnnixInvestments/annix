@@ -1,4 +1,5 @@
 import { fromISO } from "../../lib/datetime";
+import { Address } from "../../lib/value-objects";
 import type { Meeting, Prospect } from "../entities";
 import { SalesforceAdapter } from "./salesforce.adapter";
 
@@ -17,10 +18,12 @@ describe("SalesforceAdapter", () => {
     contactEmail: "john@example.com",
     contactPhone: "+27821234567",
     contactTitle: "Purchasing Manager",
-    streetAddress: "123 Main St",
-    city: "Johannesburg",
-    province: "Gauteng",
-    postalCode: "2000",
+    address: Address.fromParts({
+      streetAddress: "123 Main St",
+      city: "Johannesburg",
+      province: "Gauteng",
+      postalCode: "2000",
+    }),
     country: "South Africa",
     notes: "Important client",
     status: "new" as any,
