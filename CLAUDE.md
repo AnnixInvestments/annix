@@ -79,6 +79,38 @@ The Nix module (AI document extraction + draft review) is heavily shared across 
 2. Update `docs/shared-registry.md` if a new top-level export was added.
 3. Every app picks up the change automatically — Stock Control, RFQ, Annix Sentinel — without any app-page edits.
 
+## Specialist Review Agents (Review Gates — MANDATORY triggers)
+
+Annix has specialist read-only **reviewer/control subagents** (defined in `.claude/agents/`, each with a `/`-command). They do not run automatically — **you (Claude) must launch them at the trigger points below**, without waiting to be asked. Builders create; these agents attack the output before it ships. Launch via the Agent tool (`subagent_type: "<name>"`) or the matching `/`-skill; they are read-only and never push.
+
+**Build-time gates (run BEFORE writing code):**
+- **New feature / module / non-trivial idea** → `annix-projects` (is it worth building now? scope + definition of done) AND `annix-logicgauge` (does the idea make commercial/operational sense?). Projects decides *what* gets built; LogicGauge decides *whether the idea holds up*. Skip only for trivial mechanical edits.
+
+**Pre-merge review gates (run AFTER a builder agent, BEFORE the work is considered done):**
+- **Any AI-powered workflow** (extraction profiles, `AiChatService` call-sites, Nix surfaces, anything that feeds user/uploaded content to Gemini) → `annix-ai-security` **before** `annix-qa`. QA checks it works; AI-security checks it can be abused (prompt injection, jailbreaks, model data-leakage, AI cost/DoS). This ordering is non-negotiable.
+- **Any change to shared code** (`packages/product-data/`, `annix-backend/src/lib/`, shared frontend components/hooks, shared Nix module, auth/RBAC) → `annix-regression` (cross-module blast radius) AND `annix-reality-check` (verify the code is grounded in the real repo — no invented files/imports/routes/schema-fields).
+- **User-facing flow** (new page, journey, onboarding, upload, application step) → `annix-ux-flow`.
+- **Code with non-trivial data access or AI calls** (new Mongo queries, dashboards, list endpoints, Gemini loops) → `annix-performance`.
+
+**Pre-deploy gate (run BEFORE recommending a push/deploy):**
+- **Any migration, `fly.toml`/env/secret change, or shared-backend change** → `annix-devops` (deploy safety + migrate-mongo core-vs-Orbit routing + rollback). Never recommend a deploy if rollback is unclear.
+
+**Rules:** Run the relevant gate(s) proactively — treat a missing review as in-scope for your change. State which gates you ran (or why a trigger didn't apply) when you report work complete. Relay each agent's verdict; a `REJECT` / `NEEDS …` verdict must be resolved (or explicitly waived by the user) before the work is treated as done. Scale to the task — one tiny copy fix doesn't need the full panel; a new AI feature does. These gates never authorize a push — the Critical Git Rules still apply.
+
+### When to suggest `ultracode` (multi-agent orchestration)
+
+`ultracode` (heavy parallel multi-agent Workflow orchestration) stays **OFF by default** — never assume it, never self-enable it, and never run a fan-out Workflow unless the user opted in for that turn (typed `ultracode`) or a skill instructs it. Rigor is **targeted, not blanket**: the Review Gates above already give multi-agent rigor at the right moments without the cost.
+
+**Proactively suggest it** (one short line — "this one's big enough to be worth `ultracode` — want me to orchestrate it?") when a task is genuinely large, ambiguous, or high-stakes, e.g.:
+- A security / launch-readiness **audit** across many surfaces (e.g. "attack-test all Orbit AI surfaces").
+- A **large migration or broad refactor** spanning many files/modules.
+- **Unknown-size discovery** ("find every place X happens", "review the whole module for bugs").
+- **Design exploration** where competing approaches should be generated and judged.
+- **Deep research** needing many sources cross-checked and verified.
+- High-stakes correctness where **adversarial verification** earns its cost (risky migration, pre-launch security pass).
+
+**Do NOT suggest it** for: single-file edits, renames, config tweaks, bug fixes with a known cause, routine feature work with a clear path, or conversational/advisory questions. When in doubt, do the work normally and mention ultracode was available — don't default to the expensive path. Suggesting it is never permission to run it; wait for the user's explicit go-ahead.
+
 ## Code Style
 - **No comments in code**: use self-documenting method names instead of inline comments
 - **Follow project lint/biome**: obey existing Biome formatting (double quotes per biome.json) and ESLint custom rules
