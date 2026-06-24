@@ -12,6 +12,7 @@ import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../../email/email.service";
 import { now } from "../../lib/datetime";
 import { maskEmail } from "../../lib/pii-log";
+import { Address } from "../../lib/value-objects";
 import { CompanyRepository } from "../../platform/company.repository";
 import {
   AppRepository,
@@ -367,13 +368,14 @@ export class AnnixOrbitAuthService {
     const verificationToken = uuidv4();
     const verificationExpires = now().plus({ hours: VERIFICATION_EXPIRY_HOURS }).toJSDate();
 
+    const companyAddress = Address.fromParts({ province, city });
     const savedCompany = await this.companyRepo.create({
       name: companyName,
       companyType: "CUSTOMER" as any,
       industry,
       companySize,
-      province,
-      city,
+      province: companyAddress.province,
+      city: companyAddress.city,
     });
     await this.mirrorIntoAnnixOrbitCompanies(savedCompany.id, companyName);
 
@@ -427,13 +429,14 @@ export class AnnixOrbitAuthService {
     const verificationToken = uuidv4();
     const verificationExpires = now().plus({ hours: VERIFICATION_EXPIRY_HOURS }).toJSDate();
 
+    const companyAddress = Address.fromParts({ province, city });
     const savedCompany = await this.companyRepo.create({
       name: agencyName,
       companyType: "CUSTOMER" as any,
       industry: "Staffing & Recruitment",
       companySize: null,
-      province,
-      city,
+      province: companyAddress.province,
+      city: companyAddress.city,
     });
     await this.mirrorIntoAnnixOrbitCompanies(savedCompany.id, agencyName);
 

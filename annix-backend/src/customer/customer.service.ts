@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import * as bcrypt from "bcrypt";
 import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
+import { Address, ContactDetails } from "../lib/value-objects";
 import { CompanyRepository } from "../platform/company.repository";
 import { RfqStatus } from "../rfq/entities/rfq.entity";
 import { RfqRepository } from "../rfq/rfq.repository";
@@ -142,12 +143,21 @@ export class CustomerService {
       primaryPhone: company.phone,
     };
 
-    // Update allowed fields only
-    if (dto.streetAddress !== undefined) company.streetAddress = dto.streetAddress;
-    if (dto.city !== undefined) company.city = dto.city;
-    if (dto.provinceState !== undefined) company.province = dto.provinceState;
-    if (dto.postalCode !== undefined) company.postalCode = dto.postalCode;
-    if (dto.primaryPhone !== undefined) company.phone = dto.primaryPhone;
+    // Update allowed fields only (normalize via shared value-objects)
+    const address = Address.fromParts({
+      streetAddress: dto.streetAddress ?? company.streetAddress,
+      city: dto.city ?? company.city,
+      province: dto.provinceState ?? company.province,
+      postalCode: dto.postalCode ?? company.postalCode,
+    });
+    const contact = ContactDetails.fromParts({
+      phone: dto.primaryPhone ?? company.phone,
+    });
+    if (dto.streetAddress !== undefined) company.streetAddress = address.streetAddress;
+    if (dto.city !== undefined) company.city = address.city;
+    if (dto.provinceState !== undefined) company.province = address.province;
+    if (dto.postalCode !== undefined) company.postalCode = address.postalCode;
+    if (dto.primaryPhone !== undefined) company.phone = contact.phone;
 
     await this.companyRepo.save(company);
 

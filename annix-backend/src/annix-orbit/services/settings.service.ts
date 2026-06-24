@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InboundEmailService } from "../../inbound-email/inbound-email.service";
+import { Address, ContactDetails } from "../../lib/value-objects";
 import { CompanyRepository } from "../../platform/company.repository";
 import { Company } from "../../platform/entities/company.entity";
 import { UpdateCompanyDto, UpdateImapSettingsDto } from "../dto/settings.dto";
@@ -94,7 +95,7 @@ export class SettingsService {
     if (dto.emailFromAddress != null) {
       const company = await this.companyRepo.findById(companyId);
       if (company) {
-        company.email = dto.emailFromAddress;
+        company.email = ContactDetails.fromParts({ email: dto.emailFromAddress }).email;
         await this.companyRepo.save(company);
       }
     }
@@ -108,15 +109,26 @@ export class SettingsService {
       throw new NotFoundException("Company not found");
     }
 
+    const address = Address.fromParts({
+      streetAddress: dto.streetAddress ?? company.streetAddress,
+      city: dto.city ?? company.city,
+      province: dto.province ?? company.province,
+      postalCode: dto.postalCode ?? company.postalCode,
+    });
+    const contact = ContactDetails.fromParts({
+      phone: dto.phone ?? company.phone,
+      email: dto.contactEmail ?? company.email,
+    });
+
     if (dto.name != null) company.name = dto.name;
     if (dto.industry != null) company.industry = dto.industry;
     if (dto.companySize != null) company.companySize = dto.companySize;
-    if (dto.province != null) company.province = dto.province;
-    if (dto.city != null) company.city = dto.city;
-    if (dto.streetAddress != null) company.streetAddress = dto.streetAddress;
-    if (dto.postalCode != null) company.postalCode = dto.postalCode;
-    if (dto.phone != null) company.phone = dto.phone;
-    if (dto.contactEmail != null) company.email = dto.contactEmail;
+    if (dto.province != null) company.province = address.province;
+    if (dto.city != null) company.city = address.city;
+    if (dto.streetAddress != null) company.streetAddress = address.streetAddress;
+    if (dto.postalCode != null) company.postalCode = address.postalCode;
+    if (dto.phone != null) company.phone = contact.phone;
+    if (dto.contactEmail != null) company.email = contact.email;
     if (dto.websiteUrl != null) company.websiteUrl = dto.websiteUrl;
     if (dto.registrationNumber != null) company.registrationNumber = dto.registrationNumber;
     if (dto.vatNumber != null) company.vatNumber = dto.vatNumber;

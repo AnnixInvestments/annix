@@ -9,6 +9,7 @@ import {
 import { JwtService } from "@nestjs/jwt";
 import { EmailService } from "../../email/email.service";
 import { encryptField } from "../../lib/field-encryption";
+import { Address, ContactDetails } from "../../lib/value-objects";
 import { CompanyRepository } from "../../platform/company.repository";
 import { CompanyType } from "../../platform/entities/company.entity";
 import { AppScope } from "../../rbac/app-scope";
@@ -74,13 +75,15 @@ export class AnnixSentinelAuthService {
     };
     const companyName = entityNameMap[entityType] || dto.name;
 
+    const companyAddress = Address.fromParts({ province: dto.province });
+    const companyContact = ContactDetails.fromParts({ phone: dto.phone });
     const savedUnifiedCompany = await this.companyRepo.create({
       name: companyName,
       companyType: CompanyType.CUSTOMER,
       registrationNumber: dto.registrationNumber ?? null,
       industry: dto.industrySector ?? null,
-      province: dto.province ?? null,
-      phone: dto.phone ?? null,
+      province: companyAddress.province,
+      phone: companyContact.phone,
     });
 
     await this.companyDetailsRepo.create({

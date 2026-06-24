@@ -16,6 +16,7 @@ import { FeatureFlagsService } from "../feature-flags/feature-flags.service";
 import { now, nowMillis } from "../lib/datetime";
 import type { TransactionContext } from "../lib/persistence/transaction-context";
 import { TransactionRunner } from "../lib/persistence/transaction-runner";
+import { Address, ContactDetails } from "../lib/value-objects";
 import { CompanyRepository } from "../platform/company.repository";
 import { CompanyType } from "../platform/entities/company.entity";
 import { AppScope } from "../rbac/app-scope";
@@ -127,6 +128,17 @@ export class CustomerAuthService {
       const userRepo = this.userRepo.withTransaction(ctx);
       const deviceBindingRepo = this.deviceBindingRepository.withTransaction(ctx);
 
+      const companyAddress = Address.fromParts({
+        streetAddress: dto.company.streetAddress,
+        city: dto.company.city,
+        province: dto.company.provinceState,
+        postalCode: dto.company.postalCode,
+      });
+      const companyContact = ContactDetails.fromParts({
+        phone: dto.company.primaryPhone,
+        email: dto.company.generalEmail,
+      });
+
       const company_ = await companyRepo.create({
         name: dto.company.legalName,
         companyType: CompanyType.CUSTOMER,
@@ -136,13 +148,13 @@ export class CustomerAuthService {
         vatNumber: dto.company.vatNumber,
         industry: dto.company.industry,
         companySize: dto.company.companySize,
-        streetAddress: dto.company.streetAddress,
-        city: dto.company.city,
-        province: dto.company.provinceState,
-        postalCode: dto.company.postalCode,
+        streetAddress: companyAddress.streetAddress,
+        city: companyAddress.city,
+        province: companyAddress.province,
+        postalCode: companyAddress.postalCode,
         country: dto.company.country || "South Africa",
-        phone: dto.company.primaryPhone,
-        email: dto.company.generalEmail,
+        phone: companyContact.phone,
+        email: companyContact.email,
         websiteUrl: dto.company.website,
       });
 

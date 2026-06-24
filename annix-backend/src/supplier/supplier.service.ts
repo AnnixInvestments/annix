@@ -11,6 +11,7 @@ import { AuditAction } from "../audit/entities/audit-log.entity";
 import { BoqDistributionService } from "../boq/boq-distribution.service";
 import { fromISO, now } from "../lib/datetime";
 import { TransactionRunner } from "../lib/persistence/transaction-runner";
+import { Address, ContactDetails } from "../lib/value-objects";
 import { DocumentVerificationService } from "../nix/services/document-verification.service";
 import { CompanyRepository } from "../platform/company.repository";
 import { Company, CompanyType } from "../platform/entities/company.entity";
@@ -222,6 +223,17 @@ export class SupplierService {
 
       let company: Company;
 
+      const address = Address.fromParts({
+        streetAddress: dto.streetAddress,
+        city: dto.city,
+        province: dto.provinceState,
+        postalCode: dto.postalCode,
+      });
+      const contact = ContactDetails.fromParts({
+        phone: dto.primaryPhone || dto.primaryContactPhone,
+        email: dto.generalEmail || dto.primaryContactEmail,
+      });
+
       if (profile.company) {
         const oldValues = { ...profile.company };
         Object.assign(profile.company, {
@@ -230,14 +242,14 @@ export class SupplierService {
           tradingName: dto.tradingName,
           registrationNumber: dto.registrationNumber,
           vatNumber: dto.vatNumber,
-          streetAddress: dto.streetAddress,
-          city: dto.city,
-          province: dto.provinceState,
-          postalCode: dto.postalCode,
+          streetAddress: address.streetAddress,
+          city: address.city,
+          province: address.province,
+          postalCode: address.postalCode,
           country: dto.country || profile.company.country,
-          phone: dto.primaryPhone || dto.primaryContactPhone,
+          phone: contact.phone,
           contactPerson: dto.primaryContactName,
-          email: dto.generalEmail || dto.primaryContactEmail,
+          email: contact.email,
           websiteUrl: dto.website,
           industry: dto.industryType,
           companySize: dto.companySize,
@@ -264,14 +276,14 @@ export class SupplierService {
           tradingName: dto.tradingName,
           registrationNumber: dto.registrationNumber,
           vatNumber: dto.vatNumber,
-          streetAddress: dto.streetAddress,
-          city: dto.city,
-          province: dto.provinceState,
-          postalCode: dto.postalCode,
+          streetAddress: address.streetAddress,
+          city: address.city,
+          province: address.province,
+          postalCode: address.postalCode,
           country: dto.country || "South Africa",
-          phone: dto.primaryPhone || dto.primaryContactPhone,
+          phone: contact.phone,
           contactPerson: dto.primaryContactName,
-          email: dto.generalEmail || dto.primaryContactEmail,
+          email: contact.email,
           websiteUrl: dto.website,
           industry: dto.industryType,
           companySize: dto.companySize,

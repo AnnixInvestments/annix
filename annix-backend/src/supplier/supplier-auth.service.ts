@@ -14,6 +14,7 @@ import { FeatureFlagsService } from "../feature-flags/feature-flags.service";
 import { now } from "../lib/datetime";
 import type { TransactionContext } from "../lib/persistence/transaction-context";
 import { TransactionRunner } from "../lib/persistence/transaction-runner";
+import { Address, ContactDetails } from "../lib/value-objects";
 import { DocumentVerificationService } from "../nix/services/document-verification.service";
 import { CompanyRepository } from "../platform/company.repository";
 import { CompanyType } from "../platform/entities/company.entity";
@@ -270,6 +271,17 @@ export class SupplierAuthService {
         const userRoleRepo = this.userRoleRepo.withTransaction(ctx);
         const companyRepo = this.companyRepo.withTransaction(ctx);
 
+        const companyAddress = Address.fromParts({
+          streetAddress: dto.company.streetAddress,
+          city: dto.company.city,
+          province: dto.company.provinceState,
+          postalCode: dto.company.postalCode,
+        });
+        const companyContact = ContactDetails.fromParts({
+          phone: dto.company.primaryPhone || dto.company.primaryContactPhone,
+          email: dto.company.generalEmail || dto.company.primaryContactEmail,
+        });
+
         const savedCompany = await companyRepo.create({
           name: dto.company.legalName,
           companyType: CompanyType.SUPPLIER,
@@ -277,14 +289,14 @@ export class SupplierAuthService {
           tradingName: dto.company.tradingName,
           registrationNumber: dto.company.registrationNumber,
           vatNumber: dto.company.vatNumber,
-          streetAddress: dto.company.streetAddress,
-          city: dto.company.city,
-          province: dto.company.provinceState,
-          postalCode: dto.company.postalCode,
+          streetAddress: companyAddress.streetAddress,
+          city: companyAddress.city,
+          province: companyAddress.province,
+          postalCode: companyAddress.postalCode,
           country: dto.company.country || "South Africa",
-          phone: dto.company.primaryPhone || dto.company.primaryContactPhone,
+          phone: companyContact.phone,
           contactPerson: dto.company.primaryContactName,
-          email: dto.company.generalEmail || dto.company.primaryContactEmail,
+          email: companyContact.email,
           websiteUrl: dto.company.website,
           industry: dto.company.industryType,
           companySize: dto.company.companySize,
