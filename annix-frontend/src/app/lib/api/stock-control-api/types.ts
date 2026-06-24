@@ -2373,6 +2373,11 @@ export interface PendingBackgroundStep {
   triggeredAt: string;
 }
 
+export interface ActionableJobCard {
+  id: number;
+  label: string;
+}
+
 export interface WorkflowStepAssignment {
   step: string;
   userIds: number[];

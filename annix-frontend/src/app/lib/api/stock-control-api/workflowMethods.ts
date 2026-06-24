@@ -3,6 +3,7 @@ import { nowMillis } from "@/app/lib/datetime";
 import { API_BASE_URL } from "@/lib/api-config";
 import { StockControlApiClient } from "./base";
 import type {
+  ActionableJobCard,
   BackgroundStepStatus,
   CdnLineMatch,
   DispatchCdn,
@@ -42,6 +43,7 @@ declare module "./base" {
     ): Promise<JobCard>;
     rejectWorkflowStep(jobCardId: number, reason: string): Promise<JobCard>;
     pendingApprovals(): Promise<JobCard[]>;
+    actionableJobCards(): Promise<ActionableJobCard[]>;
     canApproveJobCard(jobCardId: number): Promise<{ canApprove: boolean }>;
     workflowNotifications(limit?: number): Promise<WorkflowNotification[]>;
     unreadNotifications(): Promise<WorkflowNotification[]>;
@@ -201,6 +203,10 @@ proto.rejectWorkflowStep = async function (jobCardId, reason) {
 
 proto.pendingApprovals = async function () {
   return this.request("/stock-control/workflow/pending");
+};
+
+proto.actionableJobCards = async function () {
+  return this.request("/stock-control/workflow/actionable-job-cards");
 };
 
 proto.canApproveJobCard = async function (jobCardId) {

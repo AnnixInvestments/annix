@@ -722,6 +722,38 @@ export class JobCardWorkflowService {
     return this.jobCardRepo.findPendingApprovalsForCompany(user.companyId, statuses, page, limit);
   }
 
+  /**
+   * Foreground job cards whose CURRENT step is one the user is explicitly
+   * assigned to — i.e. cards genuinely awaiting THIS user's approval (the same
+   * rule as canUserApprove, applied across the company's active cards). Unlike
+   * pendingApprovalsForUser this is filtered by assignment, so it never returns
+   * cards merely sitting at someone else's step.
+   */
+  async actionableForegroundJobCardsForUser(
+    user: UserContext,
+  ): Promise<Array<{ id: number; label: string }>> {
+    const fgSteps = await this.stepConfigService.orderedSteps(user.companyId);
+    const fgKeySet = new Set(fgSteps.map((s) => s.key));
+    const assignments = await this.assignmentService.allAssignments(user.companyId);
+    const userStepKeys = assignments
+      .filter((a) => fgKeySet.has(a.step) && a.userIds.includes(user.id))
+      .map((a) => a.step);
+    if (userStepKeys.length === 0) {
+      return [];
+    }
+    const cards = await this.jobCardRepo.findPendingApprovalsForCompany(
+      user.companyId,
+      userStepKeys,
+      1,
+      200,
+    );
+    return cards.map((jc) => {
+      const base = jc.jcNumber || jc.jobNumber;
+      const label = jc.jtDnNumber ? `${base} / ${jc.jtDnNumber}` : base;
+      return { id: jc.id, label };
+    });
+  }
+
   async canUserApprove(user: UserContext, jobCardId: number): Promise<boolean> {
     const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, user.companyId);
 

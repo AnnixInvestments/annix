@@ -159,6 +159,28 @@ export class WorkflowController {
     return { canApprove };
   }
 
+  @Get("actionable-job-cards")
+  @ApiOperation({ summary: "Job cards with an action (approval or background task) awaiting me" })
+  async actionableJobCards(@Req() req: any) {
+    const foreground = await this.workflowService.actionableForegroundJobCardsForUser(req.user);
+    const background = await this.backgroundStepService.pendingForUser(
+      req.user.id,
+      req.user.companyId,
+    );
+    const merged = [
+      ...foreground,
+      ...background.map((b) => ({ id: b.jobCardId, label: b.jobCardNumber })),
+    ];
+    const seen = new Set<number>();
+    return merged
+      .filter((entry) => {
+        if (seen.has(entry.id)) return false;
+        seen.add(entry.id);
+        return true;
+      })
+      .sort((a, b) => a.id - b.id);
+  }
+
   @Post("job-cards/:id/action")
   @ApiOperation({ summary: "Complete an action button for a workflow step" })
   async completeAction(@Req() req: any, @Param("id") id: number, @Body() dto: CompleteActionDto) {

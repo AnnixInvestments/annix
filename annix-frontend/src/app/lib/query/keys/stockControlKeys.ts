@@ -11,6 +11,7 @@ export const stockControlKeys = {
     pendingApprovals: () => [...stockControlKeys.dashboard.all, "pending-approvals"] as const,
     pendingBackgroundSteps: () =>
       [...stockControlKeys.dashboard.all, "pending-background-steps"] as const,
+    actionableJobCards: () => [...stockControlKeys.dashboard.all, "actionable-job-cards"] as const,
     cpoSummary: () => [...stockControlKeys.dashboard.all, "cpo-summary"] as const,
     roleSummary: (role: string) =>
       [...stockControlKeys.dashboard.all, "role-summary", role] as const,
