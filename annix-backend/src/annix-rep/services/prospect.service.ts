@@ -1,6 +1,7 @@
 import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { isDate, keys, values } from "es-toolkit/compat";
 import { fromISO, fromJSDate, now, nowMillis } from "../../lib/datetime";
+import { Address } from "../../lib/value-objects";
 import {
   BulkDeleteResponseDto,
   BulkTagOperationDto,
@@ -27,6 +28,7 @@ export class ProspectService {
   ) {}
 
   async create(ownerId: number, dto: CreateProspectDto): Promise<Prospect> {
+    const address = Address.fromParts(dto);
     const saved = await this.prospectRepo.create({
       ownerId,
       companyName: dto.companyName,
@@ -34,10 +36,10 @@ export class ProspectService {
       contactEmail: dto.contactEmail ?? null,
       contactPhone: dto.contactPhone ?? null,
       contactTitle: dto.contactTitle ?? null,
-      streetAddress: dto.streetAddress ?? null,
-      city: dto.city ?? null,
-      province: dto.province ?? null,
-      postalCode: dto.postalCode ?? null,
+      streetAddress: address.streetAddress,
+      city: address.city,
+      province: address.province,
+      postalCode: address.postalCode,
       country: dto.country ?? "South Africa",
       latitude: dto.latitude ?? null,
       longitude: dto.longitude ?? null,
@@ -101,10 +103,23 @@ export class ProspectService {
     if (dto.contactEmail != null) updateData.contactEmail = dto.contactEmail ?? null;
     if (dto.contactPhone != null) updateData.contactPhone = dto.contactPhone ?? null;
     if (dto.contactTitle != null) updateData.contactTitle = dto.contactTitle ?? null;
-    if (dto.streetAddress != null) updateData.streetAddress = dto.streetAddress ?? null;
-    if (dto.city != null) updateData.city = dto.city ?? null;
-    if (dto.province != null) updateData.province = dto.province ?? null;
-    if (dto.postalCode != null) updateData.postalCode = dto.postalCode ?? null;
+    if (
+      dto.streetAddress != null ||
+      dto.city != null ||
+      dto.province != null ||
+      dto.postalCode != null
+    ) {
+      const address = Address.fromParts({
+        streetAddress: dto.streetAddress ?? prospect.streetAddress,
+        city: dto.city ?? prospect.city,
+        province: dto.province ?? prospect.province,
+        postalCode: dto.postalCode ?? prospect.postalCode,
+      });
+      if (dto.streetAddress != null) updateData.streetAddress = address.streetAddress;
+      if (dto.city != null) updateData.city = address.city;
+      if (dto.province != null) updateData.province = address.province;
+      if (dto.postalCode != null) updateData.postalCode = address.postalCode;
+    }
     if (dto.country != null) updateData.country = dto.country ?? "South Africa";
     if (dto.latitude != null) updateData.latitude = dto.latitude ?? null;
     if (dto.longitude != null) updateData.longitude = dto.longitude ?? null;
@@ -447,6 +462,13 @@ export class ProspectService {
             .filter(Boolean)
         : null;
 
+      const address = Address.fromParts({
+        streetAddress: row.streetAddress,
+        city: row.city,
+        province: row.province,
+        postalCode: row.postalCode,
+      });
+
       return {
         row: index + 1,
         error: null,
@@ -457,10 +479,10 @@ export class ProspectService {
           contactEmail: row.contactEmail?.trim() ?? null,
           contactPhone: row.contactPhone?.trim() ?? null,
           contactTitle: row.contactTitle?.trim() ?? null,
-          streetAddress: row.streetAddress?.trim() ?? null,
-          city: row.city?.trim() ?? null,
-          province: row.province?.trim() ?? null,
-          postalCode: row.postalCode?.trim() ?? null,
+          streetAddress: address.streetAddress,
+          city: address.city,
+          province: address.province,
+          postalCode: address.postalCode,
           country: row.country?.trim() ?? "South Africa",
           status: status || ProspectStatus.NEW,
           priority: priority || ProspectPriority.MEDIUM,
@@ -522,11 +544,23 @@ export class ProspectService {
       if (dto.fieldOverrides.contactEmail) primary.contactEmail = dto.fieldOverrides.contactEmail;
       if (dto.fieldOverrides.contactPhone) primary.contactPhone = dto.fieldOverrides.contactPhone;
       if (dto.fieldOverrides.contactTitle) primary.contactTitle = dto.fieldOverrides.contactTitle;
-      if (dto.fieldOverrides.streetAddress)
-        primary.streetAddress = dto.fieldOverrides.streetAddress;
-      if (dto.fieldOverrides.city) primary.city = dto.fieldOverrides.city;
-      if (dto.fieldOverrides.province) primary.province = dto.fieldOverrides.province;
-      if (dto.fieldOverrides.postalCode) primary.postalCode = dto.fieldOverrides.postalCode;
+      if (
+        dto.fieldOverrides.streetAddress ||
+        dto.fieldOverrides.city ||
+        dto.fieldOverrides.province ||
+        dto.fieldOverrides.postalCode
+      ) {
+        const address = Address.fromParts({
+          streetAddress: dto.fieldOverrides.streetAddress ?? primary.streetAddress,
+          city: dto.fieldOverrides.city ?? primary.city,
+          province: dto.fieldOverrides.province ?? primary.province,
+          postalCode: dto.fieldOverrides.postalCode ?? primary.postalCode,
+        });
+        if (dto.fieldOverrides.streetAddress) primary.streetAddress = address.streetAddress;
+        if (dto.fieldOverrides.city) primary.city = address.city;
+        if (dto.fieldOverrides.province) primary.province = address.province;
+        if (dto.fieldOverrides.postalCode) primary.postalCode = address.postalCode;
+      }
       if (dto.fieldOverrides.priority) primary.priority = dto.fieldOverrides.priority;
       if (dto.fieldOverrides.estimatedValue != null) {
         primary.estimatedValue = dto.fieldOverrides.estimatedValue ?? null;

@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { fromISO, now } from "../../lib/datetime";
+import { Address } from "../../lib/value-objects";
 import { decrypt, encrypt } from "../../secure-documents/crypto.util";
 import {
   HubSpotAdapter,
@@ -430,16 +431,22 @@ export class CrmSyncService {
     userId: number,
     contact: CrmContactData,
   ): Promise<Prospect> {
+    const address = Address.fromParts({
+      streetAddress: contact.address,
+      city: contact.city,
+      province: contact.state,
+      postalCode: contact.postalCode,
+    });
     return this.prospectRepo.create({
       ownerId: userId,
       companyName: contact.companyName,
       contactName: contact.contactName,
       contactEmail: contact.email,
       contactPhone: contact.phone,
-      streetAddress: contact.address,
-      city: contact.city,
-      province: contact.state,
-      postalCode: contact.postalCode,
+      streetAddress: address.streetAddress,
+      city: address.city,
+      province: address.province,
+      postalCode: address.postalCode,
       country: contact.country ?? "South Africa",
       notes: contact.notes,
       status: this.mapContactStatusToProspectStatus(contact.status),
