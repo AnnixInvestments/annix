@@ -884,6 +884,12 @@ export class JobCardWorkflowService {
     if (scUserId === null || !card || card.status !== JobCardStatus.ACTIVE) {
       return [];
     }
+    const childCounts = await this.jobCardRepo.countDeliveryChildrenForParents(user.companyId, [
+      jobCardId,
+    ]);
+    if ((childCounts.get(jobCardId) ?? 0) > 0) {
+      return [];
+    }
     const fgSteps = await this.stepConfigService.orderedSteps(user.companyId);
     const bgSteps = await this.stepConfigService.backgroundSteps(user.companyId);
     const assignments = await this.assignmentService.allAssignments(user.companyId);

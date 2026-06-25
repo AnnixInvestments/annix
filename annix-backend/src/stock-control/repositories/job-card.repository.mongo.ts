@@ -190,6 +190,14 @@ export class MongoJobCardRepository
     }, new Map<number, number>());
   }
 
+  async parentJobCardIds(companyId: number): Promise<number[]> {
+    const ids = await this.documents.distinct("parentJobCardId", {
+      companyId,
+      parentJobCardId: { $ne: null },
+    });
+    return ids.map((id) => Number(id)).filter((id) => Number.isFinite(id));
+  }
+
   async findForCpo(cpoId: number, companyId: number): Promise<JobCard[]> {
     const docs = await this.documents.find({ cpoId, companyId }).lean().exec();
     return this.toDomainList(docs);
@@ -303,8 +311,14 @@ export class MongoJobCardRepository
     page: number,
     limit: number,
   ): Promise<JobCard[]> {
+    const parentIds = await this.parentJobCardIds(companyId);
     const docs = await this.documents
-      .find({ companyId, workflowStatus: { $in: statuses }, status: "active" })
+      .find({
+        companyId,
+        workflowStatus: { $in: statuses },
+        status: "active",
+        _id: { $nin: parentIds },
+      })
       .sort({ createdAt: 1 })
       .skip((page - 1) * limit)
       .limit(limit)

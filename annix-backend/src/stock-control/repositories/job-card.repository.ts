@@ -47,6 +47,7 @@ export abstract class JobCardRepository extends TenantScopedRepository<JobCard> 
     companyId: number,
     parentJobCardIds: number[],
   ): Promise<Map<number, number>>;
+  abstract parentJobCardIds(companyId: number): Promise<number[]>;
   abstract findForCpo(cpoId: number, companyId: number): Promise<JobCard[]>;
   abstract findForCpoWithLineItemsOrdered(cpoId: number, companyId: number): Promise<JobCard[]>;
   abstract findChildJobCardsByCpoCreatedAsc(cpoId: number, companyId: number): Promise<JobCard[]>;

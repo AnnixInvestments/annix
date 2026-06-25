@@ -208,6 +208,9 @@ export default function JobCardDetailPage() {
 
   const nextActionable = useNextActionableJobCard(jobId);
   const myJobCardAction = useMyJobCardAction(jobId);
+  // A CPO parent / header card groups its delivery children — the real workflow runs
+  // on those children, so the parent itself is never an approval task.
+  const isParentJobCard = deliveryJobCards.length > 0;
   // Assignment-based (NOT the admin-overridable workflow.canApprove): an admin can
   // approve any card, so basing this on canApprove would keep the button hidden on
   // every card for them. The server's "pending for me" lists only include cards
@@ -635,7 +638,7 @@ export default function JobCardDetailPage() {
         </div>
         {(() => {
           const myTasks = myJobCardAction.data;
-          if (!myTasks || myTasks.length === 0) {
+          if (!myTasks || myTasks.length === 0 || isParentJobCard) {
             return null;
           }
           const taskLabels = myTasks.map((task) => task.label).join(", ");
@@ -660,7 +663,7 @@ export default function JobCardDetailPage() {
             </div>
           );
         })()}
-        {workflowStatus && (
+        {workflowStatus && !isParentJobCard && (
           <WorkflowActionsBar
             jobId={jobId}
             currentStep={currentStep}
