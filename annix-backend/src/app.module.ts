@@ -16,6 +16,7 @@ import { DrawingsModule } from "./drawings/drawings.module";
 import { EmailModule } from "./email/email.module";
 import { FeatureFlagsModule } from "./feature-flags/feature-flags.module";
 import { FeedbackModule } from "./feedback/feedback.module";
+import { FilesModule } from "./files/files.module";
 import { HdpeModule } from "./hdpe/hdpe.module";
 import { HeavyFeaturesModule } from "./heavy-features";
 import { InboundEmailModule } from "./inbound-email/inbound-email.module";
@@ -86,6 +87,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
     RbacModule,
 
     StorageModule,
+    FilesModule,
     EmailModule,
     NotificationsModule,
     WhatsAppModule,

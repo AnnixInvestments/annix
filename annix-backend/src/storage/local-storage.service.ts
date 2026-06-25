@@ -3,16 +3,25 @@ import * as path from "node:path";
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { v4 as uuidv4 } from "uuid";
+import { signFilePath } from "../files/file-url-signature";
+import { nowMillis } from "../lib/datetime";
 import { IStorageService, StorageResult } from "./storage.interface";
 
 @Injectable()
 export class LocalStorageService implements IStorageService {
   private readonly uploadDir: string;
   private readonly baseUrl: string;
+  private readonly signingSecret: string;
+  private readonly urlExpirationSeconds: number;
 
   constructor(private configService: ConfigService) {
     this.uploadDir = this.configService.get<string>("UPLOAD_DIR") || "./uploads";
     this.baseUrl = this.configService.get<string>("API_BASE_URL") || "http://localhost:4001/api";
+    this.signingSecret =
+      this.configService.get<string>("FILE_URL_SIGNING_SECRET") ||
+      this.configService.get<string>("JWT_SECRET") ||
+      "";
+    this.urlExpirationSeconds = this.configService.get<number>("AWS_S3_URL_EXPIRATION") || 3600;
 
     // Ensure upload directory exists
     if (!fs.existsSync(this.uploadDir)) {
@@ -75,7 +84,10 @@ export class LocalStorageService implements IStorageService {
 
   publicUrl(relativePath: string): string {
     const normalizedPath = relativePath.replace(/\\/g, "/");
-    return `${this.baseUrl}/api/files/${normalizedPath}`;
+    const base = this.baseUrl.replace(/\/+$/, "");
+    const exp = nowMillis() + this.urlExpirationSeconds * 1000;
+    const sig = signFilePath(normalizedPath, exp, this.signingSecret);
+    return `${base}/files/${normalizedPath}?exp=${exp}&sig=${sig}`;
   }
 
   async presignedUrl(

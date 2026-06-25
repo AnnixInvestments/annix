@@ -40,20 +40,11 @@ async function bootstrap() {
   app.useBodyParser("json", { limit: "10mb" });
   app.useBodyParser("urlencoded", { limit: "10mb", extended: true });
 
-  const uploadDir = path.resolve(process.env.UPLOAD_DIR || "./uploads");
-  app.useStaticAssets(uploadDir, { prefix: "/api/files/" });
-
   const isProduction = process.env.NODE_ENV === "production";
 
   app.setGlobalPrefix("api", {
     exclude: [{ path: "health", method: RequestMethod.GET }],
   });
-
-  const storageType = process.env.STORAGE_TYPE || "s3";
-  if (storageType.toLowerCase() === "local") {
-    const uploadDir = path.resolve(process.env.UPLOAD_DIR || "./uploads");
-    app.useStaticAssets(uploadDir, { prefix: "/api/files/" });
-  }
 
   const portalOrigins = isProduction ? corsOriginsFor("prod") : corsOriginsFor("dev");
   const corsOrigins = [

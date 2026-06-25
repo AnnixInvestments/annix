@@ -4,6 +4,7 @@ import { Readable } from "node:stream";
 import { NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
+import { verifyFileUrlSignature } from "../files/file-url-signature";
 import { LocalStorageService } from "./local-storage.service";
 
 jest.mock("node:fs", () => ({
@@ -22,11 +23,14 @@ describe("LocalStorageService", () => {
   const mockFs = fs as jest.Mocked<typeof fs>;
   const mockFsPromises = fs.promises as jest.Mocked<typeof fs.promises>;
 
+  const signingSecret = "test-file-url-signing-secret";
+
   const mockConfigService = {
     get: jest.fn((key: string) => {
       const config: Record<string, string> = {
         UPLOAD_DIR: "./test-uploads",
         API_BASE_URL: "http://localhost:4001/api",
+        FILE_URL_SIGNING_SECRET: signingSecret,
       };
       return config[key];
     }),
@@ -99,7 +103,8 @@ describe("LocalStorageService", () => {
         originalFilename: "test-document.pdf",
       });
       expect(result.path).toMatch(/^annix-app\/customers\/123\/documents\/[a-f0-9-]+\.pdf$/);
-      expect(result.url).toContain("http://localhost:4001/api/api/files/");
+      expect(result.url).toContain("http://localhost:4001/api/files/");
+      expect(result.url).toMatch(/[?&]exp=\d+&sig=[a-f0-9]{64}$/);
       expect(mockFsPromises.writeFile).toHaveBeenCalled();
     });
 
@@ -211,32 +216,51 @@ describe("LocalStorageService", () => {
   });
 
   describe("publicUrl", () => {
-    it("should return local URL format", () => {
+    it("should return a signed, short-lived local URL", () => {
       const result = service.publicUrl("annix-app/test/file.pdf");
 
-      expect(result).toBe("http://localhost:4001/api/api/files/annix-app/test/file.pdf");
+      const url = new URL(result);
+      expect(url.origin + url.pathname).toBe(
+        "http://localhost:4001/api/files/annix-app/test/file.pdf",
+      );
+      const exp = Number.parseInt(url.searchParams.get("exp") ?? "", 10);
+      const sig = url.searchParams.get("sig");
+      expect(Number.isFinite(exp)).toBe(true);
+      expect(exp).toBeGreaterThan(Date.now());
+      expect(sig).toMatch(/^[a-f0-9]{64}$/);
+      expect(
+        verifyFileUrlSignature("annix-app/test/file.pdf", exp, sig, signingSecret, Date.now()),
+      ).toBe(true);
     });
 
-    it("should normalize backslashes", () => {
+    it("should normalize backslashes before signing", () => {
       const result = service.publicUrl("path\\with\\backslashes\\file.pdf");
 
-      expect(result).toBe("http://localhost:4001/api/api/files/path/with/backslashes/file.pdf");
+      const url = new URL(result);
+      expect(url.origin + url.pathname).toBe(
+        "http://localhost:4001/api/files/path/with/backslashes/file.pdf",
+      );
+      const exp = Number.parseInt(url.searchParams.get("exp") ?? "", 10);
+      const sig = url.searchParams.get("sig");
+      expect(
+        verifyFileUrlSignature(
+          "path/with/backslashes/file.pdf",
+          exp,
+          sig,
+          signingSecret,
+          Date.now(),
+        ),
+      ).toBe(true);
     });
   });
 
   describe("presignedUrl", () => {
-    it("should return same as publicUrl for local storage", async () => {
-      const publicUrl = service.publicUrl("test/file.pdf");
+    it("should return a signed URL for local storage", async () => {
       const presignedUrl = await service.presignedUrl("test/file.pdf");
 
-      expect(presignedUrl).toBe(publicUrl);
-    });
-
-    it("should ignore expiresIn parameter", async () => {
-      const url1 = await service.presignedUrl("test/file.pdf", 3600);
-      const url2 = await service.presignedUrl("test/file.pdf", 7200);
-
-      expect(url1).toBe(url2);
+      const url = new URL(presignedUrl);
+      expect(url.pathname).toBe("/api/files/test/file.pdf");
+      expect(url.searchParams.get("sig")).toMatch(/^[a-f0-9]{64}$/);
     });
   });
 
