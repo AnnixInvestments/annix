@@ -242,6 +242,7 @@ export class WorkflowAutomationService {
     categories: ScreeningRejectionCategory[],
   ): Promise<void> {
     candidate.status = CandidateStatus.REJECTED;
+    candidate.decisionSource = "automated";
     await this.candidateRepo.save(candidate);
 
     if (candidate.email && !candidate.rejectionSentAt) {
@@ -278,6 +279,7 @@ export class WorkflowAutomationService {
 
   private async autoShortlistCandidate(candidate: Candidate): Promise<void> {
     candidate.status = CandidateStatus.SHORTLISTED;
+    candidate.decisionSource = "automated";
     await this.candidateRepo.save(candidate);
 
     if (candidate.email) {
@@ -311,6 +313,7 @@ export class WorkflowAutomationService {
       const jobPosting = candidate.jobPosting;
       const previousStatus = candidate.status;
       candidate.status = CandidateStatus.REJECTED;
+      candidate.decisionSource = "human";
       await this.candidateRepo.save(candidate);
 
       if (candidate.email && !candidate.rejectionSentAt) {
@@ -370,6 +373,7 @@ export class WorkflowAutomationService {
       const jobPosting = candidate.jobPosting;
       const previousStatus = candidate.status;
       candidate.status = CandidateStatus.SHORTLISTED;
+      candidate.decisionSource = "human";
       await this.candidateRepo.save(candidate);
 
       if (candidate.email && !candidate.acceptanceSentAt) {
@@ -425,6 +429,7 @@ export class WorkflowAutomationService {
       const jobPosting = candidate.jobPosting;
       const previousStatus = candidate.status;
       candidate.status = CandidateStatus.ACCEPTED;
+      candidate.decisionSource = "human";
       await this.candidateRepo.save(candidate);
 
       if (candidate.email) {

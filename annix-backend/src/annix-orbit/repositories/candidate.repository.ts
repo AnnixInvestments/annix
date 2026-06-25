@@ -90,6 +90,7 @@ export abstract class CandidateRepository extends CrudRepository<Candidate> {
     Array<{
       candidate_id: number;
       status: string;
+      decision_source: string | null;
       population_group: string;
       gender: string;
       disability_status: string;

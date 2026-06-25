@@ -37,6 +37,9 @@ export class Candidate {
   @Prop({ type: String, required: true })
   status: string;
 
+  @Prop({ type: String, required: false, default: null })
+  decisionSource: string | null;
+
   @Prop({ type: String, required: false })
   sourceEmailId: string;
 

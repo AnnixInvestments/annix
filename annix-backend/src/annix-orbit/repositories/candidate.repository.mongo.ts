@@ -459,6 +459,7 @@ export class MongoCandidateRepository
     Array<{
       candidate_id: number;
       status: string;
+      decision_source: string | null;
       population_group: string;
       gender: string;
       disability_status: string;
@@ -485,6 +486,7 @@ export class MongoCandidateRepository
         {
           candidate_id: candidate._id as number,
           status: candidate.status as string,
+          decision_source: (candidate.decisionSource as string | null) ?? null,
           population_group: ee.populationGroup as string,
           gender: ee.gender as string,
           disability_status: ee.disabilityStatus as string,

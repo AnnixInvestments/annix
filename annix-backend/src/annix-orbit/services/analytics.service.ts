@@ -380,9 +380,11 @@ export class AnalyticsService {
   async runDisparateImpactMonitor(): Promise<{
     jobsChecked: number;
     breaches: number;
+    automatedBreaches: number;
     skippedNoData: number;
   }> {
-    if (!isAnnixOrbitCronEnabled()) return { jobsChecked: 0, breaches: 0, skippedNoData: 0 };
+    if (!isAnnixOrbitCronEnabled())
+      return { jobsChecked: 0, breaches: 0, automatedBreaches: 0, skippedNoData: 0 };
 
     const activeJobs = await this.jobPostingRepo.activeJobsForFairness();
 
@@ -398,7 +400,10 @@ export class AnalyticsService {
       return [...acc, ...batchReports];
     }, Promise.resolve([]));
 
-    const breachReports = reports.filter((r) => r.breaches.length > 0);
+    const breachReports = reports.filter(
+      (r) => r.breaches.length > 0 || r.automated.breaches.length > 0,
+    );
+    const automatedBreachReports = reports.filter((r) => r.automated.breaches.length > 0);
     const skippedNoData = reports.filter((r) => r.totalAnalysed < FAIRNESS_MIN_GROUP_SAMPLE).length;
 
     await Promise.all(
@@ -410,6 +415,11 @@ export class AnalyticsService {
           passRateByPopulation: report.passRateByPopulation,
           passRateByGender: report.passRateByGender,
           passRateByDisability: report.passRateByDisability,
+          automatedTotalAnalysed: report.automated.totalAnalysed,
+          automatedBreaches: report.automated.breaches,
+          automatedPassRateByPopulation: report.automated.passRateByPopulation,
+          automatedPassRateByGender: report.automated.passRateByGender,
+          automatedPassRateByDisability: report.automated.passRateByDisability,
         }),
       ),
     );
@@ -419,10 +429,16 @@ export class AnalyticsService {
         `EE fairness monitor: ${breachReports.length} of ${activeJobs.length} active jobs breached the 4/5 rule (last ${FAIRNESS_WINDOW} apps)`,
       );
     }
+    if (automatedBreachReports.length > 0) {
+      this.logger.warn(
+        `EE fairness monitor: ${automatedBreachReports.length} active job(s) breached the 4/5 rule on AUTOMATED decisions specifically — review the auto-reject/auto-shortlist thresholds`,
+      );
+    }
 
     return {
       jobsChecked: activeJobs.length,
       breaches: breachReports.length,
+      automatedBreaches: automatedBreachReports.length,
       skippedNoData,
     };
   }
@@ -440,31 +456,33 @@ export class AnalyticsService {
     const rows = rawRows.map((row) => ({
       candidate_id: row.candidate_id,
       status: row.status as CandidateStatus,
+      decision_source: row.decision_source,
       population_group: row.population_group as EePopulationGroup,
       gender: row.gender as EeGender,
       disability_status: row.disability_status as EeDisabilityStatus,
       nationality_status: row.nationality_status as EeNationalityStatus,
     }));
 
-    const passRateByPopulation = passRatesFor(rows, "population_group");
-    const passRateByGender = passRatesFor(rows, "gender");
-    const passRateByDisability = passRatesFor(rows, "disability_status");
-
-    const breaches: string[] = [
-      ...checkFourFifthsRule("population_group", passRateByPopulation),
-      ...checkFourFifthsRule("gender", passRateByGender),
-      ...checkFourFifthsRule("disability_status", passRateByDisability),
-    ];
+    const overall = fairnessSliceFor(rows);
+    const automatedRows = rows.filter((row) => row.decision_source === "automated");
+    const automated = fairnessSliceFor(automatedRows);
 
     return {
       jobPostingId,
       companyId,
       jobTitle,
       totalAnalysed: rows.length,
-      passRateByPopulation,
-      passRateByGender,
-      passRateByDisability,
-      breaches,
+      passRateByPopulation: overall.passRateByPopulation,
+      passRateByGender: overall.passRateByGender,
+      passRateByDisability: overall.passRateByDisability,
+      breaches: overall.breaches,
+      automated: {
+        totalAnalysed: automatedRows.length,
+        passRateByPopulation: automated.passRateByPopulation,
+        passRateByGender: automated.passRateByGender,
+        passRateByDisability: automated.passRateByDisability,
+        breaches: automated.breaches,
+      },
     };
   }
 }
@@ -476,6 +494,14 @@ interface DemographicPassRate {
   passRate: number;
 }
 
+export interface FairnessSlice {
+  totalAnalysed: number;
+  passRateByPopulation: DemographicPassRate[];
+  passRateByGender: DemographicPassRate[];
+  passRateByDisability: DemographicPassRate[];
+  breaches: string[];
+}
+
 export interface JobFairnessReport {
   jobPostingId: number;
   companyId: number;
@@ -485,7 +511,27 @@ export interface JobFairnessReport {
   passRateByGender: DemographicPassRate[];
   passRateByDisability: DemographicPassRate[];
   breaches: string[];
+  automated: FairnessSlice;
 }
+
+interface FairnessRow {
+  status: CandidateStatus;
+  population_group: string;
+  gender: string;
+  disability_status: string;
+}
+
+const fairnessSliceFor = (rows: FairnessRow[]): Omit<FairnessSlice, "totalAnalysed"> => {
+  const passRateByPopulation = passRatesFor(rows, "population_group");
+  const passRateByGender = passRatesFor(rows, "gender");
+  const passRateByDisability = passRatesFor(rows, "disability_status");
+  const breaches: string[] = [
+    ...checkFourFifthsRule("population_group", passRateByPopulation),
+    ...checkFourFifthsRule("gender", passRateByGender),
+    ...checkFourFifthsRule("disability_status", passRateByDisability),
+  ];
+  return { passRateByPopulation, passRateByGender, passRateByDisability, breaches };
+};
 
 const FAIRNESS_WINDOW = 100;
 const FAIRNESS_THRESHOLD = 0.8;

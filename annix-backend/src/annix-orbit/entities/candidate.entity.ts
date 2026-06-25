@@ -50,6 +50,8 @@ export const CANDIDATE_SENIORITY_LEVELS = [
 
 export type CandidateSeniority = (typeof CANDIDATE_SENIORITY_LEVELS)[number];
 
+export type DecisionSource = "automated" | "human";
+
 export interface MatchAnalysis {
   overallScore: number;
   skillsMatched: string[];
@@ -78,6 +80,8 @@ export class Candidate {
   matchScore: number | null;
 
   status: CandidateStatus;
+
+  decisionSource: DecisionSource | null;
 
   sourceEmailId: string | null;
 
