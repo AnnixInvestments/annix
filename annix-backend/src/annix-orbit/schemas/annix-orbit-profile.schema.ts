@@ -130,6 +130,15 @@ export class AnnixOrbitProfile {
   @Prop({ type: String, required: false })
   selectedTier: string;
 
+  @Prop({ type: String, required: true, default: "soft" })
+  entitledTier: string;
+
+  @Prop({ type: String, required: true, default: "none" })
+  billingStatus: string;
+
+  @Prop({ type: Date, default: null })
+  paidUntil: Date | null;
+
   @Prop({ type: Date, required: false })
   onboardingCompletedAt: Date;
 

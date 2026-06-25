@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { isMatchTier } from "@annix/product-data/sa-market";
+import { DEFAULT_MATCH_TIER, isMatchTier } from "@annix/product-data/sa-market";
 import {
   BadRequestException,
   ForbiddenException,
@@ -14,6 +14,7 @@ import { now } from "../../lib/datetime";
 import { decryptField, encryptField, fieldEncryptionEnabled } from "../../lib/field-encryption";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { UserRepository } from "../../user/user.repository";
+import { isAnnixOrbitBillingEnforced } from "../annix-orbit-billing.config";
 import { isAcceptedDocumentMime, isImageMime } from "../config/individual-documents.config";
 import {
   EeConsentSource,
@@ -35,6 +36,7 @@ import {
 } from "../entities/annix-orbit-profile.entity";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
 import { coordsForLocation } from "../lib/sa-locations";
+import { isOrbitBillingStatus, resolveEntitledTier } from "../lib/seeker-entitlement";
 import { SEEKER_EVENTS } from "../lib/seeker-testing.constants";
 import { AnnixOrbitIndividualDocumentRepository } from "../repositories/annix-orbit-individual-document.repository";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
@@ -389,16 +391,41 @@ export class IndividualProfileService {
     return candidate.matchTier;
   }
 
+  async effectiveEntitledTier(
+    candidate: Candidate | null,
+    profile: AnnixOrbitProfile | null,
+  ): Promise<string> {
+    const requestedTier =
+      profile?.selectedTier && isMatchTier(profile.selectedTier)
+        ? profile.selectedTier
+        : candidate
+          ? this.effectiveTier(candidate)
+          : DEFAULT_MATCH_TIER;
+    return resolveEntitledTier({
+      requestedTier,
+      trialTier: candidate?.trialTier ?? null,
+      trialEndsAt: candidate?.trialEndsAt ?? null,
+      entitledTier: profile?.entitledTier ?? null,
+      billingStatus:
+        profile && isOrbitBillingStatus(profile.billingStatus) ? profile.billingStatus : null,
+      paidUntil: profile?.paidUntil ?? null,
+      enforced: isAnnixOrbitBillingEnforced(),
+      nowMillis: now().toMillis(),
+    });
+  }
+
   private async photoCredentialCaptureAllowed(email: string | null): Promise<boolean> {
     if (!email) {
       return false;
     }
     const candidates = await this.candidateRepo.findByEmail(email);
     const candidate = candidates.length > 0 ? candidates[0] : null;
-    const tier = candidate ? this.effectiveTier(candidate) : null;
-    if (!tier) {
+    const user = await this.userRepo.findOrbitUserByEmail(email);
+    const profile = user ? await this.profileRepo.findByUserId(user.id) : null;
+    if (!candidate && !profile) {
       return false;
     }
+    const tier = await this.effectiveEntitledTier(candidate, profile);
     const capability = await this.tierCapabilityRepo.findByTier(tier);
     return capability?.features?.photoCredentialCapture === true;
   }

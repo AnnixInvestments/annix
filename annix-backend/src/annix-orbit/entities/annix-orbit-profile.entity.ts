@@ -1,5 +1,6 @@
 import { Company } from "../../platform/entities/company.entity";
 import { User } from "../../user/entities/user.entity";
+import type { OrbitBillingStatus } from "../lib/seeker-entitlement";
 import type { NixGeneratedCv } from "../services/nix-prompts";
 import type {
   EeConsentSource,
@@ -160,6 +161,12 @@ export class AnnixOrbitProfile {
   dismissWarningAcknowledgedAt: Date | null;
 
   selectedTier: string | null;
+
+  entitledTier: string;
+
+  billingStatus: OrbitBillingStatus;
+
+  paidUntil: Date | null;
 
   onboardingCompletedAt: Date | null;
 

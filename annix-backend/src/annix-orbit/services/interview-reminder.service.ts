@@ -1,3 +1,4 @@
+import { DEFAULT_MATCH_TIER, isMatchTier } from "@annix/product-data/sa-market";
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Cron } from "@nestjs/schedule";
@@ -7,8 +8,10 @@ import {
   NotificationDispatcherService,
 } from "../../notifications/notification-dispatcher.service";
 import { UserRepository } from "../../user/user.repository";
+import { isAnnixOrbitBillingEnforced } from "../annix-orbit-billing.config";
 import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
 import { SeekerInterviewEvent } from "../entities/seeker-interview-event.entity";
+import { isOrbitBillingStatus, resolveEntitledTier } from "../lib/seeker-entitlement";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import { CandidateRepository } from "../repositories/candidate.repository";
 import { OrbitTierCapabilityRepository } from "../repositories/orbit-tier-capability.repository";
@@ -112,8 +115,20 @@ export class InterviewReminderService {
     const wantWhatsapp = profile.interviewReminderWhatsapp === true;
     const phone = profile.phone ? profile.phone : null;
 
-    const tier = candidate ? candidate.matchTier : null;
-    const tierCapability = tier ? await this.tierCapabilityRepo.findByTier(tier) : null;
+    const tier = resolveEntitledTier({
+      requestedTier:
+        profile.selectedTier && isMatchTier(profile.selectedTier)
+          ? profile.selectedTier
+          : (candidate?.matchTier ?? DEFAULT_MATCH_TIER),
+      trialTier: candidate?.trialTier ?? null,
+      trialEndsAt: candidate?.trialEndsAt ?? null,
+      entitledTier: profile.entitledTier ?? null,
+      billingStatus: isOrbitBillingStatus(profile.billingStatus) ? profile.billingStatus : null,
+      paidUntil: profile.paidUntil ?? null,
+      enforced: isAnnixOrbitBillingEnforced(),
+      nowMillis: now().toMillis(),
+    });
+    const tierCapability = await this.tierCapabilityRepo.findByTier(tier);
     const features = tierCapability ? tierCapability.features : null;
     const multiChannel = features ? features.multiChannelReminders === true : false;
 

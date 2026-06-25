@@ -1,5 +1,9 @@
+import { DEFAULT_MATCH_TIER, isMatchTier } from "@annix/product-data/sa-market";
 import { Injectable, NotFoundException } from "@nestjs/common";
+import { now } from "../../lib/datetime";
 import { UserRepository } from "../../user/user.repository";
+import { isAnnixOrbitBillingEnforced } from "../annix-orbit-billing.config";
+import { isOrbitBillingStatus, resolveEntitledTier } from "../lib/seeker-entitlement";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import { CandidateRepository } from "../repositories/candidate.repository";
 import { OrbitTierCapabilityRepository } from "../repositories/orbit-tier-capability.repository";
@@ -76,9 +80,24 @@ export class SeekerReminderPreferencesService {
   private async resolveMultiChannel(userId: number): Promise<boolean> {
     const user = await this.userRepo.findById(userId);
     if (!user) return false;
+    const profile = await this.profileRepo.findByUserId(userId);
     const candidates = await this.candidateRepo.findByEmail(user.email);
-    const tier = candidates.length > 0 ? candidates[0].matchTier : null;
-    if (!tier) return false;
+    const candidate = candidates.length > 0 ? candidates[0] : null;
+    if (!candidate && !profile) return false;
+    const tier = resolveEntitledTier({
+      requestedTier:
+        profile?.selectedTier && isMatchTier(profile.selectedTier)
+          ? profile.selectedTier
+          : (candidate?.matchTier ?? DEFAULT_MATCH_TIER),
+      trialTier: candidate?.trialTier ?? null,
+      trialEndsAt: candidate?.trialEndsAt ?? null,
+      entitledTier: profile?.entitledTier ?? null,
+      billingStatus:
+        profile && isOrbitBillingStatus(profile.billingStatus) ? profile.billingStatus : null,
+      paidUntil: profile?.paidUntil ?? null,
+      enforced: isAnnixOrbitBillingEnforced(),
+      nowMillis: now().toMillis(),
+    });
     const capability = await this.tierCapabilityRepo.findByTier(tier);
     const features = capability ? capability.features : null;
     return features ? features.multiChannelReminders === true : false;

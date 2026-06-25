@@ -21,7 +21,9 @@ import { UserRepository } from "../../user/user.repository";
 import { WhatsAppConversationRepository } from "../../whatsapp/repositories/whatsapp-conversation.repository";
 import { WhatsAppMessageRepository } from "../../whatsapp/repositories/whatsapp-message.repository";
 import { normalizeWaId } from "../../whatsapp/wa-id";
+import { isAnnixOrbitBillingEnforced } from "../annix-orbit-billing.config";
 import { IndividualDocumentKind } from "../entities/annix-orbit-individual-document.entity";
+import { AnnixOrbitProfile } from "../entities/annix-orbit-profile.entity";
 import { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch, MatchDetails } from "../entities/candidate-job-match.entity";
 import { ExternalJob } from "../entities/external-job.entity";
@@ -33,6 +35,7 @@ import {
 import { SeekerMute } from "../entities/seeker-mute.entity";
 import { countMatchingRows, distinctPassing } from "../lib/facet-compute";
 import { citiesForProvince, SA_PROVINCES } from "../lib/sa-locations";
+import { highestTier, isOrbitBillingStatus, resolveEntitledTier } from "../lib/seeker-entitlement";
 import { SEEKER_EVENTS } from "../lib/seeker-testing.constants";
 import { AnnixOrbitIndividualDocumentRepository } from "../repositories/annix-orbit-individual-document.repository";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
@@ -396,8 +399,7 @@ export class SeekerJobFeedService {
     if (withTrial?.trialTier) {
       return withTrial.trialTier;
     }
-    const first = candidates[0];
-    return first?.matchTier ?? "soft";
+    return highestTier(candidates.map((c) => c.matchTier));
   }
 
   private async quotaForSeeker(
@@ -411,8 +413,7 @@ export class SeekerJobFeedService {
     resetsAt: string;
   }> {
     const resetsAt = DateTime.now().endOf("month").toISO() ?? "";
-    const selectedTier = await this.selectedTierForEmail(email);
-    const tier = selectedTier ?? this.effectiveTier(candidates);
+    const tier = await this.entitledTierForSeeker(email, candidates);
     const capability = await this.tierCapabilityRepo.findByTier(tier);
     const allowance = capability ? capability.monthlyNixRuns : null;
     if (allowance == null) {
@@ -432,8 +433,7 @@ export class SeekerJobFeedService {
   async cvBuildQuotaForSeeker(email: string | null): Promise<SeekerCvBuildQuota> {
     const resetsAt = DateTime.now().endOf("month").toISO() ?? "";
     const candidates = await this.candidatesForSeeker(email);
-    const selectedTier = await this.selectedTierForEmail(email);
-    const tier = selectedTier ?? this.effectiveTier(candidates);
+    const tier = await this.entitledTierForSeeker(email, candidates);
     const capability = await this.tierCapabilityRepo.findByTier(tier);
     const allowance = capability ? capability.monthlyCvBuilds : null;
     if (allowance == null) {
@@ -576,10 +576,38 @@ export class SeekerJobFeedService {
     return selected && isMatchTier(selected) ? selected : null;
   }
 
+  async entitledTierForSeeker(email: string | null, candidates: Candidate[]): Promise<string> {
+    const profile = await this.profileForEmail(email);
+    const requestedTier =
+      profile?.selectedTier && isMatchTier(profile.selectedTier)
+        ? profile.selectedTier
+        : this.effectiveTier(candidates);
+    const liveTrial = candidates.find(
+      (c) => c.trialTier != null && c.trialEndsAt != null && c.trialEndsAt.getTime() > nowMillis(),
+    );
+    return resolveEntitledTier({
+      requestedTier,
+      trialTier: liveTrial?.trialTier ?? null,
+      trialEndsAt: liveTrial?.trialEndsAt ?? null,
+      entitledTier: profile?.entitledTier ?? null,
+      billingStatus:
+        profile && isOrbitBillingStatus(profile.billingStatus) ? profile.billingStatus : null,
+      paidUntil: profile?.paidUntil ?? null,
+      enforced: isAnnixOrbitBillingEnforced(),
+      nowMillis: nowMillis(),
+    });
+  }
+
+  private async profileForEmail(email: string | null): Promise<AnnixOrbitProfile | null> {
+    if (!email) return null;
+    const user = await this.userRepo.findOneByEmailAnyScope(email);
+    if (!user) return null;
+    return this.profileRepo.findByUserId(user.id);
+  }
+
   async entitlementsForSeeker(email: string | null): Promise<SeekerEntitlementsResult> {
     const candidates = await this.candidatesForSeeker(email);
-    const selectedTier = await this.selectedTierForEmail(email);
-    const tier = selectedTier ?? this.effectiveTier(candidates);
+    const tier = await this.entitledTierForSeeker(email, candidates);
     const capability = await this.tierCapabilityRepo.findByTier(tier);
     const cvBuilds = await this.cvBuildQuotaForSeeker(email);
     if (!capability) {
@@ -1088,7 +1116,7 @@ export class SeekerJobFeedService {
         `Seeker telemetry (jobsViewed) failed: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
-    const capTier = selectedTier ?? this.effectiveTier(candidates);
+    const capTier = await this.entitledTierForSeeker(email, candidates);
     const capability = await this.tierCapabilityRepo.findByTier(capTier);
     const maxResults = capability ? capability.maxJobResults : null;
     const facetRows = await this.cachedFacetRows(candidateIds);
@@ -1108,7 +1136,7 @@ export class SeekerJobFeedService {
         this.matchingService.recommendedJobsForCandidate(candidate.id, {
           includeDismissed: options.includeDismissed ?? false,
           filters: displayFilters,
-          tierOverride: selectedTier,
+          tierOverride: capTier,
         }),
       ),
     );
@@ -1148,13 +1176,9 @@ export class SeekerJobFeedService {
     const sourceById = new Map(sources.map((s) => [s.id, s]));
 
     // Per-source tier gating: a source's jobs only show to seekers whose match-
-    // tier is in the source's visibleTiers (null/empty = visible to all). Use the
-    // seeker's highest tier across their candidates.
-    const tierRank: Record<MatchTier, number> = { soft: 0, medium: 1, hard: 2 };
-    const seekerTier = candidates.reduce<MatchTier>((best, candidate) => {
-      const tier = isMatchTier(candidate.matchTier) ? candidate.matchTier : DEFAULT_MATCH_TIER;
-      return tierRank[tier] > tierRank[best] ? tier : best;
-    }, DEFAULT_MATCH_TIER);
+    // tier is in the source's visibleTiers (null/empty = visible to all). The
+    // entitled tier (not the requested one) decides what the seeker may see.
+    const seekerTier: MatchTier = isMatchTier(capTier) ? capTier : DEFAULT_MATCH_TIER;
     const sourceVisibleToSeeker = (sourceId: number): boolean => {
       const source = sourceById.get(sourceId);
       const tiers = source?.visibleTiers;
@@ -1342,8 +1366,7 @@ export class SeekerJobFeedService {
     const targetCountries = await this.targetCountriesForCandidates(candidates);
     const facetRows = await this.cachedFacetRows(candidateIds);
     const rawTotal = countMatchingRows(facetRows, { targetCountries });
-    const selectedTier = await this.selectedTierForEmail(email);
-    const capTier = selectedTier ?? this.effectiveTier(candidates);
+    const capTier = await this.entitledTierForSeeker(email, candidates);
     const capability = await this.tierCapabilityRepo.findByTier(capTier);
     const maxResults = capability ? capability.maxJobResults : null;
     const totalMatches = maxResults == null ? rawTotal : Math.min(rawTotal, maxResults);
