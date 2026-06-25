@@ -39,24 +39,25 @@ export class InboundEmailMonitorService {
     private readonly configService: ConfigService,
   ) {}
 
-  @Cron("0 * * * *", { name: "inbound-email:poll-all" })
-  async pollAllConfigs(): Promise<void> {
+  @Cron("0 6-18 * * 1-5", { name: "inbound-email:poll-all" })
+  async pollAllConfigs(): Promise<{ processed: number; busy: boolean }> {
     if (this.configService.get<string>("EMAIL_DELIVERY_DISABLED") === "true") {
       this.logger.log("Inbound email polling skipped — email disabled for this environment");
-      return;
+      return { processed: 0, busy: false };
     }
 
     if (this.isPolling) {
-      return;
+      return { processed: 0, busy: true };
     }
 
     this.isPolling = true;
+    let processed = 0;
 
     try {
       const configs = await this.inboundEmailService.enabledConfigs();
 
       if (configs.length === 0) {
-        return;
+        return { processed: 0, busy: false };
       }
 
       for (const config of configs) {
@@ -68,7 +69,7 @@ export class InboundEmailMonitorService {
         }
 
         try {
-          await this.pollConfig(config);
+          processed += await this.pollConfig(config);
           await this.inboundEmailService.updateLastPoll(config.id, null);
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
@@ -81,9 +82,11 @@ export class InboundEmailMonitorService {
     } finally {
       this.isPolling = false;
     }
+
+    return { processed, busy: false };
   }
 
-  private async pollConfig(config: InboundEmailConfig): Promise<void> {
+  private async pollConfig(config: InboundEmailConfig): Promise<number> {
     const password = await this.inboundEmailService.decryptPassword(config);
 
     const tlsOptions: Record<string, unknown> = {};
@@ -124,6 +127,8 @@ export class InboundEmailMonitorService {
           await this.deleteProcessedMessage(connection, config, message);
         }
       }
+
+      return messages.length;
     } finally {
       if (connection) {
         connection.end();

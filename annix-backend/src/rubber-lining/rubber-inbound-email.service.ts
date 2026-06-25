@@ -22,7 +22,7 @@ import { TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
 import { RubberCompanyRepository } from "./repositories/rubber-company.repository";
 import { RubberProductCodingRepository } from "./repositories/rubber-product-coding.repository";
 import { RubberCocService } from "./rubber-coc.service";
-import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
+import { AI_OVERLOADED_MESSAGE, RubberCocExtractionService } from "./rubber-coc-extraction.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
 import {
   CUSTOMER_EMAIL_SUBJECT_MARKER,
@@ -2492,6 +2492,12 @@ ${truncatedText}`;
               newErrors: [],
             };
           } catch (error) {
+            // A Gemini overload is "try again later", not a bad document — fail
+            // the whole analyze so the operator sees the real reason instead of
+            // a misleading "no delivery notes found".
+            if (error instanceof Error && error.message === AI_OVERLOADED_MESSAGE) {
+              throw error;
+            }
             const errorMsg = `Failed to extract from ${file.originalname}: ${error.message}`;
             this.logger.error(errorMsg);
             return { deliveryNotesFromFile: [{}], podPagesFromFile: [], newErrors: [errorMsg] };

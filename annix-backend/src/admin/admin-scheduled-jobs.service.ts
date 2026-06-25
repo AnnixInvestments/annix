@@ -252,12 +252,12 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
     description:
       "Poll all configured inbound email accounts (polymer-app@annix.co.za, au-rubber-app@annix.co.za)",
     module: "Inbound Email",
-    defaultCron: "0 * * * *",
+    defaultCron: "0 6-18 * * 1-5",
   },
   "au-rubber:poll-emails": {
     description: "Poll AU Rubber inbound emails for CoCs and DNs (au-rubber-app@annix.co.za)",
     module: "AU Rubber",
-    defaultCron: "0 6-18 * * *",
+    defaultCron: "0 6-18 * * 1-5",
   },
   "au-rubber:auto-process-au-cocs": {
     description:

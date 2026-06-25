@@ -135,6 +135,12 @@ type SparseColumnVerification = Record<SparseColumn, string[]>;
 // can be unblocked without a redeploy.
 const MAX_OCR_PAGES = Number(process.env.AU_RUBBER_MAX_OCR_PAGES) || 50;
 
+// Surfaced verbatim to the operator when Gemini returns 503/429 (overloaded).
+// A transient Google-side outage must read as "try again", never as a failed
+// document or a false success.
+export const AI_OVERLOADED_MESSAGE =
+  "The AI service (Gemini) is temporarily overloaded. Please wait a few minutes and try again.";
+
 @Injectable()
 export class RubberCocExtractionService {
   private readonly logger = new Logger(RubberCocExtractionService.name);
@@ -1794,6 +1800,9 @@ format, return { "batches": [] }.
       if (!response.ok) {
         const errorText = await response.text();
         this.logger.error(`Gemini API error: ${response.status} - ${errorText}`);
+        if (response.status === 503 || response.status === 429) {
+          throw new Error(AI_OVERLOADED_MESSAGE);
+        }
         throw new Error(`Gemini API error: ${response.status}`);
       }
 

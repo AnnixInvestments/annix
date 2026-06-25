@@ -24,6 +24,17 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+// Maps a frontend sort column to the document field it sorts on. companyName is
+// a populated relation with no field on the invoice, so it is intentionally
+// absent and falls back to createdAt.
+const TAX_INVOICE_MONGO_SORT_FIELDS: Record<string, string> = {
+  invoiceNumber: "invoiceNumber",
+  status: "status",
+  invoiceDate: "invoiceDate",
+  totalAmount: "totalAmount",
+  vatAmount: "vatAmount",
+};
+
 @Injectable()
 export class MongoRubberTaxInvoiceRepository
   extends MongoCrudRepository<RubberTaxInvoice>
@@ -137,11 +148,18 @@ export class MongoRubberTaxInvoiceRepository
     }
 
     const sortDirection = filters.sortDirection === "asc" ? 1 : -1;
+    // Map the requested sort column to the actual document field. companyName is
+    // a populated relation (not stored on the invoice) so it falls back to date.
+    const sortField = TAX_INVOICE_MONGO_SORT_FIELDS[filters.sortColumn ?? ""] ?? "createdAt";
     const total = await this.documents.countDocuments(filter).exec();
     const docs = await this.documents
       .find(filter)
       .populate(["company", "originalInvoice"])
-      .sort({ createdAt: sortDirection, _id: -1 })
+      .sort({ [sortField]: sortDirection, _id: -1 })
+      // numericOrdering makes invoiceNumber and the amount fields (stored as
+      // numeric strings) sort as numbers, e.g. 1345 < 1346 < … < 1353 and
+      // 715.88 < 10124.67 instead of lexicographically.
+      .collation({ locale: "en", numericOrdering: true })
       .skip(skip)
       .limit(pageSize)
       .lean()

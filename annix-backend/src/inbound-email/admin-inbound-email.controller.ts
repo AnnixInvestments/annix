@@ -15,14 +15,22 @@ import { InboundEmailMonitorService } from "./inbound-email-monitor.service";
 export class AdminInboundEmailController {
   constructor(
     private readonly adminInboundEmailService: AdminInboundEmailService,
-    private readonly inboundEmailMonitor: InboundEmailMonitorService,
+    private readonly monitorService: InboundEmailMonitorService,
   ) {}
 
   @Post("poll")
   @ApiOperation({ summary: "Trigger an immediate poll of all enabled inbound mailboxes" })
-  async pollNow(): Promise<{ message: string }> {
-    await this.inboundEmailMonitor.pollAllConfigs();
+  async pollAll(): Promise<{ message: string }> {
+    await this.monitorService.pollAllConfigs();
     return { message: "Inbound mailbox poll triggered" };
+  }
+
+  @Post("poll-now")
+  @ApiOperation({
+    summary: "Manually trigger an inbound email poll now (returns once the poll completes)",
+  })
+  async pollNow(): Promise<{ processed: number; busy: boolean }> {
+    return this.monitorService.pollAllConfigs();
   }
 
   @Get("configs")

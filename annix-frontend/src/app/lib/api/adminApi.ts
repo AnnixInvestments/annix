@@ -1035,6 +1035,12 @@ class AdminApiClient {
     path: "/admin/inbound-emails/configs",
   });
 
+  pollInboundEmailsNow = createEndpoint<[], { processed: number; busy: boolean }>(
+    apiClient,
+    "POST",
+    { path: "/admin/inbound-emails/poll-now" },
+  );
+
   setInboundEmailEnabled = createEndpoint<
     [app: string, companyId: number | null, enabled: boolean],
     { message: string }
