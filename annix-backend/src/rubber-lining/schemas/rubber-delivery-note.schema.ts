@@ -34,6 +34,9 @@ export class RubberDeliveryNote {
   @Prop({ type: String, required: false })
   documentPath: string;
 
+  @Prop({ type: String, required: false })
+  sourceDocumentPath: string;
+
   @Prop({ type: String, required: true })
   status: string;
 

@@ -1760,6 +1760,22 @@ Formula: totalPrice = totalKg × salePricePerKg
       `Backfill on DN #${parentId}: created ${result.created} sibling(s), skipped ${result.skipped.length}`,
     );
 
+    // Slice the parent PDF per new sibling (and record sourceDocumentPath) — the
+    // orchestrator does this on auto-extract; the manual backfill must too, or
+    // the new siblings are left pointing at the full multi-DN PDF.
+    if (note.documentPath && result.deliveryNoteIds.length > 0) {
+      try {
+        await this.documentFilerService.fileDeliveryNoteSlices({
+          parentDocumentPath: note.documentPath,
+          deliveryNoteIds: result.deliveryNoteIds,
+        });
+      } catch (err) {
+        this.logger.error(
+          `Backfill slicing failed for DN #${parentId}: ${err instanceof Error ? err.message : String(err)} — siblings keep the full source document`,
+        );
+      }
+    }
+
     return result;
   }
 
@@ -1943,7 +1959,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     @Param("id") id: string,
     @Param("pageNumber") pageNumber: string,
   ): Promise<{ url: string; totalPages: number }> {
-    const note = await this.rubberDeliveryNoteService.deliveryNoteById(Number(id));
+    const note = await this.rubberDeliveryNoteService.deliveryNoteEntityById(Number(id));
     if (!note) throw new NotFoundException("Delivery note not found");
 
     if (!note.documentPath) {
@@ -1955,21 +1971,47 @@ Formula: totalPrice = totalKg × salePricePerKg
       throw new BadRequestException("Page number must be at least 1");
     }
 
-    const documentPath = note.documentPath;
-    const images = await this.pdfPageCacheService.pages(documentPath, async () => {
-      const pdfBuffer = await this.storageService.download(documentPath);
-      return this.rubberCocExtractionService.convertPdfToImages(pdfBuffer);
-    });
+    const imagesFor = (path: string) =>
+      this.pdfPageCacheService.pages(path, async () => {
+        const pdfBuffer = await this.storageService.download(path);
+        return this.rubberCocExtractionService.convertPdfToImages(pdfBuffer);
+      });
 
-    if (pageNum > images.length) {
-      throw new NotFoundException(`Page ${pageNum} not found. PDF has ${images.length} pages.`);
+    const documentPath = note.documentPath;
+    // A split/sibling DN points at a per-DN slice; if that slice is missing from
+    // storage, fall back to the full source PDF and map this DN's own pages out
+    // of it via sourcePageNumbers, so the operator can still verify extraction.
+    const resolved = await (async (): Promise<{ images: Buffer[]; pageIndices: number[] }> => {
+      try {
+        const sliceImages = await imagesFor(documentPath);
+        return { images: sliceImages, pageIndices: sliceImages.map((_, i) => i) };
+      } catch (err) {
+        const fallback = note.sourceDocumentPath;
+        const sourcePages = note.sourcePageNumbers;
+        if (!fallback || fallback === documentPath || !sourcePages || sourcePages.length === 0) {
+          throw err;
+        }
+        this.logger.warn(
+          `DN #${id} slice "${documentPath}" unavailable — falling back to source document "${fallback}"`,
+        );
+        const sourceImages = await imagesFor(fallback);
+        const pageIndices = sourcePages
+          .filter((p) => p >= 1 && p <= sourceImages.length)
+          .map((p) => p - 1);
+        return { images: sourceImages, pageIndices };
+      }
+    })();
+
+    const totalPages = resolved.pageIndices.length;
+    if (pageNum > totalPages) {
+      throw new NotFoundException(`Page ${pageNum} not found. Document has ${totalPages} page(s).`);
     }
 
-    const imageBuffer = images[pageNum - 1];
+    const imageBuffer = resolved.images[resolved.pageIndices[pageNum - 1]];
     const base64 = imageBuffer.toString("base64");
     const url = `data:image/png;base64,${base64}`;
 
-    return { url, totalPages: images.length };
+    return { url, totalPages };
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)

@@ -31,6 +31,7 @@ import { useScrollRestoration } from "@/app/lib/hooks/useScrollRestoration";
 import { useAuRubberAuCocs, useAuRubberCompanies } from "@/app/lib/query/hooks";
 import { rubberKeys } from "@/app/lib/query/keys";
 import { Breadcrumb } from "../../components/Breadcrumb";
+import { CheckInboundEmailsButton } from "../../components/CheckInboundEmailsButton";
 import { CocEmailModal, type CocEmailMode } from "../../components/CocEmailModal";
 
 type SortColumn =
@@ -560,6 +561,7 @@ export default function AuCocsPage() {
           </p>
         </div>
         <div className="flex space-x-3">
+          <CheckInboundEmailsButton onPolled={() => refresh()} />
           <button
             onClick={handleBulkAutoGenerate}
             disabled={isAutoGenerating}

@@ -57,6 +57,7 @@ describe("AuRubberDocumentFilerService", () => {
 
       expect(deliveryNoteRepository.updateById).toHaveBeenCalledWith(268, {
         documentPath: uploadedKey,
+        sourceDocumentPath: parentPath,
       });
       // Regression: the old code wrote the computed ".../IN177565.pdf" path,
       // which no object was ever stored at — surfacing as "File not found".

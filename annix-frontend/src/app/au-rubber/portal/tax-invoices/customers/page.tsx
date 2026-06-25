@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
+import { CheckInboundEmailsButton } from "@/app/au-rubber/components/CheckInboundEmailsButton";
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
 import {
   Pagination,
@@ -427,6 +428,7 @@ export default function CustomerTaxInvoicesPage() {
           <p className="mt-1 text-sm text-gray-600">Track tax invoices issued to customers</p>
         </div>
         <div className="flex items-center gap-2">
+          <CheckInboundEmailsButton onPolled={refresh} />
           {selectedForApproval.size > 0 && (
             <button
               onClick={handleBulkApprove}

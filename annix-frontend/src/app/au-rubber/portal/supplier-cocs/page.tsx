@@ -60,6 +60,7 @@ import {
 } from "@/app/lib/query/hooks";
 import { rubberKeys } from "@/app/lib/query/keys";
 import { Breadcrumb } from "../../components/Breadcrumb";
+import { CheckInboundEmailsButton } from "../../components/CheckInboundEmailsButton";
 import { FileDropZone } from "../../components/FileDropZone";
 import { ChemicalSupplierDocsSection } from "./ChemicalSupplierDocsSection";
 
@@ -1007,6 +1008,7 @@ export default function SupplierCocsPage() {
           </p>
         </div>
         <div className="flex items-center space-x-3">
+          <CheckInboundEmailsButton onPolled={() => cocsQuery.refetch()} />
           {isAdmin && (
             <button
               onClick={handleDedupeActive}

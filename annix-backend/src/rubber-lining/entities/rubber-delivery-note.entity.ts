@@ -113,6 +113,11 @@ export class RubberDeliveryNote {
 
   documentPath: string | null;
 
+  // The full original (pre-slice) PDF this DN was extracted from. Split/sibling
+  // DNs have documentPath replaced by a per-DN slice; if that slice is ever
+  // missing from storage, the document viewer falls back to this source PDF.
+  sourceDocumentPath: string | null;
+
   status: DeliveryNoteStatus;
 
   linkedCocId: number | null;

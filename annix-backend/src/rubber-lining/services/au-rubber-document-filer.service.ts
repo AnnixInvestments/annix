@@ -91,7 +91,10 @@ export class AuRubberDocumentFilerService {
           this.bufferAsMulter(slicedBuffer, filename, isPdf ? "application/pdf" : "image/png"),
           targetPath.substring(0, targetPath.lastIndexOf("/")),
         );
-        await this.deliveryNoteRepository.updateById(note.id, { documentPath: uploaded.path });
+        await this.deliveryNoteRepository.updateById(note.id, {
+          documentPath: uploaded.path,
+          sourceDocumentPath: parentDocumentPath,
+        });
         this.pdfPageCacheService.invalidate(parentDocumentPath);
         this.pdfPageCacheService.invalidate(uploaded.path);
         this.logger.log(

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
+import { CheckInboundEmailsButton } from "@/app/au-rubber/components/CheckInboundEmailsButton";
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import {
@@ -322,6 +323,7 @@ export default function SupplierCreditNotesPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <CheckInboundEmailsButton onPolled={refresh} />
           <button
             onClick={() => setShowUploadModal(true)}
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700"

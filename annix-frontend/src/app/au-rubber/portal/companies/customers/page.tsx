@@ -21,6 +21,7 @@ import type {
   RubberProductDto,
 } from "@/app/lib/api/rubberPortalApi";
 import { Breadcrumb } from "../../../components/Breadcrumb";
+import { CheckInboundEmailsButton } from "../../../components/CheckInboundEmailsButton";
 import { ConfirmModal } from "../../../components/ConfirmModal";
 
 type SortColumn =
@@ -835,15 +836,23 @@ export default function CustomersPage() {
             Manage customer companies, email configuration, pricing tiers, and product access
           </p>
         </div>
-        <button
-          onClick={openNewForm}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-        >
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Add Customer
-        </button>
+        <div className="flex items-center gap-2">
+          <CheckInboundEmailsButton onPolled={fetchData} />
+          <button
+            onClick={openNewForm}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            Add Customer
+          </button>
+        </div>
       </div>
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
