@@ -750,13 +750,13 @@ export class JobCardWorkflowService {
       return [];
     }
 
-    const fgKeySet = new Set(fgSteps.map((s) => s.key));
+    const fgKeys = fgSteps.map((s) => s.key);
     const bgByKey = new Map(bgSteps.map((s) => [s.key, s]));
 
     // All active cards (every active card's workflowStatus is a foreground key).
     const cards = await this.jobCardRepo.findPendingApprovalsForCompany(
       user.companyId,
-      fgSteps.map((s) => s.key),
+      fgKeys,
       1,
       2000,
     );
@@ -791,7 +791,7 @@ export class JobCardWorkflowService {
             card,
             approved,
             completed,
-            fgKeySet,
+            fgKeys,
             bgSteps,
             bgByKey,
             primaryByStep,
@@ -807,29 +807,55 @@ export class JobCardWorkflowService {
   }
 
   /**
-   * The active frontier step keys on a card for which `userId` is the PRIMARY
-   * assignee — the single source of truth for "is this card awaiting this user"
+   * The CURRENT-blocker step keys on a card for which `userId` is the PRIMARY
+   * assignee — the single source of truth for "is this card stopped by this user"
    * (the list) and "which task here is theirs" (the detail-page banner).
+   *
+   * A step counts only if it is genuinely blocking the card RIGHT NOW:
+   *   - a background step that is incomplete, whose trigger is satisfied, AND
+   *     whose origin foreground stage is BEFORE the card's current foreground
+   *     step (it has been reached and is holding the card up). A step whose stage
+   *     the foreground has NOT yet reached is a FUTURE task, not a current one,
+   *     and is excluded — so "Next" jumps cards where the user only has a future
+   *     task and lands on the next card actually stopped by them.
+   *   - the current foreground step, unless it is blocked by such a background step.
    */
   private primaryFrontierStepKeys(params: {
     card: JobCard;
     approved: Set<string>;
     completed: Set<string>;
-    fgKeySet: Set<string>;
+    fgKeys: string[];
     bgSteps: WorkflowStepConfig[];
     bgByKey: Map<string, WorkflowStepConfig>;
     primaryByStep: Map<string, number | null>;
     userId: number;
   }): string[] {
-    const { card, approved, completed, fgKeySet, bgSteps, bgByKey, primaryByStep, userId } = params;
+    const { card, approved, completed, fgKeys, bgSteps, bgByKey, primaryByStep, userId } = params;
+    const fgKeySet = new Set(fgKeys);
+    const currentFgIdx = fgKeys.indexOf(card.workflowStatus);
+
     const triggerSatisfied = (trigger: string | null): boolean => {
       if (!trigger) return true;
       if (fgKeySet.has(trigger)) return approved.has(trigger);
       if (bgByKey.has(trigger)) return completed.has(trigger);
       return true;
     };
+    // The foreground stage a background step originates from: walk its trigger
+    // chain back to the foreground step that spawns the branch.
+    const originFgIdx = (trigger: string | null, seen: Set<string> = new Set()): number => {
+      if (!trigger) return 0;
+      if (fgKeySet.has(trigger)) return fgKeys.indexOf(trigger);
+      if (seen.has(trigger)) return 0;
+      seen.add(trigger);
+      const parent = bgByKey.get(trigger);
+      return parent ? originFgIdx(parent.triggerAfterStep, seen) : 0;
+    };
+
     const activeBg = bgSteps.filter(
-      (s) => !completed.has(s.key) && triggerSatisfied(s.triggerAfterStep),
+      (s) =>
+        !completed.has(s.key) &&
+        triggerSatisfied(s.triggerAfterStep) &&
+        originFgIdx(s.triggerAfterStep) < currentFgIdx,
     );
     const foregroundBlocked = activeBg.some((s) => !s.rejoinAtStep);
     const frontierKeys = activeBg.map((s) => s.key);
@@ -856,7 +882,7 @@ export class JobCardWorkflowService {
     const bgSteps = await this.stepConfigService.backgroundSteps(user.companyId);
     const assignments = await this.assignmentService.allAssignments(user.companyId);
     const primaryByStep = new Map(assignments.map((a) => [a.step, a.primaryUserId]));
-    const fgKeySet = new Set(fgSteps.map((s) => s.key));
+    const fgKeys = fgSteps.map((s) => s.key);
     const bgByKey = new Map(bgSteps.map((s) => [s.key, s]));
     const labelByStep = new Map([...fgSteps, ...bgSteps].map((s) => [s.key, s.label]));
 
@@ -871,7 +897,7 @@ export class JobCardWorkflowService {
       card,
       approved,
       completed,
-      fgKeySet,
+      fgKeys,
       bgSteps,
       bgByKey,
       primaryByStep,
