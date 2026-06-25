@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { AiChatService } from "../ai-providers/ai-chat.service";
+import { hardenedExtractionSystemInstruction } from "../ai-providers/untrusted-content";
 import { ProductDataSheet, ProductDataSheetKind } from "../entities/product-data-sheet.entity";
 import { ProductDataSheetRepository } from "../product-data-sheet.repository";
 
@@ -215,7 +216,8 @@ export class ProductDataSheetsService {
 
     const base64 = fileBuffer.toString("base64");
 
-    const systemPrompt = `You read product data sheets and emit a single JSON object — no prose, no markdown — with this exact shape:
+    const systemPrompt =
+      hardenedExtractionSystemInstruction(`You read product data sheets and emit a single JSON object — no prose, no markdown — with this exact shape:
 {
   "manufacturer": string|null,
   "productName": string|null,
@@ -224,7 +226,7 @@ export class ProductDataSheetsService {
   "brand": string|null,
   "description": string|null
 }
-Use null when a field is genuinely absent from the document. Never invent values.`;
+Use null when a field is genuinely absent from the document. Never invent values.`);
 
     const userPrompt =
       kind === ProductDataSheetKind.COATING ? this.coatingPrompt() : this.liningPrompt();

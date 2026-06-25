@@ -3,10 +3,20 @@ import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiApp, AiProvider as AiProviderEnum } from "../../ai-usage/entities/ai-usage-log.entity";
 import { ExtractedItem, SpecificationCellData } from "../services/excel-extractor.service";
 import { enforceExplicitDescriptionSpecs } from "../services/explicit-size-guard";
-import { AiExtractedItem, AiExtractionRequest, AiProvider } from "./ai-provider.interface";
+import {
+  AiExtractedItem,
+  AiExtractionRequest,
+  AiProvider,
+  DEFAULT_EXTRACTION_SYSTEM_PROMPT,
+} from "./ai-provider.interface";
 import { ClaudeProvider } from "./claude.provider";
 import { GeminiProvider } from "./gemini.provider";
 import { withRetry } from "./retry";
+import {
+  hardenedExtractionSystemInstruction,
+  untrustedContentBoundaryToken,
+  wrapUntrustedDocument,
+} from "./untrusted-content";
 
 export type AiProviderType = "gemini" | "auto";
 
@@ -104,13 +114,16 @@ export class AiExtractionService implements OnModuleInit {
 
     const expectedItemTypes = this.expectedItemTypesFromProducts(productTypes);
 
+    const boundaryToken = untrustedContentBoundaryToken();
     const request: AiExtractionRequest = {
-      text: this.truncateText(text, 100000),
+      text: wrapUntrustedDocument(this.truncateText(text, 100000), boundaryToken),
       documentName,
       hints: {
         expectedItemTypes,
       },
-      systemPrompt,
+      systemPrompt: hardenedExtractionSystemInstruction(
+        systemPrompt ?? DEFAULT_EXTRACTION_SYSTEM_PROMPT,
+      ),
     };
 
     const response = await withRetry(

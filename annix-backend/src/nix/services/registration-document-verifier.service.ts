@@ -3,6 +3,10 @@ import { Injectable, Logger } from "@nestjs/common";
 import { createWorker } from "tesseract.js";
 import { AiChatService } from "../ai-providers/ai-chat.service";
 import { AiExtractionService } from "../ai-providers/ai-extraction.service";
+import {
+  hardenedExtractionSystemInstruction,
+  wrapUntrustedDocument,
+} from "../ai-providers/untrusted-content";
 import { DocumentAnnotationService } from "./document-annotation.service";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -398,9 +402,10 @@ export class RegistrationDocumentVerifierService {
     documentType: RegistrationDocumentType,
   ): Promise<ExtractedRegistrationData | null> {
     try {
-      const prompt = `${AI_REGISTRATION_PROMPT}\n\nDocument Type: ${documentType}\n\nDocument Text:\n${text.substring(0, 10000)}`;
+      const prompt = `Document Type: ${documentType}\n\n${wrapUntrustedDocument(text.substring(0, 10000))}`;
+      const systemPrompt = hardenedExtractionSystemInstruction(AI_REGISTRATION_PROMPT);
 
-      const response = await this.callAiForExtraction(prompt);
+      const response = await this.callAiForExtraction(prompt, systemPrompt);
       if (!response) return null;
 
       const parsed = JSON.parse(response);
@@ -437,7 +442,7 @@ export class RegistrationDocumentVerifierService {
     }
   }
 
-  private async callAiForExtraction(prompt: string): Promise<string | null> {
+  private async callAiForExtraction(prompt: string, systemPrompt: string): Promise<string | null> {
     if (!(await this.aiChatService.isAvailable())) {
       this.logger.warn("AI chat service not available for registration extraction");
       return null;
@@ -446,7 +451,7 @@ export class RegistrationDocumentVerifierService {
     try {
       const { content } = await this.aiChatService.chat(
         [{ role: "user", content: prompt }],
-        undefined,
+        systemPrompt,
         "gemini",
       );
       return content || null;

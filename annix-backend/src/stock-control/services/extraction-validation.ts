@@ -36,6 +36,23 @@ export function validArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? value : [];
 }
 
+function sanitizeLineItem(raw: unknown): ExtractedLineItem {
+  const item = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
+  return {
+    lineNumber: validPositiveNumber(item.lineNumber, 0),
+    description: validString(item.description, ""),
+    sku: typeof item.sku === "string" ? item.sku : undefined,
+    quantity: validPositiveNumber(item.quantity, 1),
+    unitPrice: validPositiveNumber(item.unitPrice, 0),
+    unitType: typeof item.unitType === "string" ? item.unitType : undefined,
+    discountPercent: validPercentage(item.discountPercent, 0),
+    isPaintPartA: validBoolean(item.isPaintPartA, false),
+    isPaintPartB: validBoolean(item.isPaintPartB, false),
+    volumeLitresPerPack:
+      typeof item.volumeLitresPerPack === "number" ? item.volumeLitresPerPack : null,
+  };
+}
+
 export function validateInvoiceExtraction(parsed: unknown): ExtractedInvoiceData {
   if (typeof parsed !== "object" || parsed === null) {
     throw new BadRequestException("AI extraction produced invalid data structure");
@@ -47,11 +64,14 @@ export function validateInvoiceExtraction(parsed: unknown): ExtractedInvoiceData
     invoiceDate: typeof data.invoiceDate === "string" ? data.invoiceDate : undefined,
     totalAmount: validPositiveNumber(data.totalAmount, 0),
     vatAmount: validPositiveNumber(data.vatAmount, 0),
-    lineItems: validArray<ExtractedLineItem>(data.lineItems),
-    deliveryNoteNumbers: validArray<string>(
+    lineItems: validArray<unknown>(data.lineItems).map(sanitizeLineItem),
+    deliveryNoteNumbers: validArray<unknown>(
       data.deliveryNoteNumbers ??
         (typeof data.deliveryNoteNumber === "string" ? [data.deliveryNoteNumber] : []),
-    ),
+    )
+      .filter((dn): dn is string => typeof dn === "string")
+      .map((dn) => dn.trim())
+      .filter((dn) => dn.length > 0 && dn.length <= 64),
   };
 }
 

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { AiChatService } from "../ai-providers/ai-chat.service";
+import { hardenedExtractionSystemInstruction } from "../ai-providers/untrusted-content";
 import { DocumentRole } from "../entities/nix-extraction.entity";
 
 export type RoleClassificationSource = "filename" | "ai" | "fallback";
@@ -120,6 +121,7 @@ export class RoleClassifierService {
         file.buffer.toString("base64"),
         "application/pdf",
         AI_GLANCE_PROMPT,
+        hardenedExtractionSystemInstruction(""),
       );
       const answer = (response.content || "").trim().toLowerCase();
       const role = answer.includes("drawing")

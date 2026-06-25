@@ -9,6 +9,10 @@ import {
   isWordFile,
 } from "../lib/document-extraction";
 import { AiChatService } from "../nix/ai-providers/ai-chat.service";
+import {
+  hardenedExtractionSystemInstruction,
+  wrapUntrustedDocument,
+} from "../nix/ai-providers/untrusted-content";
 import { IStorageService, STORAGE_SERVICE, StorageResult } from "../storage/storage.interface";
 import { CompanyType, RubberCompany } from "./entities/rubber-company.entity";
 import {
@@ -309,8 +313,13 @@ Respond ONLY with JSON: {"role":"seller"|"buyer","counterparty":"other company n
     const truncated = pdfText.length > 3000 ? pdfText.substring(0, 3000) : pdfText;
     try {
       const response = await this.aiChatService.chat(
-        [{ role: "user", content: `Filename: ${filename}\n\nContent:\n${truncated}` }],
-        systemPrompt,
+        [
+          {
+            role: "user",
+            content: `Filename: ${filename}\n\n${wrapUntrustedDocument(truncated)}`,
+          },
+        ],
+        hardenedExtractionSystemInstruction(systemPrompt),
       );
       const match = response.content.match(/\{[\s\S]*\}/);
       if (match) {
@@ -1214,13 +1223,12 @@ Respond ONLY with a JSON object: {"documentType": "coc"|"delivery_note"|"tax_inv
 
 Filename: ${filename}
 
-Content:
-${truncatedText}`;
+${wrapUntrustedDocument(truncatedText)}`;
 
     try {
       const response = await this.aiChatService.chat(
         [{ role: "user", content: userMessage }],
-        systemPrompt,
+        hardenedExtractionSystemInstruction(systemPrompt),
       );
 
       const jsonMatch = response.content.match(/\{[\s\S]*\}/);
@@ -1980,13 +1988,12 @@ Respond ONLY with a JSON object:
 
 Filename: ${filename}
 
-Document content:
-${truncatedText}`;
+${wrapUntrustedDocument(truncatedText)}`;
 
     try {
       const response = await this.aiChatService.chat(
         [{ role: "user", content: userMessage }],
-        systemPrompt,
+        hardenedExtractionSystemInstruction(systemPrompt),
       );
 
       this.logger.log(`NIX response for document classification: ${response.content}`);

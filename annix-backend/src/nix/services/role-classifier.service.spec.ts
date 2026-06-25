@@ -66,6 +66,8 @@ describe("role-classifier (issue #266 Phase 1)", () => {
       });
       expect(result.role).toBe(DocumentRole.SPECIFICATION);
       expect(result.source).toBe("ai");
+      const systemPrompt = chatMock.chatWithImage.mock.calls[0][3];
+      expect(systemPrompt).toContain("UNTRUSTED DOCUMENT CONTENT");
     });
 
     it("skips the AI glance when the filename already decides", async () => {

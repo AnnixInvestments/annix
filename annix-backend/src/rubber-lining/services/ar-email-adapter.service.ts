@@ -14,6 +14,7 @@ import {
   truncateClassificationText,
 } from "../../lib/document-classification";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { hardenedExtractionSystemInstruction } from "../../nix/ai-providers/untrusted-content";
 import { DocumentVersionStatus } from "../entities/document-version.types";
 import { RubberCompany } from "../entities/rubber-company.entity";
 import {
@@ -183,7 +184,7 @@ export class ArEmailAdapterService implements EmailAppAdapter, OnModuleInit {
 
       const response = await this.aiChatService.chat(
         [{ role: "user", content: userMessage }],
-        CLASSIFICATION_PROMPT,
+        hardenedExtractionSystemInstruction(CLASSIFICATION_PROMPT),
       );
 
       return this.parseAiResponse(response.content);
@@ -235,7 +236,7 @@ Respond ONLY with JSON:
       imageBase64,
       mediaType,
       prompt,
-      CLASSIFICATION_PROMPT,
+      hardenedExtractionSystemInstruction(CLASSIFICATION_PROMPT),
     );
 
     return this.parseAiResponse(response.content);

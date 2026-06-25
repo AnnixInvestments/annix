@@ -5,3 +5,4 @@ export * from "./claude.provider";
 export * from "./claude-chat.provider";
 export * from "./gemini.provider";
 export * from "./gemini-chat.provider";
+export * from "./untrusted-content";

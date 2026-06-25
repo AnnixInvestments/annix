@@ -4,6 +4,7 @@ import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { fromISO, fromJSDate, now } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { hardenedExtractionSystemInstruction } from "../../nix/ai-providers/untrusted-content";
 import { SupplierInvoiceFifoBridgeService } from "../../stock-management/services/supplier-invoice-fifo-bridge.service";
 import {
   ClarificationStatus,
@@ -254,9 +255,11 @@ export class InvoiceExtractionService {
         invoice.companyId,
         invoice.supplierName,
       );
-      const systemPrompt = correctionHints
-        ? `${INVOICE_EXTRACTION_PROMPT}\n\n${correctionHints}`
-        : INVOICE_EXTRACTION_PROMPT;
+      const systemPrompt = hardenedExtractionSystemInstruction(
+        correctionHints
+          ? `${INVOICE_EXTRACTION_PROMPT}\n\n${correctionHints}`
+          : INVOICE_EXTRACTION_PROMPT,
+      );
 
       const {
         content: response,
@@ -368,7 +371,7 @@ export class InvoiceExtractionService {
       imageBase64,
       mediaType,
       "Extract the delivery note details from this scanned delivery note image. Return JSON only.",
-      DELIVERY_NOTE_EXTRACTION_PROMPT,
+      hardenedExtractionSystemInstruction(DELIVERY_NOTE_EXTRACTION_PROMPT),
     );
 
     this.aiUsageService.log({

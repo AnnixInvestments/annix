@@ -5,6 +5,7 @@ import { AiApp, AiProvider } from "../ai-usage/entities/ai-usage-log.entity";
 import { nowMillis } from "../lib/datetime";
 import { extractTextFromPdf } from "../lib/document-extraction";
 import { ExtractionMetricService } from "../metrics/extraction-metric.service";
+import { hardenedExtractionSystemInstruction } from "../nix/ai-providers/untrusted-content";
 import {
   ExtractedCustomerDeliveryNoteData,
   ExtractedCustomerDeliveryNotePodPage,
@@ -1782,7 +1783,10 @@ format, return { "batches": [] }.
           body: JSON.stringify({
             contents: [
               {
-                parts: [{ text: systemPrompt }, { text: userPrompt }],
+                parts: [
+                  { text: hardenedExtractionSystemInstruction(systemPrompt) },
+                  { text: userPrompt },
+                ],
               },
             ],
             generationConfig: {
@@ -2116,7 +2120,11 @@ format, return { "batches": [] }.
     const body = JSON.stringify({
       contents: [
         {
-          parts: [{ text: systemPrompt }, { text: userPrompt }, ...imageParts],
+          parts: [
+            { text: hardenedExtractionSystemInstruction(systemPrompt) },
+            { text: userPrompt },
+            ...imageParts,
+          ],
         },
       ],
       generationConfig: {

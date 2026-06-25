@@ -31,6 +31,7 @@ describe("NixService", () => {
   let pdfExtractor: jest.Mocked<PdfExtractorService>;
   let excelExtractor: jest.Mocked<ExcelExtractorService>;
   let aiExtractor: jest.Mocked<AiExtractionService>;
+  let aiChatService: jest.Mocked<AiChatService>;
 
   const mockExtraction = {
     id: 1,
@@ -187,6 +188,7 @@ describe("NixService", () => {
     pdfExtractor = module.get(PdfExtractorService);
     excelExtractor = module.get(ExcelExtractorService);
     aiExtractor = module.get(AiExtractionService);
+    aiChatService = module.get(AiChatService);
   });
 
   it("should be defined", () => {
@@ -705,6 +707,42 @@ describe("NixService", () => {
           documentType: expectedType,
         }),
       );
+    });
+  });
+
+  describe("untrusted-document hardening on vision call-sites", () => {
+    const hardeningPhrase = "UNTRUSTED DOCUMENT CONTENT";
+
+    it("extractFromPdfWithVision passes a hardened system prompt to chatWithImage", async () => {
+      aiChatService.chatWithImage.mockResolvedValue({
+        content: '{"items":[],"specifications":{},"metadata":{}}',
+        providerUsed: "gemini",
+      } as Awaited<ReturnType<AiChatService["chatWithImage"]>>);
+
+      await (
+        service as unknown as {
+          extractFromPdfWithVision: (
+            buffer: Buffer,
+            documentName: string,
+            profileSystemPrompt?: string,
+          ) => Promise<unknown>;
+        }
+      ).extractFromPdfWithVision(Buffer.from("fake-pdf"), "scanned.pdf");
+
+      const systemPrompt = aiChatService.chatWithImage.mock.calls[0][3];
+      expect(systemPrompt).toContain(hardeningPhrase);
+    });
+
+    it("extractProductSpec passes a hardened system prompt to chatWithImage", async () => {
+      aiChatService.chatWithImage.mockResolvedValue({
+        content: '{"brand":null,"description":null}',
+        providerUsed: "gemini",
+      } as Awaited<ReturnType<AiChatService["chatWithImage"]>>);
+
+      await service.extractProductSpec(Buffer.from("fake-image"), "image/png", "coating");
+
+      const systemPrompt = aiChatService.chatWithImage.mock.calls[0][3];
+      expect(systemPrompt).toContain(hardeningPhrase);
     });
   });
 });

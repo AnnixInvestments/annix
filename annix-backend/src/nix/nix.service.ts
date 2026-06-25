@@ -7,6 +7,7 @@ import { StorageArea } from "../storage/storage.interface";
 import { AiChatService } from "./ai-providers/ai-chat.service";
 import { AiExtractionService } from "./ai-providers/ai-extraction.service";
 import { DEFAULT_EXTRACTION_SYSTEM_PROMPT } from "./ai-providers/ai-provider.interface";
+import { hardenedExtractionSystemInstruction } from "./ai-providers/untrusted-content";
 import { ProcessDocumentDto, ProcessDocumentResponseDto } from "./dto/process-document.dto";
 import {
   SubmitClarificationDto,
@@ -1123,7 +1124,9 @@ export class NixService {
     const start = Date.now();
     const base64 = pdfBuffer.toString("base64");
     const userPrompt = `Document: ${documentName}\n\nExtract every quotable line item AND every cross-cutting specification clause you can see, following the JSON shape in the system prompt. Read the PDF visually — title blocks, dimensioned drawings, BOM tables, handwritten markups all count.`;
-    const systemPrompt = profileSystemPrompt ?? DEFAULT_EXTRACTION_SYSTEM_PROMPT;
+    const systemPrompt = hardenedExtractionSystemInstruction(
+      profileSystemPrompt ?? DEFAULT_EXTRACTION_SYSTEM_PROMPT,
+    );
 
     try {
       const maxAttempts = 3;
@@ -2410,7 +2413,9 @@ export class NixService {
       return { brand: null, description: null };
     }
 
-    const systemPrompt = `You read product data sheets and emit a single JSON object: {"brand": string|null, "description": string|null}. No prose, no markdown — JSON only. Use null when the field is genuinely absent. Never invent values.`;
+    const systemPrompt = hardenedExtractionSystemInstruction(
+      `You read product data sheets and emit a single JSON object: {"brand": string|null, "description": string|null}. No prose, no markdown — JSON only. Use null when the field is genuinely absent. Never invent values.`,
+    );
 
     const userPrompt =
       kind === "coating" ? this.coatingDataSheetPrompt() : this.liningDataSheetPrompt();

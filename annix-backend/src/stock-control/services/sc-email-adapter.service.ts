@@ -18,6 +18,7 @@ import {
   truncateClassificationText,
 } from "../../lib/document-classification";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { hardenedExtractionSystemInstruction } from "../../nix/ai-providers/untrusted-content";
 import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
 import { StockControlSupplierRepository } from "../repositories/stock-control-supplier.repository";
 import { CertificateService } from "./certificate.service";
@@ -157,7 +158,7 @@ export class ScEmailAdapterService implements EmailAppAdapter, OnModuleInit {
 
       const response = await this.aiChatService.chat(
         [{ role: "user", content: userMessage }],
-        CLASSIFICATION_PROMPT,
+        hardenedExtractionSystemInstruction(CLASSIFICATION_PROMPT),
       );
 
       return this.parseAiResponse(response.content);
@@ -192,7 +193,7 @@ Respond ONLY with a JSON object:
       imageBase64,
       mediaType,
       prompt,
-      CLASSIFICATION_PROMPT,
+      hardenedExtractionSystemInstruction(CLASSIFICATION_PROMPT),
     );
 
     return this.parseAiResponse(response.content);
@@ -451,6 +452,9 @@ Respond ONLY with a JSON object:
   "productName": "the SHORT product name or compound code (e.g. RSCA40, IMP STEAM 50 B, HeroBond 080, JOTAMASTIC 90 ALU). Look for fields labeled Product, Compound, Material, Grade. Do NOT include dimensions, weights, roll numbers, or prices. Max 50 chars. null if not found.",
   "batchNumber": "the batch number, roll number(s), or lot number from the certificate. Look for fields labeled Batch, Roll No, Lot, Batch Number. If multiple roll numbers, join with commas. null if not found."
 }`,
+        hardenedExtractionSystemInstruction(
+          "You extract the requested fields from a supplier certificate image. Return only the requested JSON.",
+        ),
       );
       const text = response.content.trim();
       const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -485,6 +489,9 @@ Respond ONLY with a JSON object:
         imageBase64,
         mediaType,
         'What is the name of the company or supplier that issued this certificate? Reply with ONLY the company name, nothing else. If you cannot determine it, reply with "unknown".',
+        hardenedExtractionSystemInstruction(
+          "You read a supplier certificate image and return only the issuing company name as requested.",
+        ),
       );
       const name = response.content.trim();
       return name === "unknown" || name.length === 0 ? null : name;
