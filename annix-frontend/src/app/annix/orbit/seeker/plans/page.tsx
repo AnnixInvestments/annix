@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { TierPlans } from "@/app/components/orbit/TierPlans";
 import { useToast } from "@/app/components/Toast";
+import { SeekerWhatsAppVerifyModal } from "@/app/lib/annix-orbit/components/SeekerWhatsAppVerifyModal";
 import { requestSeekerTour } from "@/app/lib/annix-orbit/seekerTourSignal";
 import type { SeekerPayableTier } from "@/app/lib/api/annixOrbitApi";
 import { isApiError } from "@/app/lib/api/apiError";
@@ -13,6 +14,7 @@ import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useOrbitCompleteOnboarding,
   useOrbitMyProfileStatus,
+  useOrbitReminderPreferences,
   useOrbitSeekerBillingStatus,
   useOrbitSeekerCancelSubscription,
   useOrbitSeekerCheckout,
@@ -48,6 +50,12 @@ function SeekerPlansContent() {
   const entitlementsQuery = useOrbitSeekerEntitlements();
   const entitlements = entitlementsQuery.data;
   const currentTier = entitlements ? entitlements.tier : null;
+  const whatsappVerified = entitlements ? entitlements.whatsappVerified : false;
+
+  const reminderPreferencesQuery = useOrbitReminderPreferences();
+  const reminderPreferences = reminderPreferencesQuery.data;
+  const seekerPhone = reminderPreferences ? reminderPreferences.phone : null;
+  const [whatsAppVerifyOpen, setWhatsAppVerifyOpen] = useState(false);
 
   const billingQuery = useOrbitSeekerBillingStatus();
   const billing = billingQuery.data;
@@ -225,6 +233,36 @@ function SeekerPlansContent() {
         </p>
       </div>
 
+      <div className="mt-6 max-w-2xl rounded-xl border border-white/15 bg-white/5 p-4">
+        {whatsappVerified ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-200">
+              <span aria-hidden="true">✓</span> WhatsApp verified
+            </span>
+            <span className="text-sm text-white/70">
+              Your free allowance is protected — nice one.
+            </span>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-white">Verify your WhatsApp</p>
+              <p className="mt-0.5 text-sm text-white/70">
+                A quick one-time check unlocks your free Nix job searches and CV builds — and stops
+                your allowance being reset by re-registering.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setWhatsAppVerifyOpen(true)}
+              className="inline-flex flex-shrink-0 items-center gap-2 rounded-lg bg-[var(--brand-accent,#FF8A00)] px-4 py-2 text-sm font-semibold text-[#1a1a40] transition-colors hover:bg-[var(--brand-accent-light,#FF9C33)]"
+            >
+              Verify WhatsApp
+            </button>
+          </div>
+        )}
+      </div>
+
       {showBillingPanel ? (
         <div className="mt-6 max-w-2xl rounded-xl border border-white/15 bg-white/5 p-5">
           <div className="flex flex-wrap items-center gap-3">
@@ -303,6 +341,14 @@ function SeekerPlansContent() {
             : "Continue to your dashboard →"}
         </button>
       </div>
+      <SeekerWhatsAppVerifyModal
+        isOpen={whatsAppVerifyOpen}
+        onClose={() => setWhatsAppVerifyOpen(false)}
+        defaultPhone={seekerPhone}
+        onSent={() => {
+          entitlementsRefetch();
+        }}
+      />
       {ConfirmDialog}
       {AlertDialog}
     </div>

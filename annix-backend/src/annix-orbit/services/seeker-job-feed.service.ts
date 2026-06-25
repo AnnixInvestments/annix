@@ -20,8 +20,13 @@ import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interfac
 import { UserRepository } from "../../user/user.repository";
 import { WhatsAppConversationRepository } from "../../whatsapp/repositories/whatsapp-conversation.repository";
 import { WhatsAppMessageRepository } from "../../whatsapp/repositories/whatsapp-message.repository";
+import {
+  type RequestConsentResult,
+  WhatsAppConsentSenderService,
+} from "../../whatsapp/services/whatsapp-consent-sender.service";
 import { normalizeWaId } from "../../whatsapp/wa-id";
 import { isAnnixOrbitBillingEnforced } from "../annix-orbit-billing.config";
+import { isAnnixOrbitWhatsAppQuotaGateEnabled } from "../annix-orbit-quota-gate.config";
 import { IndividualDocumentKind } from "../entities/annix-orbit-individual-document.entity";
 import { AnnixOrbitProfile } from "../entities/annix-orbit-profile.entity";
 import { Candidate } from "../entities/candidate.entity";
@@ -67,7 +72,16 @@ import { SeekerTelemetryService } from "./seeker-telemetry.service";
 const HELP_FIND_JOB_OPERATION = "help-find-job";
 const CV_BUILD_OPERATION = "nix-cv-build";
 
+export const WHATSAPP_VERIFICATION_REQUIRED_CODE = "whatsapp_verification_required";
+
+export interface WhatsAppConsentCooldownResult {
+  requested: false;
+  cooldown: true;
+  message: string;
+}
+
 const REMATCH_COOLDOWN_MS = 5 * 60 * 1000;
+const WHATSAPP_CONSENT_RESEND_COOLDOWN_MS = 3 * 60 * 1000;
 const APPLY_CLICK_DEDUP_MS = 5_000;
 const MAX_COLD_START = 12;
 const MAX_LOCKED_TEASERS = 3;
@@ -241,6 +255,14 @@ export interface SeekerEntitlementsResult {
   label: string;
   features: OrbitTierFeatures;
   cvBuilds: SeekerCvBuildQuota;
+  whatsappVerified: boolean;
+  verificationRequired: boolean;
+}
+
+interface SeekerQuotaIdentity {
+  subjectId: string;
+  whatsappVerified: boolean;
+  billingBacked: boolean;
 }
 
 interface SeekerContactState {
@@ -345,6 +367,7 @@ export class SeekerJobFeedService {
     private readonly waConversationRepo: WhatsAppConversationRepository,
     private readonly waMessageRepo: WhatsAppMessageRepository,
     private readonly cvAuditService: CvAuditService,
+    private readonly whatsappConsentSender: WhatsAppConsentSenderService,
   ) {}
 
   // Union of the seeker's candidates' target countries; defaults to South Africa.
@@ -440,10 +463,10 @@ export class SeekerJobFeedService {
     if (allowance == null) {
       return { unlimited: true, allowance: null, used: 0, remaining: null, resetsAt };
     }
-    const normalizedEmail = email ? email.trim().toLowerCase() : "";
+    const identity = await this.quotaIdentityForSeeker(email, candidates);
     const monthKey = DateTime.now().toFormat("yyyy-LL");
     const used = await this.usageCounterRepo.getCount(
-      normalizedEmail,
+      identity.subjectId,
       HELP_FIND_JOB_OPERATION,
       monthKey,
     );
@@ -460,10 +483,10 @@ export class SeekerJobFeedService {
     if (allowance == null) {
       return { unlimited: true, allowance: null, used: 0, remaining: null, resetsAt };
     }
-    const normalizedEmail = email ? email.trim().toLowerCase() : "";
+    const identity = await this.quotaIdentityForSeeker(email, candidates);
     const monthKey = DateTime.now().toFormat("yyyy-LL");
     const used = await this.usageCounterRepo.getCount(
-      normalizedEmail,
+      identity.subjectId,
       CV_BUILD_OPERATION,
       monthKey,
     );
@@ -476,10 +499,72 @@ export class SeekerJobFeedService {
     };
   }
 
+  async requestWhatsAppVerificationForSeeker(
+    email: string | null,
+    phone: string | null,
+  ): Promise<RequestConsentResult | WhatsAppConsentCooldownResult> {
+    if (!email) {
+      throw new BadRequestException("Sign in to verify your WhatsApp number.");
+    }
+    const user = await this.userRepo.findOneByEmailAnyScope(email);
+    if (!user) {
+      throw new NotFoundException("Seeker account not found.");
+    }
+    const normalizedPhone = normalizeWaId(phone);
+    if (normalizedPhone && user.whatsappPhone !== normalizedPhone) {
+      user.whatsappPhone = normalizedPhone;
+      if (user.whatsappVerifiedPhone !== normalizedPhone) {
+        user.whatsappVerifiedAt = null;
+        user.whatsappVerifiedPhone = null;
+      }
+      await this.userRepo.save(user);
+    }
+    if (!user.whatsappPhone) {
+      throw new BadRequestException(
+        "Enter the WhatsApp number you want to verify so Nix can send you a confirmation message.",
+      );
+    }
+    const lastRequestedAt = user.whatsappConsentRequestedAt
+      ? user.whatsappConsentRequestedAt.getTime()
+      : null;
+    const withinCooldown =
+      lastRequestedAt != null &&
+      nowMillis() - lastRequestedAt < WHATSAPP_CONSENT_RESEND_COOLDOWN_MS;
+    if (withinCooldown) {
+      this.logger.log(
+        `Skipped WhatsApp consent resend for user ${user.id}: within ${WHATSAPP_CONSENT_RESEND_COOLDOWN_MS}ms cooldown`,
+      );
+      return {
+        requested: false,
+        cooldown: true,
+        message: "We've already sent your WhatsApp confirmation — please check WhatsApp and reply.",
+      };
+    }
+    return this.whatsappConsentSender.requestConsent(user.id, "whatsapp");
+  }
+
+  async assertSeekerCanConsumeMeteredAction(email: string | null): Promise<void> {
+    if (!isAnnixOrbitWhatsAppQuotaGateEnabled()) {
+      return;
+    }
+    const candidates = await this.candidatesForSeeker(email);
+    const identity = await this.quotaIdentityForSeeker(email, candidates);
+    if (identity.billingBacked || identity.whatsappVerified) {
+      return;
+    }
+    throw new BadRequestException({
+      message:
+        "Verify your WhatsApp number to use your free Nix allowance. We send a quick message you reply to — this stops the free allowance being reset by re-registering.",
+      code: WHATSAPP_VERIFICATION_REQUIRED_CODE,
+      verificationRequired: true,
+    });
+  }
+
   async recordCvBuild(email: string | null): Promise<void> {
-    const normalizedEmail = email ? email.trim().toLowerCase() : "";
+    const candidates = await this.candidatesForSeeker(email);
+    const identity = await this.quotaIdentityForSeeker(email, candidates);
     await this.usageCounterRepo.increment(
-      normalizedEmail,
+      identity.subjectId,
       CV_BUILD_OPERATION,
       DateTime.now().toFormat("yyyy-LL"),
     );
@@ -626,19 +711,55 @@ export class SeekerJobFeedService {
     return this.profileRepo.findByUserId(user.id);
   }
 
+  private async quotaIdentityForSeeker(
+    email: string | null,
+    candidates: Candidate[],
+  ): Promise<SeekerQuotaIdentity> {
+    const normalizedEmail = email ? email.trim().toLowerCase() : "";
+    const user = email ? await this.userRepo.findOneByEmailAnyScope(email) : null;
+    const profile = user ? await this.profileRepo.findByUserId(user.id) : null;
+    const liveTrial = candidates.find(
+      (c) => c.trialTier != null && c.trialEndsAt != null && c.trialEndsAt.getTime() > nowMillis(),
+    );
+    const billingActive =
+      profile != null &&
+      (profile.billingStatus === "active" ||
+        (profile.paidUntil != null && profile.paidUntil.getTime() > nowMillis()));
+    const billingBacked = liveTrial != null || billingActive;
+    const provenWaId = user?.whatsappPhone ? normalizeWaId(user.whatsappPhone) : null;
+    const whatsappVerified =
+      user?.whatsappVerifiedAt != null &&
+      user?.whatsappVerifiedPhone != null &&
+      provenWaId === user.whatsappVerifiedPhone;
+    const subjectId = whatsappVerified && provenWaId ? provenWaId : normalizedEmail;
+    return { subjectId, whatsappVerified, billingBacked };
+  }
+
   async entitlementsForSeeker(email: string | null): Promise<SeekerEntitlementsResult> {
     const candidates = await this.candidatesForSeeker(email);
     const tier = await this.entitledTierForSeeker(email, candidates);
     const capability = await this.tierCapabilityRepo.findByTier(tier);
     const cvBuilds = await this.cvBuildQuotaForSeeker(email);
+    const identity = await this.quotaIdentityForSeeker(email, candidates);
+    const verificationRequired =
+      !cvBuilds.unlimited && !identity.billingBacked && !identity.whatsappVerified;
     if (!capability) {
-      return { tier, label: tier, features: { ...DEFAULT_TIER_FEATURES }, cvBuilds };
+      return {
+        tier,
+        label: tier,
+        features: { ...DEFAULT_TIER_FEATURES },
+        cvBuilds,
+        whatsappVerified: identity.whatsappVerified,
+        verificationRequired,
+      };
     }
     return {
       tier: capability.tier,
       label: capability.label,
       features: { ...DEFAULT_TIER_FEATURES, ...capability.features },
       cvBuilds,
+      whatsappVerified: identity.whatsappVerified,
+      verificationRequired,
     };
   }
 
@@ -1250,6 +1371,7 @@ export class SeekerJobFeedService {
   ): Promise<
     | { triggered: true; rematchedCandidates: number[] }
     | { triggered: false; reason: "no-candidate" }
+    | { triggered: false; reason: "verification-required"; code: string }
     | { triggered: false; reason: "rate-limited"; retryAfterSeconds: number }
     | {
         triggered: false;
@@ -1279,6 +1401,19 @@ export class SeekerJobFeedService {
     }
 
     const quota = await this.quotaForSeeker(email, candidates);
+    const identity = await this.quotaIdentityForSeeker(email, candidates);
+    if (
+      isAnnixOrbitWhatsAppQuotaGateEnabled() &&
+      !quota.unlimited &&
+      !identity.billingBacked &&
+      !identity.whatsappVerified
+    ) {
+      return {
+        triggered: false,
+        reason: "verification-required",
+        code: WHATSAPP_VERIFICATION_REQUIRED_CODE,
+      };
+    }
     if (!quota.unlimited && quota.allowance != null && quota.used >= quota.allowance) {
       return {
         triggered: false,
@@ -1291,7 +1426,7 @@ export class SeekerJobFeedService {
 
     candidates.forEach((c) => this.lastRematchByCandidate.set(c.id, now));
 
-    const normalizedEmail = email ? email.trim().toLowerCase() : "";
+    const usageSubjectId = identity.subjectId;
     void (async () => {
       const results: Array<{ ran: boolean; matches: CandidateJobMatch[] }> = [];
       for (const candidate of candidates) {
@@ -1317,7 +1452,7 @@ export class SeekerJobFeedService {
       }
       if (!quota.unlimited) {
         await this.usageCounterRepo.increment(
-          normalizedEmail,
+          usageSubjectId,
           HELP_FIND_JOB_OPERATION,
           DateTime.now().toFormat("yyyy-LL"),
         );

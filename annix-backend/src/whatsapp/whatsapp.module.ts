@@ -70,6 +70,6 @@ import { WhatsAppConversationService } from "./services/whatsapp-conversation.se
     repositoryProvider(AnnixOrbitProfileRepository, MongoAnnixOrbitProfileRepository),
     repositoryProvider(CandidateRepository, MongoCandidateRepository),
   ],
-  exports: [WhatsAppCloudApiService, WhatsAppConversationService],
+  exports: [WhatsAppCloudApiService, WhatsAppConversationService, WhatsAppConsentSenderService],
 })
 export class WhatsAppModule {}

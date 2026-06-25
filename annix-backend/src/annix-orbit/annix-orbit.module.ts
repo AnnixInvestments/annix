@@ -39,6 +39,7 @@ import { WhatsAppMessageRepository } from "../whatsapp/repositories/whatsapp-mes
 import { MongoWhatsAppMessageRepository } from "../whatsapp/repositories/whatsapp-message.repository.mongo";
 import { WhatsAppConversationSchema } from "../whatsapp/schemas/whatsapp-conversation.schema";
 import { WhatsAppMessageSchema } from "../whatsapp/schemas/whatsapp-message.schema";
+import { WhatsAppModule } from "../whatsapp/whatsapp.module";
 import { resolveAnnixOrbitJwtSecret } from "./annix-orbit.constants";
 import { AnnixOrbitLicensingRegistrar } from "./annix-orbit-licensing.registrar";
 import { AnnixOrbitRecruiterLicensingRegistrar } from "./annix-orbit-recruiter-licensing.registrar";
@@ -574,6 +575,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     AdminModule,
     FeatureFlagsModule,
     LicensingModule,
+    WhatsAppModule,
   ],
   controllers: [
     AnnixOrbitAuthController,

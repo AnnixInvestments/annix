@@ -45,6 +45,7 @@ import { OrbitEarlyAccessSignupRepository } from "../repositories/orbit-early-ac
 import { OrbitTierCapabilityRepository } from "../repositories/orbit-tier-capability.repository";
 import { PendingSeekerTierRepository } from "../repositories/pending-seeker-tier.repository";
 import { SeekerBillingEventRepository } from "../repositories/seeker-billing-event.repository";
+import { SeekerUsageCounterRepository } from "../repositories/seeker-usage-counter.repository";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 import { CvAuditService } from "./cv-audit.service";
 import { CvExtractionService } from "./cv-extraction.service";
@@ -55,6 +56,12 @@ import { type EeAttributesView, PopiaService } from "./popia.service";
 import { SeekerTelemetryService } from "./seeker-telemetry.service";
 
 const DELETION_TOKEN_EXPIRY_HOURS = 1;
+
+const CV_REPROCESS_OPERATION = "cv_reprocess";
+const CV_REPROCESS_DAILY_LIMIT = Number.parseInt(
+  process.env.ORBIT_CV_REPROCESS_DAILY_LIMIT ?? "5",
+  10,
+);
 
 export interface IndividualProfileStatus {
   profileComplete: boolean;
@@ -183,7 +190,22 @@ export class IndividualProfileService {
     private readonly seekerTelemetry: SeekerTelemetryService,
     private readonly pendingTierRepo: PendingSeekerTierRepository,
     private readonly billingEventRepo: SeekerBillingEventRepository,
+    private readonly usageCounterRepo: SeekerUsageCounterRepository,
   ) {}
+
+  private async canReprocessCandidate(candidateId: number): Promise<boolean> {
+    const dayKey = now().toFormat("yyyy-LL-dd");
+    const subjectId = `candidate:${candidateId}`;
+    const used = await this.usageCounterRepo.getCount(subjectId, CV_REPROCESS_OPERATION, dayKey);
+    if (used >= CV_REPROCESS_DAILY_LIMIT) {
+      this.logger.warn(
+        `Throttled CV embed/match for candidate ${candidateId}: ${used}/${CV_REPROCESS_DAILY_LIMIT} re-processings used today`,
+      );
+      return false;
+    }
+    await this.usageCounterRepo.increment(subjectId, CV_REPROCESS_OPERATION, dayKey);
+    return true;
+  }
 
   private async telemetryCandidateId(userId: number): Promise<number | null> {
     try {
@@ -273,14 +295,17 @@ export class IndividualProfileService {
     }
 
     try {
-      const embedded = await this.embeddingService.embedCandidate(saved.id);
-      if (embedded) {
-        // A newly-active candidate (or a new category they target) may have a
-        // backlog of jobs that were never embedded because nobody targeted them
-        // (C1). Lazily embed that backlog so this seeker's pool populates before
-        // we match; this is bounded and idempotent.
-        await this.embeddingService.backfillForActiveDemand();
-        await this.candidateJobMatchingService.matchCandidateToJobs(saved.id);
+      const allowed = await this.canReprocessCandidate(saved.id);
+      if (allowed) {
+        const embedded = await this.embeddingService.embedCandidate(saved.id);
+        if (embedded) {
+          // A newly-active candidate (or a new category they target) may have a
+          // backlog of jobs that were never embedded because nobody targeted them
+          // (C1). Lazily embed that backlog so this seeker's pool populates before
+          // we match; this is bounded and idempotent.
+          await this.embeddingService.backfillForActiveDemand();
+          await this.candidateJobMatchingService.matchCandidateToJobs(saved.id);
+        }
       }
     } catch (err) {
       this.logger.warn(

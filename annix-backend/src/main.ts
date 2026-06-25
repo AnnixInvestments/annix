@@ -7,6 +7,7 @@ import { RequestMethod, ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { NestExpressApplication } from "@nestjs/platform-express";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import { assertAnnixOrbitWhatsAppQuotaGateConfigured } from "./annix-orbit/annix-orbit-quota-gate.config";
 import { AppModule } from "./app.module";
 import { runMongoMigrationsOnBoot } from "./lib/persistence/run-mongo-migrations";
 import { STARTUP_SPLASH_HTML } from "./lib/startup-splash";
@@ -28,6 +29,7 @@ if (mongoDnsServers) {
 }
 
 async function bootstrap() {
+  assertAnnixOrbitWhatsAppQuotaGateConfigured();
   await runMongoMigrationsOnBoot();
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {

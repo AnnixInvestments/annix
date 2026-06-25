@@ -616,6 +616,9 @@ export class NixSeekerAssistService {
     const user = await this.userRepo.findById(userId);
     const email = user ? user.email : null;
     const cvBuildQuota = await this.seekerJobFeed.cvBuildQuotaForSeeker(email);
+    if (!cvBuildQuota.unlimited) {
+      await this.seekerJobFeed.assertSeekerCanConsumeMeteredAction(email);
+    }
     if (!cvBuildQuota.unlimited && (cvBuildQuota.remaining ?? 0) <= 0) {
       throw new BadRequestException(
         `You've used all ${cvBuildQuota.allowance} Nix CV build${cvBuildQuota.allowance === 1 ? "" : "s"} included in your plan this month. They reset at the start of next month, or upgrade your plan for more.`,

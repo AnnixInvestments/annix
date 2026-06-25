@@ -93,12 +93,31 @@ export class WhatsAppConsentService {
       return;
     }
     const user = await this.userRepo.findOneByWhatsAppPhone(normalized);
-    if (!user || user.whatsappOptIn === true) {
+    if (!user) {
       return;
     }
-    user.whatsappOptIn = true;
-    user.whatsappOptInAt = now().toJSDate();
+    if (
+      user.whatsappOptIn === true &&
+      user.whatsappVerifiedAt != null &&
+      user.whatsappVerifiedPhone === normalized
+    ) {
+      return;
+    }
+    const claimedByOther = await this.userRepo.findOneByVerifiedWhatsAppPhone(normalized);
+    if (claimedByOther && claimedByOther.id !== user.id) {
+      this.logger.warn(
+        `Refused WhatsApp verification for user ${user.id}: ${normalized} is already verified-bound to user ${claimedByOther.id}`,
+      );
+      return;
+    }
+    const timestamp = now().toJSDate();
+    if (user.whatsappOptIn !== true) {
+      user.whatsappOptIn = true;
+      user.whatsappOptInAt = timestamp;
+    }
+    user.whatsappVerifiedAt = timestamp;
+    user.whatsappVerifiedPhone = normalized;
     await this.userRepo.save(user);
-    this.logger.log(`User ${user.id} opted in to WhatsApp via quick-reply consent button`);
+    this.logger.log(`User ${user.id} verified WhatsApp control via quick-reply consent button`);
   }
 }

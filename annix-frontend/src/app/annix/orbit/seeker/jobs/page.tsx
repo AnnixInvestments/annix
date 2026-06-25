@@ -19,12 +19,14 @@ import {
   type SeekerFilterState,
   SeekerJobFilters,
 } from "@/app/lib/annix-orbit/components/SeekerJobFilters";
+import { SeekerWhatsAppVerifyModal } from "@/app/lib/annix-orbit/components/SeekerWhatsAppVerifyModal";
 import { sourceNameFromUrl } from "@/app/lib/annix-orbit/provider-labels";
 import {
   annixOrbitApiClient,
   type PublicJob,
   type SeekerRecommendedFilters,
   type SeekerRecommendedJob,
+  WHATSAPP_VERIFICATION_REQUIRED_CODE,
 } from "@/app/lib/api/annixOrbitApi";
 import { nowMillis } from "@/app/lib/datetime";
 import { useAlert } from "@/app/lib/hooks/useAlert";
@@ -36,6 +38,7 @@ import {
   useOrbitMuteSeekerCategory,
   useOrbitMuteSeekerCompany,
   useOrbitMyProfileStatus,
+  useOrbitReminderPreferences,
   useOrbitReportJobDelisted,
   useOrbitSeekerBrowseJobs,
   useOrbitSeekerColdStartJobs,
@@ -195,7 +198,11 @@ export default function SeekerJobsPage() {
   const [consentDeclined, setConsentDeclined] = useState<boolean>(false);
   const [nixSearching, setNixSearching] = useState<boolean>(false);
   const [nixSearchEstimateMs, setNixSearchEstimateMs] = useState<number>(90_000);
+  const [whatsAppVerifyOpen, setWhatsAppVerifyOpen] = useState<boolean>(false);
   const consentPromptShown = useRef(false);
+  const reminderPreferencesQuery = useOrbitReminderPreferences();
+  const reminderPreferences = reminderPreferencesQuery.data;
+  const seekerPhone = reminderPreferences ? reminderPreferences.phone : null;
 
   useEffect(() => {
     annixOrbitApiClient
@@ -521,6 +528,7 @@ export default function SeekerJobsPage() {
     // when matches land.
     writeNixPending({ startCount, startedAt: nowMillis() });
     let quotaBlock: { used: number; allowance: number } | null = null;
+    let verificationBlocked = false;
     try {
       // The branded progress popup wraps the whole search so it appears the moment
       // Nix starts. The trigger is best-effort: a transient hiccup (backend
@@ -534,11 +542,15 @@ export default function SeekerJobsPage() {
           label: "Nix is reading your CV and searching the jobs…",
           estimatedDurationMs: nixSearchEstimateMs,
         },
-        async (): Promise<"found" | "pending" | "cooldown" | "quota" | "error"> => {
+        async (): Promise<"found" | "pending" | "cooldown" | "quota" | "verify" | "error"> => {
           let rateLimited = false;
           let triggerFailed = false;
           try {
             const result = await rematchMutation.mutateAsync();
+            const resultCode = "code" in result ? result.code : null;
+            if (resultCode === WHATSAPP_VERIFICATION_REQUIRED_CODE) {
+              verificationBlocked = true;
+            }
             if (!result.triggered && result.reason === "rate-limited") {
               rateLimited = true;
             }
@@ -550,6 +562,9 @@ export default function SeekerJobsPage() {
             // means matching never started — fail fast rather than polling for
             // a minute and leaving the user staring at a spinner.
             triggerFailed = true;
+          }
+          if (verificationBlocked) {
+            return "verify";
           }
           if (quotaBlock) {
             return "quota";
@@ -565,7 +580,10 @@ export default function SeekerJobsPage() {
           return found ? "found" : "pending";
         },
       );
-      if (outcome === "quota") {
+      if (outcome === "verify") {
+        clearNixPending();
+        setWhatsAppVerifyOpen(true);
+      } else if (outcome === "quota") {
         clearNixPending();
         const block = quotaBlock as { used: number; allowance: number } | null;
         const allowance = block ? block.allowance : 0;
@@ -1006,6 +1024,12 @@ export default function SeekerJobsPage() {
         onCheckboxChange={setDismissDontShowAgain}
         onConfirm={confirmPendingDismiss}
         onCancel={() => setPendingDismiss(null)}
+      />
+      <SeekerWhatsAppVerifyModal
+        isOpen={whatsAppVerifyOpen}
+        onClose={() => setWhatsAppVerifyOpen(false)}
+        defaultPhone={seekerPhone}
+        reason="Verify your WhatsApp to use your free Nix job search. Once you've replied to our message, come back and try again."
       />
       {ConfirmDialog}
       {AlertDialog}

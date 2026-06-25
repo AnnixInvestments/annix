@@ -1,18 +1,22 @@
 import {
-  Body,
   Controller,
   ForbiddenException,
   Get,
+  Headers,
   HttpCode,
   Logger,
   Post,
   Query,
+  type RawBodyRequest,
+  Req,
 } from "@nestjs/common";
 import { ApiExcludeController } from "@nestjs/swagger";
+import type { Request } from "express";
 import { fromMillis, now } from "../../lib/datetime";
 import { WhatsAppCloudApiService } from "../services/whatsapp-cloud-api.service";
 import { WhatsAppConsentService } from "../services/whatsapp-consent.service";
 import { WhatsAppConversationService } from "../services/whatsapp-conversation.service";
+import { verifyWhatsAppSignature } from "../whatsapp-signature";
 
 interface WebhookContact {
   wa_id?: string;
@@ -91,10 +95,40 @@ export class WhatsAppWebhookController {
     throw new ForbiddenException("Webhook verification failed");
   }
 
+  private parseBody(rawBody: Buffer | null): WebhookBody | null {
+    if (!rawBody) return null;
+    try {
+      return JSON.parse(rawBody.toString("utf8")) as WebhookBody;
+    } catch (error) {
+      this.logger.warn(
+        `Failed to parse WhatsApp webhook body: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return null;
+    }
+  }
+
   @Post("webhook")
   @HttpCode(200)
-  async receive(@Body() body: WebhookBody): Promise<{ received: boolean }> {
-    if (body.object !== "whatsapp_business_account") {
+  async receive(
+    @Req() req: RawBodyRequest<Request>,
+    @Headers("x-hub-signature-256") signature: string | undefined,
+  ): Promise<{ received: boolean }> {
+    const rawBody = req.rawBody ?? null;
+    const appSecret = this.cloudApi.appSecret();
+
+    if (appSecret === null) {
+      this.logger.error(
+        "WHATSAPP_APP_SECRET is not configured — the WhatsApp inbound webhook is UNAUTHENTICATED and accepts forged payloads. Set WHATSAPP_APP_SECRET to enforce Meta signature verification.",
+      );
+    } else if (!verifyWhatsAppSignature(rawBody, signature ?? null, appSecret)) {
+      this.logger.warn("Rejected WhatsApp webhook with invalid or missing X-Hub-Signature-256.");
+      return { received: true };
+    }
+
+    const body = this.parseBody(rawBody);
+    if (!body || body.object !== "whatsapp_business_account") {
       return { received: true };
     }
 

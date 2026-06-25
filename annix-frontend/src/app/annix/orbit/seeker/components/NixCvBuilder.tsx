@@ -4,13 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { PhotoCapture } from "@/app/components/PhotoCapture";
+import { SeekerWhatsAppVerifyModal } from "@/app/lib/annix-orbit/components/SeekerWhatsAppVerifyModal";
 import { requestSeekerTour } from "@/app/lib/annix-orbit/seekerTourSignal";
 import type {
   NixGeneratedCv,
   NixGeneratedCvExperience,
   NixGeneratedCvReference,
 } from "@/app/lib/api/annixOrbitApi";
-import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
+import {
+  annixOrbitApiClient,
+  WHATSAPP_VERIFICATION_REQUIRED_CODE,
+} from "@/app/lib/api/annixOrbitApi";
+import { isApiError } from "@/app/lib/api/apiError";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
@@ -19,6 +24,7 @@ import {
   useGenerateNixCv,
   useNixGeneratedCv,
   useOrbitMyProfileStatus,
+  useOrbitReminderPreferences,
   useOrbitUploadProfilePhoto,
   useUpdateNixGeneratedCv,
 } from "@/app/lib/query/hooks";
@@ -39,12 +45,16 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
   const generatedQuery = useNixGeneratedCv();
   const profileStatusQuery = useOrbitMyProfileStatus();
   const uploadPhotoMutation = useOrbitUploadProfilePhoto();
+  const reminderPreferencesQuery = useOrbitReminderPreferences();
+  const reminderPreferences = reminderPreferencesQuery.data;
+  const seekerPhone = reminderPreferences ? reminderPreferences.phone : null;
   const { showExtraction, hideExtraction } = useExtractionProgress();
   const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
   const pdfPreview = usePdfPreview();
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [whatsAppVerifyOpen, setWhatsAppVerifyOpen] = useState(false);
   const [buildEstimateMs, setBuildEstimateMs] = useState(NIX_BUILD_ESTIMATED_MS);
 
   const updateMutation = useUpdateNixGeneratedCv();
@@ -206,18 +216,28 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
   };
 
   const mutationError = generateMutation.error;
+  const errorCode = isApiError(mutationError) ? mutationError.code : null;
+  const isVerificationError = errorCode === WHATSAPP_VERIFICATION_REQUIRED_CODE;
   const serverMessage =
     mutationError instanceof Error && mutationError.message.trim().length > 0
       ? mutationError.message
       : null;
-  const buildErrorMessage = mutationError
-    ? (serverMessage ?? "Nix could not build your CV right now. Please try again.")
-    : null;
+  const buildErrorMessage =
+    mutationError && !isVerificationError
+      ? (serverMessage ?? "Nix could not build your CV right now. Please try again.")
+      : null;
 
   const handleBuild = () => {
     setCopied(false);
     setAdopted(false);
-    generate();
+    generate(undefined, {
+      onError: (error) => {
+        const code = isApiError(error) ? error.code : null;
+        if (code === WHATSAPP_VERIFICATION_REQUIRED_CODE) {
+          setWhatsAppVerifyOpen(true);
+        }
+      },
+    });
   };
 
   const handleDownload = async () => {
@@ -435,6 +455,12 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
         </div>
       )}
       <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
+      <SeekerWhatsAppVerifyModal
+        isOpen={whatsAppVerifyOpen}
+        onClose={() => setWhatsAppVerifyOpen(false)}
+        defaultPhone={seekerPhone}
+        reason="Verify your WhatsApp to use your free Nix CV build. Once you've replied to our message, come back and try again."
+      />
       {ConfirmDialog}
       {AlertDialog}
     </div>

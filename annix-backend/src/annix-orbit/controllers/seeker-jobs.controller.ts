@@ -13,10 +13,12 @@ import {
   Request,
   UseGuards,
 } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import { ArrayMaxSize, IsArray, IsInt, IsOptional, IsString, MaxLength } from "class-validator";
 import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
 import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
+import { SeekerThrottlerGuard } from "../guards/seeker-throttler.guard";
 import { OrbitDismissReasonService } from "../services/orbit-dismiss-reason.service";
 import { SeekerJobFeedService } from "../services/seeker-job-feed.service";
 
@@ -63,6 +65,13 @@ class SelectPlanDto {
   @IsString()
   @MaxLength(32)
   tier: string;
+}
+
+class RequestWhatsAppVerificationDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  phone?: string | null;
 }
 
 class SetTargetCountriesDto {
@@ -202,6 +211,16 @@ export class SeekerJobsController {
   @Get("entitlements")
   async entitlements(@Request() req: SeekerAuthRequest) {
     return this.feedService.entitlementsForSeeker(req.user.email);
+  }
+
+  @Post("whatsapp-verify")
+  @UseGuards(SeekerThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 3600000 } })
+  async requestWhatsAppVerification(
+    @Request() req: SeekerAuthRequest,
+    @Body() dto: RequestWhatsAppVerificationDto,
+  ) {
+    return this.feedService.requestWhatsAppVerificationForSeeker(req.user.email, dto.phone ?? null);
   }
 
   @Post("plan")

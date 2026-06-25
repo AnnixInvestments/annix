@@ -351,6 +351,11 @@ export class MongoUserRepository extends MongoCrudRepository<User> implements Us
     return this.toDomain(doc);
   }
 
+  async findOneByVerifiedWhatsAppPhone(waId: string): Promise<User | null> {
+    const doc = await this.documents.findOne({ whatsappVerifiedPhone: waId }).lean().exec();
+    return this.toDomain(doc);
+  }
+
   countWithWhatsAppPhone(): Promise<number> {
     return this.documents.countDocuments({ whatsappPhone: { $nin: [null, ""] } }).exec();
   }

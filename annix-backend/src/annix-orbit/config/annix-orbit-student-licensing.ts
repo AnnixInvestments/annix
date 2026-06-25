@@ -2,6 +2,9 @@ import type { ModuleLicensingDefinition } from "../../licensing";
 
 // Scaffold only — the Student (FuturePath) module is not built yet. These tier
 // names lock in the naming so the catalog/admin are ready when the module lands.
+// MENTOR (AI study guidance for potentially-minor users) is guardian-consent gated:
+// see annix-orbit-student-consent.ts and call assertStudentGuardianConsentForFeature
+// before serving it (issue #398 finding 9).
 export const ANNIX_ORBIT_STUDENT_MODULE_KEY = "annix-orbit-student";
 
 export const ANNIX_ORBIT_STUDENT_FEATURES = {

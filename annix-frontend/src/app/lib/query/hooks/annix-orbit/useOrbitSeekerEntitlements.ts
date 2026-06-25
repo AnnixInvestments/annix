@@ -1,5 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { annixOrbitApiClient, type SeekerEntitlements } from "@/app/lib/api/annixOrbitApi";
+import {
+  annixOrbitApiClient,
+  type SeekerEntitlements,
+  type SeekerWhatsAppVerifyResult,
+} from "@/app/lib/api/annixOrbitApi";
 import { annixOrbitKeys } from "@/app/lib/query/keys/annixOrbitKeys";
 
 export function useOrbitSeekerEntitlements(enabled: boolean = true) {
@@ -22,6 +26,16 @@ export function useOrbitSelectSeekerPlan() {
       );
       queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerEntitlements.all });
       queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerJobs.all });
+    },
+  });
+}
+
+export function useOrbitSeekerWhatsAppVerify() {
+  const queryClient = useQueryClient();
+  return useMutation<SeekerWhatsAppVerifyResult, Error, string | null | undefined>({
+    mutationFn: (phone) => annixOrbitApiClient.seekerWhatsAppVerify(phone),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerEntitlements.all });
     },
   });
 }

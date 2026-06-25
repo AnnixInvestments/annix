@@ -477,6 +477,7 @@ export {
 } from "./annix-orbit/useOrbitSeekerEmployment";
 export {
   useOrbitSeekerEntitlements,
+  useOrbitSeekerWhatsAppVerify,
   useOrbitSelectSeekerPlan,
 } from "./annix-orbit/useOrbitSeekerEntitlements";
 export {

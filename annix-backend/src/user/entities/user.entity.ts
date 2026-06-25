@@ -71,6 +71,21 @@ export class User {
   whatsappOptInAt: Date | null;
 
   @ApiProperty({
+    description:
+      "When the user PROVED control of their WhatsApp number by replying to the inbound consent prompt. Null until proven. Distinct from whatsappOptIn, which the self-typed consent page can also set.",
+    nullable: true,
+  })
+  whatsappVerifiedAt: Date | null;
+
+  @ApiProperty({
+    description:
+      "The normalized WhatsApp number that actually replied to the consent prompt. Quota keys on this proven number, not the self-typed whatsappPhone. Changing whatsappPhone away from this value makes the seeker unverified again.",
+    example: "27110000000",
+    nullable: true,
+  })
+  whatsappVerifiedPhone: string | null;
+
+  @ApiProperty({
     description: "When a WhatsApp consent request was last emailed to the user",
     nullable: true,
   })

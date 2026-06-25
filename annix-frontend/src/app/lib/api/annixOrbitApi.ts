@@ -1798,6 +1798,12 @@ export interface SeekerEntitlements {
   label: string;
   features: SeekerTierFeatures;
   cvBuilds: SeekerCvBuildQuota;
+  whatsappVerified: boolean;
+  verificationRequired: boolean;
+}
+
+export interface SeekerWhatsAppVerifyResult {
+  sent: boolean;
 }
 
 export type SeekerPayableTier = "medium" | "hard";
@@ -3443,6 +3449,16 @@ class AnnixOrbitApiClient {
     });
   }
 
+  async seekerWhatsAppVerify(phone?: string | null): Promise<SeekerWhatsAppVerifyResult> {
+    const trimmed = phone ? phone.trim() : "";
+    const body = trimmed.length > 0 ? JSON.stringify({ phone: trimmed }) : JSON.stringify({});
+    return this.request("/annix-orbit/seeker/jobs/whatsapp-verify", {
+      method: "POST",
+      body,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   async seekerBillingStatus(): Promise<SeekerBillingStatusView> {
     return this.request("/annix-orbit/seeker/billing/status");
   }
@@ -4082,7 +4098,14 @@ export type SeekerRematchResponse =
       used: number;
       allowance: number;
       resetsAt: string;
+    }
+  | {
+      triggered: false;
+      reason: "verification-required";
+      code: "whatsapp_verification_required";
     };
+
+export const WHATSAPP_VERIFICATION_REQUIRED_CODE = "whatsapp_verification_required";
 
 export interface SeekerJobMatchDetails {
   embeddingSimilarity: number;

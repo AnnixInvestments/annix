@@ -29,6 +29,7 @@ export class WhatsAppCloudApiService {
   private readonly accessToken: string | null;
   private readonly phoneNumberId: string | null;
   private readonly webhookVerifyToken: string | null;
+  private readonly webhookAppSecret: string | null;
   private readonly broadcastTemplate: string;
   private readonly broadcastTemplateLang: string;
 
@@ -37,6 +38,7 @@ export class WhatsAppCloudApiService {
     this.phoneNumberId = this.configService.get<string>("WHATSAPP_PHONE_NUMBER_ID") ?? null;
     this.webhookVerifyToken =
       this.configService.get<string>("WHATSAPP_WEBHOOK_VERIFY_TOKEN") ?? null;
+    this.webhookAppSecret = this.configService.get<string>("WHATSAPP_APP_SECRET") ?? null;
     const templateName = this.configService.get<string>("WHATSAPP_BROADCAST_TEMPLATE_NAME");
     const templateLang = this.configService.get<string>("WHATSAPP_BROADCAST_TEMPLATE_LANGUAGE");
     this.broadcastTemplate = isEmpty(templateName) ? "broadcast_update" : (templateName as string);
@@ -49,6 +51,10 @@ export class WhatsAppCloudApiService {
 
   verifyToken(): string | null {
     return this.webhookVerifyToken;
+  }
+
+  appSecret(): string | null {
+    return this.webhookAppSecret;
   }
 
   configuredPhoneNumberId(): string | null {

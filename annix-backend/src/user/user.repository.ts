@@ -54,4 +54,5 @@ export abstract class UserRepository extends CrudRepository<User> {
   abstract setWhatsAppPhoneWhereMissingByEmail(email: string, phone: string): Promise<number>;
   abstract countWithWhatsAppPhone(): Promise<number>;
   abstract findOneByWhatsAppPhone(waId: string): Promise<User | null>;
+  abstract findOneByVerifiedWhatsAppPhone(waId: string): Promise<User | null>;
 }
