@@ -36,7 +36,12 @@ export function useMyJobCardAction(jobCardId: number | null) {
     queryKey: stockControlKeys.jobCardDetail.myAction(enabled ? jobCardId : 0),
     queryFn: () => stockControlApiClient.myJobCardAction(jobCardId as number),
     enabled,
-    staleTime: PENDING_STALE_MS,
+    // Always fresh: the banner must reflect the card's CURRENT state, never a
+    // cached one from before the workflow advanced.
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -62,7 +67,12 @@ export function useNextActionableJobCard(excludeJobCardId: number | null): {
   const query = useQuery<ActionableJobCard[]>({
     queryKey: stockControlKeys.dashboard.actionableJobCards(),
     queryFn: () => stockControlApiClient.actionableJobCards(),
-    staleTime: PENDING_STALE_MS,
+    // Always fresh so "Next" never routes off a stale list (a card may have
+    // advanced past the user's step since it was last fetched).
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 
   const data = query.data;
