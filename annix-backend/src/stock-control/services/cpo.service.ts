@@ -157,6 +157,10 @@ export class CpoService {
           totalItems: validLineItems.length,
           totalQuantity,
           fulfilledQuantity: 0,
+          // Both are schema-required; a freshly-imported CPO starts at version 1
+          // with no archived history. Re-imports version via archiveAndOverwriteCpo.
+          versionNumber: 1,
+          previousVersions: [],
           createdBy,
         });
 
