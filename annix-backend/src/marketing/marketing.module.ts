@@ -18,6 +18,7 @@ import { MongoMarketingSiteContentRepository } from "./repositories/marketing-si
 import { MarketingCookieConsentSchema } from "./schemas/marketing-cookie-consent.schema";
 import { MarketingNewsletterCampaignSchema } from "./schemas/marketing-newsletter-campaign.schema";
 import { MarketingNewsletterSubscriberSchema } from "./schemas/marketing-newsletter-subscriber.schema";
+import { MarketingScheduledSocialPostSchema } from "./schemas/marketing-scheduled-social-post.schema";
 import { MarketingSiteContentSchema } from "./schemas/marketing-site-content.schema";
 import { FacebookAdapter } from "./social/adapters/facebook.adapter";
 import { InstagramAdapter } from "./social/adapters/instagram.adapter";
@@ -28,6 +29,7 @@ import { SocialCredentialRepository } from "./social/repositories/social-credent
 import { MongoSocialCredentialRepository } from "./social/repositories/social-credential.repository.mongo";
 import { SocialCredentialSchema } from "./social/schemas/social-credential.schema";
 import { SocialPublishingService } from "./social/social-publishing.service";
+import { SocialSchedulerService } from "./social/social-scheduler.service";
 
 @Module({
   imports: [
@@ -39,6 +41,7 @@ import { SocialPublishingService } from "./social/social-publishing.service";
         schema: MarketingNewsletterSubscriberSchema,
       },
       { name: "MarketingNewsletterCampaign", schema: MarketingNewsletterCampaignSchema },
+      { name: "MarketingScheduledSocialPost", schema: MarketingScheduledSocialPostSchema },
       { name: "SocialCredential", schema: SocialCredentialSchema },
     ]),
     MulterModule.register({ limits: { fileSize: 10 * 1024 * 1024 } }),
@@ -55,6 +58,7 @@ import { SocialPublishingService } from "./social/social-publishing.service";
     CookieConsentService,
     NewsletterService,
     SocialPublishingService,
+    SocialSchedulerService,
     LinkedInOAuthService,
     LinkedInAdapter,
     FacebookAdapter,

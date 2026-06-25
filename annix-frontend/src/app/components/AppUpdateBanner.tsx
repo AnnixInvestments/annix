@@ -8,10 +8,29 @@ import { useAppUpdateAvailable } from "@/app/lib/hooks/useAppUpdateAvailable";
  * Repo-wide "Update now" affordance. Mounted once at the root so it appears on
  * EVERY app and route (no per-navbar wiring) only when a newer build has been
  * deployed than the one this tab is running. Floating top-center pill so it
- * never shifts page layout. "Update now" performs the hard refresh users
- * understand better than "hard refresh" — the new build's chunks live at fresh
- * immutable URLs, so a plain reload picks them up cleanly.
+ * never shifts page layout.
+ *
+ * "Update now" can't just reload: PWAs like Orbit register a service worker that
+ * serves the app shell stale-while-revalidate, so a plain reload is handed the
+ * cached OLD shell (and its immutable hashed chunks) and re-runs the same build
+ * — the banner flashes off, then snaps back because the running build never
+ * changed. So we drop CacheStorage first, which forces the reload's navigation
+ * request to hit the network and pick up the freshly deployed build.
  */
+async function applyUpdate(): Promise<void> {
+  // Runs only from the banner's click handler, so it's always client-side and
+  // navigator/caches exist. Best-effort eviction; reload regardless of outcome.
+  try {
+    if (navigator.serviceWorker?.controller) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((key) => caches.delete(key)));
+    }
+  } catch {
+    // Ignore — a failed cache purge must not block the reload.
+  }
+  window.location.reload();
+}
+
 export function AppUpdateBanner() {
   const { updateAvailable, deployedBuildId } = useAppUpdateAvailable();
   const [dismissedBuildId, setDismissedBuildId] = useState<string | null>(null);
@@ -48,7 +67,7 @@ export function AppUpdateBanner() {
         <span className="whitespace-nowrap text-sm font-medium">A new version is available</span>
         <button
           type="button"
-          onClick={() => window.location.reload()}
+          onClick={() => void applyUpdate()}
           className="rounded-full bg-amber-600 px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-amber-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
         >
           Update now

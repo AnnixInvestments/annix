@@ -44,6 +44,12 @@ import type {
   SocialShareResult,
 } from "./social/social.types";
 import { SocialPublishingService } from "./social/social-publishing.service";
+import type {
+  ScheduledSocialPostView,
+  SocialNowItemInput,
+  SocialScheduleItemInput,
+} from "./social/social-scheduler.service";
+import { SocialSchedulerService } from "./social/social-scheduler.service";
 
 interface AuthenticatedRequest {
   user?: { email?: string };
@@ -53,6 +59,16 @@ interface SocialShareBody {
   platforms: SocialPlatform[];
   caption: string;
   imageUrl: string;
+}
+
+interface SocialPostNowBody {
+  imageUrl: string;
+  items: SocialNowItemInput[];
+}
+
+interface SocialScheduleBody {
+  imageUrl: string;
+  items: SocialScheduleItemInput[];
 }
 
 interface SendNewsletterBody {
@@ -75,6 +91,7 @@ export class AdminMarketingController {
     private readonly marketingService: MarketingSiteContentService,
     private readonly translationService: MarketingTranslationService,
     private readonly socialService: SocialPublishingService,
+    private readonly socialScheduler: SocialSchedulerService,
     private readonly linkedInOAuth: LinkedInOAuthService,
     private readonly newsletterService: NewsletterService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
@@ -148,6 +165,42 @@ export class AdminMarketingController {
   @ApiResponse({ status: 200 })
   async socialShare(@Body() body: SocialShareBody): Promise<SocialShareResult[]> {
     return this.socialService.share(body.platforms, body.caption, body.imageUrl);
+  }
+
+  @Post("social/post-now")
+  @ApiOperation({
+    summary: "Post one image to selected platforms immediately, with a per-platform caption",
+  })
+  @ApiResponse({ status: 200 })
+  async socialPostNow(@Body() body: SocialPostNowBody): Promise<SocialShareResult[]> {
+    return this.socialScheduler.postNow(body.imageUrl, body.items);
+  }
+
+  @Post("social/schedule")
+  @ApiOperation({
+    summary: "Schedule one image to selected platforms, each with its own caption and time",
+  })
+  @ApiResponse({ status: 200 })
+  async socialSchedule(
+    @Body() body: SocialScheduleBody,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<ScheduledSocialPostView[]> {
+    return this.socialScheduler.schedule(body.imageUrl, body.items, req.user?.email ?? null);
+  }
+
+  @Get("social/scheduled")
+  @ApiOperation({ summary: "List scheduled social posts (pending and completed)" })
+  @ApiResponse({ status: 200 })
+  async socialScheduled(): Promise<ScheduledSocialPostView[]> {
+    return this.socialScheduler.list();
+  }
+
+  @Post("social/scheduled/:id/cancel")
+  @ApiOperation({ summary: "Cancel a pending scheduled social post" })
+  @ApiResponse({ status: 200 })
+  async socialScheduledCancel(@Param("id") id: string): Promise<{ ok: boolean }> {
+    await this.socialScheduler.cancel(id);
+    return { ok: true };
   }
 
   @Get("social/linkedin/status")

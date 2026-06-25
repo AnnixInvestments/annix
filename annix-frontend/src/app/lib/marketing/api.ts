@@ -89,6 +89,42 @@ export interface SocialSharePayload {
   imageUrl: string;
 }
 
+export interface SocialNowItem {
+  platform: SocialPlatform;
+  caption: string;
+}
+
+export interface SocialScheduleItem {
+  platform: SocialPlatform;
+  caption: string;
+  // UTC ISO string — the admin enters SA time, the modal converts it.
+  scheduledAt: string;
+}
+
+export interface SocialPostNowPayload {
+  imageUrl: string;
+  items: SocialNowItem[];
+}
+
+export interface SocialSchedulePayload {
+  imageUrl: string;
+  items: SocialScheduleItem[];
+}
+
+export interface ScheduledSocialPost {
+  id: string;
+  batchId: string;
+  platform: SocialPlatform;
+  caption: string;
+  imageUrl: string;
+  scheduledAt: string | null;
+  status: string;
+  resultMessage: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  postedAt: string | null;
+}
+
 export interface LinkedInConnectionStatus {
   connected: boolean;
   expiresAt: string | null;
@@ -266,6 +302,22 @@ class MarketingAdminApiClient {
 
   shareToSocials(payload: SocialSharePayload): Promise<SocialShareResult[]> {
     return adminClient.post<SocialShareResult[]>("/admin/marketing/social/share", payload);
+  }
+
+  postSocialsNow(payload: SocialPostNowPayload): Promise<SocialShareResult[]> {
+    return adminClient.post<SocialShareResult[]>("/admin/marketing/social/post-now", payload);
+  }
+
+  scheduleSocials(payload: SocialSchedulePayload): Promise<ScheduledSocialPost[]> {
+    return adminClient.post<ScheduledSocialPost[]>("/admin/marketing/social/schedule", payload);
+  }
+
+  listScheduledSocials(): Promise<ScheduledSocialPost[]> {
+    return adminClient.get<ScheduledSocialPost[]>("/admin/marketing/social/scheduled");
+  }
+
+  cancelScheduledSocial(id: string): Promise<{ ok: boolean }> {
+    return adminClient.post<{ ok: boolean }>(`/admin/marketing/social/scheduled/${id}/cancel`);
   }
 
   linkedinStatus(): Promise<LinkedInConnectionStatus> {

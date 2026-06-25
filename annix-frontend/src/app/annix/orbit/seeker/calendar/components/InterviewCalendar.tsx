@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { FormModal } from "@/app/components/modals/FormModal";
 import { useToast } from "@/app/components/Toast";
@@ -57,6 +58,46 @@ interface BookingView {
 }
 
 const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+// Discrete 15-minute slots for the whole day. A native scroll-wheel <input
+// type="time"> on mobile makes you spin through every minute; a slot dropdown
+// lets you tap the quarter-hour you actually want (the typical interview grid).
+const TIME_SLOTS: string[] = Array.from({ length: (24 * 60) / 15 }, (_, i) => {
+  const minutes = i * 15;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+});
+
+function formatSlotLabel(hhmm: string): string {
+  const [h, m] = hhmm.split(":");
+  const dt = DateTime.fromObject({ hour: Number(h), minute: Number(m) });
+  return dt.isValid ? dt.toLocaleString(DateTime.TIME_SIMPLE) : hhmm;
+}
+
+function TimeSlotSelect(props: {
+  value: string;
+  onChange: (value: string) => void;
+  className: string;
+  allowEmpty?: boolean;
+  emptyLabel?: string;
+}) {
+  const { value, onChange, className, allowEmpty, emptyLabel } = props;
+  // Keep an off-grid value (e.g. an employer-set 09:07, or an older saved
+  // event) selectable so editing never silently snaps it to a slot.
+  const offGrid = value !== "" && !TIME_SLOTS.includes(value);
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)} className={className}>
+      {allowEmpty ? <option value="">{emptyLabel ? emptyLabel : "Optional"}</option> : null}
+      {offGrid ? <option value={value}>{formatSlotLabel(value)}</option> : null}
+      {TIME_SLOTS.map((slot) => (
+        <option key={slot} value={slot}>
+          {formatSlotLabel(slot)}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 function combineDateTime(dateStr: string, timeStr: string): string | null {
   if (!dateStr || !timeStr) return null;
@@ -547,20 +588,19 @@ export function InterviewCalendar(props: {
               <div className="grid grid-cols-2 gap-2" data-nix-target="interview-time">
                 <label className="block">
                   <span className="text-sm text-gray-700">Start</span>
-                  <input
-                    type="time"
+                  <TimeSlotSelect
                     value={form.startTimeStr}
-                    onChange={(e) => updateForm({ startTimeStr: e.target.value })}
+                    onChange={(value) => updateForm({ startTimeStr: value })}
                     className={inputClass}
                   />
                 </label>
                 <label className="block">
                   <span className="text-sm text-gray-700">End</span>
-                  <input
-                    type="time"
+                  <TimeSlotSelect
                     value={form.endTimeStr}
-                    onChange={(e) => updateForm({ endTimeStr: e.target.value })}
+                    onChange={(value) => updateForm({ endTimeStr: value })}
                     className={inputClass}
+                    allowEmpty
                   />
                 </label>
               </div>
@@ -625,16 +665,25 @@ export function InterviewCalendar(props: {
         </FormModal>
       ) : null}
 
-      {showLocationPicker ? (
-        <div className="relative z-[10001]">
-          <GoogleMapLocationPicker
-            apiKey={GOOGLE_MAPS_API_KEY}
-            onLocationSelect={handleLocationSelect}
-            onClose={() => setShowLocationPicker(false)}
-            config="responsive"
-          />
-        </div>
-      ) : null}
+      {/*
+        Portal to <body> so the picker sits ABOVE the FormModal (also a
+        body-level portal at z-[9999]). Rendered inline, its z-index is trapped
+        inside the calendar's stacking context and the map slips behind the form
+        on mobile. Only renders after a click, so document is present.
+      */}
+      {showLocationPicker
+        ? createPortal(
+            <div className="relative z-[10001]">
+              <GoogleMapLocationPicker
+                apiKey={GOOGLE_MAPS_API_KEY}
+                onLocationSelect={handleLocationSelect}
+                onClose={() => setShowLocationPicker(false)}
+                config="responsive"
+              />
+            </div>,
+            document.body,
+          )
+        : null}
 
       {viewEvent ? (
         <FormModal
