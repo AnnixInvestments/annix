@@ -251,7 +251,7 @@ export default function RubberPricingAdminPage() {
   const seedList = useSeedRubberPriceList();
   const clearList = useClearRubberPriceList();
   const bondingAgentsQuery = useRubberBondingAgents();
-  const brandingQuery = useBranding("stock-control");
+  const brandingQuery = useBranding("annix-core");
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
   const { showExtraction, hideExtraction } = useExtractionProgress();
