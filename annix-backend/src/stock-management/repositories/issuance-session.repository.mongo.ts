@@ -21,7 +21,7 @@ export class MongoIssuanceSessionRepository
   implements IssuanceSessionRepository
 {
   constructor(
-    @InjectModel("IssuanceSession") model: Model<IssuanceSession>,
+    @InjectModel("SmIssuanceSession") model: Model<IssuanceSession>,
     @Optional() session: ClientSession | null = null,
   ) {
     super(model, session);

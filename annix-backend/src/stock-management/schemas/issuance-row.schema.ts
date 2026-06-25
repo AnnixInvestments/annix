@@ -59,7 +59,7 @@ export class IssuanceRow {
 export const IssuanceRowSchema = SchemaFactory.createForClass(IssuanceRow);
 
 IssuanceRowSchema.virtual("session", {
-  ref: "IssuanceSession",
+  ref: "SmIssuanceSession",
   localField: "sessionId",
   foreignField: "_id",
   justOne: true,

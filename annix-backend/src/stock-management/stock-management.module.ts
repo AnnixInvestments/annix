@@ -161,7 +161,7 @@ const mongooseFeatures = [
     },
     { name: "RubberCompound", schema: RubberCompoundSchema },
     { name: "ProductDatasheet", schema: ProductDatasheetSchema },
-    { name: "IssuanceSession", schema: IssuanceSessionSchema },
+    { name: "SmIssuanceSession", schema: IssuanceSessionSchema },
     { name: "IssuanceRow", schema: IssuanceRowSchema },
     { name: "IssuanceItemCoatTracking", schema: IssuanceItemCoatTrackingSchema },
     { name: "ConsumableIssuanceRow", schema: ConsumableIssuanceRowSchema },
