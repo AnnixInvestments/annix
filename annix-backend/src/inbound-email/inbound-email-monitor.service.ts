@@ -1,10 +1,11 @@
+import { createHash } from "node:crypto";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Cron } from "@nestjs/schedule";
 import * as Imap from "imap-simple";
 import { simpleParser } from "mailparser";
 import { bufferToMulterFile, documentPath } from "../lib/app-storage-helper";
-import { nowMillis } from "../lib/datetime";
+import { now } from "../lib/datetime";
 import { extractTextFromPdf } from "../lib/document-extraction";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import { InboundEmailStatus } from "./entities/inbound-email.entity";
@@ -112,23 +113,43 @@ export class InboundEmailMonitorService {
       connection = await Imap.connect(imapConfig);
       await connection.openBox("INBOX");
 
-      const messages = await connection.search(["UNSEEN"], {
-        bodies: ["HEADER", "TEXT", ""],
-        markSeen: true,
+      const sinceDate = now().minus({ days: this.pollWindowDays() }).toJSDate();
+      const headerMessages = await connection.search([["SINCE", sinceDate]], {
+        bodies: ["HEADER"],
+        markSeen: false,
       });
 
       this.logger.log(
-        `[${config.app}] Found ${messages.length} unread emails for company ${config.companyId}`,
+        `[${config.app}] Scanned ${headerMessages.length} emails in the last ${this.pollWindowDays()}d window for company ${config.companyId}`,
       );
 
-      for (const message of messages) {
-        const status = await this.processMessage(config, message);
+      let processedCount = 0;
+
+      for (const headerMessage of headerMessages) {
+        const messageId = this.messageIdFromHeader(headerMessage);
+        if (!messageId) continue;
+
+        const alreadyExists = await this.inboundEmailService.emailExists(messageId);
+        if (alreadyExists) continue;
+
+        const uid = headerMessage.attributes?.uid;
+        if (!uid) continue;
+
+        const fullMessages = await connection.search([["UID", String(uid)]], {
+          bodies: [""],
+          markSeen: true,
+        });
+        const fullMessage = fullMessages[0];
+        if (!fullMessage) continue;
+
+        const status = await this.processMessage(config, fullMessage, messageId);
+        processedCount += 1;
         if (status === InboundEmailStatus.COMPLETED && this.mailboxIsAutoDeletable(config)) {
-          await this.deleteProcessedMessage(connection, config, message);
+          await this.deleteProcessedMessage(connection, config, fullMessage);
         }
       }
 
-      return messages.length;
+      return processedCount;
     } finally {
       if (connection) {
         connection.end();
@@ -136,16 +157,49 @@ export class InboundEmailMonitorService {
     }
   }
 
+  // The poll-window date is intentionally generous (default 7 days) so that
+  // emails arriving while polling is suspended (overnight, weekends) are still
+  // ingested on the next run. Re-scanned messages are cheaply skipped by the
+  // indexed Message-ID dedup, so a wide window costs little.
+  private pollWindowDays(): number {
+    const raw = this.configService.get<string>("INBOUND_POLL_WINDOW_DAYS");
+    const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 7;
+  }
+
+  private messageIdFromHeader(message: Imap.Message): string | null {
+    const headerPart = message.parts.find((part) => part.which === "HEADER");
+    if (!headerPart) return null;
+
+    const header = headerPart.body as Record<string, string[] | undefined>;
+    const rawId = header["message-id"]?.[0]?.trim();
+    if (rawId && rawId.length > 0) return rawId;
+
+    return this.syntheticMessageId(header);
+  }
+
+  // Some senders (or forwarders) strip the Message-ID header. A stable hash of
+  // the sender, subject and date lets re-scans of the same email dedup
+  // deterministically, instead of being re-ingested on every poll.
+  private syntheticMessageId(header: Record<string, string[] | undefined>): string {
+    const from = header.from?.[0] ?? "";
+    const to = header.to?.[0] ?? "";
+    const subject = header.subject?.[0] ?? "";
+    const date = header.date?.[0] ?? "";
+    const hash = createHash("sha256").update(`${from}|${to}|${subject}|${date}`).digest("hex");
+    return `synthetic:${hash}`;
+  }
+
   private async processMessage(
     config: InboundEmailConfig,
     message: Imap.Message,
+    messageId: string,
   ): Promise<InboundEmailStatus | null> {
     try {
       const all = message.parts.find((part) => part.which === "");
       if (!all) return null;
 
       const parsed = await simpleParser(all.body);
-      const messageId = parsed.messageId || `${nowMillis()}-${Math.random()}`;
 
       const alreadyExists = await this.inboundEmailService.emailExists(messageId);
       if (alreadyExists) {
