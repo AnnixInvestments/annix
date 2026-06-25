@@ -28,19 +28,19 @@ export class JobCardCoatingAnalysis {
   @Prop({ type: String, required: false })
   intSurfacePrep: string;
 
-  @Prop({ type: Number, required: true })
+  @Prop({ type: Number, required: true, default: 0 })
   extM2: number;
 
-  @Prop({ type: Number, required: true })
+  @Prop({ type: Number, required: true, default: 0 })
   intM2: number;
 
-  @Prop({ type: Object, required: true })
+  @Prop({ type: Object, required: true, default: () => [] })
   coats: Record<string, unknown>;
 
-  @Prop({ type: Object, required: true })
+  @Prop({ type: Object, required: true, default: () => [] })
   stockAssessment: Record<string, unknown>;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, required: true, default: false })
   hasInternalLining: boolean;
 
   @Prop({ type: String, required: false })

@@ -61,13 +61,13 @@ export class PlatformDeliveryNote {
   @Prop({ type: Number, required: false })
   linkedCocId: number;
 
-  @Prop({ type: Number, required: true })
+  @Prop({ type: Number, required: true, default: 1 })
   version: number;
 
   @Prop({ type: Number, required: false })
   previousVersionId: number;
 
-  @Prop({ type: String, required: true })
+  @Prop({ type: String, required: true, default: "ACTIVE" })
   versionStatus: string;
 
   @Prop({ type: String, required: false })

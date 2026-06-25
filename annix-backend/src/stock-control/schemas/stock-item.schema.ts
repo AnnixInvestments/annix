@@ -34,7 +34,7 @@ export class StockItem {
   @Prop({ type: Number, required: true })
   quantity: number;
 
-  @Prop({ type: Number, required: true })
+  @Prop({ type: Number, required: true, default: 0 })
   minStockLevel: number;
 
   @Prop({ type: String, required: false })
@@ -46,7 +46,7 @@ export class StockItem {
   @Prop({ type: String, required: false })
   photoUrl: string;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, required: true, default: false })
   needsQrPrint: boolean;
 
   @Prop({ type: Number, required: true })
@@ -88,7 +88,7 @@ export class StockItem {
   @Prop({ type: String, required: false })
   sourceRollNumber: string;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, required: true, default: false })
   isLeftover: boolean;
 
   @Prop({ type: String, required: false })

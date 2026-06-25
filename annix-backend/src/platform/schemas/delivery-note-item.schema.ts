@@ -61,7 +61,7 @@ export class DeliveryNoteItem {
   @Prop({ type: String, required: true })
   itemCategory: string;
 
-  @Prop({ type: Object, required: true })
+  @Prop({ type: Object, required: true, default: () => ({}) })
   linkedBatchIds: Record<string, unknown>;
 
   @Prop({ type: Object, required: false })

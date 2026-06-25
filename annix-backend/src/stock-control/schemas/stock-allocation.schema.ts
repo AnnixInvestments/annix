@@ -55,7 +55,7 @@ export class StockAllocation {
   @Prop({ type: String, required: false })
   rejectionReason: string;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, required: true, default: false })
   undone: boolean;
 
   @Prop({ type: Date, required: false })
@@ -73,7 +73,7 @@ export class StockAllocation {
   @Prop({ type: Number, required: false })
   totalLitres: number;
 
-  @Prop({ type: String, required: true })
+  @Prop({ type: String, required: true, default: "allocation" })
   allocationType: string;
 
   @Prop({ type: Date, required: false })
