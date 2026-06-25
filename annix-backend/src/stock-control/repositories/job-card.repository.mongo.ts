@@ -103,7 +103,7 @@ export class MongoJobCardRepository
     const query: Record<string, unknown> = {
       companyId,
       supersededById: null,
-      $or: [{ parentJobCardId: null }, { cpoId: { $ne: null } }],
+      ...(await this.excludeParentCards(companyId)),
     };
     if (status) {
       query.status = status;
@@ -196,6 +196,14 @@ export class MongoJobCardRepository
       parentJobCardId: { $ne: null },
     });
     return ids.map((id) => Number(id)).filter((id) => Number.isFinite(id));
+  }
+
+  // A container/parent card (one with delivery children) is never a work unit —
+  // its children carry the items and workflow. This is the single definition used
+  // to exclude parents from every list/count surface.
+  private async excludeParentCards(companyId: number): Promise<Record<string, unknown>> {
+    const parentIds = await this.parentJobCardIds(companyId);
+    return parentIds.length > 0 ? { _id: { $nin: parentIds } } : {};
   }
 
   async findForCpo(cpoId: number, companyId: number): Promise<JobCard[]> {
@@ -336,6 +344,7 @@ export class MongoJobCardRepository
     const docs = await this.documents
       .find({
         companyId,
+        ...(await this.excludeParentCards(companyId)),
         $or: [
           { jobNumber: { $regex: term, $options: "i" } },
           { jcNumber: { $regex: term, $options: "i" } },
@@ -375,17 +384,24 @@ export class MongoJobCardRepository
     return this.toDomain(doc);
   }
 
-  countByStatus(companyId: number, status: string): Promise<number> {
-    return this.documents.countDocuments({ status, companyId }).exec();
+  async countByStatus(companyId: number, status: string): Promise<number> {
+    return this.documents
+      .countDocuments({ status, companyId, ...(await this.excludeParentCards(companyId)) })
+      .exec();
   }
 
-  countByWorkflowStatusAndStatuses(
+  async countByWorkflowStatusAndStatuses(
     companyId: number,
     workflowStatus: string,
     statuses: string[],
   ): Promise<number> {
     return this.documents
-      .countDocuments({ companyId, workflowStatus, status: { $in: statuses } })
+      .countDocuments({
+        companyId,
+        workflowStatus,
+        status: { $in: statuses },
+        ...(await this.excludeParentCards(companyId)),
+      })
       .exec();
   }
 
