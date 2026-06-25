@@ -1,7 +1,11 @@
 import { resolve } from "node:path";
-import { NotFoundException } from "@nestjs/common";
+import { ForbiddenException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { NixChatSession, type WalkthroughState } from "../entities/nix-chat-session.entity";
+import {
+  NixChatSession,
+  type NixSessionOwner,
+  type WalkthroughState,
+} from "../entities/nix-chat-session.entity";
 import { NixChatSessionRepository } from "../nix-chat-session.repository";
 import type { INixCapability } from "./nix-capability.interface";
 import { NixCapabilityRegistry } from "./nix-capability-registry.service";
@@ -14,12 +18,15 @@ describe("WalkthroughEngine", () => {
   let sessionRepo: jest.Mocked<NixChatSessionRepository>;
   let session: NixChatSession;
 
+  const owner: NixSessionOwner = { userId: 1, appScope: "customer" };
+
   beforeEach(async () => {
     process.env.NIX_GUIDES_ROOT = resolve(__dirname, "__fixtures__");
 
     session = {
       id: 1,
       userId: 1,
+      appScope: "customer" as const,
       rfqId: 0,
       conversationHistory: [],
       userPreferences: {},
@@ -33,6 +40,11 @@ describe("WalkthroughEngine", () => {
 
     const mockRepo: Partial<jest.Mocked<NixChatSessionRepository>> = {
       findById: jest.fn().mockImplementation(async () => session),
+      findOwnedById: jest
+        .fn()
+        .mockImplementation(async (_sessionId: number, o: NixSessionOwner) =>
+          o.userId === session.userId && o.appScope === session.appScope ? session : null,
+        ),
       save: jest.fn().mockImplementation(async (s) => {
         Object.assign(session, s);
         return session;
@@ -85,7 +97,7 @@ describe("WalkthroughEngine", () => {
     it("starts a walkthrough using inline steps", async () => {
       registry.register(inlineCapability);
 
-      const view = await engine.start(1, inlineCapability.key);
+      const view = await engine.start(1, owner, inlineCapability.key);
 
       expect(view.step).toBe(1);
       expect(view.totalSteps).toBe(3);
@@ -102,7 +114,7 @@ describe("WalkthroughEngine", () => {
     it("starts a walkthrough using guide H2 partitions", async () => {
       registry.register(guideCapability);
 
-      const view = await engine.start(1, guideCapability.key);
+      const view = await engine.start(1, owner, guideCapability.key);
 
       expect(view.totalSteps).toBe(3);
       expect(view.title).toMatch(/Step 1/);
@@ -110,7 +122,7 @@ describe("WalkthroughEngine", () => {
     });
 
     it("throws when capability is unknown", async () => {
-      await expect(engine.start(1, "not-registered")).rejects.toThrow(NotFoundException);
+      await expect(engine.start(1, owner, "not-registered")).rejects.toThrow(NotFoundException);
     });
 
     it("throws when capability has no resolvable steps", async () => {
@@ -120,7 +132,7 @@ describe("WalkthroughEngine", () => {
         label: "Empty",
         description: "Has no walkthrough or guideSlug",
       });
-      await expect(engine.start(1, "test-app.empty")).rejects.toThrow(NotFoundException);
+      await expect(engine.start(1, owner, "test-app.empty")).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -130,8 +142,8 @@ describe("WalkthroughEngine", () => {
     });
 
     it("advances to the next step and records history", async () => {
-      await engine.start(1, inlineCapability.key);
-      const view = await engine.advance(1);
+      await engine.start(1, owner, inlineCapability.key);
+      const view = await engine.advance(1, owner);
 
       expect(view).not.toBeNull();
       expect(view?.step).toBe(2);
@@ -146,10 +158,10 @@ describe("WalkthroughEngine", () => {
     });
 
     it("returns null and marks completed when past the last step", async () => {
-      await engine.start(1, inlineCapability.key);
-      await engine.advance(1);
-      await engine.advance(1);
-      const view = await engine.advance(1);
+      await engine.start(1, owner, inlineCapability.key);
+      await engine.advance(1, owner);
+      await engine.advance(1, owner);
+      const view = await engine.advance(1, owner);
 
       expect(view).toBeNull();
       expect(session.walkthroughState?.endedAt).toBeDefined();
@@ -163,17 +175,17 @@ describe("WalkthroughEngine", () => {
     });
 
     it("moves to previous step", async () => {
-      await engine.start(1, inlineCapability.key);
-      await engine.advance(1);
-      const view = await engine.back(1);
+      await engine.start(1, owner, inlineCapability.key);
+      await engine.advance(1, owner);
+      const view = await engine.back(1, owner);
 
       expect(view?.step).toBe(1);
       expect(session.walkthroughState?.currentStep).toBe(0);
     });
 
     it("clamps at step 0 — never goes negative", async () => {
-      await engine.start(1, inlineCapability.key);
-      const view = await engine.back(1);
+      await engine.start(1, owner, inlineCapability.key);
+      const view = await engine.back(1, owner);
 
       expect(view?.step).toBe(1);
       expect(session.walkthroughState?.currentStep).toBe(0);
@@ -186,8 +198,8 @@ describe("WalkthroughEngine", () => {
     });
 
     it("skips current step with 'skipped' action in history", async () => {
-      await engine.start(1, inlineCapability.key);
-      const view = await engine.skip(1);
+      await engine.start(1, owner, inlineCapability.key);
+      const view = await engine.skip(1, owner);
 
       expect(view?.step).toBe(2);
       expect(session.walkthroughState?.stepHistory[0].action).toBe("skipped");
@@ -200,18 +212,18 @@ describe("WalkthroughEngine", () => {
     });
 
     it("ends the walkthrough with the supplied reason", async () => {
-      await engine.start(1, inlineCapability.key);
-      await engine.stop(1, "abandoned");
+      await engine.start(1, owner, inlineCapability.key);
+      await engine.stop(1, owner, "abandoned");
 
       expect(session.walkthroughState?.endedAt).toBeDefined();
       expect(session.walkthroughState?.endReason).toBe("abandoned");
     });
 
     it("is a no-op when called twice", async () => {
-      await engine.start(1, inlineCapability.key);
-      await engine.stop(1, "stopped");
+      await engine.start(1, owner, inlineCapability.key);
+      await engine.stop(1, owner, "stopped");
       const firstEnd = session.walkthroughState?.endedAt;
-      await engine.stop(1, "abandoned");
+      await engine.stop(1, owner, "abandoned");
       expect(session.walkthroughState?.endedAt).toBe(firstEnd);
       expect(session.walkthroughState?.endReason).toBe("stopped");
     });
@@ -223,20 +235,20 @@ describe("WalkthroughEngine", () => {
     });
 
     it("returns the persisted walkthrough state", async () => {
-      await engine.start(1, inlineCapability.key);
-      const state = await engine.state(1);
+      await engine.start(1, owner, inlineCapability.key);
+      const state = await engine.state(1, owner);
       expect(state?.capabilityKey).toBe(inlineCapability.key);
     });
 
     it("returns null current view when no walkthrough is active", async () => {
-      const view = await engine.currentStepView(1);
+      const view = await engine.currentStepView(1, owner);
       expect(view).toBeNull();
     });
 
     it("returns null current view when ended", async () => {
-      await engine.start(1, inlineCapability.key);
-      await engine.stop(1);
-      const view = await engine.currentStepView(1);
+      await engine.start(1, owner, inlineCapability.key);
+      await engine.stop(1, owner);
+      const view = await engine.currentStepView(1, owner);
       expect(view).toBeNull();
     });
   });
@@ -244,9 +256,9 @@ describe("WalkthroughEngine", () => {
   describe("stuckContext", () => {
     it("returns step view + parsed guide for a guide-backed walkthrough", async () => {
       registry.register(guideCapability);
-      await engine.start(1, guideCapability.key);
+      await engine.start(1, owner, guideCapability.key);
 
-      const ctx = await engine.stuckContext(1);
+      const ctx = await engine.stuckContext(1, owner);
       expect(ctx).not.toBeNull();
       expect(ctx?.step.title).toMatch(/Step 1/);
       expect(ctx?.guide?.slug).toBe("sample-guide");
@@ -255,27 +267,57 @@ describe("WalkthroughEngine", () => {
 
     it("returns null guide for inline-step capabilities", async () => {
       registry.register(inlineCapability);
-      await engine.start(1, inlineCapability.key);
+      await engine.start(1, owner, inlineCapability.key);
 
-      const ctx = await engine.stuckContext(1);
+      const ctx = await engine.stuckContext(1, owner);
       expect(ctx?.guide).toBeNull();
       expect(ctx?.step.title).toBe("Step 1");
     });
   });
 
-  describe("session lookup", () => {
-    it("throws when session does not exist", async () => {
+  describe("ownership", () => {
+    const otherOwner: NixSessionOwner = { userId: 2, appScope: "customer" };
+    const crossAppOwner: NixSessionOwner = { userId: 1, appScope: "supplier" };
+
+    it("throws NotFound when session truly does not exist", async () => {
+      sessionRepo.findOwnedById.mockResolvedValueOnce(null);
       sessionRepo.findById.mockResolvedValueOnce(null);
-      await expect(engine.start(1, "anything")).rejects.toThrow(NotFoundException);
+      await expect(engine.start(1, owner, "anything")).rejects.toThrow(NotFoundException);
+    });
+
+    it("throws Forbidden when another userId reaches a foreign session", async () => {
+      registry.register(inlineCapability);
+      await expect(engine.state(1, otherOwner)).rejects.toThrow(ForbiddenException);
+    });
+
+    it("throws Forbidden when another appScope reaches a foreign session", async () => {
+      registry.register(inlineCapability);
+      await expect(engine.currentStepView(1, crossAppOwner)).rejects.toThrow(ForbiddenException);
+    });
+
+    it("blocks start/advance/stop for a non-owner", async () => {
+      registry.register(inlineCapability);
+      await expect(engine.start(1, otherOwner, inlineCapability.key)).rejects.toThrow(
+        ForbiddenException,
+      );
+      await expect(engine.advance(1, otherOwner)).rejects.toThrow(ForbiddenException);
+      await expect(engine.stop(1, otherOwner)).rejects.toThrow(ForbiddenException);
+    });
+
+    it("lets the owner succeed where the non-owner is blocked", async () => {
+      registry.register(inlineCapability);
+      await engine.start(1, owner, inlineCapability.key);
+      const state = await engine.state(1, owner);
+      expect(state?.capabilityKey).toBe(inlineCapability.key);
     });
   });
 
   it("persists state across operations", async () => {
     registry.register(inlineCapability);
-    await engine.start(1, inlineCapability.key);
-    await engine.advance(1);
+    await engine.start(1, owner, inlineCapability.key);
+    await engine.advance(1, owner);
 
-    const fetched = await engine.state(1);
+    const fetched = await engine.state(1, owner);
     expect(fetched?.currentStep).toBe(1);
     expect(fetched?.stepHistory).toHaveLength(1);
 

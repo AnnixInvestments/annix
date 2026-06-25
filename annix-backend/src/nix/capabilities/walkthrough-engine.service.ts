@@ -1,8 +1,16 @@
-import { Inject, Injectable, Logger, NotFoundException, Optional } from "@nestjs/common";
+import {
+  ForbiddenException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+  Optional,
+} from "@nestjs/common";
 import { fromISO, now, nowISO } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import {
   NixChatSession,
+  type NixSessionOwner,
   type WalkthroughEndReason,
   type WalkthroughState,
 } from "../entities/nix-chat-session.entity";
@@ -48,8 +56,12 @@ export class WalkthroughEngine {
     private readonly metricService: ExtractionMetricService | null = null,
   ) {}
 
-  async start(sessionId: number, capabilityKey: string): Promise<WalkthroughStepView> {
-    const session = await this.session(sessionId);
+  async start(
+    sessionId: number,
+    owner: NixSessionOwner,
+    capabilityKey: string,
+  ): Promise<WalkthroughStepView> {
+    const session = await this.ownedSession(sessionId, owner);
     const capability = this.registry.capability(capabilityKey);
     if (!capability) {
       throw new NotFoundException(`Unknown capability: ${capabilityKey}`);
@@ -79,20 +91,24 @@ export class WalkthroughEngine {
     return this.viewForStep(steps, capability.label, 0);
   }
 
-  async advance(sessionId: number): Promise<WalkthroughStepView | null> {
-    return this.move(sessionId, 1, "advanced");
+  async advance(sessionId: number, owner: NixSessionOwner): Promise<WalkthroughStepView | null> {
+    return this.move(sessionId, owner, 1, "advanced");
   }
 
-  async back(sessionId: number): Promise<WalkthroughStepView | null> {
-    return this.move(sessionId, -1, "back");
+  async back(sessionId: number, owner: NixSessionOwner): Promise<WalkthroughStepView | null> {
+    return this.move(sessionId, owner, -1, "back");
   }
 
-  async skip(sessionId: number): Promise<WalkthroughStepView | null> {
-    return this.move(sessionId, 1, "skipped");
+  async skip(sessionId: number, owner: NixSessionOwner): Promise<WalkthroughStepView | null> {
+    return this.move(sessionId, owner, 1, "skipped");
   }
 
-  async stop(sessionId: number, reason: WalkthroughEndReason = "stopped"): Promise<void> {
-    const session = await this.session(sessionId);
+  async stop(
+    sessionId: number,
+    owner: NixSessionOwner,
+    reason: WalkthroughEndReason = "stopped",
+  ): Promise<void> {
+    const session = await this.ownedSession(sessionId, owner);
     const state = session.walkthroughState;
     if (!state || state.endedAt) return;
 
@@ -121,13 +137,16 @@ export class WalkthroughEngine {
     });
   }
 
-  async state(sessionId: number): Promise<WalkthroughState | null> {
-    const session = await this.session(sessionId);
+  async state(sessionId: number, owner: NixSessionOwner): Promise<WalkthroughState | null> {
+    const session = await this.ownedSession(sessionId, owner);
     return session.walkthroughState;
   }
 
-  async currentStepView(sessionId: number): Promise<WalkthroughStepView | null> {
-    const session = await this.session(sessionId);
+  async currentStepView(
+    sessionId: number,
+    owner: NixSessionOwner,
+  ): Promise<WalkthroughStepView | null> {
+    const session = await this.ownedSession(sessionId, owner);
     const state = session.walkthroughState;
     if (!state || state.endedAt) return null;
     const capability = this.registry.capability(state.capabilityKey);
@@ -144,8 +163,9 @@ export class WalkthroughEngine {
    */
   async stuckContext(
     sessionId: number,
+    owner: NixSessionOwner,
   ): Promise<{ step: WalkthroughStepView; guide: ParsedGuide | null } | null> {
-    const session = await this.session(sessionId);
+    const session = await this.ownedSession(sessionId, owner);
     const state = session.walkthroughState;
     if (!state || state.endedAt) return null;
     const capability = this.registry.capability(state.capabilityKey);
@@ -175,10 +195,11 @@ export class WalkthroughEngine {
 
   private async move(
     sessionId: number,
+    owner: NixSessionOwner,
     delta: number,
     action: "advanced" | "back" | "skipped",
   ): Promise<WalkthroughStepView | null> {
-    const session = await this.session(sessionId);
+    const session = await this.ownedSession(sessionId, owner);
     const state = session.walkthroughState;
     if (!state || state.endedAt) {
       throw new NotFoundException(`No active walkthrough on session ${sessionId}`);
@@ -280,10 +301,14 @@ export class WalkthroughEngine {
     };
   }
 
-  private async session(sessionId: number): Promise<NixChatSession> {
-    const session = await this.sessionRepo.findById(sessionId);
+  private async ownedSession(sessionId: number, owner: NixSessionOwner): Promise<NixChatSession> {
+    const session = await this.sessionRepo.findOwnedById(sessionId, owner);
     if (!session) {
-      throw new NotFoundException(`NixChatSession ${sessionId} not found`);
+      const exists = await this.sessionRepo.findById(sessionId);
+      if (exists) {
+        throw new ForbiddenException("You do not have access to this chat session");
+      }
+      throw new NotFoundException(`Session ${sessionId} not found`);
     }
     return session;
   }

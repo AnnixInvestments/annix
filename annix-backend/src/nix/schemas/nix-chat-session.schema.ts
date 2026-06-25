@@ -16,6 +16,9 @@ export class NixChatSession {
   @Prop({ type: Number, required: true })
   userId: number;
 
+  @Prop({ type: String, required: false })
+  appScope: string;
+
   @Prop({ type: Number, required: false })
   rfqId: number;
 

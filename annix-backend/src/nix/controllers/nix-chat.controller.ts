@@ -13,13 +13,14 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { Response } from "express";
-import { AnyUserAuthGuard } from "../../auth/guards/any-user-auth.guard";
+import { AnyUserAuthGuard, AuthenticatedUser } from "../../auth/guards/any-user-auth.guard";
 import {
   CreateItemsFromChatDto,
   CreateItemsResponseDto,
   ParseItemsRequestDto,
   ParseItemsResponseDto,
 } from "../dto/chat-item.dto";
+import { NixSessionOwner } from "../entities/nix-chat-session.entity";
 import { CreateSessionDto, NixChatService, SendMessageDto } from "../services/nix-chat.service";
 import { NixChatItemService } from "../services/nix-chat-item.service";
 import { NixValidationService } from "../services/nix-validation.service";
@@ -35,10 +36,14 @@ export class NixChatController {
     private readonly chatItemService: NixChatItemService,
   ) {}
 
+  private owner(req: { authUser: AuthenticatedUser }): NixSessionOwner {
+    return { userId: req.authUser.userId, appScope: req.authUser.type };
+  }
+
   @Post("session")
   async createSession(@Request() req, @Body() body: { rfqId?: number }) {
     const dto: CreateSessionDto = {
-      userId: req.authUser.userId,
+      owner: this.owner(req),
       rfqId: body.rfqId,
     };
 
@@ -52,8 +57,8 @@ export class NixChatController {
   }
 
   @Get("session/:sessionId")
-  async getSession(@Param("sessionId", ParseIntPipe) sessionId: number) {
-    const session = await this.chatService.session(sessionId);
+  async getSession(@Param("sessionId", ParseIntPipe) sessionId: number, @Request() req) {
+    const session = await this.chatService.session(sessionId, this.owner(req));
 
     return {
       sessionId: session.id,
@@ -68,7 +73,7 @@ export class NixChatController {
 
   @Get("session/:sessionId/history")
   async getHistory(@Param("sessionId", ParseIntPipe) sessionId: number, @Request() req) {
-    const messages = await this.chatService.conversationHistory(sessionId);
+    const messages = await this.chatService.conversationHistory(sessionId, this.owner(req));
 
     return {
       sessionId,
@@ -86,9 +91,11 @@ export class NixChatController {
   async sendMessage(
     @Param("sessionId", ParseIntPipe) sessionId: number,
     @Body() body: { message: string; context?: any },
+    @Request() req,
   ) {
     const dto: SendMessageDto = {
       sessionId,
+      owner: this.owner(req),
       message: body.message,
       context: body.context,
     };
@@ -110,9 +117,11 @@ export class NixChatController {
     @Param("sessionId", ParseIntPipe) sessionId: number,
     @Body() body: { message: string; context?: any },
     @Res() res: Response,
+    @Request() req,
   ) {
     const dto: SendMessageDto = {
       sessionId,
+      owner: this.owner(req),
       message: body.message,
       context: body.context,
     };
@@ -139,8 +148,9 @@ export class NixChatController {
   async updatePreferences(
     @Param("sessionId", ParseIntPipe) sessionId: number,
     @Body() preferences: any,
+    @Request() req,
   ) {
-    await this.chatService.updateUserPreferences(sessionId, preferences);
+    await this.chatService.updateUserPreferences(sessionId, this.owner(req), preferences);
 
     return { success: true };
   }
@@ -154,15 +164,16 @@ export class NixChatController {
       correctedValue: string;
       fieldType: string;
     },
+    @Request() req,
   ) {
-    await this.chatService.recordCorrection(sessionId, body);
+    await this.chatService.recordCorrection(sessionId, this.owner(req), body);
 
     return { success: true };
   }
 
   @Post("session/:sessionId/end")
-  async endSession(@Param("sessionId", ParseIntPipe) sessionId: number) {
-    await this.chatService.endSession(sessionId);
+  async endSession(@Param("sessionId", ParseIntPipe) sessionId: number, @Request() req) {
+    await this.chatService.endSession(sessionId, this.owner(req));
 
     return { success: true };
   }
@@ -171,8 +182,9 @@ export class NixChatController {
   async parseItems(
     @Param("sessionId", ParseIntPipe) sessionId: number,
     @Body() dto: ParseItemsRequestDto,
+    @Request() req,
   ): Promise<ParseItemsResponseDto> {
-    const session = await this.chatService.session(sessionId);
+    const session = await this.chatService.session(sessionId, this.owner(req));
 
     try {
       return await this.chatItemService.parseItemsFromMessage(session, dto);
@@ -188,7 +200,7 @@ export class NixChatController {
     @Body() dto: CreateItemsFromChatDto,
     @Request() req,
   ): Promise<CreateItemsResponseDto> {
-    const session = await this.chatService.session(sessionId);
+    const session = await this.chatService.session(sessionId, this.owner(req));
     const userId = req.authUser.userId;
 
     try {

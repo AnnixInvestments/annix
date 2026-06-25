@@ -1153,6 +1153,8 @@ export {
   type NixExtractionDocumentUrlResponse,
   type NixExtractionSessionDto,
   type NixExtractionSummary,
+  NixRequestError,
+  nixErrorStatus,
   type ProductDataSheetSearchHit,
   type QuoteCustomerSnapshot,
   type QuoteEditorStateDto,

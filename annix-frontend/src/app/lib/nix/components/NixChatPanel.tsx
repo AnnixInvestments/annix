@@ -10,6 +10,7 @@ import { useGuidedMode } from "@/app/lib/hooks/useGuidedMode";
 import { clampPanelGeometryToViewport, type PanelGeometry } from "@/app/lib/panelGeometry";
 import {
   type ChatMessage,
+  nixErrorStatus,
   useCreateNixSession,
   useNixHistory,
   useSendNixMessage,
@@ -384,10 +385,37 @@ const persistSessionId = (sessionId: number | null): void => {
   }
 };
 
-const isSessionNotFoundError = (error: unknown): boolean => {
+const errorMessageText = (error: unknown): string => {
   const message = error instanceof Error ? error.message : String(error);
-  return message.toLowerCase().includes("not found");
+  return message.toLowerCase();
 };
+
+const isSessionNotFoundError = (error: unknown): boolean => {
+  const message = errorMessageText(error);
+  return message.includes("not found");
+};
+
+/**
+ * A persisted (legacy/unscoped) sessionId can now resolve to a different
+ * owner after the ownership-scoping security fix (#401). The backend answers
+ * the history GET with a raw 403, and maps the send 403 to a 503 carrying
+ * "You do not have access to this chat session". Either way the only safe
+ * recovery is to discard the stale id and start a fresh session — the same
+ * self-heal the "not found" case already triggers. We detect by HTTP status
+ * (403) when available, falling back to the ownership/forbidden message text
+ * for the mapped-503 send path whose status is no longer 403.
+ */
+const isSessionOwnershipError = (error: unknown): boolean => {
+  const status = nixErrorStatus(error);
+  if (status === 403) {
+    return true;
+  }
+  const message = errorMessageText(error);
+  return message.includes("do not have access") || message.includes("forbidden");
+};
+
+const isRecoverableSessionError = (error: unknown): boolean =>
+  isSessionNotFoundError(error) || isSessionOwnershipError(error);
 
 export function NixChatPanel(props: NixChatPanelProps) {
   const {
@@ -411,6 +439,7 @@ export function NixChatPanel(props: NixChatPanelProps) {
   const [streamingContent, setStreamingContent] = useState("");
   const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([]);
   const [initError, setInitError] = useState<string | null>(null);
+  const [sessionRecoveryNotice, setSessionRecoveryNotice] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -477,10 +506,8 @@ export function NixChatPanel(props: NixChatPanelProps) {
     if (!historyError) {
       return;
     }
-    if (isSessionNotFoundError(historyError)) {
-      persistSessionId(null);
-      setMessages([]);
-      setSessionId(null);
+    if (isRecoverableSessionError(historyError)) {
+      recoverStaleSession(historyError);
     }
   }, [historyQuery.error]);
 
@@ -638,6 +665,17 @@ export function NixChatPanel(props: NixChatPanelProps) {
     );
   };
 
+  const recoverStaleSession = (recoveredError: unknown) => {
+    console.warn("Recovering Nix session from a stale/unauthorized session id:", recoveredError);
+    persistSessionId(null);
+    setMessages([]);
+    setStreamingContent("");
+    setIsStreaming(false);
+    setSessionId(null);
+    setSessionRecoveryNotice(true);
+    initializeSession();
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -716,8 +754,10 @@ export function NixChatPanel(props: NixChatPanelProps) {
             setIsStreaming(false);
           },
           onError: (error) => {
-            if (allowSessionRecovery && isSessionNotFoundError(error)) {
+            if (allowSessionRecovery && isRecoverableSessionError(error)) {
+              console.warn("Recovering Nix session on send (stale/unauthorized session):", error);
               persistSessionId(null);
+              setSessionRecoveryNotice(true);
               createSessionMutation.mutate(
                 { rfqId, portalContext },
                 {
@@ -1060,6 +1100,22 @@ export function NixChatPanel(props: NixChatPanelProps) {
             </span>
           </div>
           <p className="text-xs text-yellow-700 dark:text-yellow-400">Ask Nix about these issues</p>
+        </div>
+      ) : null}
+
+      {sessionRecoveryNotice ? (
+        <div className="flex items-start gap-2 px-4 py-2 bg-orange-50 dark:bg-gray-700 border-b border-orange-200 dark:border-gray-600">
+          <InfoIcon className="h-4 w-4 text-orange-600 dark:text-orange-400 mt-0.5 shrink-0" />
+          <p className="flex-1 text-xs text-gray-700 dark:text-gray-300">
+            Your previous chat has ended, so we started a fresh one for you.
+          </p>
+          <button
+            onClick={() => setSessionRecoveryNotice(false)}
+            className="p-0.5 hover:bg-orange-100 dark:hover:bg-gray-600 rounded transition-colors shrink-0"
+            aria-label="Dismiss notice"
+          >
+            <XIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+          </button>
         </div>
       ) : null}
 

@@ -17,6 +17,7 @@ describe("NixChatController", () => {
   const mockSession = {
     id: 1,
     userId: 100,
+    appScope: "customer" as const,
     rfqId: undefined as unknown as number,
     isActive: true,
     userPreferences: { learningEnabled: true },
@@ -38,8 +39,10 @@ describe("NixChatController", () => {
   } as unknown as NixChatMessage;
 
   const mockRequest = {
-    authUser: { userId: 100 },
-  };
+    authUser: { userId: 100, type: "customer" as const },
+  } as any;
+
+  const owner = { userId: 100, appScope: "customer" as const };
 
   beforeEach(async () => {
     const mockChatService = {
@@ -96,7 +99,7 @@ describe("NixChatController", () => {
         userPreferences: { learningEnabled: true },
       });
       expect(chatService.createSession).toHaveBeenCalledWith({
-        userId: 100,
+        owner,
         rfqId: undefined,
       });
     });
@@ -109,7 +112,7 @@ describe("NixChatController", () => {
 
       expect(result.sessionId).toBe(1);
       expect(chatService.createSession).toHaveBeenCalledWith({
-        userId: 100,
+        owner,
         rfqId: 50,
       });
     });
@@ -119,7 +122,7 @@ describe("NixChatController", () => {
     it("should return session details", async () => {
       chatService.session.mockResolvedValue(mockSession);
 
-      const result = await controller.getSession(1);
+      const result = await controller.getSession(1, mockRequest);
 
       expect(result).toEqual({
         sessionId: 1,
@@ -130,14 +133,14 @@ describe("NixChatController", () => {
         lastInteractionAt: mockSession.lastInteractionAt,
         createdAt: mockSession.createdAt,
       });
-      expect(chatService.session).toHaveBeenCalledWith(1);
+      expect(chatService.session).toHaveBeenCalledWith(1, owner);
     });
 
     it("should return session with rfqId when present", async () => {
       const sessionWithRfq = { ...mockSession, rfqId: 50 };
       chatService.session.mockResolvedValue(sessionWithRfq);
 
-      const result = await controller.getSession(1);
+      const result = await controller.getSession(1, mockRequest);
 
       expect(result.rfqId).toBe(50);
     });
@@ -196,11 +199,12 @@ describe("NixChatController", () => {
       };
       chatService.sendMessage.mockResolvedValue(response);
 
-      const result = await controller.sendMessage(1, { message: "Hello" });
+      const result = await controller.sendMessage(1, { message: "Hello" }, mockRequest);
 
       expect(result).toEqual(response);
       expect(chatService.sendMessage).toHaveBeenCalledWith({
         sessionId: 1,
+        owner,
         message: "Hello",
         context: undefined,
       });
@@ -210,10 +214,11 @@ describe("NixChatController", () => {
       chatService.sendMessage.mockResolvedValue({ sessionId: 1, messageId: 11, content: "OK" });
       const context = { currentRfqItems: [{ diameter: 200 }] };
 
-      await controller.sendMessage(1, { message: "Check items", context });
+      await controller.sendMessage(1, { message: "Check items", context }, mockRequest);
 
       expect(chatService.sendMessage).toHaveBeenCalledWith({
         sessionId: 1,
+        owner,
         message: "Check items",
         context,
       });
@@ -222,10 +227,12 @@ describe("NixChatController", () => {
     it("should throw TOO_MANY_REQUESTS on rate limit error", async () => {
       chatService.sendMessage.mockRejectedValue(new Error("rate limit exceeded"));
 
-      await expect(controller.sendMessage(1, { message: "Hello" })).rejects.toThrow(HttpException);
+      await expect(controller.sendMessage(1, { message: "Hello" }, mockRequest)).rejects.toThrow(
+        HttpException,
+      );
 
       try {
-        await controller.sendMessage(1, { message: "Hello" });
+        await controller.sendMessage(1, { message: "Hello" }, mockRequest);
       } catch (error) {
         expect(error).toBeInstanceOf(HttpException);
         expect((error as HttpException).getStatus()).toBe(HttpStatus.TOO_MANY_REQUESTS);
@@ -235,10 +242,12 @@ describe("NixChatController", () => {
     it("should throw SERVICE_UNAVAILABLE on other errors", async () => {
       chatService.sendMessage.mockRejectedValue(new Error("API failed"));
 
-      await expect(controller.sendMessage(1, { message: "Hello" })).rejects.toThrow(HttpException);
+      await expect(controller.sendMessage(1, { message: "Hello" }, mockRequest)).rejects.toThrow(
+        HttpException,
+      );
 
       try {
-        await controller.sendMessage(1, { message: "Hello" });
+        await controller.sendMessage(1, { message: "Hello" }, mockRequest);
       } catch (error) {
         expect(error).toBeInstanceOf(HttpException);
         expect((error as HttpException).getStatus()).toBe(HttpStatus.SERVICE_UNAVAILABLE);
@@ -263,7 +272,7 @@ describe("NixChatController", () => {
       })();
       chatService.streamMessage.mockReturnValue(generator);
 
-      await controller.streamMessage(1, { message: "Hi" }, mockResponse as Response);
+      await controller.streamMessage(1, { message: "Hi" }, mockResponse as Response, mockRequest);
 
       expect(mockResponse.setHeader).toHaveBeenCalledWith("Content-Type", "text/event-stream");
       expect(mockResponse.setHeader).toHaveBeenCalledWith("Cache-Control", "no-cache");
@@ -280,7 +289,7 @@ describe("NixChatController", () => {
       })();
       chatService.streamMessage.mockReturnValue(generator);
 
-      await controller.streamMessage(1, { message: "Hi" }, mockResponse as Response);
+      await controller.streamMessage(1, { message: "Hi" }, mockResponse as Response, mockRequest);
 
       expect(mockResponse.write).toHaveBeenCalledWith('data: {"type":"message_start"}\n\n');
       expect(mockResponse.write).toHaveBeenCalledWith(
@@ -301,7 +310,7 @@ describe("NixChatController", () => {
       })();
       chatService.streamMessage.mockReturnValue(generator);
 
-      await controller.streamMessage(1, { message: "Hi" }, mockResponse as Response);
+      await controller.streamMessage(1, { message: "Hi" }, mockResponse as Response, mockRequest);
 
       expect(mockResponse.write).toHaveBeenCalledWith(
         'data: {"type":"error","error":"Stream failed"}\n\n',
@@ -316,10 +325,16 @@ describe("NixChatController", () => {
       chatService.streamMessage.mockReturnValue(generator);
       const context = { selectedItem: { id: 5 } };
 
-      await controller.streamMessage(1, { message: "Hi", context }, mockResponse as Response);
+      await controller.streamMessage(
+        1,
+        { message: "Hi", context },
+        mockResponse as Response,
+        mockRequest,
+      );
 
       expect(chatService.streamMessage).toHaveBeenCalledWith({
         sessionId: 1,
+        owner,
         message: "Hi",
         context,
       });
@@ -331,10 +346,10 @@ describe("NixChatController", () => {
       chatService.updateUserPreferences.mockResolvedValue(undefined);
 
       const preferences = { learningEnabled: false, preferredMaterials: ["Carbon Steel"] };
-      const result = await controller.updatePreferences(1, preferences);
+      const result = await controller.updatePreferences(1, preferences, mockRequest);
 
       expect(result).toEqual({ success: true });
-      expect(chatService.updateUserPreferences).toHaveBeenCalledWith(1, preferences);
+      expect(chatService.updateUserPreferences).toHaveBeenCalledWith(1, owner, preferences);
     });
   });
 
@@ -347,10 +362,10 @@ describe("NixChatController", () => {
         correctedValue: "200NB",
         fieldType: "diameter",
       };
-      const result = await controller.recordCorrection(1, correction);
+      const result = await controller.recordCorrection(1, correction, mockRequest);
 
       expect(result).toEqual({ success: true });
-      expect(chatService.recordCorrection).toHaveBeenCalledWith(1, correction);
+      expect(chatService.recordCorrection).toHaveBeenCalledWith(1, owner, correction);
     });
   });
 
@@ -358,10 +373,10 @@ describe("NixChatController", () => {
     it("should end session and return success", async () => {
       chatService.endSession.mockResolvedValue(undefined);
 
-      const result = await controller.endSession(1);
+      const result = await controller.endSession(1, mockRequest);
 
       expect(result).toEqual({ success: true });
-      expect(chatService.endSession).toHaveBeenCalledWith(1);
+      expect(chatService.endSession).toHaveBeenCalledWith(1, owner);
     });
   });
 

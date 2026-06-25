@@ -1,4 +1,4 @@
-import { NotFoundException } from "@nestjs/common";
+import { ForbiddenException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiChatService } from "../ai-providers/ai-chat.service";
@@ -15,9 +15,14 @@ describe("NixChatService", () => {
   let sessionRepository: jest.Mocked<NixChatSessionRepository>;
   let messageRepository: jest.Mocked<NixChatMessageRepository>;
 
+  const owner = { userId: 100, appScope: "customer" as const };
+  const otherOwner = { userId: 200, appScope: "customer" as const };
+  const crossAppOwner = { userId: 100, appScope: "stock-control" as const };
+
   const mockSession = {
     id: 1,
     userId: 100,
+    appScope: "customer" as const,
     rfqId: undefined as unknown as number,
     isActive: true,
     conversationHistory: [],
@@ -47,6 +52,7 @@ describe("NixChatService", () => {
 
     const mockSessionRepo = {
       findById: jest.fn(),
+      findOwnedById: jest.fn(),
       findActiveForUser: jest.fn(),
       create: jest.fn(),
       save: jest.fn(),
@@ -114,10 +120,10 @@ describe("NixChatService", () => {
     it("should return existing active session if one exists", async () => {
       sessionRepository.findActiveForUser.mockResolvedValue(mockSession);
 
-      const result = await service.createSession({ userId: 100 });
+      const result = await service.createSession({ owner });
 
       expect(result).toEqual(mockSession);
-      expect(sessionRepository.findActiveForUser).toHaveBeenCalledWith(100, undefined);
+      expect(sessionRepository.findActiveForUser).toHaveBeenCalledWith(owner, undefined);
       expect(sessionRepository.create).not.toHaveBeenCalled();
     });
 
@@ -125,11 +131,12 @@ describe("NixChatService", () => {
       sessionRepository.findActiveForUser.mockResolvedValue(null);
       sessionRepository.create.mockResolvedValue(mockSession);
 
-      const result = await service.createSession({ userId: 100 });
+      const result = await service.createSession({ owner });
 
       expect(result).toEqual(mockSession);
       expect(sessionRepository.create).toHaveBeenCalledWith({
         userId: 100,
+        appScope: "customer",
         rfqId: undefined,
         isActive: true,
         conversationHistory: [],
@@ -142,28 +149,51 @@ describe("NixChatService", () => {
       sessionRepository.findActiveForUser.mockResolvedValue(null);
       sessionRepository.create.mockResolvedValue({ ...mockSession, rfqId: 50 });
 
-      const result = await service.createSession({ userId: 100, rfqId: 50 });
+      const result = await service.createSession({ owner, rfqId: 50 });
 
       expect(result.rfqId).toBe(50);
-      expect(sessionRepository.findActiveForUser).toHaveBeenCalledWith(100, 50);
+      expect(sessionRepository.findActiveForUser).toHaveBeenCalledWith(owner, 50);
     });
   });
 
   describe("session", () => {
-    it("should return session when found", async () => {
-      sessionRepository.findById.mockResolvedValue(mockSession);
+    it("should return session when owned by the caller", async () => {
+      sessionRepository.findOwnedById.mockResolvedValue(mockSession);
 
-      const result = await service.session(1);
+      const result = await service.session(1, owner);
 
       expect(result).toEqual(mockSession);
-      expect(sessionRepository.findById).toHaveBeenCalledWith(1);
+      expect(sessionRepository.findOwnedById).toHaveBeenCalledWith(1, owner);
     });
 
-    it("should throw NotFoundException when session not found", async () => {
+    it("should throw NotFoundException when session does not exist", async () => {
+      sessionRepository.findOwnedById.mockResolvedValue(null);
       sessionRepository.findById.mockResolvedValue(null);
 
-      await expect(service.session(999)).rejects.toThrow(NotFoundException);
-      await expect(service.session(999)).rejects.toThrow("Session 999 not found");
+      await expect(service.session(999, owner)).rejects.toThrow(NotFoundException);
+      await expect(service.session(999, owner)).rejects.toThrow("Session 999 not found");
+    });
+
+    it("should throw ForbiddenException when session belongs to another user", async () => {
+      sessionRepository.findOwnedById.mockResolvedValue(null);
+      sessionRepository.findById.mockResolvedValue(mockSession);
+
+      await expect(service.session(1, otherOwner)).rejects.toThrow(ForbiddenException);
+    });
+
+    it("should throw ForbiddenException when session belongs to another app scope", async () => {
+      sessionRepository.findOwnedById.mockResolvedValue(null);
+      sessionRepository.findById.mockResolvedValue(mockSession);
+
+      await expect(service.session(1, crossAppOwner)).rejects.toThrow(ForbiddenException);
+    });
+
+    it("should block enumeration by not loading another user's session via findOwnedById", async () => {
+      sessionRepository.findOwnedById.mockResolvedValue(null);
+      sessionRepository.findById.mockResolvedValue(mockSession);
+
+      await expect(service.session(1, otherOwner)).rejects.toThrow(ForbiddenException);
+      expect(sessionRepository.findOwnedById).toHaveBeenCalledWith(1, otherOwner);
     });
   });
 
@@ -171,7 +201,7 @@ describe("NixChatService", () => {
     let aiChatService: jest.Mocked<AiChatService>;
 
     beforeEach(() => {
-      sessionRepository.findById.mockResolvedValue({ ...mockSession });
+      sessionRepository.findOwnedById.mockResolvedValue({ ...mockSession });
       messageRepository.create.mockResolvedValue(mockMessage);
       messageRepository.save.mockResolvedValue(mockMessage);
       sessionRepository.save.mockResolvedValue(mockSession);
@@ -196,13 +226,23 @@ describe("NixChatService", () => {
       );
 
       await expect(
-        serviceWithoutProvider.sendMessage({ sessionId: 1, message: "Hello" }),
+        serviceWithoutProvider.sendMessage({ sessionId: 1, owner, message: "Hello" }),
       ).rejects.toThrow("No AI chat provider available");
+    });
+
+    it("should reject a message to a session owned by another user", async () => {
+      sessionRepository.findOwnedById.mockResolvedValue(null);
+      sessionRepository.findById.mockResolvedValue(mockSession);
+
+      await expect(
+        service.sendMessage({ sessionId: 1, owner: otherOwner, message: "Hello" }),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it("should send message and return response", async () => {
       const result = await service.sendMessage({
         sessionId: 1,
+        owner,
         message: "What is a pipe schedule?",
       });
 
@@ -216,13 +256,13 @@ describe("NixChatService", () => {
     });
 
     it("should save user and assistant messages", async () => {
-      await service.sendMessage({ sessionId: 1, message: "Hello" });
+      await service.sendMessage({ sessionId: 1, owner, message: "Hello" });
 
       expect(messageRepository.create).toHaveBeenCalledTimes(2);
     });
 
     it("should update session conversation history", async () => {
-      await service.sendMessage({ sessionId: 1, message: "Test message" });
+      await service.sendMessage({ sessionId: 1, owner, message: "Test message" });
 
       expect(sessionRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -239,6 +279,7 @@ describe("NixChatService", () => {
 
       await service.sendMessage({
         sessionId: 1,
+        owner,
         message: "Check my items",
         context: { currentRfqItems: rfqItems },
       });
@@ -255,7 +296,7 @@ describe("NixChatService", () => {
     it("should propagate chat service errors", async () => {
       aiChatService.chat = jest.fn().mockRejectedValue(new Error("All AI providers failed"));
 
-      await expect(service.sendMessage({ sessionId: 1, message: "Hello" })).rejects.toThrow(
+      await expect(service.sendMessage({ sessionId: 1, owner, message: "Hello" })).rejects.toThrow(
         "All AI providers failed",
       );
     });
@@ -265,7 +306,7 @@ describe("NixChatService", () => {
     let aiChatService: jest.Mocked<AiChatService>;
 
     beforeEach(() => {
-      sessionRepository.findById.mockResolvedValue({ ...mockSession });
+      sessionRepository.findOwnedById.mockResolvedValue({ ...mockSession });
       messageRepository.create.mockResolvedValue(mockMessage);
       messageRepository.save.mockResolvedValue(mockMessage);
       sessionRepository.save.mockResolvedValue(mockSession);
@@ -289,7 +330,11 @@ describe("NixChatService", () => {
         {} as any,
       );
 
-      const generator = serviceWithoutProvider.streamMessage({ sessionId: 1, message: "Hello" });
+      const generator = serviceWithoutProvider.streamMessage({
+        sessionId: 1,
+        owner,
+        message: "Hello",
+      });
       const result = await generator.next();
 
       expect(result.value).toEqual({
@@ -308,7 +353,7 @@ describe("NixChatService", () => {
 
       aiChatService.streamChat = jest.fn().mockReturnValue(mockStreamChat());
 
-      const generator = service.streamMessage({ sessionId: 1, message: "Hi" });
+      const generator = service.streamMessage({ sessionId: 1, owner, message: "Hi" });
       const results: any[] = [];
 
       for await (const chunk of generator) {
@@ -331,7 +376,7 @@ describe("NixChatService", () => {
 
       aiChatService.streamChat = jest.fn().mockReturnValue(mockStreamChatError());
 
-      const generator = service.streamMessage({ sessionId: 1, message: "Hello" });
+      const generator = service.streamMessage({ sessionId: 1, owner, message: "Hello" });
       const results: any[] = [];
 
       for await (const chunk of generator) {
@@ -350,7 +395,7 @@ describe("NixChatService", () => {
 
       aiChatService.streamChat = jest.fn().mockReturnValue(mockStreamChatSuccess());
 
-      const generator = service.streamMessage({ sessionId: 1, message: "Test" });
+      const generator = service.streamMessage({ sessionId: 1, owner, message: "Test" });
 
       for await (const _ of generator) {
         /* consume generator */
@@ -362,21 +407,31 @@ describe("NixChatService", () => {
 
   describe("conversationHistory", () => {
     it("should return messages in descending order", async () => {
+      sessionRepository.findOwnedById.mockResolvedValue(mockSession);
       const messages = [mockMessage, { ...mockMessage, id: 2 }];
       messageRepository.findRecentForSession.mockResolvedValue(messages);
 
-      const result = await service.conversationHistory(1);
+      const result = await service.conversationHistory(1, owner);
 
       expect(result).toEqual(messages);
       expect(messageRepository.findRecentForSession).toHaveBeenCalledWith(1, 50);
     });
 
     it("should respect custom limit", async () => {
+      sessionRepository.findOwnedById.mockResolvedValue(mockSession);
       messageRepository.findRecentForSession.mockResolvedValue([]);
 
-      await service.conversationHistory(1, 10);
+      await service.conversationHistory(1, owner, 10);
 
       expect(messageRepository.findRecentForSession).toHaveBeenCalledWith(1, 10);
+    });
+
+    it("should not return history of another user's session", async () => {
+      sessionRepository.findOwnedById.mockResolvedValue(null);
+      sessionRepository.findById.mockResolvedValue(mockSession);
+
+      await expect(service.conversationHistory(1, otherOwner)).rejects.toThrow(ForbiddenException);
+      expect(messageRepository.findRecentForSession).not.toHaveBeenCalled();
     });
   });
 
@@ -386,10 +441,10 @@ describe("NixChatService", () => {
         ...mockSession,
         userPreferences: { learningEnabled: true, preferredMaterials: ["Carbon Steel"] },
       };
-      sessionRepository.findById.mockResolvedValue(sessionWithPrefs);
+      sessionRepository.findOwnedById.mockResolvedValue(sessionWithPrefs);
       sessionRepository.save.mockResolvedValue(sessionWithPrefs);
 
-      await service.updateUserPreferences(1, { preferredSchedules: ["Sch 40"] });
+      await service.updateUserPreferences(1, owner, { preferredSchedules: ["Sch 40"] });
 
       expect(sessionRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -405,10 +460,10 @@ describe("NixChatService", () => {
 
   describe("recordCorrection", () => {
     it("should add correction to session context", async () => {
-      sessionRepository.findById.mockResolvedValue({ ...mockSession, sessionContext: {} });
+      sessionRepository.findOwnedById.mockResolvedValue({ ...mockSession, sessionContext: {} });
       sessionRepository.save.mockResolvedValue(mockSession);
 
-      await service.recordCorrection(1, {
+      await service.recordCorrection(1, owner, {
         extractedValue: "200mm",
         correctedValue: "200NB",
         fieldType: "diameter",
@@ -436,13 +491,13 @@ describe("NixChatService", () => {
         fieldType: "test",
       }));
 
-      sessionRepository.findById.mockResolvedValue({
+      sessionRepository.findOwnedById.mockResolvedValue({
         ...mockSession,
         sessionContext: { recentCorrections: existingCorrections },
       });
       sessionRepository.save.mockResolvedValue(mockSession);
 
-      await service.recordCorrection(1, {
+      await service.recordCorrection(1, owner, {
         extractedValue: "new",
         correctedValue: "newCorrected",
         fieldType: "diameter",
@@ -460,14 +515,22 @@ describe("NixChatService", () => {
 
   describe("endSession", () => {
     it("should set session as inactive", async () => {
-      sessionRepository.findById.mockResolvedValue({ ...mockSession });
+      sessionRepository.findOwnedById.mockResolvedValue({ ...mockSession });
       sessionRepository.save.mockResolvedValue({ ...mockSession, isActive: false });
 
-      await service.endSession(1);
+      await service.endSession(1, owner);
 
       expect(sessionRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({ isActive: false }),
       );
+    });
+
+    it("should not end another user's session", async () => {
+      sessionRepository.findOwnedById.mockResolvedValue(null);
+      sessionRepository.findById.mockResolvedValue(mockSession);
+
+      await expect(service.endSession(1, otherOwner)).rejects.toThrow(ForbiddenException);
+      expect(sessionRepository.save).not.toHaveBeenCalled();
     });
   });
 });

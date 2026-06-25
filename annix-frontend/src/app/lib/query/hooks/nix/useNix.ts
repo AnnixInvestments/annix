@@ -11,6 +11,34 @@ import { retryableFetch } from "../../retry";
 type PortalContext = "admin" | "customer" | "supplier" | "annix-rep" | "general";
 
 /**
+ * Error thrown by `nixRequest` for a non-OK HTTP response, carrying the
+ * originating HTTP status so callers can branch on it (e.g. session-ownership
+ * recovery on a 403) instead of fragile message string-matching. The friendly
+ * server message (or status-text fallback) is still the `Error.message`.
+ */
+export class NixRequestError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "NixRequestError";
+    this.status = status;
+  }
+}
+
+/**
+ * Reads the HTTP status off a caught error when it is a `NixRequestError`.
+ * Returns null for any other error shape so callers can fall back to
+ * message-based detection.
+ */
+export function nixErrorStatus(error: unknown): number | null {
+  if (error instanceof NixRequestError) {
+    return error.status;
+  }
+  return null;
+}
+
+/**
  * Resolves Authorization headers for Nix calls by delegating to the
  * canonical PortalTokenStore registry. Whichever portal token store is
  * currently authenticated (Stock Control, Customer, Supplier, etc.) wins.
@@ -180,19 +208,21 @@ async function nixRequest<TResponse>(
   }
 
   if (!response.ok) {
-    if (response.status === 401) {
+    const status = response.status;
+    if (status === 401) {
       if (sentWithAuth) {
         sessionExpiredEvent.emit();
       }
-      throw new Error("Session expired — please sign in again.");
+      throw new NixRequestError("Session expired — please sign in again.", status);
     }
+    const statusText = response.statusText;
     if (options.parseErrorBody) {
       const body = await response.json().catch(() => null);
-      const rawError = body?.error;
-      const errorMessage = rawError || `${options.errorLabel}: ${response.statusText}`;
-      throw new Error(errorMessage);
+      const rawError = body ? body.error : null;
+      const errorMessage = rawError || `${options.errorLabel}: ${statusText}`;
+      throw new NixRequestError(errorMessage, status);
     }
-    throw new Error(`${options.errorLabel}: ${response.statusText}`);
+    throw new NixRequestError(`${options.errorLabel}: ${statusText}`, status);
   }
 
   return response.json();
@@ -212,7 +242,7 @@ export const useNixHistory = createQueryHook(
   (sessionId: number | null) =>
     nixRequest<{ sessionId: number; messages: ChatMessage[] }>(
       `/nix/chat/session/${sessionId}/history`,
-      { errorLabel: "Failed to fetch chat history" },
+      { errorLabel: "Failed to fetch chat history", parseErrorBody: true },
     ),
   { enabled: (sessionId: number | null) => sessionId !== null && sessionId > 0 },
 );

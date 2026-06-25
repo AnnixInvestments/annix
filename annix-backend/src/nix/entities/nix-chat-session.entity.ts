@@ -16,10 +16,19 @@ export interface WalkthroughState {
   endReason?: WalkthroughEndReason;
 }
 
+export type NixSessionScope = "admin" | "customer" | "supplier" | "stock-control" | "annix-orbit";
+
+export interface NixSessionOwner {
+  userId: number;
+  appScope: NixSessionScope;
+}
+
 export class NixChatSession {
   id: number;
 
   userId: number;
+
+  appScope: NixSessionScope;
 
   rfqId: number;
 

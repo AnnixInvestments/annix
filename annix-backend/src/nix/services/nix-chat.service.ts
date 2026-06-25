@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { AiChatService } from "../ai-providers/ai-chat.service";
@@ -9,19 +9,20 @@ import {
   type WalkthroughStepView,
 } from "../capabilities";
 import { NixChatMessage } from "../entities/nix-chat-message.entity";
-import { NixChatSession } from "../entities/nix-chat-session.entity";
+import { NixChatSession, NixSessionOwner } from "../entities/nix-chat-session.entity";
 import { NixChatMessageRepository } from "../nix-chat-message.repository";
 import { NixChatSessionRepository } from "../nix-chat-session.repository";
 import { GUIDED_MODE_INSTRUCTIONS, PIPING_DOMAIN_KNOWLEDGE } from "../prompts/piping-domain.prompt";
 import { NixItemParserService } from "./nix-item-parser.service";
 
 export interface CreateSessionDto {
-  userId: number;
+  owner: NixSessionOwner;
   rfqId?: number;
 }
 
 export interface SendMessageDto {
   sessionId: number;
+  owner: NixSessionOwner;
   message: string;
   context?: {
     currentRfqItems?: any[];
@@ -71,7 +72,7 @@ export class NixChatService {
 
   async createSession(dto: CreateSessionDto): Promise<NixChatSession> {
     const existingActiveSession = await this.sessionRepository.findActiveForUser(
-      dto.userId,
+      dto.owner,
       dto.rfqId,
     );
 
@@ -80,7 +81,8 @@ export class NixChatService {
     }
 
     return this.sessionRepository.create({
-      userId: dto.userId,
+      userId: dto.owner.userId,
+      appScope: dto.owner.appScope,
       rfqId: dto.rfqId,
       isActive: true,
       conversationHistory: [],
@@ -89,10 +91,18 @@ export class NixChatService {
     });
   }
 
-  async session(sessionId: number): Promise<NixChatSession> {
-    const session = await this.sessionRepository.findById(sessionId);
+  async session(sessionId: number, owner: NixSessionOwner): Promise<NixChatSession> {
+    return this.ownedSession(sessionId, owner);
+  }
+
+  private async ownedSession(sessionId: number, owner: NixSessionOwner): Promise<NixChatSession> {
+    const session = await this.sessionRepository.findOwnedById(sessionId, owner);
 
     if (!session) {
+      const exists = await this.sessionRepository.findById(sessionId);
+      if (exists) {
+        throw new ForbiddenException("You do not have access to this chat session");
+      }
       throw new NotFoundException(`Session ${sessionId} not found`);
     }
 
@@ -106,7 +116,7 @@ export class NixChatService {
       );
     }
 
-    const session = await this.session(dto.sessionId);
+    const session = await this.ownedSession(dto.sessionId, dto.owner);
 
     if (dto.context?.currentRfqItems) {
       session.sessionContext.currentRfqItems = dto.context.currentRfqItems;
@@ -141,7 +151,7 @@ export class NixChatService {
         walkthroughResult.response,
         { intent: "walkthrough" },
       );
-      const refreshedSession = await this.session(dto.sessionId);
+      const refreshedSession = await this.ownedSession(dto.sessionId, dto.owner);
       refreshedSession.conversationHistory = [
         ...refreshedSession.conversationHistory,
         { role: "user" as const, content: dto.message, timestamp: new Date().toISOString() },
@@ -228,7 +238,7 @@ export class NixChatService {
       return;
     }
 
-    const session = await this.session(dto.sessionId);
+    const session = await this.ownedSession(dto.sessionId, dto.owner);
 
     if (dto.context?.currentRfqItems) {
       session.sessionContext.currentRfqItems = dto.context.currentRfqItems;
@@ -265,7 +275,7 @@ export class NixChatService {
         walkthroughResult.response,
         { intent: "walkthrough" },
       );
-      const refreshedSession = await this.session(dto.sessionId);
+      const refreshedSession = await this.ownedSession(dto.sessionId, dto.owner);
       refreshedSession.conversationHistory = [
         ...refreshedSession.conversationHistory,
         { role: "user" as const, content: dto.message, timestamp: new Date().toISOString() },
@@ -342,15 +352,21 @@ export class NixChatService {
     yield { type: "message_stop", metadata: { processingTimeMs, provider: providerUsed } };
   }
 
-  async conversationHistory(sessionId: number, limit: number = 50): Promise<NixChatMessage[]> {
+  async conversationHistory(
+    sessionId: number,
+    owner: NixSessionOwner,
+    limit: number = 50,
+  ): Promise<NixChatMessage[]> {
+    await this.ownedSession(sessionId, owner);
     return this.messageRepository.findRecentForSession(sessionId, limit);
   }
 
   async updateUserPreferences(
     sessionId: number,
+    owner: NixSessionOwner,
     preferences: Partial<NixChatSession["userPreferences"]>,
   ): Promise<void> {
-    const session = await this.session(sessionId);
+    const session = await this.ownedSession(sessionId, owner);
     session.userPreferences = {
       ...session.userPreferences,
       ...preferences,
@@ -360,13 +376,14 @@ export class NixChatService {
 
   async recordCorrection(
     sessionId: number,
+    owner: NixSessionOwner,
     correction: {
       extractedValue: string;
       correctedValue: string;
       fieldType: string;
     },
   ): Promise<void> {
-    const session = await this.session(sessionId);
+    const session = await this.ownedSession(sessionId, owner);
 
     if (!session.sessionContext.recentCorrections) {
       session.sessionContext.recentCorrections = [];
@@ -386,8 +403,8 @@ export class NixChatService {
     );
   }
 
-  async endSession(sessionId: number): Promise<void> {
-    const session = await this.session(sessionId);
+  async endSession(sessionId: number, owner: NixSessionOwner): Promise<void> {
+    const session = await this.ownedSession(sessionId, owner);
     session.isActive = false;
     await this.sessionRepository.save(session);
   }
@@ -537,18 +554,23 @@ Instead, directly help them with their request based on this context.`;
     { kind: "handled"; response: string } | { kind: "stuck"; systemPromptAddendum: string } | null
   > {
     const lowered = message.toLowerCase().trim();
+    const owner: NixSessionOwner = { userId: session.userId, appScope: session.appScope };
     const activeState = session.walkthroughState;
     const hasActiveWalkthrough = activeState !== null && activeState.endedAt === undefined;
 
     if (!hasActiveWalkthrough) {
       const triggerMatch = this.capabilityRegistry.matchWalkthroughIntent(message);
       if (!triggerMatch) return null;
-      const view = await this.walkthroughEngine.start(sessionId, triggerMatch.capability.key);
+      const view = await this.walkthroughEngine.start(
+        sessionId,
+        owner,
+        triggerMatch.capability.key,
+      );
       return { kind: "handled", response: this.formatStepResponse(view, "started") };
     }
 
     if (this.matchesAdvanceVerb(lowered)) {
-      const view = await this.walkthroughEngine.advance(sessionId);
+      const view = await this.walkthroughEngine.advance(sessionId, owner);
       return {
         kind: "handled",
         response: view ? this.formatStepResponse(view, "advanced") : this.completionMessage(),
@@ -556,7 +578,7 @@ Instead, directly help them with their request based on this context.`;
     }
 
     if (this.matchesBackVerb(lowered)) {
-      const view = await this.walkthroughEngine.back(sessionId);
+      const view = await this.walkthroughEngine.back(sessionId, owner);
       return {
         kind: "handled",
         response: view
@@ -566,7 +588,7 @@ Instead, directly help them with their request based on this context.`;
     }
 
     if (this.matchesSkipVerb(lowered)) {
-      const view = await this.walkthroughEngine.skip(sessionId);
+      const view = await this.walkthroughEngine.skip(sessionId, owner);
       return {
         kind: "handled",
         response: view ? this.formatStepResponse(view, "skipped") : this.completionMessage(),
@@ -574,7 +596,7 @@ Instead, directly help them with their request based on this context.`;
     }
 
     if (this.matchesStopVerb(lowered)) {
-      await this.walkthroughEngine.stop(sessionId, "abandoned");
+      await this.walkthroughEngine.stop(sessionId, owner, "abandoned");
       return {
         kind: "handled",
         response: "Walkthrough stopped. Ping me again if you'd like to resume.",
@@ -582,7 +604,7 @@ Instead, directly help them with their request based on this context.`;
     }
 
     if (this.matchesStuckVerb(lowered)) {
-      const ctx = await this.walkthroughEngine.stuckContext(sessionId);
+      const ctx = await this.walkthroughEngine.stuckContext(sessionId, owner);
       if (!ctx) return null;
       const guideBody = ctx.guide?.body ?? "";
       const addendum = [
