@@ -1,12 +1,24 @@
-import { Controller, Get, NotFoundException, Param, Query, Res } from "@nestjs/common";
-import { ApiOperation, ApiParam, ApiQuery, ApiTags } from "@nestjs/swagger";
+import {
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  Query,
+  Req,
+  Res,
+  UseGuards,
+} from "@nestjs/common";
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
 import { SageExportFilterDto } from "./dto/sage-export.dto";
+import { SageExportAuthGuard, type SageExportRequest } from "./guards/sage-export-auth.guard";
 import type { SageAdapterContext } from "./interfaces/sage-invoice-adapter.interface";
 import { SageAdapterRegistry } from "./sage-adapter-registry.service";
 import { SageExportService } from "./sage-export.service";
 
 @ApiTags("Sage Export (Unified)")
+@ApiBearerAuth()
+@UseGuards(SageExportAuthGuard)
 @Controller("sage-export")
 export class SageExportController {
   constructor(
@@ -15,13 +27,17 @@ export class SageExportController {
   ) {}
 
   @Get("adapters")
-  @ApiOperation({ summary: "List all registered Sage export adapters" })
-  registeredAdapters() {
-    return this.registry.allAdapters().map((reg) => ({
-      moduleCode: reg.moduleCode,
-      adapterKey: reg.adapterKey,
-      label: reg.label,
-    }));
+  @ApiOperation({ summary: "List Sage export adapters the caller is entitled to" })
+  registeredAdapters(@Req() req: SageExportRequest) {
+    const allowedModules = req.sageExport.allowedModules;
+    return this.registry
+      .allAdapters()
+      .filter((reg) => allowedModules.includes(reg.moduleCode))
+      .map((reg) => ({
+        moduleCode: reg.moduleCode,
+        adapterKey: reg.adapterKey,
+        label: reg.label,
+      }));
   }
 
   @Get(":moduleCode/:adapterKey/preview")
@@ -33,10 +49,10 @@ export class SageExportController {
   @ApiQuery({ name: "excludeExported", required: false })
   @ApiQuery({ name: "invoiceType", required: false })
   async preview(
+    @Req() req: SageExportRequest,
     @Param("moduleCode") moduleCode: string,
     @Param("adapterKey") adapterKey: string,
     @Query() filters: SageExportFilterDto,
-    @Query("companyId") companyId?: string,
   ) {
     const adapter = this.registry.adapterByKey(moduleCode, adapterKey);
     if (!adapter) {
@@ -44,8 +60,9 @@ export class SageExportController {
     }
 
     const context: SageAdapterContext = {
-      companyId: companyId ? Number(companyId) : null,
+      companyId: req.sageExport.companyId,
       appKey: moduleCode,
+      userId: req.sageExport.userId,
     };
 
     return adapter.previewCount(filters, context);
@@ -60,10 +77,10 @@ export class SageExportController {
   @ApiQuery({ name: "excludeExported", required: false })
   @ApiQuery({ name: "invoiceType", required: false })
   async downloadCsv(
+    @Req() req: SageExportRequest,
     @Param("moduleCode") moduleCode: string,
     @Param("adapterKey") adapterKey: string,
     @Query() filters: SageExportFilterDto,
-    @Query("companyId") companyId: string | undefined,
     @Res() res: Response,
   ) {
     const adapter = this.registry.adapterByKey(moduleCode, adapterKey);
@@ -72,8 +89,9 @@ export class SageExportController {
     }
 
     const context: SageAdapterContext = {
-      companyId: companyId ? Number(companyId) : null,
+      companyId: req.sageExport.companyId,
       appKey: moduleCode,
+      userId: req.sageExport.userId,
     };
 
     const { invoices, entityIds } = await adapter.exportableInvoices(filters, context);
