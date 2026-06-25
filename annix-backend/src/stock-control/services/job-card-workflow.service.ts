@@ -47,6 +47,7 @@ interface UserContext {
   companyId: number;
   name: string;
   role: StockControlRole;
+  scUserId?: number | null;
 }
 
 @Injectable()
@@ -744,8 +745,12 @@ export class JobCardWorkflowService {
     const bgSteps = await this.stepConfigService.backgroundSteps(user.companyId);
     const assignments = await this.assignmentService.allAssignments(user.companyId);
 
+    const scUserId = user.scUserId ?? null;
+    if (scUserId === null) {
+      return [];
+    }
     const primaryByStep = new Map(assignments.map((a) => [a.step, a.primaryUserId]));
-    const userIsPrimaryOfAnyStep = assignments.some((a) => a.primaryUserId === user.id);
+    const userIsPrimaryOfAnyStep = assignments.some((a) => a.primaryUserId === scUserId);
     if (!userIsPrimaryOfAnyStep) {
       return [];
     }
@@ -795,7 +800,7 @@ export class JobCardWorkflowService {
             bgSteps,
             bgByKey,
             primaryByStep,
-            userId: user.id,
+            userId: scUserId,
           }).length > 0
         );
       })
@@ -874,8 +879,9 @@ export class JobCardWorkflowService {
     user: UserContext,
     jobCardId: number,
   ): Promise<Array<{ stepKey: string; label: string }>> {
+    const scUserId = user.scUserId ?? null;
     const card = await this.jobCardRepo.findOneForCompany(jobCardId, user.companyId);
-    if (!card || card.status !== JobCardStatus.ACTIVE) {
+    if (scUserId === null || !card || card.status !== JobCardStatus.ACTIVE) {
       return [];
     }
     const fgSteps = await this.stepConfigService.orderedSteps(user.companyId);
@@ -901,7 +907,7 @@ export class JobCardWorkflowService {
       bgSteps,
       bgByKey,
       primaryByStep,
-      userId: user.id,
+      userId: scUserId,
     });
     return keys.map((key) => ({ stepKey: key, label: labelByStep.get(key) ?? key }));
   }

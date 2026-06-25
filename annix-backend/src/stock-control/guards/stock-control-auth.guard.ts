@@ -55,6 +55,7 @@ export class StockControlAuthGuard implements CanActivate {
         name: payload.name,
         role,
         companyId: profile.companyId,
+        scUserId: profile.legacyScUserId ?? null,
         unifiedUserId: payload.sub,
         unifiedCompanyId: profile.companyId,
       };

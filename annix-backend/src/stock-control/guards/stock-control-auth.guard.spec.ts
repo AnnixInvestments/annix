@@ -98,6 +98,7 @@ describe("StockControlAuthGuard", () => {
       name: "Test User",
       role: StockControlRole.MANAGER,
       companyId: 42,
+      scUserId: 11,
       unifiedUserId: 5,
       unifiedCompanyId: 42,
     });
