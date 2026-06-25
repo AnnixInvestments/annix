@@ -9,6 +9,8 @@ export class PendingSeekerTier {
 
   trialDays: number | null;
 
+  trialGrantedAt: Date | null;
+
   createdAt: Date;
 
   updatedAt: Date;

@@ -1,5 +1,7 @@
 import { MATCH_TIERS } from "@annix/product-data/sa-market";
-import { IsBoolean, IsEmail, IsIn, IsInt, IsOptional, Min } from "class-validator";
+import { IsBoolean, IsEmail, IsIn, IsInt, IsOptional, Max, Min } from "class-validator";
+
+export const MAX_TRIAL_DAYS = 30;
 
 export class SetSeekerMatchTierDto {
   @IsEmail()
@@ -18,6 +20,7 @@ export class InviteSeekerTrialDto {
 
   @IsInt()
   @Min(1)
+  @Max(MAX_TRIAL_DAYS)
   freeDays!: number;
 }
 
@@ -34,5 +37,6 @@ export class SetPendingSeekerTierDto {
   @IsOptional()
   @IsInt()
   @Min(1)
+  @Max(MAX_TRIAL_DAYS)
   trialDays?: number;
 }

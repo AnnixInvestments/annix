@@ -10,7 +10,7 @@ import {
   Request,
   UseGuards,
 } from "@nestjs/common";
-import { AdminAuthGuard } from "../../admin/guards/admin-auth.guard";
+import { AdminAuthGuard, type AdminRequest } from "../../admin/guards/admin-auth.guard";
 import { Roles } from "../../auth/roles.decorator";
 import { RolesGuard } from "../../auth/roles.guard";
 import {
@@ -122,18 +122,24 @@ export class AdminOrbitSeekerController {
 
   @Post("invite-trial")
   @Roles("admin")
-  async inviteTrial(@Body() dto: InviteSeekerTrialDto) {
-    return this.feedService.inviteSeekerTrial(dto.email, dto.tier, dto.freeDays);
+  async inviteTrial(@Body() dto: InviteSeekerTrialDto, @Request() req: AdminRequest) {
+    return this.feedService.inviteSeekerTrial(
+      dto.email,
+      dto.tier,
+      dto.freeDays,
+      req.user?.userId ?? null,
+    );
   }
 
   @Post("pending-tier")
   @Roles("admin")
-  async setPendingTier(@Body() dto: SetPendingSeekerTierDto) {
+  async setPendingTier(@Body() dto: SetPendingSeekerTierDto, @Request() req: AdminRequest) {
     return this.feedService.setPendingSeekerTier(
       dto.email,
       dto.tier,
       dto.permanent,
       dto.trialDays ?? null,
+      req.user?.userId ?? null,
     );
   }
 }

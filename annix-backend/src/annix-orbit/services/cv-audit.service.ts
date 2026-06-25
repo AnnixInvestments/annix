@@ -154,6 +154,25 @@ export class CvAuditService {
     });
   }
 
+  async logSeekerTierGrant(
+    actorId: number | null,
+    grant: {
+      email: string;
+      tier: string;
+      permanent: boolean;
+      trialDays: number | null;
+      path: "pending_tier" | "invite_trial";
+      candidatesAffected: number | null;
+    },
+  ): Promise<void> {
+    await this.safeLog({
+      subAction: grant.permanent ? "seeker_permanent_grant" : "seeker_trial_grant",
+      entityId: null,
+      userId: actorId,
+      details: { ...grant },
+    });
+  }
+
   async logFairnessBreach(
     jobPostingId: number,
     companyId: number,

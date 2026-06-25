@@ -24,6 +24,9 @@ export class PendingSeekerTier {
 
   @Prop({ type: Number, required: false, default: null })
   trialDays: number | null;
+
+  @Prop({ type: Date, required: false, default: null })
+  trialGrantedAt: Date | null;
 }
 
 export const PendingSeekerTierSchema = SchemaFactory.createForClass(PendingSeekerTier);

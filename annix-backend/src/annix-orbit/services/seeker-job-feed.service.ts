@@ -37,6 +37,7 @@ import { countMatchingRows, distinctPassing } from "../lib/facet-compute";
 import { citiesForProvince, SA_PROVINCES } from "../lib/sa-locations";
 import { highestTier, isOrbitBillingStatus, resolveEntitledTier } from "../lib/seeker-entitlement";
 import { SEEKER_EVENTS } from "../lib/seeker-testing.constants";
+import { assertTrialDaysWithinCeiling, clampTrialDays } from "../lib/seeker-trial-grant";
 import { AnnixOrbitIndividualDocumentRepository } from "../repositories/annix-orbit-individual-document.repository";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import { CandidateRepository } from "../repositories/candidate.repository";
@@ -57,6 +58,7 @@ import {
   CandidateJobMatchingService,
   type RecommendedJobFilters,
 } from "./candidate-job-matching.service";
+import { CvAuditService } from "./cv-audit.service";
 import { CvNotificationService } from "./cv-notification.service";
 import { EmbeddingService } from "./embedding.service";
 import { JobMarketCountriesService } from "./job-market-countries.service";
@@ -342,6 +344,7 @@ export class SeekerJobFeedService {
     private readonly embeddingService: EmbeddingService,
     private readonly waConversationRepo: WhatsAppConversationRepository,
     private readonly waMessageRepo: WhatsAppMessageRepository,
+    private readonly cvAuditService: CvAuditService,
   ) {}
 
   // Union of the seeker's candidates' target countries; defaults to South Africa.
@@ -357,6 +360,7 @@ export class SeekerJobFeedService {
     tier: string,
     permanent: boolean,
     trialDays: number | null,
+    actorId: number | null = null,
   ): Promise<{ saved: boolean }> {
     if (!isMatchTier(tier)) {
       throw new BadRequestException(`Invalid tier: ${tier}`);
@@ -365,20 +369,37 @@ export class SeekerJobFeedService {
     if (!emailNormalized) {
       throw new BadRequestException("Email is required.");
     }
+    const cappedTrialDays = permanent ? null : clampTrialDays(trialDays);
     const existing = await this.pendingTierRepo.findByEmailNormalized(emailNormalized);
+    if (!permanent && existing?.trialGrantedAt) {
+      throw new BadRequestException(
+        "This account has already been granted a trial. Use a permanent grant if a further upgrade is intended.",
+      );
+    }
+    const grantedAt = permanent ? (existing?.trialGrantedAt ?? null) : DateTime.now().toJSDate();
     if (existing) {
       existing.tier = tier;
       existing.permanent = permanent;
-      existing.trialDays = permanent ? null : trialDays;
+      existing.trialDays = cappedTrialDays;
+      existing.trialGrantedAt = grantedAt;
       await this.pendingTierRepo.save(existing);
     } else {
       await this.pendingTierRepo.create({
         emailNormalized,
         tier,
         permanent,
-        trialDays: permanent ? null : trialDays,
+        trialDays: cappedTrialDays,
+        trialGrantedAt: grantedAt,
       });
     }
+    await this.cvAuditService.logSeekerTierGrant(actorId, {
+      email: emailNormalized,
+      tier,
+      permanent,
+      trialDays: cappedTrialDays,
+      path: "pending_tier",
+      candidatesAffected: null,
+    });
     return { saved: true };
   }
 
@@ -1620,24 +1641,37 @@ export class SeekerJobFeedService {
     email: string | null,
     tier: string,
     freeDays: number,
+    actorId: number | null = null,
   ): Promise<{ candidatesAffected: number; trialEndsAt: string | null }> {
     if (!isMatchTier(tier)) {
       throw new BadRequestException(`Invalid tier: ${tier}`);
     }
-    if (!Number.isFinite(freeDays) || freeDays <= 0) {
-      throw new BadRequestException("Free days must be a positive number.");
-    }
+    const cappedFreeDays = assertTrialDaysWithinCeiling(freeDays);
     const candidates = await this.candidatesForSeeker(email);
     if (candidates.length === 0) {
       return { candidatesAffected: 0, trialEndsAt: null };
     }
-    const trialEndsAt = DateTime.now().plus({ days: freeDays }).toJSDate();
+    const alreadyTrialled = candidates.some((candidate) => candidate.trialTier != null);
+    if (alreadyTrialled) {
+      throw new BadRequestException(
+        "This account has already been granted a trial. Use a permanent grant if a further upgrade is intended.",
+      );
+    }
+    const trialEndsAt = DateTime.now().plus({ days: cappedFreeDays }).toJSDate();
     await Promise.all(
       candidates.map((candidate) => this.candidateRepo.setTrial(candidate.id, tier, trialEndsAt)),
     );
     this.logger.log(
-      `Granted "${tier}" trial (${freeDays}d) to ${candidates.length} of ${maskEmail(email)}`,
+      `Granted "${tier}" trial (${cappedFreeDays}d) to ${candidates.length} of ${maskEmail(email)}`,
     );
+    await this.cvAuditService.logSeekerTierGrant(actorId, {
+      email: email ? email.toLowerCase().trim() : "",
+      tier,
+      permanent: false,
+      trialDays: cappedFreeDays,
+      path: "invite_trial",
+      candidatesAffected: candidates.length,
+    });
     return { candidatesAffected: candidates.length, trialEndsAt: trialEndsAt.toISOString() };
   }
 }
