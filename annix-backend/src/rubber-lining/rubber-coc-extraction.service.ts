@@ -128,6 +128,13 @@ type SparseColumn =
 
 type SparseColumnVerification = Record<SparseColumn, string[]>;
 
+// Hard ceiling on pages rasterised + sent to Gemini per document. Real
+// delivery-note / invoice batches are well under this; the cap bounds the
+// token cost (and timeout-retry blocking) of a crafted many-page PDF.
+// Tunable via AU_RUBBER_MAX_OCR_PAGES so an unusually large legitimate batch
+// can be unblocked without a redeploy.
+const MAX_OCR_PAGES = Number(process.env.AU_RUBBER_MAX_OCR_PAGES) || 50;
+
 @Injectable()
 export class RubberCocExtractionService {
   private readonly logger = new Logger(RubberCocExtractionService.name);
@@ -970,6 +977,7 @@ export class RubberCocExtractionService {
     pdfBuffer: Buffer,
     correctionHints?: string | null,
     invoiceType: TaxInvoiceType = TaxInvoiceType.SUPPLIER,
+    maxPages?: number,
   ): Promise<{
     data: ExtractedTaxInvoiceData;
     invoices: ExtractedTaxInvoiceData[];
@@ -985,7 +993,7 @@ export class RubberCocExtractionService {
 
     const systemPrompt = this.buildTaxInvoiceSystemPrompt(invoiceType, correctionHints);
 
-    const images = await this.convertPdfToImages(pdfBuffer);
+    const images = await this.convertPdfToImages(pdfBuffer, maxPages);
     this.logger.log(`Converted tax invoice PDF to ${images.length} image(s) for OCR extraction`);
 
     const response = await this.callGeminiWithImages(
@@ -1971,7 +1979,10 @@ format, return { "batches": [] }.
     }
   }
 
-  async convertPdfToImages(documentBuffer: Buffer): Promise<Buffer[]> {
+  async convertPdfToImages(
+    documentBuffer: Buffer,
+    maxPages: number = MAX_OCR_PAGES,
+  ): Promise<Buffer[]> {
     const kind = this.sniffDocumentKind(documentBuffer);
     if (kind === "png" || kind === "jpeg") {
       this.logger.log(`Document is already an image (${kind}); skipping PDF rasterisation`);
@@ -1992,8 +2003,17 @@ format, return { "batches": [] }.
       useSystemFonts: true,
       viewportScale: 1.0,
     });
-    this.logger.log(`Converted PDF to ${pages.length} image(s)`);
-    return pages.filter((page) => page.content !== undefined).map((page) => page.content as Buffer);
+    const rendered = pages
+      .filter((page) => page.content !== undefined)
+      .map((page) => page.content as Buffer);
+    this.logger.log(`Converted PDF to ${rendered.length} image(s)`);
+    if (rendered.length > maxPages) {
+      this.logger.warn(
+        `PDF has ${rendered.length} pages; capping OCR at the first ${maxPages} to bound extraction cost`,
+      );
+      return rendered.slice(0, maxPages);
+    }
+    return rendered;
   }
 
   /**

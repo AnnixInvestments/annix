@@ -339,7 +339,13 @@ Respond ONLY with JSON: {"role":"seller"|"buyer","counterparty":"other company n
       .filter((domain) => domain.length > 0);
 
     const from = (emailData.from || "").toLowerCase();
-    const fromApprovedSender = senderDomains.some((domain) => from.includes(domain));
+    // Match on the actual sender domain (exact or subdomain), not a substring —
+    // otherwise "attacker@auind.co.za.evil.com" would pass `from.includes(...)`.
+    // Handles both bare "user@domain" and "Name <user@domain>" header forms.
+    const fromDomain = /@([a-z0-9.-]+)/.exec(from)?.[1] ?? "";
+    const fromApprovedSender = senderDomains.some(
+      (domain) => fromDomain === domain || fromDomain.endsWith(`.${domain}`),
+    );
     const hasMarker = (emailData.subject || "")
       .toUpperCase()
       .includes(CUSTOMER_EMAIL_SUBJECT_MARKER);
@@ -356,19 +362,59 @@ Respond ONLY with JSON: {"role":"seller"|"buyer","counterparty":"other company n
     emailData: InboundEmailData,
     result: ProcessedEmailResult,
   ): Promise<void> {
-    await attachments.reduce(async (accPromise, attachment) => {
-      await accPromise;
-      try {
-        const documentText = await this.extractTextFromAttachment(attachment);
-        const documentType = await this.classifyDocumentType(documentText, attachment.filename);
+    const classified = await Promise.all(
+      attachments.map(async (attachment) => {
+        try {
+          const documentText = await this.extractTextFromAttachment(attachment);
+          const documentType = await this.classifyDocumentType(documentText, attachment.filename);
+          return { attachment, documentType, classifyError: null as string | null };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          return {
+            attachment,
+            documentType: null as SharedDocumentType | null,
+            classifyError: `Failed to classify customer document ${attachment.filename}: ${message}`,
+          };
+        }
+      }),
+    );
 
+    // One email's CTI + CDN are for the same customer. The tax invoice's
+    // bill-to is the authoritative source — a delivery note's customer is
+    // easily confused with AU's own letterhead — so resolve (and auto-create)
+    // the customer from the invoice once and apply it to every document in the
+    // email, including the delivery note.
+    const invoiceDoc = classified.find(
+      ({ documentType }) =>
+        documentType === SharedDocumentType.TAX_INVOICE ||
+        documentType === SharedDocumentType.CREDIT_NOTE,
+    );
+    const emailCustomerName = invoiceDoc
+      ? await this.customerNameFromInvoiceAttachment(invoiceDoc.attachment)
+      : null;
+    const emailCustomerId = await this.resolveOrCreateCustomer(emailCustomerName);
+
+    await classified.reduce(async (accPromise, { attachment, documentType, classifyError }) => {
+      await accPromise;
+      if (classifyError) {
+        result.errors = [...result.errors, classifyError];
+        this.logger.error(classifyError);
+        return;
+      }
+      try {
         if (
           documentType === SharedDocumentType.TAX_INVOICE ||
           documentType === SharedDocumentType.CREDIT_NOTE
         ) {
-          await this.ingestCustomerInvoice(attachment, emailData, documentType, result);
+          await this.ingestCustomerInvoice(
+            attachment,
+            emailData,
+            documentType,
+            result,
+            emailCustomerId,
+          );
         } else if (documentType === SharedDocumentType.DELIVERY_NOTE) {
-          await this.ingestCustomerDeliveryNote(attachment, emailData, result);
+          await this.ingestCustomerDeliveryNote(attachment, emailData, result, emailCustomerId);
         } else {
           const msg = `Customer-direction email attachment "${attachment.filename}" classified as ${documentType}; expected a tax invoice or delivery note — skipping`;
           result.errors = [...result.errors, msg];
@@ -382,23 +428,91 @@ Respond ONLY with JSON: {"role":"seller"|"buyer","counterparty":"other company n
     }, Promise.resolve());
   }
 
+  private async customerNameFromInvoiceAttachment(
+    attachment: InboundEmailAttachment,
+  ): Promise<string | null> {
+    try {
+      const extraction = await this.cocExtractionService.extractTaxInvoiceFromImages(
+        attachment.content,
+        null,
+        TaxInvoiceType.CUSTOMER,
+        // The bill-to block is on the first page; only that page is needed to
+        // resolve the customer, so cap rasterisation/Gemini cost to it.
+        1,
+      );
+      return extraction.data?.companyName ?? null;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(
+        `Could not extract bill-to customer from invoice ${attachment.filename}: ${message}`,
+      );
+      return null;
+    }
+  }
+
+  private normalizeCompanyName(name: string): string {
+    return name
+      .toLowerCase()
+      .replace(/\(pty\)\s*ltd|\(.*?\)|\bpty\b|\bltd\b/g, " ")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  }
+
+  private async resolveOrCreateCustomer(customerName: string | null): Promise<number | null> {
+    const cleaned = (customerName ?? "").trim();
+    // Reject absent, AU-self, or junk/oversized OCR output rather than
+    // persisting an unvalidated extracted string as a customer record.
+    if (
+      !cleaned ||
+      cleaned.length > 120 ||
+      /[<>{}]/.test(cleaned) ||
+      isAuSelfCompanyName(cleaned)
+    ) {
+      return null;
+    }
+    const customers = (await this.companyRepository.findAll()).filter(
+      (c) => c.companyType === CompanyType.CUSTOMER,
+    );
+    const matched = this.matchCustomerByName(cleaned, customers);
+    if (matched) return matched.id;
+    // Normalized-name backstop so OCR drift ("X (Pty) Ltd" vs "X") doesn't mint
+    // a duplicate customer that matchCustomerByName's fuzzy rules slipped past.
+    const normalized = this.normalizeCompanyName(cleaned);
+    const normalizedMatch = normalized
+      ? customers.find((c) => this.normalizeCompanyName(c.name ?? "") === normalized)
+      : null;
+    if (normalizedMatch) return normalizedMatch.id;
+    const company = new RubberCompany();
+    company.firebaseUid = `pg_${generateUniqueId()}`;
+    company.name = cleaned;
+    company.companyType = CompanyType.CUSTOMER;
+    company.availableProducts = [];
+    company.isCompoundOwner = false;
+    const saved = await this.companyRepository.save(company);
+    this.logger.log(`Auto-created customer "${cleaned}" (#${saved.id}) from inbound document`);
+    return saved.id;
+  }
+
   private async ingestCustomerInvoice(
     attachment: InboundEmailAttachment,
     emailData: InboundEmailData,
     documentType: SharedDocumentType.TAX_INVOICE | SharedDocumentType.CREDIT_NOTE,
     result: ProcessedEmailResult,
+    preResolvedCustomerId: number | null = null,
   ): Promise<void> {
     const isCreditNote = documentType === SharedDocumentType.CREDIT_NOTE;
     const documentLabel = isCreditNote ? "Customer Credit Note" : "Customer Tax Invoice";
 
-    const companyId = await this.detectCompanyFromPdf(
-      attachment.content,
-      attachment.filename,
-      TaxInvoiceType.CUSTOMER,
-      // AU Industries is the seller on its own outbound invoices — never the
-      // bill-to customer — so exclude it from customer resolution.
-      ["au industri", "au-industri"],
-    );
+    const companyId =
+      preResolvedCustomerId ??
+      (await this.detectCompanyFromPdf(
+        attachment.content,
+        attachment.filename,
+        TaxInvoiceType.CUSTOMER,
+        // AU Industries is the seller on its own outbound invoices — never the
+        // bill-to customer — so exclude it from customer resolution.
+        ["au industri", "au-industri"],
+      ));
     const storageResult = await this.saveAttachment(attachment, companyId, documentType);
 
     const invoiceNumber = `${isCreditNote ? "CN" : "INV"}-${nowMillis()}`;
@@ -428,6 +542,7 @@ Respond ONLY with JSON: {"role":"seller"|"buyer","counterparty":"other company n
     attachment: InboundEmailAttachment,
     emailData: InboundEmailData,
     result: ProcessedEmailResult,
+    emailCustomerId: number | null = null,
   ): Promise<void> {
     const multerFile = this.attachmentToMulterFile(attachment);
     const analysis = await this.analyzeCustomerDeliveryNotes([multerFile]);
@@ -442,9 +557,12 @@ Respond ONLY with JSON: {"role":"seller"|"buyer","counterparty":"other company n
     // Every CDN ingested from email is unsigned: flag the outstanding signed-POD
     // obligation so the operator must still upload the signed scan, which will
     // supersede this version (see RubberDocumentVersioningService.authorizeVersion).
+    // When the paired tax invoice resolved an authoritative customer, it wins
+    // over the CDN's own (letterhead-prone) extraction.
     const overrides = analysis.groups.map(() => ({
       requiresSignedPod: true,
       ingestionSource: DeliveryNoteIngestionSource.EMAIL,
+      ...(emailCustomerId ? { customerId: emailCustomerId } : {}),
     }));
 
     const created = await this.createCustomerDnsFromAnalysis(
@@ -2888,6 +3006,20 @@ ${truncatedText}`;
             this.logger.log(
               `Stored ${podPageNumbers.length} POD page number(s) for DN ${dnId}: [${podPageNumbers.join(", ")}]`,
             );
+          }
+
+          if (isSignedPodUpload) {
+            try {
+              await this.deliveryNoteService.authorizeDeliveryNoteVersion(dnId);
+              this.logger.log(
+                `Auto-authorized signed-POD version DN ${deliveryNoteNumber} (#${dnId}) — superseded unsigned CDN #${existingDn?.id}`,
+              );
+            } catch (err) {
+              const message = err instanceof Error ? err.message : String(err);
+              this.logger.error(
+                `Failed to auto-authorize signed-POD version #${dnId} for DN ${deliveryNoteNumber}: ${message}`,
+              );
+            }
           }
 
           this.logger.log(

@@ -1599,6 +1599,14 @@ export class RubberDeliveryNoteService {
     return rows.length;
   }
 
+  async authorizeDeliveryNoteVersion(id: number): Promise<void> {
+    const note = await this.deliveryNoteRepository.findById(id);
+    if (!note || note.versionStatus !== DocumentVersionStatus.PENDING_AUTHORIZATION) {
+      return;
+    }
+    await this.versioningService.authorizeVersion("delivery-note", id);
+  }
+
   private customerFacingCompanyName(note: RubberDeliveryNote): string | null {
     const linkedName = note.supplierCompany?.name ?? null;
     if (!isAuSelfCompanyName(linkedName)) return linkedName;

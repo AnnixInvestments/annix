@@ -29,6 +29,7 @@ import { RegionCoordinates } from "./entities/rubber-po-extraction-region.entity
 import { SupplierCocType } from "./entities/rubber-supplier-coc.entity";
 import { TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
+import { InboundEmailWebhookGuard } from "./guards/inbound-email-webhook.guard";
 import {
   AnalyzeCustomerDnsResult,
   AnalyzeFilesResult,
@@ -59,6 +60,7 @@ export class RubberInboundEmailController {
   ) {}
 
   @Post("webhook/inbound-email")
+  @UseGuards(InboundEmailWebhookGuard)
   @ApiOperation({
     summary: "Receive inbound email webhook from email service provider",
     description:
@@ -89,12 +91,15 @@ export class RubberInboundEmailController {
   }
 
   @Post("internal/backfill-coc-hashes")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: "Backfill SHA-256 document hashes onto existing supplier CoCs" })
   async backfillCocHashes(): Promise<{ updated: number; total: number; errors: string[] }> {
     return this.inboundEmailService.backfillCocHashes();
   }
 
   @Post("webhook/inbound-email/raw")
+  @UseGuards(InboundEmailWebhookGuard)
   @ApiOperation({
     summary: "Receive raw email content (for Cloudflare Email Workers)",
     description: "Receives raw email content and parses it to create records",
@@ -499,6 +504,7 @@ export class RubberInboundEmailController {
   }
 
   @Post("webhook/inbound-email/order")
+  @UseGuards(InboundEmailWebhookGuard)
   @ApiOperation({
     summary: "Receive inbound order email webhook",
     description: "Receives order emails and extracts order data from PDF attachments",
@@ -730,6 +736,7 @@ export class RubberInboundEmailController {
   }
 
   @Post("webhook/inbound-email/tax-invoice")
+  @UseGuards(InboundEmailWebhookGuard)
   @ApiOperation({
     summary: "Receive inbound tax invoice email webhook",
     description: "Receives forwarded emails with PDF attachments and creates tax invoice records",
