@@ -6,7 +6,7 @@ import { BondingSelectorGuide } from "../rubber-pricing/BondingSelectorGuide";
 import { BondingSystemsCard } from "../rubber-pricing/BondingSystemsCard";
 
 export default function BondingAgentsAdminPage() {
-  const brandingQuery = useBranding("stock-control");
+  const brandingQuery = useBranding("annix-core");
   const branding = brandingQuery.data;
   const brandAccent = branding?.navbarColor;
   const accentColor = brandAccent || "var(--brand-navbar, #0d9488)";

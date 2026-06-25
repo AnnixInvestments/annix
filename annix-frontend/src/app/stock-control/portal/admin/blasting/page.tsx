@@ -4,7 +4,7 @@ import { useBranding } from "@/app/lib/query/hooks";
 import { BlastingCard } from "../rubber-pricing/BlastingCard";
 
 export default function BlastingAdminPage() {
-  const brandingQuery = useBranding("stock-control");
+  const brandingQuery = useBranding("annix-core");
   const branding = brandingQuery.data;
   const brandAccent = branding?.navbarColor;
   const accentColor = brandAccent || "var(--brand-navbar, #0d9488)";

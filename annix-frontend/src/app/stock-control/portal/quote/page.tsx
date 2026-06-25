@@ -278,7 +278,7 @@ export default function PaintQuotePage() {
   const preferredQuery = usePreferredPaints();
   const systemsQuery = usePaintCoatingSystems();
   const createQuote = useCreateMultiCoatQuote();
-  const brandingQuery = useBranding("stock-control");
+  const brandingQuery = useBranding("annix-core");
 
   const mutateAsync = createQuote.mutateAsync;
 

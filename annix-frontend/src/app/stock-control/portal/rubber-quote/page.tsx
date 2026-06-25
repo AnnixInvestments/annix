@@ -91,7 +91,7 @@ export default function RubberQuotePage() {
   const [mode, setMode] = useState<QuoteMode>("single");
   const [family, setFamily] = useState<RubberPriceFamily>("plate");
   const catalogQuery = useRubberQuoteCatalog(family);
-  const brandingQuery = useBranding("stock-control");
+  const brandingQuery = useBranding("annix-core");
 
   const catalogData = catalogQuery.data;
   const catalog = useMemo(() => catalogData || [], [catalogData]);

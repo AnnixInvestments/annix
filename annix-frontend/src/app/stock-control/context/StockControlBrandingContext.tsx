@@ -109,7 +109,7 @@ const StockControlBrandingContext = createContext<StockControlBrandingContextTyp
 export function StockControlBrandingProvider(props: { children: ReactNode }) {
   const { children } = props;
   const { profile } = useStockControlAuth();
-  const brandingQuery = useBranding("stock-control");
+  const brandingQuery = useBranding("annix-core");
   const branding = brandingQuery.data;
   const rawLogoUrl = profile ? profile.logoUrl : null;
   const rawHeroImageUrl = profile ? profile.heroImageUrl : null;
