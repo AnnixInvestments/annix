@@ -4,7 +4,7 @@ import type { JobPosting } from "../entities/job-posting.entity";
 export interface MatchExplanation {
   text: string;
   bullets: string[];
-  reasoning: string | null;
+  auditReasoning: string | null;
 }
 
 export const formatMatchExplanation = (
@@ -15,7 +15,7 @@ export const formatMatchExplanation = (
     return {
       text: "Your application was reviewed against the job requirements; a detailed automated score was not generated for this submission.",
       bullets: [],
-      reasoning: null,
+      auditReasoning: null,
     };
   }
 
@@ -48,12 +48,10 @@ export const formatMatchExplanation = (
     );
   }
 
-  const reasoning = matchAnalysis.reasoning;
   const text =
     bullets.length > 0
-      ? `${bullets.join(" ")}${reasoning ? `\n\nSummary: ${reasoning}` : ""}`
-      : (reasoning ??
-        "Your application was reviewed against the role requirements but no per-criterion breakdown is available.");
+      ? bullets.join(" ")
+      : "Your application was reviewed against the role requirements but no per-criterion breakdown is available.";
 
-  return { text, bullets, reasoning };
+  return { text, bullets, auditReasoning: matchAnalysis.reasoning };
 };

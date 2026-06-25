@@ -2509,13 +2509,21 @@ Then open it from your home screen and sign in as usual.`;
       ? `<p style="color: #6b7280; font-size: 14px;">Reference: <strong>${options.jobReference}</strong></p>`
       : "";
 
+    const escapeHtml = (value: string): string =>
+      value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
     const explanationBullets = options.matchExplanationBullets ?? [];
+    const reasoningSummary = options.matchReasoningSummary ?? null;
     const explanationSection =
-      explanationBullets.length > 0 || options.matchReasoningSummary
+      explanationBullets.length > 0 || reasoningSummary
         ? `
           <p style="margin-top: 18px;"><strong>How the automated screening assessed your application (POPIA s71):</strong></p>
-          ${explanationBullets.length > 0 ? `<ul>${explanationBullets.map((b) => `<li>${b}</li>`).join("")}</ul>` : ""}
-          ${options.matchReasoningSummary ? `<p style="font-style: italic; color: #4b5563;">${options.matchReasoningSummary}</p>` : ""}
+          ${explanationBullets.length > 0 ? `<ul>${explanationBullets.map((b) => `<li>${escapeHtml(b)}</li>`).join("")}</ul>` : ""}
+          ${reasoningSummary ? `<p style="font-style: italic; color: #4b5563;">${escapeHtml(reasoningSummary)}</p>` : ""}
           <p style="color: #6b7280; font-size: 14px;">You may request human review of this automated decision by replying to this email.</p>`
         : "";
 

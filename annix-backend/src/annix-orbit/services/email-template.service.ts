@@ -50,7 +50,7 @@ export class EmailTemplateService {
   }): Promise<boolean> {
     const template = await this.forCompany(input.companyId, input.kind);
     const subject = renderTemplate(template.subject, input.vars);
-    const html = renderTemplate(template.bodyHtml, input.vars);
+    const html = renderTemplate(template.bodyHtml, input.vars, { escapeHtml: true });
     const text = renderTemplate(template.bodyText, input.vars);
     return this.emailService.sendEmail({
       to: input.to,

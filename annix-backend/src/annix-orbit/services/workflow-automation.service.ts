@@ -256,7 +256,6 @@ export class WorkflowAutomationService {
         reasons: categories,
         retentionMonths: POPIA_RETENTION_MONTHS,
         matchExplanationBullets: explanation.bullets,
-        matchReasoningSummary: explanation.reasoning,
       });
 
       if (sent) {
@@ -264,7 +263,7 @@ export class WorkflowAutomationService {
         await this.cvAuditService.logRejectionExplanation(candidate.id, jobPosting.id, {
           channel: "auto_reject_email",
           bullets: explanation.bullets,
-          reasoning: explanation.reasoning,
+          reasoning: explanation.auditReasoning,
           categories,
         });
         this.logger.log(`Rejection email sent to candidate ${candidate.id}`);
@@ -334,7 +333,7 @@ export class WorkflowAutomationService {
           await this.cvAuditService.logRejectionExplanation(candidate.id, jobPosting.id, {
             channel: "manual_reject_email",
             bullets: explanation.bullets,
-            reasoning: explanation.reasoning,
+            reasoning: explanation.auditReasoning,
             hrReason: reason,
           });
         }

@@ -214,17 +214,29 @@ export const defaultByKind = (kind: CvEmailTemplateKind): EmailTemplateDefinitio
   return match;
 };
 
+const escapeHtmlValue = (value: string): string =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
 /**
  * Replace `{{key}}` placeholders in a template string with values from `vars`.
- * Missing keys are left as-is so the user notices in the preview.
+ * Missing keys are left as-is so the user notices in the preview. Pass
+ * `escapeHtml` when rendering into an HTML body so substituted values (which may
+ * carry CV-derived or AI-extracted content) cannot inject markup.
  */
 export const renderTemplate = (
   template: string,
   vars: Record<string, string | number | undefined | null>,
+  options: { escapeHtml?: boolean } = {},
 ): string => {
   return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, key) => {
     const value = vars[key as string];
     if (value === undefined || value === null) return match;
-    return String(value);
+    const rendered = String(value);
+    return options.escapeHtml ? escapeHtmlValue(rendered) : rendered;
   });
 };
