@@ -1,7 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { sortBy } from "es-toolkit/compat";
 import { useMemo } from "react";
-import type { ActionableJobCard, PendingBackgroundStep } from "@/app/lib/api/stockControlApi";
+import type {
+  ActionableJobCard,
+  JobCardActionStep,
+  PendingBackgroundStep,
+} from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { stockControlKeys } from "../../keys/stockControlKeys";
 
@@ -16,6 +20,22 @@ export function usePendingBackgroundSteps() {
   return useQuery<PendingBackgroundStep[]>({
     queryKey: stockControlKeys.dashboard.pendingBackgroundSteps(),
     queryFn: () => stockControlApiClient.pendingBackgroundSteps(),
+    staleTime: PENDING_STALE_MS,
+  });
+}
+
+/**
+ * The step(s) on a single job card where the current user is the primary actor
+ * of an active frontier step — i.e. their actual task on this card. Drives the
+ * "Your task on this card" banner so a card reached via the "Next" button makes
+ * it obvious why the user was sent there (esp. for background tasks like Req Auth).
+ */
+export function useMyJobCardAction(jobCardId: number | null) {
+  const enabled = jobCardId !== null && jobCardId > 0;
+  return useQuery<JobCardActionStep[]>({
+    queryKey: stockControlKeys.jobCardDetail.myAction(enabled ? jobCardId : 0),
+    queryFn: () => stockControlApiClient.myJobCardAction(jobCardId as number),
+    enabled,
     staleTime: PENDING_STALE_MS,
   });
 }

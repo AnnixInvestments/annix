@@ -13,6 +13,7 @@ import type {
   EligibleUser,
   JobCard,
   JobCardActionCompletion,
+  JobCardActionStep,
   JobCardApproval,
   JobCardDocument,
   JobCardJobFile,
@@ -44,6 +45,7 @@ declare module "./base" {
     rejectWorkflowStep(jobCardId: number, reason: string): Promise<JobCard>;
     pendingApprovals(): Promise<JobCard[]>;
     actionableJobCards(): Promise<ActionableJobCard[]>;
+    myJobCardAction(jobCardId: number): Promise<JobCardActionStep[]>;
     canApproveJobCard(jobCardId: number): Promise<{ canApprove: boolean }>;
     workflowNotifications(limit?: number): Promise<WorkflowNotification[]>;
     unreadNotifications(): Promise<WorkflowNotification[]>;
@@ -207,6 +209,10 @@ proto.pendingApprovals = async function () {
 
 proto.actionableJobCards = async function () {
   return this.request("/stock-control/workflow/actionable-job-cards");
+};
+
+proto.myJobCardAction = async function (jobCardId) {
+  return this.request(`/stock-control/workflow/job-cards/${jobCardId}/my-action`);
 };
 
 proto.canApproveJobCard = async function (jobCardId) {

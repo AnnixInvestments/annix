@@ -1497,6 +1497,7 @@ export {
   useMarkNotificationAsRead,
   useMatchImportRows,
   useMovementHistoryReport,
+  useMyJobCardAction,
   useNextActionableJobCard,
   useOpenControlPlanPdf,
   usePaintCoatingSystems,

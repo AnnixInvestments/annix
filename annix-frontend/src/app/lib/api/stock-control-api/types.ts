@@ -2378,6 +2378,11 @@ export interface ActionableJobCard {
   label: string;
 }
 
+export interface JobCardActionStep {
+  stepKey: string;
+  label: string;
+}
+
 export interface WorkflowStepAssignment {
   step: string;
   userIds: number[];

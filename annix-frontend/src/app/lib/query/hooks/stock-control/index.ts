@@ -32,6 +32,7 @@ export {
 } from "./useJobCardDetail";
 export {
   type NextActionableJobCard,
+  useMyJobCardAction,
   useNextActionableJobCard,
   usePendingBackgroundSteps,
 } from "./useNextActionableJobCard";

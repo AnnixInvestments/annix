@@ -93,6 +93,7 @@ export const stockControlKeys = {
       [...stockControlKeys.jobCardDetail.all, "delivery-job-cards", id] as const,
     workflow: (id: number) => [...stockControlKeys.jobCardDetail.all, "workflow", id] as const,
     approvals: (id: number) => [...stockControlKeys.jobCardDetail.all, "approvals", id] as const,
+    myAction: (id: number) => [...stockControlKeys.jobCardDetail.all, "my-action", id] as const,
   },
   reports: {
     all: ["stock-control", "reports"] as const,

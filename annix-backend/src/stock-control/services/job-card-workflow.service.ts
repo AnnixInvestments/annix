@@ -782,33 +782,102 @@ export class JobCardWorkflowService {
       return acc;
     }, new Map());
 
-    const awaitsUser = (card: JobCard): boolean => {
-      const approved = approvedByCard.get(card.id) ?? new Set<string>();
-      const completed = completedByCard.get(card.id) ?? new Set<string>();
-      const triggerSatisfied = (trigger: string | null): boolean => {
-        if (!trigger) return true;
-        if (fgKeySet.has(trigger)) return approved.has(trigger);
-        if (bgByKey.has(trigger)) return completed.has(trigger);
-        return true;
-      };
-      const activeBg = bgSteps.filter(
-        (s) => !completed.has(s.key) && triggerSatisfied(s.triggerAfterStep),
-      );
-      const foregroundBlocked = activeBg.some((s) => !s.rejoinAtStep);
-      const frontierKeys = activeBg.map((s) => s.key);
-      if (card.workflowStatus && !foregroundBlocked) {
-        frontierKeys.push(card.workflowStatus);
-      }
-      return frontierKeys.some((key) => primaryByStep.get(key) === user.id);
-    };
-
     return cards
-      .filter((card) => awaitsUser(card))
+      .filter((card) => {
+        const approved = approvedByCard.get(card.id) ?? new Set<string>();
+        const completed = completedByCard.get(card.id) ?? new Set<string>();
+        return (
+          this.primaryFrontierStepKeys({
+            card,
+            approved,
+            completed,
+            fgKeySet,
+            bgSteps,
+            bgByKey,
+            primaryByStep,
+            userId: user.id,
+          }).length > 0
+        );
+      })
       .map((card) => {
         const base = card.jcNumber || card.jobNumber;
         const label = card.jtDnNumber ? `${base} / ${card.jtDnNumber}` : base;
         return { id: card.id, label };
       });
+  }
+
+  /**
+   * The active frontier step keys on a card for which `userId` is the PRIMARY
+   * assignee — the single source of truth for "is this card awaiting this user"
+   * (the list) and "which task here is theirs" (the detail-page banner).
+   */
+  private primaryFrontierStepKeys(params: {
+    card: JobCard;
+    approved: Set<string>;
+    completed: Set<string>;
+    fgKeySet: Set<string>;
+    bgSteps: WorkflowStepConfig[];
+    bgByKey: Map<string, WorkflowStepConfig>;
+    primaryByStep: Map<string, number | null>;
+    userId: number;
+  }): string[] {
+    const { card, approved, completed, fgKeySet, bgSteps, bgByKey, primaryByStep, userId } = params;
+    const triggerSatisfied = (trigger: string | null): boolean => {
+      if (!trigger) return true;
+      if (fgKeySet.has(trigger)) return approved.has(trigger);
+      if (bgByKey.has(trigger)) return completed.has(trigger);
+      return true;
+    };
+    const activeBg = bgSteps.filter(
+      (s) => !completed.has(s.key) && triggerSatisfied(s.triggerAfterStep),
+    );
+    const foregroundBlocked = activeBg.some((s) => !s.rejoinAtStep);
+    const frontierKeys = activeBg.map((s) => s.key);
+    if (card.workflowStatus && !foregroundBlocked) {
+      frontierKeys.push(card.workflowStatus);
+    }
+    return frontierKeys.filter((key) => primaryByStep.get(key) === userId);
+  }
+
+  /**
+   * The step(s) on a single card where the current user is the primary assignee
+   * of an active frontier step — i.e. exactly why "Next" routed them here. Drives
+   * the "Your task on this card" banner on the job-card detail page.
+   */
+  async myActionableStepsForCard(
+    user: UserContext,
+    jobCardId: number,
+  ): Promise<Array<{ stepKey: string; label: string }>> {
+    const card = await this.jobCardRepo.findOneForCompany(jobCardId, user.companyId);
+    if (!card || card.status !== JobCardStatus.ACTIVE) {
+      return [];
+    }
+    const fgSteps = await this.stepConfigService.orderedSteps(user.companyId);
+    const bgSteps = await this.stepConfigService.backgroundSteps(user.companyId);
+    const assignments = await this.assignmentService.allAssignments(user.companyId);
+    const primaryByStep = new Map(assignments.map((a) => [a.step, a.primaryUserId]));
+    const fgKeySet = new Set(fgSteps.map((s) => s.key));
+    const bgByKey = new Map(bgSteps.map((s) => [s.key, s]));
+    const labelByStep = new Map([...fgSteps, ...bgSteps].map((s) => [s.key, s.label]));
+
+    const [approvedRows, completions] = await Promise.all([
+      this.approvalRepo.findApprovedStepsForJobCardIds(user.companyId, [jobCardId]),
+      this.bgCompletionRepo.findForJobCardAndCompany(jobCardId, user.companyId),
+    ]);
+    const approved = new Set(approvedRows.map((r) => r.step));
+    const completed = new Set(completions.map((c) => c.stepKey));
+
+    const keys = this.primaryFrontierStepKeys({
+      card,
+      approved,
+      completed,
+      fgKeySet,
+      bgSteps,
+      bgByKey,
+      primaryByStep,
+      userId: user.id,
+    });
+    return keys.map((key) => ({ stepKey: key, label: labelByStep.get(key) ?? key }));
   }
 
   async canUserApprove(user: UserContext, jobCardId: number): Promise<boolean> {

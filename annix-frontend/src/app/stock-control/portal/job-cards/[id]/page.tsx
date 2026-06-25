@@ -26,6 +26,7 @@ import {
   useLoadReconciliationGateStatus,
   useLoadSourceFileUrl,
   useLoadWorkflowStatus,
+  useMyJobCardAction,
   useNextActionableJobCard,
 } from "@/app/lib/query/hooks";
 import { ApprovalModal } from "@/app/stock-control/components/ApprovalModal";
@@ -206,6 +207,7 @@ export default function JobCardDetailPage() {
   });
 
   const nextActionable = useNextActionableJobCard(jobId);
+  const myJobCardAction = useMyJobCardAction(jobId);
   // Assignment-based (NOT the admin-overridable workflow.canApprove): an admin can
   // approve any card, so basing this on canApprove would keep the button hidden on
   // every card for them. The server's "pending for me" lists only include cards
@@ -631,6 +633,33 @@ export default function JobCardDetailPage() {
             <p className="mt-1 text-sm text-gray-500">{jobCard.jobName}</p>
           </div>
         </div>
+        {(() => {
+          const myTasks = myJobCardAction.data;
+          if (!myTasks || myTasks.length === 0) {
+            return null;
+          }
+          const taskLabels = myTasks.map((task) => task.label).join(", ");
+          return (
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-amber-900 dark:border-amber-500/40 dark:bg-amber-950/60 dark:text-amber-100">
+              <svg
+                className="h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+              <span className="text-sm font-semibold">Your task on this card:</span>
+              <span className="text-sm font-medium">{taskLabels}</span>
+            </div>
+          );
+        })()}
         {workflowStatus && (
           <WorkflowActionsBar
             jobId={jobId}

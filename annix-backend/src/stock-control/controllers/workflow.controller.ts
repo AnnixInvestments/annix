@@ -165,6 +165,12 @@ export class WorkflowController {
     return this.workflowService.actionableJobCardsForUser(req.user);
   }
 
+  @Get("job-cards/:id/my-action")
+  @ApiOperation({ summary: "Steps on this card where the current user is the primary actor" })
+  async myJobCardAction(@Req() req: any, @Param("id") id: number) {
+    return this.workflowService.myActionableStepsForCard(req.user, id);
+  }
+
   @Post("job-cards/:id/action")
   @ApiOperation({ summary: "Complete an action button for a workflow step" })
   async completeAction(@Req() req: any, @Param("id") id: number, @Body() dto: CompleteActionDto) {
