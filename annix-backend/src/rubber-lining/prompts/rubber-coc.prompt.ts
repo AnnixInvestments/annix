@@ -839,6 +839,7 @@ The header contains a box/table with fields arranged horizontally:
 └─────────────────────────────────────────────────────────────────┘
 - FROM: AU INDUSTRIES (PTY) LTD (the supplier)
 - TO: Customer name and address
+- CRITICAL: AU INDUSTRIES (PTY) LTD is the SENDER on these outgoing notes — it is NEVER the customer. "customerName" MUST be the TO/recipient party, never "AU Industries", "AU Rubber" or any AU variant. If the only company name you can read is AU Industries, leave customerName null rather than putting AU in it.
 - Product description: "RSCA40-20.950.125 - Red A40 SC - 20mm x 950mm x 12.5m, 249.37kg per Roll @ 1.05 S.G's"
 - Roll numbers and weights listed BELOW description, one per line: "154-41210 - 258Kg"
   (the printed format is "<order>-<ticket>"; ALWAYS strip the order prefix and return ONLY the ticket — "154-41210" → rollNumber "41210")

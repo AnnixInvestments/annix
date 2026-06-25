@@ -16,3 +16,17 @@ export const CUSTOMER_EMAIL_SUBJECT_MARKER = "[CUST]";
 // when it also comes from one of these sender domains. Override with the
 // AU_RUBBER_CUSTOMER_DOC_SENDER_DOMAINS env var (comma-separated).
 export const DEFAULT_CUSTOMER_DOC_SENDER_DOMAINS = ["auind.co.za"];
+
+// AU Industries is US — the issuer/supplier on outgoing customer delivery
+// notes. It must never be resolved or shown as the customer (the TO party).
+// Matches the spellings the AI extracts ("AU Industries (Pty) Ltd", "AU Rubber",
+// "auind.co.za") while avoiding false positives on names that merely contain
+// "au" (e.g. "Beau Industries") via the leading word boundary.
+export function isAuSelfCompanyName(name: string | null | undefined): boolean {
+  if (!name) return false;
+  const normalized = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  return /\bau (industr|rubber)/.test(normalized) || /\bauind\b/.test(normalized);
+}

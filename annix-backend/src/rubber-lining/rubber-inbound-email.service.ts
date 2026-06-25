@@ -27,6 +27,7 @@ import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
 import {
   CUSTOMER_EMAIL_SUBJECT_MARKER,
   DEFAULT_CUSTOMER_DOC_SENDER_DOMAINS,
+  isAuSelfCompanyName,
 } from "./rubber-lining.constants";
 import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
 import { PdfSlicerService } from "./services/pdf-slicer.service";
@@ -2536,18 +2537,21 @@ ${truncatedText}`;
     customerName: string,
     customerCompanies: RubberCompany[],
   ): RubberCompany | null {
+    if (isAuSelfCompanyName(customerName)) return null;
+
+    const eligible = customerCompanies.filter((c) => !isAuSelfCompanyName(c.name));
     const nameLower = customerName.toLowerCase().trim();
 
-    const exactMatch = customerCompanies.find((c) => c.name.toLowerCase() === nameLower);
+    const exactMatch = eligible.find((c) => c.name.toLowerCase() === nameLower);
     if (exactMatch) return exactMatch;
 
-    const containsMatch = customerCompanies.find(
+    const containsMatch = eligible.find(
       (c) => c.name.toLowerCase().includes(nameLower) || nameLower.includes(c.name.toLowerCase()),
     );
     if (containsMatch) return containsMatch;
 
     const words = nameLower.split(/\s+/).filter((w) => w.length > 2);
-    const partialMatch = customerCompanies.find((c) => {
+    const partialMatch = eligible.find((c) => {
       const companyWords = c.name.toLowerCase().split(/\s+/);
       return words.some((w) => companyWords.some((cw) => cw.includes(w) || w.includes(cw)));
     });
@@ -2680,6 +2684,12 @@ ${truncatedText}`;
 
             const customerName = group.customerName;
             if (!customerName) return null;
+            if (isAuSelfCompanyName(customerName)) {
+              this.logger.warn(
+                `Not auto-creating customer for DN ${group.deliveryNoteNumber}: extracted name "${customerName}" is AU itself, not a customer`,
+              );
+              return null;
+            }
 
             this.logger.log(
               `Auto-creating customer "${customerName}" for DN ${group.deliveryNoteNumber}`,

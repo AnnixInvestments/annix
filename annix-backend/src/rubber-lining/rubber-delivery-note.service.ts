@@ -39,6 +39,7 @@ import { RubberProductCodingRepository } from "./repositories/rubber-product-cod
 import { RubberSupplierCocRepository } from "./repositories/rubber-supplier-coc.repository";
 import { RubberAuCocReadinessService } from "./rubber-au-coc-readiness.service";
 import { RubberDocumentVersioningService } from "./rubber-document-versioning.service";
+import { isAuSelfCompanyName } from "./rubber-lining.constants";
 import { RubberRollStockService } from "./rubber-roll-stock.service";
 import { RubberStockService } from "./rubber-stock.service";
 
@@ -1598,6 +1599,13 @@ export class RubberDeliveryNoteService {
     return rows.length;
   }
 
+  private customerFacingCompanyName(note: RubberDeliveryNote): string | null {
+    const linkedName = note.supplierCompany?.name ?? null;
+    if (!isAuSelfCompanyName(linkedName)) return linkedName;
+    const extracted = note.extractedData?.customerName ?? null;
+    return extracted && !isAuSelfCompanyName(extracted) ? extracted : null;
+  }
+
   private mapDeliveryNoteToDto(
     note: RubberDeliveryNote,
     auCoc?: { id: number; cocNumber: string } | null,
@@ -1614,7 +1622,7 @@ export class RubberDeliveryNoteService {
       deliveryDate: note.deliveryDate ? formatISODate(note.deliveryDate) : null,
       customerReference: note.customerReference,
       supplierCompanyId: note.supplierCompanyId,
-      supplierCompanyName: note.supplierCompany?.name ?? null,
+      supplierCompanyName: this.customerFacingCompanyName(note),
       documentPath: note.documentPath,
       status: note.status,
       statusLabel: DELIVERY_NOTE_STATUS_LABELS[note.status],

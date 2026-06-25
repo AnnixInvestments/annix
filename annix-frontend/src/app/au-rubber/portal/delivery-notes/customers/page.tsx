@@ -5,6 +5,7 @@ import { FileText, Link2, Loader2, RefreshCw, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { CustomerDnAnalysisModal } from "@/app/au-rubber/components/CustomerDnAnalysisModal";
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
@@ -20,7 +21,6 @@ import {
   TableLoadingState,
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
-import { DateInput } from "@/app/components/ui/DateInput";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import { toastError } from "@/app/lib/api/apiError";
 import {
@@ -122,10 +122,6 @@ export default function CustomerDeliveryNotesPage() {
   const isLoading = notesQuery.isLoading;
   const error = notesQuery.error;
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [uploadType, setUploadType] = useState<DeliveryNoteType>("COMPOUND");
-  const [uploadCustomerId, setUploadCustomerId] = useState<number | null>(null);
-  const [uploadDnNumber, setUploadDnNumber] = useState("");
-  const [uploadDeliveryDate, setUploadDeliveryDate] = useState("");
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -249,6 +245,14 @@ export default function CustomerDeliveryNotesPage() {
     try {
       const result = await auRubberApiClient.analyzeCustomerDeliveryNotes(files);
       clearInterval(progressInterval);
+      if (result.groups.length === 0) {
+        setAnalyzeProgress(100);
+        showToast(
+          "Nix couldn't find any delivery notes in this file. Check it's a legible customer delivery note and try again.",
+          "error",
+        );
+        return;
+      }
       setAnalyzeProgress(90);
       setAnalyzeStatus("Analysis complete!");
       setAnalyzeDetail(`Found ${result.groups.length} delivery note(s)`);
@@ -315,44 +319,12 @@ export default function CustomerDeliveryNotesPage() {
     setUploadFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleUpload = async () => {
-    if (!uploadCustomerId) {
-      showToast("Please select a customer", "error");
-      return;
-    }
-    try {
-      setIsUploading(true);
-      if (uploadFiles.length > 0) {
-        await auRubberApiClient.uploadDeliveryNoteWithFiles(uploadFiles, {
-          deliveryNoteType: uploadType,
-          supplierCompanyId: uploadCustomerId,
-          deliveryNoteNumber: uploadDnNumber || undefined,
-          deliveryDate: uploadDeliveryDate || undefined,
-        });
-        alert({
-          message: `${uploadFiles.length} delivery note${uploadFiles.length > 1 ? "s" : ""} uploaded`,
-          variant: "success",
-        });
-      } else {
-        await auRubberApiClient.uploadDeliveryNote({
-          deliveryNoteType: uploadType,
-          supplierCompanyId: uploadCustomerId,
-          deliveryNoteNumber: uploadDnNumber || undefined,
-          deliveryDate: uploadDeliveryDate || undefined,
-        });
-        showToast("Delivery note created", "success");
-      }
-      setShowUploadModal(false);
-      setUploadCustomerId(null);
-      setUploadDnNumber("");
-      setUploadDeliveryDate("");
-      setUploadFiles([]);
-      await notesQuery.refetch();
-    } catch (err) {
-      toastError(showToast, err, "Failed to create delivery note");
-    } finally {
-      setIsUploading(false);
-    }
+  const handleModalNixUpload = async () => {
+    if (uploadFiles.length === 0) return;
+    const files = uploadFiles;
+    setShowUploadModal(false);
+    setUploadFiles([]);
+    await handleFilesSelected(files);
   };
 
   const handleDeleteNote = async (id: number, dnNumber: string) => {
@@ -982,125 +954,85 @@ export default function CustomerDeliveryNotesPage() {
         />
       </div>
 
-      {showUploadModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-screen items-center justify-center p-4">
-            <div
-              className="fixed inset-0 bg-black/10 backdrop-blur-md"
-              onClick={() => setShowUploadModal(false)}
-            />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Add Customer Delivery Note</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Documents (PDF, images)
-                  </label>
-                  <FileDropZone
-                    onFilesSelected={handleManualFilesSelected}
-                    className="border-2 border-dashed rounded-lg"
-                    disabled={isUploading}
-                  />
-                  {uploadFiles.length > 0 && (
-                    <div className="mt-3 space-y-2">
-                      {uploadFiles.map((file, index) => (
-                        <div
-                          key={`${file.name}-${index}`}
-                          className="flex items-center justify-between bg-gray-50 rounded-md px-3 py-2"
-                        >
-                          <div className="flex items-center space-x-2 min-w-0">
-                            <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                            <span className="text-sm text-gray-700 truncate">{file.name}</span>
-                            <span className="text-xs text-gray-400 flex-shrink-0">
-                              ({(file.size / 1024).toFixed(1)} KB)
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeFile(index)}
-                            className="text-gray-400 hover:text-red-500 flex-shrink-0"
-                            disabled={isUploading}
+      {showUploadModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] overflow-y-auto">
+            <div className="flex min-h-screen items-center justify-center p-4">
+              <div
+                className="fixed inset-0 bg-black/10 backdrop-blur-md"
+                onClick={() => setShowUploadModal(false)}
+              />
+              <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  Add Customer Delivery Note
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Documents (PDF, images)
+                    </label>
+                    <FileDropZone
+                      onFilesSelected={handleManualFilesSelected}
+                      className="border-2 border-dashed rounded-lg"
+                      disabled={isUploading}
+                    />
+                    {uploadFiles.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {uploadFiles.map((file, index) => (
+                          <div
+                            key={`${file.name}-${index}`}
+                            className="flex items-center justify-between bg-gray-50 rounded-md px-3 py-2"
                           >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                            <div className="flex items-center space-x-2 min-w-0">
+                              <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                              <span className="text-sm text-gray-700 truncate">{file.name}</span>
+                              <span className="text-xs text-gray-400 flex-shrink-0">
+                                ({(file.size / 1024).toFixed(1)} KB)
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeFile(index)}
+                              className="text-gray-400 hover:text-red-500 flex-shrink-0"
+                              disabled={isUploading}
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Nix scans each document and allocates the type, customer, DN number and delivery
+                    date automatically. You&apos;ll review and confirm the extracted details next.
+                  </p>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Type</label>
-                  <select
-                    value={uploadType}
-                    onChange={(e) => setUploadType(e.target.value as DeliveryNoteType)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    onClick={() => {
+                      setShowUploadModal(false);
+                      setUploadFiles([]);
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                   >
-                    <option value="COMPOUND">Compound</option>
-                    <option value="ROLL">Roll</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Customer</label>
-                  <select
-                    value={uploadCustomerId || ""}
-                    onChange={(e) =>
-                      setUploadCustomerId(e.target.value ? Number(e.target.value) : null)
-                    }
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleModalNixUpload}
+                    disabled={isUploading || uploadFiles.length === 0}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
                   >
-                    <option value="">Select customer</option>
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
+                    {uploadFiles.length > 0
+                      ? `Scan ${uploadFiles.length} File${uploadFiles.length > 1 ? "s" : ""} with Nix`
+                      : "Add a file to continue"}
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">DN Number</label>
-                  <input
-                    type="text"
-                    value={uploadDnNumber}
-                    onChange={(e) => setUploadDnNumber(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
-                    placeholder="e.g., DN1294"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Delivery Date</label>
-                  <DateInput
-                    value={uploadDeliveryDate}
-                    onChange={(value) => setUploadDeliveryDate(value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
-                  />
-                </div>
-              </div>
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  onClick={() => {
-                    setShowUploadModal(false);
-                    setUploadFiles([]);
-                  }}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleUpload}
-                  disabled={isUploading || !uploadCustomerId}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {isUploading
-                    ? "Uploading..."
-                    : uploadFiles.length > 0
-                      ? `Upload ${uploadFiles.length} File${uploadFiles.length > 1 ? "s" : ""}`
-                      : "Create"}
-                </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
 
       <NixProcessingPopup
         isVisible={isAnalyzing}
