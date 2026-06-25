@@ -1,7 +1,9 @@
 import { Body, Controller, Post, Request, UseGuards } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import { SeekerAssistantChatDto } from "../dto/seeker-assistant.dto";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { SeekerThrottlerGuard } from "../guards/seeker-throttler.guard";
 import type { SeekerAssistantContext } from "../prompts/seeker-assistant.prompt";
 import { SeekerAssistantService } from "../services/seeker-assistant.service";
@@ -11,7 +13,8 @@ interface SeekerAuthRequest {
 }
 
 @Controller("annix-orbit/me")
-@UseGuards(AnnixOrbitAuthGuard, SeekerThrottlerGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard, SeekerThrottlerGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.INDIVIDUAL)
 export class SeekerAssistantController {
   constructor(private readonly assistant: SeekerAssistantService) {}
 

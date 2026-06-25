@@ -1,5 +1,7 @@
 import { Controller, Get, NotFoundException, Request, UseGuards } from "@nestjs/common";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { SeekerCalendarService } from "../services/seeker-calendar.service";
 
 interface SeekerAuthRequest {
@@ -7,7 +9,8 @@ interface SeekerAuthRequest {
 }
 
 @Controller("annix-orbit/me/calendar")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.INDIVIDUAL)
 export class SeekerCalendarController {
   constructor(private readonly seekerCalendarService: SeekerCalendarService) {}
 

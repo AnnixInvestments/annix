@@ -12,6 +12,14 @@ export const ROLES_KEY = "cv_assistant_roles";
 
 export const AnnixOrbitRoles = (...roles: AnnixOrbitRole[]) => SetMetadata(ROLES_KEY, roles);
 
+const COMPANY_ROLE_GRANTS: Record<AnnixOrbitRole, AnnixOrbitRole[]> = {
+  [AnnixOrbitRole.ADMIN]: [AnnixOrbitRole.ADMIN, AnnixOrbitRole.RECRUITER, AnnixOrbitRole.VIEWER],
+  [AnnixOrbitRole.RECRUITER]: [AnnixOrbitRole.RECRUITER, AnnixOrbitRole.VIEWER],
+  [AnnixOrbitRole.VIEWER]: [AnnixOrbitRole.VIEWER],
+  [AnnixOrbitRole.INDIVIDUAL]: [AnnixOrbitRole.INDIVIDUAL],
+  [AnnixOrbitRole.STUDENT]: [AnnixOrbitRole.STUDENT],
+};
+
 @Injectable()
 export class AnnixOrbitRoleGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
@@ -22,7 +30,7 @@ export class AnnixOrbitRoleGuard implements CanActivate {
       context.getClass(),
     ]);
 
-    if (!requiredRoles) {
+    if (!requiredRoles || requiredRoles.length === 0) {
       return true;
     }
 
@@ -32,18 +40,14 @@ export class AnnixOrbitRoleGuard implements CanActivate {
       throw new ForbiddenException("Access denied");
     }
 
-    const roleHierarchy: Record<AnnixOrbitRole, number> = {
-      [AnnixOrbitRole.STUDENT]: 0,
-      [AnnixOrbitRole.INDIVIDUAL]: 0,
-      [AnnixOrbitRole.VIEWER]: 1,
-      [AnnixOrbitRole.RECRUITER]: 2,
-      [AnnixOrbitRole.ADMIN]: 3,
-    };
+    if (user.role === AnnixOrbitRole.ADMIN) {
+      return true;
+    }
 
-    const userRoleLevel = roleHierarchy[user.role as AnnixOrbitRole] || 0;
-    const requiredRoleLevel = Math.min(...requiredRoles.map((role) => roleHierarchy[role] || 0));
+    const grantedRoles = COMPANY_ROLE_GRANTS[user.role as AnnixOrbitRole] ?? [];
+    const hasAccess = requiredRoles.some((role) => grantedRoles.includes(role));
 
-    if (userRoleLevel < requiredRoleLevel) {
+    if (!hasAccess) {
       throw new ForbiddenException("Insufficient permissions");
     }
 

@@ -11,7 +11,9 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { IsIn, IsOptional, IsString, MaxLength } from "class-validator";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import {
   APPLICATION_STATUSES,
   type ApplicationStatus,
@@ -34,7 +36,8 @@ class UpdateApplicationDto {
 }
 
 @Controller("annix-orbit/me/applications")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.INDIVIDUAL)
 export class SeekerApplicationsController {
   constructor(private readonly applicationsService: SeekerApplicationsService) {}
 

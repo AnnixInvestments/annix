@@ -42,7 +42,9 @@ import type {
   EePopulationGroup,
   EePurpose,
 } from "../entities/annix-orbit-candidate-ee-attributes.entity";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { SeekerThrottlerGuard } from "../guards/seeker-throttler.guard";
 import { IndividualProfileService } from "../services/individual-profile.service";
 import { InterviewBookingService } from "../services/interview-booking.service";
@@ -50,7 +52,8 @@ import { NixCvPdfService } from "../services/nix-cv-pdf.service";
 import { NixSeekerAssistService } from "../services/nix-seeker-assist.service";
 
 @Controller("annix-orbit/me")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.INDIVIDUAL)
 export class IndividualProfileController {
   constructor(
     private readonly individualProfileService: IndividualProfileService,

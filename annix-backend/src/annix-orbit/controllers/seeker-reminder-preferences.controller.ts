@@ -1,6 +1,8 @@
 import { Body, Controller, Get, Patch, Request, UseGuards } from "@nestjs/common";
 import { IsBoolean, IsOptional, IsString, MaxLength } from "class-validator";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { SeekerReminderPreferencesService } from "../services/seeker-reminder-preferences.service";
 
 interface SeekerAuthRequest {
@@ -27,7 +29,8 @@ class UpdateReminderPreferencesDto {
 }
 
 @Controller("annix-orbit/me/reminder-preferences")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.INDIVIDUAL)
 export class SeekerReminderPreferencesController {
   constructor(private readonly reminderPreferencesService: SeekerReminderPreferencesService) {}
 

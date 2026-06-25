@@ -283,4 +283,8 @@ export const annixOrbitKeys = {
     all: ["annix-orbit", "seeker", "entitlements"] as const,
     detail: () => ["annix-orbit", "seeker", "entitlements", "detail"] as const,
   },
+  seekerBilling: {
+    all: ["annix-orbit", "seeker", "billing"] as const,
+    status: () => ["annix-orbit", "seeker", "billing", "status"] as const,
+  },
 } as const;

@@ -1,5 +1,17 @@
 import { CrudRepository } from "../../lib/persistence/crud-repository";
-import { AnnixOrbitProfile, type AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
+import {
+  AnnixOrbitProfile,
+  type AnnixOrbitSeekerSubscription,
+  type AnnixOrbitUserType,
+} from "../entities/annix-orbit-profile.entity";
+import type { OrbitBillingStatus } from "../lib/seeker-entitlement";
+
+export interface SeekerBillingUpdate {
+  entitledTier?: string;
+  billingStatus?: OrbitBillingStatus;
+  paidUntil?: Date | null;
+  subscription?: Partial<AnnixOrbitSeekerSubscription>;
+}
 
 export abstract class AnnixOrbitProfileRepository extends CrudRepository<AnnixOrbitProfile> {
   abstract findByUserId(userId: number): Promise<AnnixOrbitProfile | null>;
@@ -12,6 +24,7 @@ export abstract class AnnixOrbitProfileRepository extends CrudRepository<AnnixOr
   abstract findByCalendarFeedToken(token: string): Promise<AnnixOrbitProfile | null>;
   abstract setPushEnabledForUser(userId: number, enabled: boolean): Promise<void>;
   abstract setSelectedTier(userId: number, tier: string): Promise<void>;
+  abstract applyBillingUpdate(userId: number, update: SeekerBillingUpdate): Promise<void>;
   abstract findByUserIds(userIds: number[]): Promise<AnnixOrbitProfile[]>;
   abstract findByIdentityStatuses(statuses: string[]): Promise<AnnixOrbitProfile[]>;
   abstract adminPage(params: {

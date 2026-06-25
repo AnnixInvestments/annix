@@ -14,7 +14,9 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ArrayMaxSize, IsArray, IsInt, IsOptional, IsString, MaxLength } from "class-validator";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { OrbitDismissReasonService } from "../services/orbit-dismiss-reason.service";
 import { SeekerJobFeedService } from "../services/seeker-job-feed.service";
 
@@ -111,7 +113,8 @@ function parseSeekerJobFilters(query: {
 }
 
 @Controller("annix-orbit/seeker/jobs")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.INDIVIDUAL)
 export class SeekerJobsController {
   constructor(
     private readonly feedService: SeekerJobFeedService,

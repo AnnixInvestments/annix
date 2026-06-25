@@ -38,6 +38,15 @@ export function isSeekerAgeGroup(value: string): value is SeekerAgeGroup {
 export const ORBIT_RECRUITER_ROLES = ["owner", "manager", "recruiter", "assistant"] as const;
 export type AnnixOrbitRecruiterRole = (typeof ORBIT_RECRUITER_ROLES)[number];
 
+export interface AnnixOrbitSeekerSubscription {
+  paystackCustomerCode: string | null;
+  paystackSubscriptionCode: string | null;
+  paystackAuthorizationCode: string | null;
+  planTier: string | null;
+  currentPeriodEnd: Date | null;
+  cancelledAt: Date | null;
+}
+
 export interface AnnixOrbitProfileEeDisclosure {
   populationGroup: EePopulationGroup;
   gender: EeGender;
@@ -167,6 +176,8 @@ export class AnnixOrbitProfile {
   billingStatus: OrbitBillingStatus;
 
   paidUntil: Date | null;
+
+  subscription: AnnixOrbitSeekerSubscription | null;
 
   onboardingCompletedAt: Date | null;
 

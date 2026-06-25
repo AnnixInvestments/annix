@@ -16,7 +16,9 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { IsOptional, IsString, MaxLength } from "class-validator";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { CredentialService } from "../services/credential.service";
 import { OrbitCredentialTypeService } from "../services/orbit-credential-type.service";
 
@@ -91,7 +93,8 @@ class PatchCredentialDto {
 }
 
 @Controller("annix-orbit/me/credentials")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.INDIVIDUAL)
 export class CredentialController {
   constructor(
     private readonly credentialService: CredentialService,

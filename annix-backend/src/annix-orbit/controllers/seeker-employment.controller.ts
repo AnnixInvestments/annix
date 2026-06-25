@@ -15,7 +15,9 @@ import {
 import { IsInt, IsISO8601, IsOptional, IsString, IsUrl, MaxLength } from "class-validator";
 import { FEATURE_FLAGS } from "../../feature-flags/feature-flags.constants";
 import { FeatureFlagsService } from "../../feature-flags/feature-flags.service";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { SeekerEmploymentService } from "../services/seeker-employment.service";
 
 interface SeekerAuthRequest {
@@ -90,7 +92,8 @@ class MarkLeftDto {
 }
 
 @Controller("annix-orbit/me/employment")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.INDIVIDUAL)
 export class SeekerEmploymentController {
   constructor(
     private readonly employmentService: SeekerEmploymentService,

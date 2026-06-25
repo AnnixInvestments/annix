@@ -1,6 +1,9 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import type { HydratedDocument } from "mongoose";
-import type { AnnixOrbitProfileEeDisclosure } from "../entities/annix-orbit-profile.entity";
+import type {
+  AnnixOrbitProfileEeDisclosure,
+  AnnixOrbitSeekerSubscription,
+} from "../entities/annix-orbit-profile.entity";
 
 export type AnnixOrbitProfileDocument = HydratedDocument<AnnixOrbitProfile>;
 
@@ -138,6 +141,20 @@ export class AnnixOrbitProfile {
 
   @Prop({ type: Date, default: null })
   paidUntil: Date | null;
+
+  @Prop({
+    type: {
+      paystackCustomerCode: String,
+      paystackSubscriptionCode: String,
+      paystackAuthorizationCode: String,
+      planTier: String,
+      currentPeriodEnd: Date,
+      cancelledAt: Date,
+    },
+    default: null,
+    _id: false,
+  })
+  subscription: AnnixOrbitSeekerSubscription | null;
 
   @Prop({ type: Date, required: false })
   onboardingCompletedAt: Date;

@@ -13,7 +13,9 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { IsInt, IsISO8601, IsOptional, IsString, MaxLength } from "class-validator";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { SeekerInterviewEventsService } from "../services/seeker-interview-events.service";
 
 interface SeekerAuthRequest {
@@ -98,7 +100,8 @@ class UpdateInterviewEventDto {
 }
 
 @Controller("annix-orbit/me/interview-events")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.INDIVIDUAL)
 export class SeekerInterviewEventsController {
   constructor(private readonly interviewEventsService: SeekerInterviewEventsService) {}
 

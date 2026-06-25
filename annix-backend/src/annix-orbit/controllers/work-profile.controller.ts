@@ -9,7 +9,9 @@ import {
   Request,
   UseGuards,
 } from "@nestjs/common";
+import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitRoleGuard, AnnixOrbitRoles } from "../guards/annix-orbit-role.guard";
 import { WorkProfileService } from "../services/work-profile.service";
 
 interface SeekerAuthRequest {
@@ -17,7 +19,8 @@ interface SeekerAuthRequest {
 }
 
 @Controller("annix-orbit/seeker/work-profile")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, AnnixOrbitRoleGuard)
+@AnnixOrbitRoles(AnnixOrbitRole.INDIVIDUAL)
 export class WorkProfileController {
   constructor(private readonly workProfileService: WorkProfileService) {}
 

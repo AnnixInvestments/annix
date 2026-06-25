@@ -97,6 +97,8 @@ export class AnnixOrbitAuthGuard implements CanActivate {
         viewer: AnnixOrbitRole.VIEWER,
         editor: AnnixOrbitRole.RECRUITER,
         administrator: AnnixOrbitRole.ADMIN,
+        individual: AnnixOrbitRole.INDIVIDUAL,
+        student: AnnixOrbitRole.STUDENT,
       };
       return roleMap[access.role.code] || fallbackRole;
     }

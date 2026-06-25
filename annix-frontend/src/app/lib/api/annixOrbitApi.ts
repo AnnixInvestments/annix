@@ -1800,6 +1800,29 @@ export interface SeekerEntitlements {
   cvBuilds: SeekerCvBuildQuota;
 }
 
+export type SeekerPayableTier = "medium" | "hard";
+
+export type SeekerBillingStatus = "none" | "trialing" | "active" | "past_due";
+
+export interface SeekerCheckoutResult {
+  authorizationUrl: string;
+  reference: string;
+}
+
+export interface SeekerSubscriptionView {
+  paystackSubscriptionCode: string | null;
+  planTier: string | null;
+  currentPeriodEnd: string | null;
+  cancelledAt: string | null;
+}
+
+export interface SeekerBillingStatusView {
+  tier: string;
+  billingStatus: SeekerBillingStatus;
+  paidUntil: string | null;
+  subscription: SeekerSubscriptionView | null;
+}
+
 class AnnixOrbitApiClient {
   setRememberMe(remember: boolean) {
     // Record the choice on the token store so the subsequent login setTokens
@@ -3418,6 +3441,22 @@ class AnnixOrbitApiClient {
       body: JSON.stringify({ tier }),
       headers: { "Content-Type": "application/json" },
     });
+  }
+
+  async seekerBillingStatus(): Promise<SeekerBillingStatusView> {
+    return this.request("/annix-orbit/seeker/billing/status");
+  }
+
+  async startSeekerCheckout(tier: SeekerPayableTier): Promise<SeekerCheckoutResult> {
+    return this.request("/annix-orbit/seeker/billing/checkout", {
+      method: "POST",
+      body: JSON.stringify({ tier }),
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  async cancelSeekerSubscription(): Promise<SeekerBillingStatusView> {
+    return this.request("/annix-orbit/seeker/billing/cancel", { method: "POST" });
   }
 
   async seekerMatchingConsent(): Promise<SeekerMatchingConsentStatus> {

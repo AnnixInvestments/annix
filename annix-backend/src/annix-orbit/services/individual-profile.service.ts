@@ -44,6 +44,7 @@ import { CandidateRepository } from "../repositories/candidate.repository";
 import { OrbitEarlyAccessSignupRepository } from "../repositories/orbit-early-access-signup.repository";
 import { OrbitTierCapabilityRepository } from "../repositories/orbit-tier-capability.repository";
 import { PendingSeekerTierRepository } from "../repositories/pending-seeker-tier.repository";
+import { SeekerBillingEventRepository } from "../repositories/seeker-billing-event.repository";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 import { CvAuditService } from "./cv-audit.service";
 import { CvExtractionService } from "./cv-extraction.service";
@@ -181,6 +182,7 @@ export class IndividualProfileService {
     private readonly earlyAccessRepo: OrbitEarlyAccessSignupRepository,
     private readonly seekerTelemetry: SeekerTelemetryService,
     private readonly pendingTierRepo: PendingSeekerTierRepository,
+    private readonly billingEventRepo: SeekerBillingEventRepository,
   ) {}
 
   private async telemetryCandidateId(userId: number): Promise<number | null> {
@@ -1649,6 +1651,7 @@ export class IndividualProfileService {
     }
 
     await this.documentRepo.deleteByProfile(profile.id);
+    await this.billingEventRepo.deleteForUser(userId);
     await this.profileRepo.remove(profile);
     await this.userRepo.deleteById(userId);
 

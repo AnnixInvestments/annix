@@ -1,13 +1,24 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
+import { isString, keys, toPairs } from "es-toolkit/compat";
 import type { Model } from "mongoose";
 import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { AnnixOrbitProfile, AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
-import { AnnixOrbitProfileRepository } from "./annix-orbit-profile.repository";
+import {
+  AnnixOrbitProfileRepository,
+  type SeekerBillingUpdate,
+} from "./annix-orbit-profile.repository";
 
 type ProfileDoc = Record<string, unknown>;
 type RefDoc = { _id: number };
+
+const BILLING_MANAGED_FIELDS = [
+  "entitledTier",
+  "billingStatus",
+  "paidUntil",
+  "subscription",
+] as const;
 
 @Injectable()
 export class MongoAnnixOrbitProfileRepository
@@ -107,6 +118,34 @@ export class MongoAnnixOrbitProfileRepository
     await this.documents.updateMany({ userId }, { selectedTier: tier }).exec();
   }
 
+  async save(entity: AnnixOrbitProfile): Promise<AnnixOrbitProfile> {
+    const sanitized = { ...entity } as Record<string, unknown>;
+    BILLING_MANAGED_FIELDS.forEach((field) => {
+      delete sanitized[field];
+    });
+    return super.save(sanitized as unknown as AnnixOrbitProfile);
+  }
+
+  async applyBillingUpdate(userId: number, update: SeekerBillingUpdate): Promise<void> {
+    const set: Record<string, unknown> = {};
+    if (update.entitledTier !== undefined) {
+      set.entitledTier = update.entitledTier;
+    }
+    if (update.billingStatus !== undefined) {
+      set.billingStatus = update.billingStatus;
+    }
+    if (update.paidUntil !== undefined) {
+      set.paidUntil = update.paidUntil;
+    }
+    toPairs(update.subscription ?? {}).forEach(([field, value]) => {
+      set[`subscription.${field}`] = value;
+    });
+    if (keys(set).length === 0) {
+      return;
+    }
+    await this.documents.updateMany({ userId }, { $set: set }).exec();
+  }
+
   async findByUserIds(userIds: number[]): Promise<AnnixOrbitProfile[]> {
     if (userIds.length === 0) {
       return [];
@@ -166,7 +205,7 @@ export class MongoAnnixOrbitProfileRepository
       .lean()
       .exec();
     return docs
-      .filter((doc) => doc.userId != null && typeof doc.phone === "string" && doc.phone !== "")
+      .filter((doc) => doc.userId != null && isString(doc.phone) && doc.phone !== "")
       .map((doc) => ({ userId: doc.userId as number, phone: doc.phone as string }));
   }
 }

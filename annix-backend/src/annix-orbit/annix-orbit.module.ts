@@ -44,6 +44,7 @@ import { AnnixOrbitLicensingRegistrar } from "./annix-orbit-licensing.registrar"
 import { AnnixOrbitRecruiterLicensingRegistrar } from "./annix-orbit-recruiter-licensing.registrar";
 import { AnnixOrbitStudentLicensingRegistrar } from "./annix-orbit-student-licensing.registrar";
 import { AnnixOrbitCapabilities } from "./capabilities/annix-orbit.capabilities";
+import { PaystackConfigService } from "./config/paystack.config";
 import { AdminEeTargetsController } from "./controllers/admin-ee-targets.controller";
 import { AdminOrbitCredentialTypesController } from "./controllers/admin-orbit-credential-types.controller";
 import { AdminOrbitDelistReportsController } from "./controllers/admin-orbit-delist-reports.controller";
@@ -82,6 +83,7 @@ import { InterviewBookingController } from "./controllers/interview-booking.cont
 import { JobMarketController } from "./controllers/job-market.controller";
 import { JobPostingController } from "./controllers/job-posting.controller";
 import { NotificationController } from "./controllers/notification.controller";
+import { PaystackWebhookController } from "./controllers/paystack-webhook.controller";
 import { PortalAdaptersController } from "./controllers/portal-adapters.controller";
 import { PublicAccountController } from "./controllers/public-account.controller";
 import { PublicEarlyAccessController } from "./controllers/public-early-access.controller";
@@ -97,6 +99,7 @@ import { ReferenceFeedbackController } from "./controllers/reference-feedback.co
 import { ReferencesController } from "./controllers/references.controller";
 import { SeekerApplicationsController } from "./controllers/seeker-applications.controller";
 import { SeekerAssistantController } from "./controllers/seeker-assistant.controller";
+import { SeekerBillingController } from "./controllers/seeker-billing.controller";
 import { SeekerCalendarController } from "./controllers/seeker-calendar.controller";
 import { SeekerEmploymentController } from "./controllers/seeker-employment.controller";
 import { SeekerInterviewEventsController } from "./controllers/seeker-interview-events.controller";
@@ -206,6 +209,8 @@ import { SalaryBenchmarkRepository } from "./repositories/salary-benchmark.repos
 import { MongoSalaryBenchmarkRepository } from "./repositories/salary-benchmark.repository.mongo";
 import { SeekerApplyClickRepository } from "./repositories/seeker-apply-click.repository";
 import { MongoSeekerApplyClickRepository } from "./repositories/seeker-apply-click.repository.mongo";
+import { SeekerBillingEventRepository } from "./repositories/seeker-billing-event.repository";
+import { MongoSeekerBillingEventRepository } from "./repositories/seeker-billing-event.repository.mongo";
 import { SeekerEmploymentRecordRepository } from "./repositories/seeker-employment-record.repository";
 import { MongoSeekerEmploymentRecordRepository } from "./repositories/seeker-employment-record.repository.mongo";
 import { SeekerInterviewEventRepository } from "./repositories/seeker-interview-event.repository";
@@ -283,6 +288,7 @@ import { OrbitTierCapabilitySchema } from "./schemas/orbit-tier-capability.schem
 import { PendingSeekerTierSchema } from "./schemas/pending-seeker-tier.schema";
 import { SalaryBenchmarkSchema } from "./schemas/salary-benchmark.schema";
 import { SeekerApplyClickSchema } from "./schemas/seeker-apply-click.schema";
+import { SeekerBillingEventSchema } from "./schemas/seeker-billing-event.schema";
 import { SeekerEmploymentRecordSchema } from "./schemas/seeker-employment-record.schema";
 import { SeekerInterviewEventSchema } from "./schemas/seeker-interview-event.schema";
 import { SeekerInterviewReminderSchema } from "./schemas/seeker-interview-reminder.schema";
@@ -360,6 +366,7 @@ import { OrbitEarlyAccessService } from "./services/orbit-early-access.service";
 import { OrbitJobDelistService } from "./services/orbit-job-delist.service";
 import { OrbitOutreachService } from "./services/orbit-outreach.service";
 import { OrbitTierCapabilityService } from "./services/orbit-tier-capability.service";
+import { PaystackApiService } from "./services/paystack-api.service";
 import { PopiaService } from "./services/popia.service";
 import { PortalAdapterRegistry } from "./services/portal-adapter-registry.service";
 import { PortalPostingOrchestrator } from "./services/portal-posting-orchestrator.service";
@@ -370,6 +377,7 @@ import { RemotiveService } from "./services/remotive.service";
 import { SalaryBenchmarkService } from "./services/salary-benchmark.service";
 import { SeekerApplicationsService } from "./services/seeker-applications.service";
 import { SeekerAssistantService } from "./services/seeker-assistant.service";
+import { SeekerBillingService } from "./services/seeker-billing.service";
 import { SeekerCalendarService } from "./services/seeker-calendar.service";
 import { SeekerCompanyResearchService } from "./services/seeker-company-research.service";
 import { SeekerEmploymentService } from "./services/seeker-employment.service";
@@ -469,6 +477,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
         },
         { name: "SeekerTestEvent", schema: SeekerTestEventSchema },
         { name: "PendingSeekerTier", schema: PendingSeekerTierSchema },
+        { name: "SeekerBillingEvent", schema: SeekerBillingEventSchema },
       ],
       ORBIT_CONNECTION,
     ),
@@ -616,6 +625,8 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     SeekerEmploymentController,
     SeekerInterviewEventsController,
     SeekerReminderPreferencesController,
+    SeekerBillingController,
+    PaystackWebhookController,
     WorkProfileController,
     CredentialController,
     AdminOrbitCredentialTypesController,
@@ -710,6 +721,9 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     SeekerEmploymentService,
     SeekerInterviewEventsService,
     SeekerReminderPreferencesService,
+    SeekerBillingService,
+    PaystackApiService,
+    PaystackConfigService,
     InterviewReminderService,
     CredentialScanReminderService,
     WorkProfileService,
@@ -809,6 +823,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     repositoryProvider(OrbitDismissReasonRepository, MongoOrbitDismissReasonRepository),
     repositoryProvider(OrbitTierCapabilityRepository, MongoOrbitTierCapabilityRepository),
     repositoryProvider(SeekerUsageCounterRepository, MongoSeekerUsageCounterRepository),
+    repositoryProvider(SeekerBillingEventRepository, MongoSeekerBillingEventRepository),
     repositoryProvider(CvEscoSkillRepository, MongoCvEscoSkillRepository),
     repositoryProvider(CvGeocodeCacheRepository, MongoCvGeocodeCacheRepository),
     repositoryProvider(JobAnalysisCacheRepository, MongoJobAnalysisCacheRepository),
