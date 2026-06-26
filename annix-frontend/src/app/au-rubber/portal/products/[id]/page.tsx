@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
+import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type { RubberProductDto } from "@/app/lib/api/rubberPortalApi";
 
@@ -64,18 +65,14 @@ export default function AuRubberProductDetailPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="text-center">
-          <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Product</div>
-          <p className="text-gray-600">{error.message}</p>
-          <button
-            onClick={() => fetchProduct()}
-            className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
+      <BrandedErrorScreen
+        area="Products"
+        error={error}
+        reset={() => fetchProduct()}
+        backHref="/au-rubber/portal/products"
+        backLabel="Back to Products"
+        brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
+      />
     );
   }
 

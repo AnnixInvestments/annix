@@ -4,6 +4,7 @@ import { CODING_TYPES, CodingType } from "@annix/product-data/rubber/codingTypes
 import { toPairs as entries, isArray } from "es-toolkit/compat";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { Pagination, TableLoadingState } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
@@ -266,22 +267,23 @@ export default function AuRubberCodingsPage() {
   const currentTypeInfo = selectedType ? CODING_TYPES.find((t) => t.value === selectedType) : null;
 
   if (error) {
+    const retryCodings = () => {
+      if (isSansTab) {
+        fetchSpecifications();
+      } else if (selectedType) {
+        fetchCodings(selectedType);
+      }
+    };
     return (
       <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/codings"]}>
-        <div className="flex items-center justify-center min-h-96">
-          <div className="text-center">
-            <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Codings</div>
-            <p className="text-gray-600">{error.message}</p>
-            <button
-              onClick={() =>
-                isSansTab ? fetchSpecifications() : selectedType && fetchCodings(selectedType)
-              }
-              className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
-            >
-              Retry
-            </button>
-          </div>
-        </div>
+        <BrandedErrorScreen
+          area="Codings"
+          error={error}
+          reset={retryCodings}
+          backHref="/au-rubber/portal"
+          backLabel="Back to Dashboard"
+          brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
+        />
       </RequirePermission>
     );
   }

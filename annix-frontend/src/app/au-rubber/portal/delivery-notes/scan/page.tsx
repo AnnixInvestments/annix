@@ -6,11 +6,10 @@ import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
 import { toastError } from "@/app/lib/api/apiError";
-import {
-  type AnalyzedDeliveryNoteLineItem,
-  type AnalyzedDeliveryNoteResult,
-  auRubberApiClient,
-} from "@/app/lib/api/auRubberApi";
+import { type AnalyzedDeliveryNoteResult, auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import { DeliveryNoteAnalysisReview } from "../components/DeliveryNoteAnalysisReview";
+
+type ReviewedDeliveryNoteData = AnalyzedDeliveryNoteResult["data"];
 
 export default function ScanDeliveryNotePage() {
   const router = useRouter();
@@ -24,12 +23,14 @@ export default function ScanDeliveryNotePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [result, setResult] = useState<AnalyzedDeliveryNoteResult | null>(null);
+  const [reviewedData, setReviewedData] = useState<ReviewedDeliveryNoteData | null>(null);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       setSelectedFile(file);
       setResult(null);
+      setReviewedData(null);
 
       if (file.type.startsWith("image/")) {
         const url = URL.createObjectURL(file);
@@ -55,7 +56,8 @@ export default function ScanDeliveryNotePage() {
       });
       const analysisResult = await auRubberApiClient.analyzeDeliveryNotePhoto(selectedFile);
       setResult(analysisResult);
-      showToast("Delivery note analyzed successfully", "success");
+      setReviewedData(analysisResult.data);
+      showToast("Delivery note analyzed — review and correct before creating", "success");
     } catch (err) {
       toastError(showToast, err, "Failed to analyze delivery note");
     } finally {
@@ -68,18 +70,19 @@ export default function ScanDeliveryNotePage() {
     setSelectedFile(null);
     setPreviewUrl(null);
     setResult(null);
+    setReviewedData(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (cameraInputRef.current) cameraInputRef.current.value = "";
   };
 
   const handleAccept = async () => {
-    if (!result || !selectedFile) return;
+    if (!reviewedData || !selectedFile) return;
 
     try {
       setIsAccepting(true);
       const deliveryNote = await auRubberApiClient.acceptAnalyzedDeliveryNote(
         selectedFile,
-        result.data,
+        reviewedData,
       );
       const deliveryNoteId = Number(deliveryNote.id);
       if (!Number.isFinite(deliveryNoteId) || deliveryNoteId <= 0) {
@@ -92,21 +95,6 @@ export default function ScanDeliveryNotePage() {
     } finally {
       setIsAccepting(false);
     }
-  };
-
-  const formatLineItem = (item: AnalyzedDeliveryNoteLineItem) => {
-    const parts = [
-      ...(item.rollNumber ? [`Roll: ${item.rollNumber}`] : []),
-      ...(item.batchNumber ? [`Batch: ${item.batchNumber}`] : []),
-      ...(item.compoundCode ? [`Compound: ${item.compoundCode}`] : []),
-      ...(item.thicknessMm ? [`${item.thicknessMm}mm`] : []),
-      ...(item.widthMm ? [`${item.widthMm}mm W`] : []),
-      ...(item.lengthM ? [`${item.lengthM}m L`] : []),
-      ...(item.weightKg ? [`${item.weightKg}kg`] : []),
-      ...(item.color ? [item.color] : []),
-      ...(item.hardnessShoreA ? [`${item.hardnessShoreA} Shore A`] : []),
-    ];
-    return parts.length > 0 ? parts.join(" | ") : item.description;
   };
 
   return (
@@ -292,158 +280,18 @@ export default function ScanDeliveryNotePage() {
           </div>
         </div>
 
-        {result && (
+        {result && reviewedData && (
           <div className="bg-white shadow rounded-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-medium text-gray-900">Extracted Data</h2>
-              <span
-                className={`px-3 py-1 text-sm font-medium rounded-full ${
-                  result.data.documentType === "SUPPLIER_DELIVERY"
-                    ? "bg-blue-100 text-blue-800"
-                    : "bg-green-100 text-green-800"
-                }`}
-              >
-                {result.data.documentType === "SUPPLIER_DELIVERY"
-                  ? "Supplier Delivery"
-                  : "Customer Delivery"}
-              </span>
+            <div className="mb-4">
+              <h2 className="text-lg font-medium text-gray-900">Review &amp; Correct</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Check the AI-extracted values and fix anything wrong before creating the delivery
+                note.
+              </p>
             </div>
 
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                {result.data.deliveryNoteNumber && (
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">DN Number</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{result.data.deliveryNoteNumber}</dd>
-                  </div>
-                )}
-                {result.data.deliveryDate && (
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Date</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{result.data.deliveryDate}</dd>
-                  </div>
-                )}
-                {result.data.purchaseOrderNumber && (
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">PO Number</dt>
-                    <dd className="mt-1 text-sm text-gray-900">
-                      {result.data.purchaseOrderNumber}
-                    </dd>
-                  </div>
-                )}
-                {result.data.customerReference && (
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Reference</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{result.data.customerReference}</dd>
-                  </div>
-                )}
-              </div>
-
-              {result.data.fromCompany.name && (
-                <div className="border-t pt-4">
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">From</h3>
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="font-medium text-gray-900">{result.data.fromCompany.name}</p>
-                    {result.data.fromCompany.address && (
-                      <p className="text-sm text-gray-600 mt-1">
-                        {result.data.fromCompany.address}
-                      </p>
-                    )}
-                    {result.data.fromCompany.vatNumber && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        VAT: {result.data.fromCompany.vatNumber}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {result.data.toCompany.name && (
-                <div className="border-t pt-4">
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">To</h3>
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="font-medium text-gray-900">{result.data.toCompany.name}</p>
-                    {result.data.toCompany.address && (
-                      <p className="text-sm text-gray-600 mt-1">{result.data.toCompany.address}</p>
-                    )}
-                    {result.data.toCompany.vatNumber && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        VAT: {result.data.toCompany.vatNumber}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {result.data.lineItems.length > 0 && (
-                <div className="border-t pt-4">
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">
-                    Line Items ({result.data.lineItems.length})
-                  </h3>
-                  <div className="space-y-2">
-                    {result.data.lineItems.map((item, idx) => {
-                      const rawItemUnitOfMeasure = item.unitOfMeasure;
-                      return (
-                        <div key={idx} className="bg-gray-50 rounded-lg p-3">
-                          <p className="text-sm font-medium text-gray-900">{item.description}</p>
-                          <p className="text-xs text-gray-600 mt-1">{formatLineItem(item)}</p>
-                          {item.quantity && (
-                            <p className="text-xs text-gray-500 mt-1">
-                              Qty: {item.quantity} {rawItemUnitOfMeasure || ""}
-                            </p>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {(() => {
-                const totalWeightKg = result.data.totals.totalWeightKg;
-                const numberOfRolls = result.data.totals.numberOfRolls;
-                const showTotals = totalWeightKg || numberOfRolls;
-                return showTotals ? (
-                  <div className="border-t pt-4">
-                    <h3 className="text-sm font-medium text-gray-700 mb-2">Totals</h3>
-                    <div className="grid grid-cols-3 gap-4 text-center">
-                      {result.data.totals.totalQuantity && (
-                        <div className="bg-gray-50 rounded-lg p-3">
-                          <p className="text-lg font-semibold text-gray-900">
-                            {result.data.totals.totalQuantity}
-                          </p>
-                          <p className="text-xs text-gray-500">Total Qty</p>
-                        </div>
-                      )}
-                      {result.data.totals.numberOfRolls && (
-                        <div className="bg-gray-50 rounded-lg p-3">
-                          <p className="text-lg font-semibold text-gray-900">
-                            {result.data.totals.numberOfRolls}
-                          </p>
-                          <p className="text-xs text-gray-500">Rolls</p>
-                        </div>
-                      )}
-                      {result.data.totals.totalWeightKg && (
-                        <div className="bg-gray-50 rounded-lg p-3">
-                          <p className="text-lg font-semibold text-gray-900">
-                            {result.data.totals.totalWeightKg} kg
-                          </p>
-                          <p className="text-xs text-gray-500">Total Weight</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : null;
-              })()}
-
-              {result.data.notes && (
-                <div className="border-t pt-4">
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">Notes</h3>
-                  <p className="text-sm text-gray-600 bg-yellow-50 p-3 rounded-lg">
-                    {result.data.notes}
-                  </p>
-                </div>
-              )}
+              <DeliveryNoteAnalysisReview data={reviewedData} onChange={setReviewedData} />
 
               <div className="border-t pt-4">
                 <button
@@ -490,7 +338,7 @@ export default function ScanDeliveryNotePage() {
                           d="M5 13l4 4L19 7"
                         />
                       </svg>
-                      Accept & Create Delivery Note
+                      Accept &amp; Create Delivery Note
                     </>
                   )}
                 </button>

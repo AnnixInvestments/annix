@@ -3,13 +3,18 @@
 import { isArray } from "es-toolkit/compat";
 import { Download } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
+import { extractErrorMessage } from "@/app/lib/api/apiError";
+import { metricsApi } from "@/app/lib/api/metricsApi";
 import type {
   BackgroundStepStatus,
   JobCardLineItem,
   QcItemsReleaseRecord,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+
+const RELEASE_GENERATE_FALLBACK_MS = 30000;
 
 interface ReleaseDocumentGeneratorProps {
   jobCardId: number;
@@ -44,6 +49,7 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const pdfPreview = usePdfPreview();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
 
   const qaFinalStep = backgroundSteps.find((bg) => bg.stepKey === "qa_final_check");
   const isVisible = qaFinalStep && qaFinalStep.completedAt === null;
@@ -76,7 +82,7 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
       setLineItems(validItems);
       setExistingReleases(isArray(releases) ? releases : []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load line items");
+      setError(extractErrorMessage(err, "Failed to load line items"));
     } finally {
       setIsLoading(false);
     }
@@ -187,6 +193,17 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
       setIsGenerating(true);
       setError(null);
       setSuccess(null);
+      const stats = await metricsApi
+        .extractionStats("stock-control-job-cards", "release-documents-generate")
+        .catch(() => null);
+      const learnedMs = stats == null ? null : stats.averageMs;
+      const estimatedDurationMs =
+        learnedMs == null || learnedMs <= 0 ? RELEASE_GENERATE_FALLBACK_MS : learnedMs;
+      showExtraction({
+        brand: "stock-control",
+        label: "Generating release documents…",
+        estimatedDurationMs,
+      });
       const result = await stockControlApiClient.autoGenerateReleaseDocuments(
         jobCardId,
         Array.from(selectedIndices),
@@ -204,8 +221,9 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
         );
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to generate release documents");
+      setError(extractErrorMessage(err, "Failed to generate release documents"));
     } finally {
+      hideExtraction();
       setIsGenerating(false);
     }
   };

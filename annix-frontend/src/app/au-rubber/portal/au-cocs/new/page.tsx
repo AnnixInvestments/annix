@@ -4,6 +4,7 @@ import { isArray } from "es-toolkit/compat";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
+import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { useToast } from "@/app/components/Toast";
 import { toastError } from "@/app/lib/api/apiError";
 import { auRubberApiClient, type RubberRollStockDto } from "@/app/lib/api/auRubberApi";
@@ -111,18 +112,14 @@ export default function NewAuCocPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="text-center">
-          <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{error.message}</p>
-          <button
-            onClick={fetchData}
-            className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
+      <BrandedErrorScreen
+        area="AU Certificates"
+        error={error}
+        reset={fetchData}
+        backHref="/au-rubber/portal/au-cocs"
+        backLabel="Back to AU Certificates"
+        brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
+      />
     );
   }
 

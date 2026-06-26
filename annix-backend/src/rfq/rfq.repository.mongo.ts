@@ -21,6 +21,18 @@ export class MongoRfqRepository extends MongoCrudRepository<Rfq> implements RfqR
     await this.documents.findByIdAndUpdate(id, { $set: changes }).exec();
   }
 
+  async updateByIdWhereStatus(
+    id: number,
+    fromStatus: string,
+    changes: DeepPartial<Rfq>,
+  ): Promise<Rfq | null> {
+    const document = await this.documents
+      .findOneAndUpdate({ _id: id, status: fromStatus }, { $set: changes }, { new: true })
+      .lean()
+      .exec();
+    return this.toDomain(document);
+  }
+
   async findStatusesByCreator(userId: number): Promise<Rfq[]> {
     const documents = await this.documents
       .find({ createdById: userId })

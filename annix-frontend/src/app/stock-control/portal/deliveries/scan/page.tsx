@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
 import { extractErrorMessage } from "@/app/lib/api/apiError";
+import { metricsApi } from "@/app/lib/api/metricsApi";
 import type {
   AnalyzedDeliveryNoteData,
   AnalyzedDeliveryNoteResult,
@@ -18,10 +20,13 @@ import {
 import { DeliveryNoteConfirmationModal } from "@/app/stock-control/components/DeliveryNoteConfirmationModal";
 import { useErrorModal } from "@/app/stock-control/context/ErrorModalContext";
 
+const ANALYZE_FALLBACK_MS = 120000;
+
 export default function ScanDeliveryNotePage() {
   const router = useRouter();
   const { showToast } = useToast();
   const { showError } = useErrorModal();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -95,30 +100,41 @@ export default function ScanDeliveryNotePage() {
     }
   };
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     if (!selectedFile) {
       showToast("Please select a file first", "error");
       return;
     }
 
-    analyzeMutation.mutate(selectedFile, {
-      onSuccess: (analysisResult) => {
-        setResult(analysisResult);
+    try {
+      const stats = await metricsApi
+        .extractionStats("stock-control-deliveries", "analyze")
+        .catch(() => null);
+      const learnedMs = stats == null ? null : stats.averageMs;
+      const estimatedDurationMs =
+        learnedMs == null || learnedMs <= 0 ? ANALYZE_FALLBACK_MS : learnedMs;
+      showExtraction({
+        brand: "stock-control",
+        label: "Analyzing document…",
+        estimatedDurationMs,
+      });
+      const analysisResult = await analyzeMutation.mutateAsync(selectedFile);
+      setResult(analysisResult);
 
-        // The user explicitly chooses the document type via the toggle above — the
-        // chosen type is always honoured, never overridden by what the document looks
-        // like. A tax invoice scanned as a Delivery Note still adds stock; the same
-        // document scanned as a Tax Invoice is filed as an STI without adding stock.
-        setShowConfirmModal(true);
-        showToast(
-          `${isInvoice ? "Tax invoice" : "Delivery note"} analyzed — review the data below`,
-          "success",
-        );
-      },
-      onError: (err) => {
-        showError("Analysis Failed", extractErrorMessage(err, "Failed to analyze delivery note"));
-      },
-    });
+      // The user explicitly chooses the document type via the toggle above — the
+      // chosen type is always honoured, never overridden by what the document looks
+      // like. A tax invoice scanned as a Delivery Note still adds stock; the same
+      // document scanned as a Tax Invoice is filed as an STI without adding stock.
+      setShowConfirmModal(true);
+      showToast(
+        `${isInvoice ? "Tax invoice" : "Delivery note"} analyzed — review the data below`,
+        "success",
+      );
+    } catch (err) {
+      showError("Analysis Failed", extractErrorMessage(err, "Failed to analyze delivery note"));
+    } finally {
+      hideExtraction();
+    }
   };
 
   const handleClear = () => {

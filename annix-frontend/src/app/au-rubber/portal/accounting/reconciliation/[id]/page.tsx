@@ -3,8 +3,10 @@
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import { metricsApi } from "@/app/lib/api/metricsApi";
 import { useAlert } from "@/app/lib/hooks/useAlert";
 import { ReconciliationMatchView } from "../../../../components/accounting/ReconciliationMatchView";
 import { SignOffStatusBadge } from "../../../../components/accounting/SignOffStatusBadge";
@@ -43,12 +45,16 @@ interface ReconciliationDetail {
   notes: string | null;
 }
 
+const STATEMENT_EXTRACT_FALLBACK_MS = 60000;
+const STATEMENT_RECONCILE_FALLBACK_MS = 30000;
+
 export default function ReconciliationDetailPage() {
   const params = useParams();
   const id = Number(params.id);
   const { showToast } = useToast();
   const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
   const [data, setData] = useState<ReconciliationDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isExtracting, setIsExtracting] = useState(false);
@@ -73,9 +79,23 @@ export default function ReconciliationDetailPage() {
     fetchData();
   }, [id]);
 
+  const seededEstimateMs = async (operation: string, fallbackMs: number): Promise<number> => {
+    const stats = await metricsApi
+      .extractionStats("au-rubber-reconciliation", operation)
+      .catch(() => null);
+    const learnedMs = stats == null ? null : stats.averageMs;
+    return learnedMs == null || learnedMs <= 0 ? fallbackMs : learnedMs;
+  };
+
   const handleExtract = async () => {
     setIsExtracting(true);
     try {
+      const estimatedDurationMs = await seededEstimateMs("extract", STATEMENT_EXTRACT_FALLBACK_MS);
+      showExtraction({
+        brand: "au-rubber",
+        label: "Extracting statement…",
+        estimatedDurationMs,
+      });
       const result = await auRubberApiClient.accountingExtractStatement(id);
       setData(result as ReconciliationDetail);
       alert({ message: "Statement extracted successfully", variant: "success" });
@@ -83,6 +103,7 @@ export default function ReconciliationDetailPage() {
       const msg = err instanceof Error ? err.message : "Extraction failed";
       alert({ message: msg, variant: "error" });
     } finally {
+      hideExtraction();
       setIsExtracting(false);
     }
   };
@@ -102,6 +123,12 @@ export default function ReconciliationDetailPage() {
     if (!ok) return;
     setIsExtracting(true);
     try {
+      const estimatedDurationMs = await seededEstimateMs("extract", STATEMENT_EXTRACT_FALLBACK_MS);
+      showExtraction({
+        brand: "au-rubber",
+        label: "Re-extracting and reconciling statement…",
+        estimatedDurationMs,
+      });
       await auRubberApiClient.accountingExtractStatement(id);
       const reconciled = await auRubberApiClient.accountingReconcileStatement(id);
       setData(reconciled as ReconciliationDetail);
@@ -110,6 +137,7 @@ export default function ReconciliationDetailPage() {
       const msg = err instanceof Error ? err.message : "Re-extraction failed";
       alert({ message: msg, variant: "error" });
     } finally {
+      hideExtraction();
       setIsExtracting(false);
     }
   };
@@ -117,6 +145,15 @@ export default function ReconciliationDetailPage() {
   const handleReconcile = async () => {
     setIsReconciling(true);
     try {
+      const estimatedDurationMs = await seededEstimateMs(
+        "reconcile",
+        STATEMENT_RECONCILE_FALLBACK_MS,
+      );
+      showExtraction({
+        brand: "au-rubber",
+        label: "Running reconciliation…",
+        estimatedDurationMs,
+      });
       const result = await auRubberApiClient.accountingReconcileStatement(id);
       setData(result as ReconciliationDetail);
       alert({ message: "Reconciliation complete", variant: "success" });
@@ -124,6 +161,7 @@ export default function ReconciliationDetailPage() {
       const msg = err instanceof Error ? err.message : "Reconciliation failed";
       alert({ message: msg, variant: "error" });
     } finally {
+      hideExtraction();
       setIsReconciling(false);
     }
   };

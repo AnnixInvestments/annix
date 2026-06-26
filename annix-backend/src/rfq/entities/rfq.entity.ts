@@ -61,6 +61,30 @@ export class Rfq {
   @ApiProperty({ description: "RFQ status", enum: RfqStatus })
   status: RfqStatus;
 
+  @ApiProperty({
+    description: "When the customer accepted the quote",
+    required: false,
+  })
+  acceptedAt?: Date | null;
+
+  @ApiProperty({
+    description: "When the customer rejected the quote",
+    required: false,
+  })
+  rejectedAt?: Date | null;
+
+  @ApiProperty({
+    description: "User id of the customer who accepted or rejected the quote",
+    required: false,
+  })
+  decisionByUserId?: number | null;
+
+  @ApiProperty({
+    description: "Reason supplied by the customer when rejecting the quote",
+    required: false,
+  })
+  rejectionReason?: string | null;
+
   @ApiProperty({ description: "Additional notes", required: false })
   notes?: string;
 

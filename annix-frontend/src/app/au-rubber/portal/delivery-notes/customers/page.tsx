@@ -14,6 +14,7 @@ import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useTablePreferences } from "@/app/au-rubber/hooks/useTablePreferences";
 import { waitForReExtractionComplete } from "@/app/au-rubber/lib/waitForReExtractionComplete";
 import { formatDeliveryNoteNumber } from "@/app/au-rubber/utils/deliveryNoteName";
+import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import {
   Pagination,
@@ -401,18 +402,14 @@ export default function CustomerDeliveryNotesPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="text-center">
-          <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{error.message}</p>
-          <button
-            onClick={() => notesQuery.refetch()}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
+      <BrandedErrorScreen
+        area="Customer Delivery Notes"
+        error={error}
+        reset={() => notesQuery.refetch()}
+        backHref="/au-rubber/portal"
+        backLabel="Back to Dashboard"
+        brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
+      />
     );
   }
 

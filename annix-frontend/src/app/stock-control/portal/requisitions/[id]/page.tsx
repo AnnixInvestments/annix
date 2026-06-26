@@ -5,6 +5,7 @@ import { keys } from "es-toolkit/compat";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { formatDateZA } from "@/app/lib/datetime";
 import { exportToExcel, exportToPDF, exportToWord } from "@/app/lib/export/exportTable";
 import {
@@ -280,13 +281,28 @@ export default function RequisitionDetailPage() {
     );
   }
 
-  if (fetchError || !requisition) {
+  if (fetchError) {
+    const requisitionFetchError =
+      fetchError instanceof Error ? fetchError : new Error("Failed to load requisition");
+    return (
+      <BrandedErrorScreen
+        area="Requisitions"
+        error={requisitionFetchError}
+        reset={() => router.refresh()}
+        backHref="/stock-control/portal/requisitions"
+        backLabel="Back to Requisitions"
+        brandButtonClass="bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)]"
+      />
+    );
+  }
+
+  if (!requisition) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
+          <div className="text-gray-900 text-lg font-semibold mb-2">Requisition not found</div>
           <p className="text-gray-600">
-            {fetchError instanceof Error ? fetchError.message : "Requisition not found"}
+            We couldn't find that requisition. It may have been removed.
           </p>
           <Link
             href="/stock-control/portal/requisitions"

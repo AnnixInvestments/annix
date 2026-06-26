@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
+import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { useToast } from "@/app/components/Toast";
@@ -235,14 +236,29 @@ export default function AuCocDetailPage() {
     );
   }
 
-  if (error || !coc) {
-    const rawErrorMessage = error?.message;
+  if (error) {
+    return (
+      <BrandedErrorScreen
+        area="AU Certificates"
+        error={error}
+        reset={() => router.refresh()}
+        backHref="/au-rubber/portal/au-cocs"
+        backLabel="Back to AU Certificates"
+        brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
+      />
+    );
+  }
+
+  if (!coc) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{rawErrorMessage || "Certificate not found"}</p>
+          <div className="text-gray-900 text-lg font-semibold mb-2">Certificate not found</div>
+          <p className="text-gray-600">
+            We couldn't find that certificate. It may have been removed.
+          </p>
           <button
+            type="button"
             onClick={() => router.back()}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
           >

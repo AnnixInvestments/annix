@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { TableLoadingState } from "@/app/components/shared/TableComponents";
 import { useAuRubberTaxInvoiceStatements, useAuRubberTaxInvoices } from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../../../../components/Breadcrumb";
@@ -138,12 +139,14 @@ export default function CustomerStatementsPage() {
             { label: "Statements" },
           ]}
         />
-        <div className="flex items-center justify-center min-h-96">
-          <div className="text-center">
-            <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Statements</div>
-            <p className="text-gray-600">{error.message}</p>
-          </div>
-        </div>
+        <BrandedErrorScreen
+          area="Customer Statements"
+          error={error}
+          reset={() => statementsQuery.refetch()}
+          backHref="/au-rubber/portal/companies/customers"
+          backLabel="Back to Customers"
+          brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
+        />
       </div>
     );
   }

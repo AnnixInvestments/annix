@@ -400,6 +400,17 @@ class ApiClient {
     return this.request(`/rfq/${id}`);
   }
 
+  async acceptRfq(id: number): Promise<any> {
+    return this.request(`/rfq/${id}/accept`, { method: "POST" });
+  }
+
+  async rejectRfq(id: number, reason?: string): Promise<any> {
+    return this.request(`/rfq/${id}/reject`, {
+      method: "POST",
+      body: JSON.stringify(reason ? { reason } : {}),
+    });
+  }
+
   // Pre-quote clarification email — backend wraps EmailService.
   // Called from PreQuoteClarificationsStep after the customer
   // reviews / edits the auto-drafted body.
@@ -459,7 +470,7 @@ class ApiClient {
 
   async downloadRfqDocument(documentId: number): Promise<Blob> {
     const url = `${this.baseURL}/rfq/documents/${documentId}/download`;
-    const response = await fetch(url);
+    const response = await fetch(url, { headers: authHeaders() });
 
     await throwIfNotOk(response);
 
@@ -1281,6 +1292,8 @@ export const rfqApi = {
   create: (data: CreateStraightPipeRfqWithItemDto) => apiClient.createStraightPipeRfq(data),
   getAll: () => apiClient.getRfqs(),
   getById: (id: number) => apiClient.getRfqById(id),
+  accept: (id: number) => apiClient.acceptRfq(id),
+  reject: (id: number, reason?: string) => apiClient.rejectRfq(id, reason),
   sendClarificationEmail: (payload: Parameters<typeof apiClient.sendRfqClarificationEmail>[0]) =>
     apiClient.sendRfqClarificationEmail(payload),
 };

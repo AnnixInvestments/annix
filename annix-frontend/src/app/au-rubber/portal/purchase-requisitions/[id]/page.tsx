@@ -4,6 +4,7 @@ import { toPairs as entries } from "es-toolkit/compat";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
+import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { useToast } from "@/app/components/Toast";
 import { DateInput } from "@/app/components/ui/DateInput";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
@@ -168,14 +169,29 @@ export default function PurchaseRequisitionDetailPage() {
     );
   }
 
-  if (error || !requisition) {
-    const rawErrorMessage = error?.message;
+  if (error) {
+    return (
+      <BrandedErrorScreen
+        area="Purchase Requisitions"
+        error={error}
+        reset={() => router.refresh()}
+        backHref="/au-rubber/portal/purchase-requisitions"
+        backLabel="Back to Purchase Requisitions"
+        brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
+      />
+    );
+  }
+
+  if (!requisition) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Requisition</div>
-          <p className="text-gray-600">{rawErrorMessage || "Requisition not found"}</p>
+          <div className="text-gray-900 text-lg font-semibold mb-2">Requisition not found</div>
+          <p className="text-gray-600">
+            We couldn't find that requisition. It may have been removed.
+          </p>
           <button
+            type="button"
             onClick={() => router.push("/au-rubber/portal/purchase-requisitions")}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
           >

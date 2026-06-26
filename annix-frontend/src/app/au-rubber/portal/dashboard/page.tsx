@@ -8,7 +8,12 @@ import {
 import { toPairs as entries } from "es-toolkit/compat";
 import Link from "next/link";
 import { useState } from "react";
+import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
+import { useToast } from "@/app/components/Toast";
+import { toastError } from "@/app/lib/api/apiError";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import { metricsApi } from "@/app/lib/api/metricsApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
   useAuRubberCompanies,
@@ -26,6 +31,7 @@ interface StatusCount {
 }
 
 const ORDERS_PER_PAGE = 5;
+const AU_COC_GENERATE_FALLBACK_MS = 30000;
 
 export default function AuRubberDashboard() {
   const ordersQuery = useAuRubberOrders();
@@ -43,6 +49,8 @@ export default function AuRubberDashboard() {
   const products = rawProductsQueryData || [];
   const pendingAuCocs = rawPendingAuCocsQueryData || [];
   const [generatingIds, setGeneratingIds] = useState<Set<number>>(new Set());
+  const { showExtraction, hideExtraction } = useExtractionProgress();
+  const { showToast } = useToast();
   const isLoading = rawOrdersQueryIsLoading || companiesQuery.isLoading || productsQuery.isLoading;
   const error = rawOrdersQueryError || companiesQuery.error || productsQuery.error;
   const [currentPage, setCurrentPage] = useState(0);
@@ -50,13 +58,28 @@ export default function AuRubberDashboard() {
   const triggerGeneration = async (auCocId: number) => {
     setGeneratingIds((prev) => new Set([...prev, auCocId]));
     try {
+      const stats = await metricsApi
+        .extractionStats("au-rubber-au-cocs", "generate")
+        .catch(() => null);
+      const learnedMs = stats == null ? null : stats.averageMs;
+      const estimatedDurationMs =
+        learnedMs == null || learnedMs <= 0 ? AU_COC_GENERATE_FALLBACK_MS : learnedMs;
+      showExtraction({
+        brand: "au-rubber",
+        label: "Generating AU CoC document…",
+        estimatedDurationMs,
+      });
       const result = await auRubberApiClient.autoGenerateAuCoc(auCocId);
       if (result.generated) {
         pendingAuCocsQuery.refetch();
+        showToast("AU CoC document generated", "success");
+      } else {
+        showToast("AU CoC is not ready to generate yet", "info");
       }
     } catch (err) {
-      console.error("Failed to auto-generate AU CoC:", err);
+      toastError(showToast, err, "Failed to auto-generate AU CoC");
     } finally {
+      hideExtraction();
       setGeneratingIds((prev) => {
         const next = new Set([...prev]);
         next.delete(auCocId);
@@ -117,12 +140,18 @@ export default function AuRubberDashboard() {
   if (error) {
     return (
       <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/dashboard"]}>
-        <div className="flex items-center justify-center min-h-96">
-          <div className="text-center">
-            <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-            <p className="text-gray-600">{error.message}</p>
-          </div>
-        </div>
+        <BrandedErrorScreen
+          area="the dashboard"
+          error={error}
+          reset={() => {
+            ordersQuery.refetch();
+            companiesQuery.refetch();
+            productsQuery.refetch();
+          }}
+          backHref="/au-rubber/portal"
+          backLabel="Back to Dashboard"
+          brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
+        />
       </RequirePermission>
     );
   }

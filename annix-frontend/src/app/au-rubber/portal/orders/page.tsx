@@ -8,6 +8,7 @@ import {
 import { FileUp, Loader2, Plus, Upload } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import {
   Pagination,
@@ -306,18 +307,14 @@ export default function AuRubberOrdersPage() {
   if (error) {
     return (
       <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/orders"]}>
-        <div className="flex items-center justify-center min-h-96">
-          <div className="text-center">
-            <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Orders</div>
-            <p className="text-gray-600">{error.message}</p>
-            <button
-              onClick={() => ordersQuery.refetch()}
-              className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
-            >
-              Retry
-            </button>
-          </div>
-        </div>
+        <BrandedErrorScreen
+          area="Orders"
+          error={error}
+          reset={() => ordersQuery.refetch()}
+          backHref="/au-rubber/portal"
+          backLabel="Back to Dashboard"
+          brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
+        />
       </RequirePermission>
     );
   }

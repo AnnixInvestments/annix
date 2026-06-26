@@ -3,6 +3,7 @@
 import { isArray } from "es-toolkit/compat";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import {
   Pagination,
   SortDirection,
@@ -156,18 +157,14 @@ export default function ProductionsPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="text-center">
-          <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{error.message}</p>
-          <button
-            onClick={fetchData}
-            className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
+      <BrandedErrorScreen
+        area="Productions"
+        error={error}
+        reset={fetchData}
+        backHref="/au-rubber/portal"
+        backLabel="Back to Dashboard"
+        brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
+      />
     );
   }
 

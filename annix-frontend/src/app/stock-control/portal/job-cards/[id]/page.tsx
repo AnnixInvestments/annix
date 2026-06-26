@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { PdfPreviewModal } from "@/app/components/PdfPreviewModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
@@ -493,15 +494,25 @@ export default function JobCardDetailPage() {
   }
 
   const actionsError = actions.error;
-  if (actionsError || !jobCard) {
-    const actionsErrorMessage = actionsError?.message;
+  if (actionsError) {
+    return (
+      <BrandedErrorScreen
+        area="Job Cards"
+        error={actionsError}
+        reset={fetchData}
+        backHref="/stock-control/portal/job-cards"
+        backLabel="Back to Job Cards"
+        brandButtonClass="bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)]"
+      />
+    );
+  }
+
+  if (!jobCard) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">
-            {actionsErrorMessage ? actionsErrorMessage : "Job card not found"}
-          </p>
+          <div className="text-gray-900 text-lg font-semibold mb-2">Job card not found</div>
+          <p className="text-gray-600">We couldn't find that job card. It may have been removed.</p>
           <Link
             href="/stock-control/portal/job-cards"
             className="mt-4 inline-block text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"

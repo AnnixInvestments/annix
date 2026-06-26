@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { formatDeliveryNoteNumber } from "@/app/au-rubber/utils/deliveryNoteName";
+import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import {
   ImageViewerToolbar,
@@ -783,14 +784,29 @@ export default function DeliveryNoteDetailPage() {
     );
   }
 
-  if (error || !note) {
-    const errorMessage = error?.message;
+  if (error) {
+    return (
+      <BrandedErrorScreen
+        area="Delivery Notes"
+        error={error}
+        reset={() => router.refresh()}
+        backHref="/au-rubber/portal/delivery-notes"
+        backLabel="Back to Delivery Notes"
+        brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
+      />
+    );
+  }
+
+  if (!note) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{errorMessage ? errorMessage : "Delivery note not found"}</p>
+          <div className="text-gray-900 text-lg font-semibold mb-2">Delivery note not found</div>
+          <p className="text-gray-600">
+            We couldn't find that delivery note. It may have been removed.
+          </p>
           <button
+            type="button"
             onClick={() => router.back()}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
           >

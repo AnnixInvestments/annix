@@ -13,6 +13,7 @@ import {
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
+import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { useToast } from "@/app/components/Toast";
 import { toastError } from "@/app/lib/api/apiError";
 import {
@@ -215,14 +216,27 @@ export default function QualityTrackingDetailPage() {
     );
   }
 
-  if (error || !detail) {
-    const rawErrorMessage = error?.message;
+  if (error) {
+    return (
+      <BrandedErrorScreen
+        area="Quality Tracking"
+        error={error}
+        reset={() => router.refresh()}
+        backHref="/au-rubber/portal/quality-tracking"
+        backLabel="Back to Quality Tracking"
+        brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
+      />
+    );
+  }
+
+  if (!detail) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{rawErrorMessage || "Compound not found"}</p>
+          <div className="text-gray-900 text-lg font-semibold mb-2">Compound not found</div>
+          <p className="text-gray-600">We couldn't find that compound. It may have been removed.</p>
           <button
+            type="button"
             onClick={() => router.back()}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
           >

@@ -65,6 +65,18 @@ export class Rfq {
   projectLocationLon: number;
 
   @Prop({ type: Date, required: false })
+  acceptedAt: Date;
+
+  @Prop({ type: Date, required: false })
+  rejectedAt: Date;
+
+  @Prop({ type: Number, required: false })
+  decisionByUserId: number;
+
+  @Prop({ type: String, required: false })
+  rejectionReason: string;
+
+  @Prop({ type: Date, required: false })
   createdAt: Date;
 
   @Prop({ type: Date, required: false })

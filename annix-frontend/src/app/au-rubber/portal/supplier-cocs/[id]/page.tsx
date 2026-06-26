@@ -19,6 +19,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { RollRejectionsPanel } from "@/app/au-rubber/components/RollRejectionsPanel";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
+import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
 import { DateInput } from "@/app/components/ui/DateInput";
@@ -480,14 +481,27 @@ export default function SupplierCocDetailPage() {
     );
   }
 
-  if (error || !coc) {
-    const rawErrorMessage = error?.message;
+  if (error) {
+    return (
+      <BrandedErrorScreen
+        area="Supplier CoCs"
+        error={error}
+        reset={() => router.refresh()}
+        backHref="/au-rubber/portal/supplier-cocs"
+        backLabel="Back to Supplier CoCs"
+        brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
+      />
+    );
+  }
+
+  if (!coc) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{rawErrorMessage || "CoC not found"}</p>
+          <div className="text-gray-900 text-lg font-semibold mb-2">CoC not found</div>
+          <p className="text-gray-600">We couldn't find that CoC. It may have been removed.</p>
           <button
+            type="button"
             onClick={() => router.back()}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
           >

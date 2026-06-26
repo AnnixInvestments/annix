@@ -26,6 +26,7 @@ import { useParams, useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
+import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { CalloffInput } from "@/app/components/rubber/CalloffInput";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
@@ -541,18 +542,14 @@ export default function AuRubberOrderDetailPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="text-center">
-          <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Order</div>
-          <p className="text-gray-600">{error.message}</p>
-          <button
-            onClick={() => fetchOrder()}
-            className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
+      <BrandedErrorScreen
+        area="Orders"
+        error={error}
+        reset={() => fetchOrder()}
+        backHref="/au-rubber/portal/orders"
+        backLabel="Back to Orders"
+        brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
+      />
     );
   }
 

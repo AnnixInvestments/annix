@@ -19,6 +19,7 @@ import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { CheckInboundEmailsButton } from "@/app/au-rubber/components/CheckInboundEmailsButton";
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
 import { waitForReExtractionComplete } from "@/app/au-rubber/lib/waitForReExtractionComplete";
+import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import {
   Pagination,
@@ -487,18 +488,14 @@ export default function SupplierTaxInvoicesPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="text-center">
-          <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{error.message}</p>
-          <button
-            onClick={refresh}
-            className="mt-4 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
+      <BrandedErrorScreen
+        area="Supplier Tax Invoices"
+        error={error}
+        reset={refresh}
+        backHref="/au-rubber/portal"
+        backLabel="Back to Dashboard"
+        brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
+      />
     );
   }
 

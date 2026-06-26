@@ -44,6 +44,7 @@ import {
 } from "./dto/rfq-clarification-email.dto";
 import { RfqDocumentResponseDto } from "./dto/rfq-document.dto";
 import { RfqDraftFullResponseDto, RfqDraftResponseDto, SaveRfqDraftDto } from "./dto/rfq-draft.dto";
+import { RejectRfqQuoteDto } from "./dto/rfq-quote-decision.dto";
 import {
   PaginatedRfqResponseDto,
   RfqPaginationQueryDto,
@@ -864,6 +865,64 @@ export class RfqController {
       throw new ForbiddenException("You do not have access to this RFQ");
     }
     return rfq;
+  }
+
+  @Post(":id/accept")
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Accept quote",
+    description:
+      "Customer accepts the quote for an RFQ. Only valid from the quoted status; idempotent if already accepted.",
+  })
+  @ApiParam({ name: "id", description: "RFQ ID", type: Number })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Quote accepted; updated RFQ returned",
+    type: Rfq,
+  })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: "RFQ not found" })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: "User does not have access to this RFQ",
+  })
+  @ApiResponse({ status: HttpStatus.CONFLICT, description: "RFQ is not awaiting a decision" })
+  async acceptRfqQuote(
+    @Param("id", ParseIntPipe) id: number,
+    @Req() req: CustomerRequest,
+  ): Promise<Rfq> {
+    const userId = req.customer.userId;
+    return this.rfqService.acceptRfqQuote(id, userId);
+  }
+
+  @Post(":id/reject")
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Reject quote",
+    description:
+      "Customer rejects the quote for an RFQ, with an optional reason. Only valid from the quoted status; idempotent if already rejected.",
+  })
+  @ApiParam({ name: "id", description: "RFQ ID", type: Number })
+  @ApiBody({ type: RejectRfqQuoteDto, required: false })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Quote rejected; updated RFQ returned",
+    type: Rfq,
+  })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: "RFQ not found" })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: "User does not have access to this RFQ",
+  })
+  @ApiResponse({ status: HttpStatus.CONFLICT, description: "RFQ is not awaiting a decision" })
+  async rejectRfqQuote(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: RejectRfqQuoteDto,
+    @Req() req: CustomerRequest,
+  ): Promise<Rfq> {
+    const userId = req.customer.userId;
+    return this.rfqService.rejectRfqQuote(id, userId, dto.reason ?? null);
   }
 
   // ==================== Document Endpoints ====================

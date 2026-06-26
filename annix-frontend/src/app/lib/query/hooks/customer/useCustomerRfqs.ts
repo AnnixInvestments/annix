@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { draftsApi, type RfqResponse, rfqApi } from "@/app/lib/api/client";
 import { customerKeys } from "../../keys";
+import type { CustomerRfqDetail } from "./useCustomerRfqDecision";
 
 export function useCustomerRfqs() {
   return useQuery<RfqResponse[]>({
@@ -11,7 +12,7 @@ export function useCustomerRfqs() {
 }
 
 export function useCustomerRfqDetail(id: number) {
-  return useQuery({
+  return useQuery<CustomerRfqDetail>({
     queryKey: customerKeys.rfqs.detail(id),
     queryFn: () => rfqApi.getById(id),
     staleTime: 2 * 60 * 1000,

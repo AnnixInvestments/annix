@@ -5,8 +5,10 @@ import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { extractErrorMessage } from "@/app/lib/api/apiError";
 import { formatDateTimeZA, formatDateZA, fromISO } from "@/app/lib/datetime";
 import {
   useCreateManualAdjustment,
@@ -54,7 +56,10 @@ export default function InventoryDetailPage() {
   const { user } = useStockControlAuth();
   const { effectiveRole } = useViewAs();
 
-  const { data: item, isLoading: isLoadingItem, error: itemError } = useInventoryItemDetail(itemId);
+  const itemDetailQuery = useInventoryItemDetail(itemId);
+  const item = itemDetailQuery.data;
+  const isLoadingItem = itemDetailQuery.isLoading;
+  const itemError = itemDetailQuery.error;
   const { data: movements = [] } = useStockMovements(itemId);
   const { data: locations = [] } = useInventoryLocations();
 
@@ -141,11 +146,7 @@ export default function InventoryDetailPage() {
     return { totalOut, avgDailyUsage, daysUntilStockout, lastRestock };
   }, [movements, item]);
 
-  const error = itemError
-    ? itemError instanceof Error
-      ? itemError.message
-      : "Failed to load item details"
-    : mutationError;
+  const itemLoadError = itemError instanceof Error ? itemError : null;
 
   const openEditModal = () => {
     if (!item) return;
@@ -171,7 +172,7 @@ export default function InventoryDetailPage() {
       await updateStockItemMutation.mutateAsync({ id: itemId, data: modalForm });
       setShowModal(false);
     } catch (err) {
-      setMutationError(err instanceof Error ? err.message : "Failed to update item");
+      setMutationError(extractErrorMessage(err, "Failed to update item"));
     }
   };
 
@@ -189,7 +190,7 @@ export default function InventoryDetailPage() {
       setShowAdjustModal(false);
       setAdjustForm({ movementType: "in", quantity: 0, notes: "" });
     } catch (err) {
-      setMutationError(err instanceof Error ? err.message : "Failed to adjust stock");
+      setMutationError(extractErrorMessage(err, "Failed to adjust stock"));
     }
   };
 
@@ -201,7 +202,7 @@ export default function InventoryDetailPage() {
       setMutationError(null);
       await downloadQrMutation.mutateAsync(itemId);
     } catch (err) {
-      setMutationError(err instanceof Error ? err.message : "Failed to download QR label");
+      setMutationError(extractErrorMessage(err, "Failed to download QR label"));
     } finally {
       setIsDownloadingQr(false);
     }
@@ -212,7 +213,7 @@ export default function InventoryDetailPage() {
       setMutationError(null);
       await uploadPhotoMutation.mutateAsync({ id: itemId, file });
     } catch (err) {
-      setMutationError(err instanceof Error ? err.message : "Failed to upload photo");
+      setMutationError(extractErrorMessage(err, "Failed to upload photo"));
     }
   };
 
@@ -229,12 +230,27 @@ export default function InventoryDetailPage() {
     );
   }
 
-  if (error || !item) {
+  if (itemLoadError) {
+    return (
+      <BrandedErrorScreen
+        area="Inventory"
+        error={itemLoadError}
+        reset={() => itemDetailQuery.refetch()}
+        backHref="/stock-control/portal/inventory"
+        backLabel="Back to Inventory"
+        brandButtonClass="bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)]"
+      />
+    );
+  }
+
+  if (!item) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{error || "Item not found"}</p>
+          <div className="text-gray-900 text-lg font-semibold mb-2">Item not found</div>
+          <p className="text-gray-600">
+            {mutationError || "We couldn't find that item. It may have been removed."}
+          </p>
           <Link
             href="/stock-control/portal/inventory"
             className="mt-4 inline-block text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"

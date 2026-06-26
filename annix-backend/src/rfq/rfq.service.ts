@@ -1,4 +1,13 @@
-import { ForbiddenException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
+import { AuditService } from "../audit/audit.service";
+import { AuditAction } from "../audit/entities/audit-log.entity";
 import { BoqRepository } from "../boq/boq.repository";
 import { BoqSupplierAccessRepository } from "../boq/boq-supplier-access.repository";
 import { SupplierBoqStatus } from "../boq/entities/boq-supplier-access.entity";
@@ -84,6 +93,13 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 @Injectable()
 export class RfqService {
+  private static readonly EDITABLE_RFQ_STATUSES: readonly RfqStatus[] = [
+    RfqStatus.DRAFT,
+    RfqStatus.SUBMITTED,
+    RfqStatus.PENDING,
+    RfqStatus.IN_REVIEW,
+  ];
+
   private readonly logger = new Logger(RfqService.name);
 
   constructor(
@@ -114,6 +130,7 @@ export class RfqService {
     private rfqCalculationService: RfqCalculationService,
     private fittingService: FittingService,
     private readonly txRunner: TransactionRunner,
+    private readonly auditService: AuditService,
   ) {}
 
   async nextRfqNumber(): Promise<string> {
@@ -877,10 +894,18 @@ export class RfqService {
     dto: CreateUnifiedRfqDto,
     userId: number,
   ): Promise<{ rfq: Rfq; itemsUpdated: number }> {
-    const existingRfq = await this.rfqRepository.findById(id, ["items"]);
+    const existingRfq = await this.rfqRepository.findById(id, ["items", "createdBy"]);
 
     if (!existingRfq) {
       throw new NotFoundException(`RFQ with ID ${id} not found`);
+    }
+
+    if (existingRfq.createdBy?.id !== userId) {
+      throw new ForbiddenException("You do not have access to this RFQ");
+    }
+
+    if (!RfqService.EDITABLE_RFQ_STATUSES.includes(existingRfq.status as RfqStatus)) {
+      throw new ConflictException("This RFQ can no longer be edited");
     }
 
     if (existingRfq.items && existingRfq.items.length > 0) {
@@ -1462,6 +1487,120 @@ export class RfqService {
     if (document.rfq?.createdBy?.id !== userId) {
       throw new ForbiddenException("You do not have access to this document");
     }
+  }
+
+  async acceptRfqQuote(rfqId: number, userId: number): Promise<Rfq> {
+    const rfq = await this.ownedRfqForDecision(rfqId, userId);
+
+    if (rfq.status === RfqStatus.ACCEPTED) {
+      return rfq;
+    }
+
+    if (rfq.status !== RfqStatus.QUOTED) {
+      throw new ConflictException(
+        "This quote can no longer be accepted because it is not awaiting a decision",
+      );
+    }
+
+    const decidedAt = now().toJSDate();
+    const claimed = await this.rfqRepository.updateByIdWhereStatus(rfqId, RfqStatus.QUOTED, {
+      status: RfqStatus.ACCEPTED,
+      acceptedAt: decidedAt,
+      rejectedAt: null,
+      rejectionReason: null,
+      decisionByUserId: userId,
+    });
+
+    if (!claimed) {
+      return this.resolveLostDecisionRace(rfqId, RfqStatus.ACCEPTED, "accepted");
+    }
+
+    await this.recordQuoteDecision(rfqId, userId, AuditAction.APPROVE, "accepted", null);
+
+    return this.findRfqById(rfqId);
+  }
+
+  async rejectRfqQuote(rfqId: number, userId: number, reason?: string | null): Promise<Rfq> {
+    const rfq = await this.ownedRfqForDecision(rfqId, userId);
+    const trimmedReason = reason?.trim() || null;
+
+    if (rfq.status === RfqStatus.REJECTED) {
+      return rfq;
+    }
+
+    if (rfq.status !== RfqStatus.QUOTED) {
+      throw new ConflictException(
+        "This quote can no longer be rejected because it is not awaiting a decision",
+      );
+    }
+
+    const decidedAt = now().toJSDate();
+    const claimed = await this.rfqRepository.updateByIdWhereStatus(rfqId, RfqStatus.QUOTED, {
+      status: RfqStatus.REJECTED,
+      rejectedAt: decidedAt,
+      acceptedAt: null,
+      rejectionReason: trimmedReason,
+      decisionByUserId: userId,
+    });
+
+    if (!claimed) {
+      return this.resolveLostDecisionRace(rfqId, RfqStatus.REJECTED, "rejected");
+    }
+
+    await this.recordQuoteDecision(rfqId, userId, AuditAction.REJECT, "rejected", trimmedReason);
+
+    return this.findRfqById(rfqId);
+  }
+
+  private async resolveLostDecisionRace(
+    rfqId: number,
+    targetStatus: RfqStatus,
+    decision: string,
+  ): Promise<Rfq> {
+    const current = await this.findRfqById(rfqId);
+
+    if (current.status === targetStatus) {
+      return current;
+    }
+
+    throw new ConflictException(
+      `This quote can no longer be ${decision} because it is not awaiting a decision`,
+    );
+  }
+
+  private async ownedRfqForDecision(rfqId: number, userId: number): Promise<Rfq> {
+    const rfq = await this.rfqRepository.findById(rfqId, ["createdBy"]);
+
+    if (!rfq) {
+      throw new NotFoundException(`RFQ with ID ${rfqId} not found`);
+    }
+
+    if (rfq.createdBy?.id !== userId) {
+      throw new ForbiddenException("You do not have access to this RFQ");
+    }
+
+    return rfq;
+  }
+
+  private async recordQuoteDecision(
+    rfqId: number,
+    userId: number,
+    action: AuditAction,
+    decision: string,
+    reason: string | null,
+  ): Promise<void> {
+    await this.auditService
+      .log({
+        userId,
+        action,
+        entityType: "rfq",
+        entityId: rfqId,
+        metadata: { decision, reason },
+      })
+      .catch((err) => {
+        this.logger.warn(`Failed to record RFQ quote ${decision} audit log`, err?.message);
+        return null;
+      });
   }
 
   async calculateBendRequirements(dto: CreateBendRfqDto): Promise<BendCalculationResultDto> {

@@ -7,6 +7,7 @@ export const customerKeys = {
     all: ["customer", "rfqs"] as const,
     list: () => [...customerKeys.rfqs.all, "list"] as const,
     detail: (id: number) => [...customerKeys.rfqs.all, "detail", id] as const,
+    documents: (id: number) => [...customerKeys.rfqs.all, "documents", id] as const,
   },
   drafts: {
     all: ["customer", "drafts"] as const,

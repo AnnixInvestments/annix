@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
+import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type { DeliveryNote } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
@@ -90,12 +91,6 @@ export default function DeliveryDetailPage() {
     }
   };
 
-  const queryErrorMessage = queryError
-    ? queryError instanceof Error
-      ? queryError.message
-      : "Failed to load delivery note"
-    : null;
-
   const handlePhotoCapture = async (file: File) => {
     try {
       setIsUploading(true);
@@ -157,12 +152,29 @@ export default function DeliveryDetailPage() {
     );
   }
 
-  if (queryErrorMessage || !delivery) {
+  if (queryError) {
+    const deliveryQueryError =
+      queryError instanceof Error ? queryError : new Error("Failed to load delivery note");
+    return (
+      <BrandedErrorScreen
+        area="Deliveries"
+        error={deliveryQueryError}
+        reset={() => router.refresh()}
+        backHref="/stock-control/portal/deliveries"
+        backLabel="Back to Deliveries"
+        brandButtonClass="bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)]"
+      />
+    );
+  }
+
+  if (!delivery) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{queryErrorMessage || "Delivery note not found"}</p>
+          <div className="text-gray-900 text-lg font-semibold mb-2">Delivery note not found</div>
+          <p className="text-gray-600">
+            We couldn't find that delivery note. It may have been removed.
+          </p>
           <Link
             href="/stock-control/portal/deliveries"
             className="mt-4 inline-block text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"

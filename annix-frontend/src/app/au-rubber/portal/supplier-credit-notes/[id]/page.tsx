@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
+import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
 import { toastError } from "@/app/lib/api/apiError";
@@ -226,16 +227,31 @@ export default function SupplierCreditNoteDetailPage() {
     );
   }
 
-  if (error || !invoice) {
-    const rawErrorMessage = error?.message;
+  if (error) {
+    return (
+      <BrandedErrorScreen
+        area="Supplier Credit Notes"
+        error={error}
+        reset={() => router.refresh()}
+        backHref="/au-rubber/portal/supplier-credit-notes"
+        backLabel="Back to Supplier Credit Notes"
+        brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
+      />
+    );
+  }
+
+  if (!invoice) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{rawErrorMessage || "Credit note not found"}</p>
+          <div className="text-gray-900 text-lg font-semibold mb-2">Credit note not found</div>
+          <p className="text-gray-600">
+            We couldn't find that credit note. It may have been removed.
+          </p>
           <button
+            type="button"
             onClick={() => router.back()}
-            className="mt-4 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700"
+            className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
           >
             Go Back
           </button>

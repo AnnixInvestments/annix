@@ -15,6 +15,11 @@ export abstract class RfqRepository extends CrudRepository<Rfq> {
   abstract findAllWithItemsOrdered(): Promise<Rfq[]>;
   abstract findPaginatedWithItems(params: RfqPaginationParams): Promise<[Rfq[], number]>;
   abstract updateById(id: number, changes: DeepPartial<Rfq>): Promise<void>;
+  abstract updateByIdWhereStatus(
+    id: number,
+    fromStatus: string,
+    changes: DeepPartial<Rfq>,
+  ): Promise<Rfq | null>;
   abstract findStatusesByCreator(userId: number): Promise<Rfq[]>;
   abstract findPumpRfqsAssignedToSupplier(supplierId: number, status?: string): Promise<Rfq[]>;
   abstract findUpcomingNonRejected(
