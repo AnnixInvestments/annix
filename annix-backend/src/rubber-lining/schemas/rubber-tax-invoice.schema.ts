@@ -67,11 +67,20 @@ export class RubberTaxInvoice {
   @Prop({ type: Boolean, required: true })
   isCreditNote: boolean;
 
+  @Prop({ type: String, required: false })
+  creditNoteType: string;
+
   @Prop({ type: Number, required: false })
   originalInvoiceId: number;
 
   @Prop({ type: Object, required: true })
   creditNoteRollNumbers: Record<string, unknown>;
+
+  @Prop({ type: [Object], required: false, default: () => [] })
+  customerCreditNeeded: Record<string, unknown>[];
+
+  @Prop({ type: [Object], required: false, default: () => [] })
+  returnExceptions: Record<string, unknown>[];
 
   @Prop({ type: Number, required: false })
   linkedAuCocId: number;

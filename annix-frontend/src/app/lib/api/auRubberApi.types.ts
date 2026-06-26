@@ -352,6 +352,9 @@ export interface RubberTaxInvoiceDto {
   versionStatusLabel: string;
   previousVersionId: number | null;
   isCreditNote: boolean;
+  creditNoteType: "PHYSICAL_RETURN" | "FINANCIAL_ONLY" | null;
+  customerCreditNeeded: { rollNumber: string; auCocId: number; auCocNumber: string | null }[];
+  returnExceptions: { rollNumber: string; reason: string }[];
   originalInvoiceId: number | null;
   originalInvoiceNumber: string | null;
   creditNoteRollNumbers: string[];

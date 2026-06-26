@@ -16,6 +16,7 @@ export enum CompoundMovementReferenceType {
   OPENING_STOCK = "OPENING_STOCK",
   INVOICE_RECEIPT = "INVOICE_RECEIPT",
   DELIVERY_DEDUCTION = "DELIVERY_DEDUCTION",
+  CREDIT_NOTE_RETURN = "CREDIT_NOTE_RETURN",
 }
 
 export class RubberCompoundMovement {

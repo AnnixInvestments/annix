@@ -146,7 +146,9 @@ export class RubberAuCocService {
     );
     if (unavailableRolls.length > 0) {
       throw new BadRequestException(
-        `Rolls not available: ${unavailableRolls.map((r) => r.rollNumber).join(", ")}`,
+        `These rolls can't go on a CoC: ${unavailableRolls
+          .map((r) => `${r.rollNumber} (${r.status})`)
+          .join(", ")}. Returned/credited (REJECTED) or scrapped rolls cannot be certified.`,
       );
     }
 
@@ -215,6 +217,18 @@ export class RubberAuCocService {
       throw new BadRequestException("Customer company not found");
     }
 
+    const existingForDelivery = await this.existingAuCocForDelivery(
+      deliveryNoteId,
+      deliveryNote.supplierCompanyId,
+      deliveryNote.deliveryNoteNumber,
+    );
+    if (existingForDelivery) {
+      this.logger.log(
+        `Reusing AU CoC ${existingForDelivery.cocNumber} for delivery note ${deliveryNote.deliveryNoteNumber} (customer ${deliveryNote.supplierCompanyId}) — not creating a duplicate`,
+      );
+      return this.mapAuCocToDto(existingForDelivery);
+    }
+
     const extractedData = deliveryNote.extractedData;
     const rolls = extractedData?.rolls || [];
 
@@ -234,14 +248,26 @@ export class RubberAuCocService {
       cocNumber,
       customerCompanyId: deliveryNote.supplierCompanyId,
       poNumber: deliveryNote.customerReference ?? null,
-      deliveryNoteRef: deliveryNote.deliveryNoteNumber,
+      deliveryNoteRef: this.normalizedDeliveryNoteRef(deliveryNote.deliveryNoteNumber),
       sourceDeliveryNoteId: deliveryNoteId,
       extractedRollData: extractedRollData.length > 0 ? extractedRollData : null,
       status: AuCocStatus.DRAFT,
       createdBy: createdBy ?? null,
     });
 
-    const savedCoc = await this.auCocRepository.save(auCoc);
+    const savedCoc = await this.saveAuCocDeduped(
+      auCoc,
+      deliveryNoteId,
+      deliveryNote.supplierCompanyId,
+      deliveryNote.deliveryNoteNumber,
+    );
+
+    if (savedCoc.cocNumber !== cocNumber) {
+      this.logger.log(
+        `AU CoC for delivery note ${deliveryNote.deliveryNoteNumber} already existed (${savedCoc.cocNumber}); reusing it after a concurrent create`,
+      );
+      return this.mapAuCocToDto(savedCoc);
+    }
 
     const result = await this.auCocRepository.findById(savedCoc.id, ["customerCompany"]);
 
@@ -250,6 +276,80 @@ export class RubberAuCocService {
     );
 
     return this.mapAuCocToDto(result!);
+  }
+
+  private normalizedDeliveryNoteRef(ref: string | null | undefined): string | null {
+    const trimmed = ref?.trim();
+    return trimmed && trimmed.length > 0 ? trimmed : null;
+  }
+
+  private async existingAuCocForDelivery(
+    deliveryNoteId: number,
+    customerCompanyId: number,
+    deliveryNoteRef: string | null,
+  ): Promise<RubberAuCoc | null> {
+    const bySource = await this.auCocRepository.findOneWhere({
+      sourceDeliveryNoteId: deliveryNoteId,
+    });
+    if (bySource) {
+      return this.auCocRepository.findById(bySource.id, ["customerCompany"]);
+    }
+    const ref = this.normalizedDeliveryNoteRef(deliveryNoteRef);
+    if (!ref) {
+      return null;
+    }
+    const byBusinessKey = await this.auCocRepository.findOneWhere({
+      customerCompanyId,
+      deliveryNoteRef: ref,
+    });
+    if (!byBusinessKey) {
+      return null;
+    }
+    if (
+      byBusinessKey.sourceDeliveryNoteId != null &&
+      byBusinessKey.sourceDeliveryNoteId !== deliveryNoteId
+    ) {
+      this.logger.warn(
+        `Reusing AU CoC ${byBusinessKey.cocNumber} for DN ref "${ref}" (customer ${customerCompanyId}): it was sourced from delivery note ${byBusinessKey.sourceDeliveryNoteId}, not ${deliveryNoteId}. If these are genuinely different deliveries that reuse a DN number, review manually.`,
+      );
+    }
+    return this.auCocRepository.findById(byBusinessKey.id, ["customerCompany"]);
+  }
+
+  private isBusinessKeyDuplicate(error: unknown): boolean {
+    const mongoError = error as { code?: number; keyPattern?: Record<string, unknown> };
+    if (mongoError.code !== 11000) {
+      return false;
+    }
+    const keyPattern = mongoError.keyPattern;
+    if (!keyPattern) {
+      return true;
+    }
+    return "deliveryNoteRef" in keyPattern || "customerCompanyId" in keyPattern;
+  }
+
+  private async saveAuCocDeduped(
+    auCoc: RubberAuCoc,
+    deliveryNoteId: number,
+    customerCompanyId: number,
+    deliveryNoteRef: string | null,
+  ): Promise<RubberAuCoc> {
+    try {
+      return await this.auCocRepository.save(auCoc);
+    } catch (error) {
+      if (!this.isBusinessKeyDuplicate(error)) {
+        throw error;
+      }
+      const existing = await this.existingAuCocForDelivery(
+        deliveryNoteId,
+        customerCompanyId,
+        deliveryNoteRef,
+      );
+      if (existing) {
+        return existing;
+      }
+      throw error;
+    }
   }
 
   async generationReadiness(id: number): Promise<{
@@ -1851,6 +1951,28 @@ export class RubberAuCocService {
       };
     }
 
+    const matchedSupplierCocs = matchedCocs.map((c) => ({
+      id: c.id,
+      cocNumber: c.cocNumber,
+      orderNumber: c.orderNumber,
+    }));
+
+    const existingForDelivery = await this.existingAuCocForDelivery(
+      deliveryNoteId,
+      customerCompanyId,
+      deliveryNote.deliveryNoteNumber,
+    );
+    if (existingForDelivery) {
+      this.logger.log(
+        `Reusing AU CoC ${existingForDelivery.cocNumber} for delivery note ${deliveryNote.deliveryNoteNumber} (customer ${customerCompanyId}) — not creating a duplicate`,
+      );
+      return {
+        auCoc: this.mapAuCocToDto(existingForDelivery),
+        matchedSupplierCocs,
+        message: `AU CoC ${existingForDelivery.cocNumber} already exists for this delivery — reused`,
+      };
+    }
+
     const cocNumber = await this.generateCocNumber();
 
     const auCoc = this.auCocRepository.build({
@@ -1858,14 +1980,28 @@ export class RubberAuCocService {
       cocNumber,
       customerCompanyId,
       poNumber: null,
-      deliveryNoteRef: deliveryNote.deliveryNoteNumber,
+      deliveryNoteRef: this.normalizedDeliveryNoteRef(deliveryNote.deliveryNoteNumber),
+      sourceDeliveryNoteId: deliveryNoteId,
       status: AuCocStatus.DRAFT,
       notes: `Auto-created from customer delivery note ${deliveryNote.deliveryNoteNumber}. Matched supplier COC(s): ${matchedCocs.map((c) => c.cocNumber || c.orderNumber).join(", ")}`,
       createdBy: createdBy ?? null,
       approvedByName: "Ron Govender",
     });
 
-    const savedCoc = await this.auCocRepository.save(auCoc);
+    const savedCoc = await this.saveAuCocDeduped(
+      auCoc,
+      deliveryNoteId,
+      customerCompanyId,
+      deliveryNote.deliveryNoteNumber,
+    );
+
+    if (savedCoc.cocNumber !== cocNumber) {
+      return {
+        auCoc: this.mapAuCocToDto(savedCoc),
+        matchedSupplierCocs,
+        message: `AU CoC ${savedCoc.cocNumber} already exists for this delivery — reused`,
+      };
+    }
 
     const result = await this.auCocRepository.findById(savedCoc.id, ["customerCompany"]);
 
@@ -1873,11 +2009,7 @@ export class RubberAuCocService {
 
     return {
       auCoc: auCocDto,
-      matchedSupplierCocs: matchedCocs.map((c) => ({
-        id: c.id,
-        cocNumber: c.cocNumber,
-        orderNumber: c.orderNumber,
-      })),
+      matchedSupplierCocs,
       message: `Successfully created AU COC ${cocNumber} from ${matchedCocs.length} matched supplier COC(s)`,
     };
   }

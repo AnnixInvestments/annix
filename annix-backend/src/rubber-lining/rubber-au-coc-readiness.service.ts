@@ -28,6 +28,8 @@ export interface ReadinessResult {
 @Injectable()
 export class RubberAuCocReadinessService {
   private readonly logger = new Logger(RubberAuCocReadinessService.name);
+  private readonly deliveryNotesInFlight = new Set<number>();
+  private readonly deliveryNotesPendingRecheck = new Set<number>();
 
   constructor(
     private auCocRepository: RubberAuCocRepository,
@@ -110,6 +112,26 @@ export class RubberAuCocReadinessService {
   }
 
   async checkAndAutoGenerateForDeliveryNote(customerDeliveryNoteId: number): Promise<void> {
+    if (this.deliveryNotesInFlight.has(customerDeliveryNoteId)) {
+      this.deliveryNotesPendingRecheck.add(customerDeliveryNoteId);
+      this.logger.debug(
+        `Readiness check already running for DN ${customerDeliveryNoteId}; queued a re-check so newer data isn't dropped`,
+      );
+      return;
+    }
+    this.deliveryNotesInFlight.add(customerDeliveryNoteId);
+    try {
+      await this.runReadinessForDeliveryNote(customerDeliveryNoteId);
+    } finally {
+      this.deliveryNotesInFlight.delete(customerDeliveryNoteId);
+    }
+    if (this.deliveryNotesPendingRecheck.delete(customerDeliveryNoteId)) {
+      this.logger.debug(`Running queued re-check for DN ${customerDeliveryNoteId}`);
+      await this.checkAndAutoGenerateForDeliveryNote(customerDeliveryNoteId);
+    }
+  }
+
+  private async runReadinessForDeliveryNote(customerDeliveryNoteId: number): Promise<void> {
     const auCoc = await this.auCocRepository.findOneWhere({
       sourceDeliveryNoteId: customerDeliveryNoteId,
     });

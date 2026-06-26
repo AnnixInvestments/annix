@@ -1,6 +1,15 @@
 "use client";
 
-import { CheckCircle, Download, FileText, Pencil, RefreshCw, Save, X } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle,
+  Download,
+  FileText,
+  Pencil,
+  RefreshCw,
+  Save,
+  X,
+} from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
@@ -18,6 +27,19 @@ import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
 import { useAlert } from "@/app/lib/hooks/useAlert";
 import { LineItemRollsPanel } from "./LineItemRollsPanel";
 
+const returnExceptionLabel = (reason: string): string => {
+  switch (reason) {
+    case "WRONG_SUPPLIER":
+      return "skipped — appears to belong to a different supplier (possible scan error); not removed from stock";
+    case "NOT_FOUND":
+      return "not found in stock — nothing was removed";
+    case "MANUAL_KG":
+      return "returned, but kg was not auto-deducted — adjust compound stock manually";
+    default:
+      return reason;
+  }
+};
+
 export default function TaxInvoiceDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -32,6 +54,8 @@ export default function TaxInvoiceDetailPage() {
   const [isApproving, setIsApproving] = useState(false);
   const [isRecomputingCosts, setIsRecomputingCosts] = useState(false);
   const [isRefiling, setIsRefiling] = useState(false);
+  const [isClassifying, setIsClassifying] = useState(false);
+  const [isCreatingCustomerCredit, setIsCreatingCustomerCredit] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
   const [isEditingSummary, setIsEditingSummary] = useState(false);
@@ -170,10 +194,61 @@ export default function TaxInvoiceDetailPage() {
     }
   };
 
+  const handleClassifyCreditNote = async (creditNoteType: "PHYSICAL_RETURN" | "FINANCIAL_ONLY") => {
+    try {
+      setIsClassifying(true);
+      const updated = await auRubberApiClient.classifyCreditNote(invoiceId, creditNoteType);
+      setInvoice(updated);
+      showToast(
+        creditNoteType === "PHYSICAL_RETURN"
+          ? "Marked as a physical return — approving will remove the rolls from stock"
+          : "Marked as a financial-only credit — stock is left untouched",
+        "success",
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Classification failed";
+      alert({ message: message, variant: "error" });
+    } finally {
+      setIsClassifying(false);
+    }
+  };
+
+  const handleCreateCustomerCredit = async () => {
+    const confirmed = await confirmDialog({
+      title: "Raise customer credit note(s)?",
+      message:
+        "These returned rolls were already shipped to a customer on an AU CoC, so a customer credit note is needed to keep their books straight. This creates a DRAFT customer credit note per affected CoC (amounts left blank for you to set from AU's sale value). Review and send them from the customer tax-invoices list.",
+      confirmLabel: "Create draft(s)",
+    });
+    if (!confirmed) return;
+    try {
+      setIsCreatingCustomerCredit(true);
+      const updated = await auRubberApiClient.createCustomerCreditNotesForReturn(invoiceId);
+      setInvoice(updated);
+      showToast(
+        "Draft customer credit note(s) created — review them in customer tax invoices",
+        "success",
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not create customer credit note";
+      alert({ message: message, variant: "error" });
+    } finally {
+      setIsCreatingCustomerCredit(false);
+    }
+  };
+
   const handleApprove = async () => {
     try {
       setIsApproving(true);
-      await auRubberApiClient.approveTaxInvoice(invoiceId);
+      const updated = await auRubberApiClient.approveTaxInvoice(invoiceId);
+      // If a returned credit note left rolls unprocessed (wrong supplier, not
+      // found, manual kg), stay on the page so the operator sees the warning
+      // banner rather than being redirected away from it.
+      if (updated.returnExceptions.length > 0 || updated.customerCreditNeeded.length > 0) {
+        setInvoice(updated);
+        showToast("Approved — some returned rolls need your attention", "warning");
+        return;
+      }
       showToast("Invoice approved successfully", "success");
       const listPath =
         invoice?.invoiceType === "CUSTOMER"
@@ -437,10 +512,47 @@ export default function TaxInvoiceDetailPage() {
                 {isRecomputingCosts ? "Recomputing..." : "Recompute compound costs"}
               </button>
             )}
+          {invoice.status === "EXTRACTED" && invoice.isCreditNote && (
+            <div
+              className="inline-flex items-center gap-1 rounded-md border border-gray-300 p-0.5"
+              role="group"
+              aria-label="Credit note type"
+            >
+              <button
+                onClick={() => handleClassifyCreditNote("PHYSICAL_RETURN")}
+                disabled={isClassifying}
+                title="The supplier physically took rolls back — approving will remove them from stock"
+                className={`px-3 py-1.5 text-sm font-medium rounded disabled:opacity-50 ${
+                  invoice.creditNoteType === "PHYSICAL_RETURN"
+                    ? "bg-orange-600 text-white"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                Physical return
+              </button>
+              <button
+                onClick={() => handleClassifyCreditNote("FINANCIAL_ONLY")}
+                disabled={isClassifying}
+                title="Price adjustment / rebate / short delivery — no rolls returned, stock untouched"
+                className={`px-3 py-1.5 text-sm font-medium rounded disabled:opacity-50 ${
+                  invoice.creditNoteType === "FINANCIAL_ONLY"
+                    ? "bg-orange-600 text-white"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                Financial only
+              </button>
+            </div>
+          )}
           {invoice.status === "EXTRACTED" && (
             <button
               onClick={handleApprove}
-              disabled={isApproving}
+              disabled={isApproving || (invoice.isCreditNote && !invoice.creditNoteType)}
+              title={
+                invoice.isCreditNote && !invoice.creditNoteType
+                  ? "Classify this credit note as a physical return or financial-only before approving"
+                  : undefined
+              }
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <CheckCircle className={`w-4 h-4 mr-2 ${isApproving ? "animate-pulse" : ""}`} />
@@ -472,6 +584,68 @@ export default function TaxInvoiceDetailPage() {
           </button>
         </div>
       </div>
+
+      {invoice.customerCreditNeeded.length > 0 && (
+        <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-amber-900">
+                Customer credit note required
+              </h3>
+              <p className="mt-1 text-sm text-amber-800">
+                {invoice.customerCreditNeeded.length} returned roll
+                {invoice.customerCreditNeeded.length > 1 ? "s were" : " was"} already shipped to a
+                customer on an AU CoC, so {invoice.customerCreditNeeded.length > 1 ? "they" : "it"}{" "}
+                can't simply be un-shipped. Raise a customer credit note to keep the customer's
+                books straight:
+              </p>
+              <ul className="mt-2 space-y-0.5 text-sm text-amber-800">
+                {invoice.customerCreditNeeded.map((r) => {
+                  const cocLabel = r.auCocNumber;
+                  return (
+                    <li key={r.rollNumber}>
+                      • Roll <span className="font-medium">{r.rollNumber}</span> — AU CoC{" "}
+                      {cocLabel ?? `#${r.auCocId}`}
+                    </li>
+                  );
+                })}
+              </ul>
+              <button
+                onClick={handleCreateCustomerCredit}
+                disabled={isCreatingCustomerCredit}
+                className="mt-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isCreatingCustomerCredit ? "Creating..." : "Create customer credit note(s)"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {invoice.returnExceptions.length > 0 && (
+        <div className="mb-6 rounded-lg border border-red-300 bg-red-50 p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-red-900">
+                Some returned rolls need attention
+              </h3>
+              <p className="mt-1 text-sm text-red-800">
+                These rolls on this credit note were not fully processed when it was approved:
+              </p>
+              <ul className="mt-2 space-y-1 text-sm text-red-800">
+                {invoice.returnExceptions.map((e) => (
+                  <li key={`${e.reason}-${e.rollNumber}`}>
+                    • Roll <span className="font-medium">{e.rollNumber}</span> —{" "}
+                    {returnExceptionLabel(e.reason)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
         <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">

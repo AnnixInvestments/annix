@@ -2072,6 +2072,22 @@ class AuRubberApiClient {
     path: (id) => `/rubber-lining/portal/tax-invoices/${id}/refile-stock`,
   });
 
+  classifyCreditNote = createEndpoint<
+    [id: number, creditNoteType: "PHYSICAL_RETURN" | "FINANCIAL_ONLY"],
+    RubberTaxInvoiceDto
+  >(apiClient, "PUT", {
+    path: (id) => `/rubber-lining/portal/tax-invoices/${id}/credit-note-type`,
+    body: (_id, creditNoteType) => ({ creditNoteType }),
+  });
+
+  createCustomerCreditNotesForReturn = createEndpoint<[id: number], RubberTaxInvoiceDto>(
+    apiClient,
+    "POST",
+    {
+      path: (id) => `/rubber-lining/portal/tax-invoices/${id}/customer-credit-notes`,
+    },
+  );
+
   linkTaxInvoiceCalenderRollCoc = createEndpoint<
     [id: number, cocId: number | null],
     RubberTaxInvoiceDto
@@ -2154,6 +2170,7 @@ class AuRubberApiClient {
       companyId?: number;
       invoiceNumber?: string;
       invoiceDate?: string;
+      isCreditNote?: boolean;
     },
   ): Promise<{ taxInvoiceIds: number[] }> {
     return this.requestWithFiles("/rubber-lining/portal/tax-invoices/upload", files, {
@@ -2161,6 +2178,7 @@ class AuRubberApiClient {
       companyId: data.companyId,
       invoiceNumber: data.invoiceNumber,
       invoiceDate: data.invoiceDate,
+      isCreditNote: data.isCreditNote ? "true" : undefined,
     });
   }
 

@@ -430,9 +430,11 @@ export default function SupplierTaxInvoicesPage() {
           companyId: uploadSupplierId,
           invoiceNumber: uploadInvoiceNumber || undefined,
           invoiceDate: uploadInvoiceDate || undefined,
+          isCreditNote: uploadIsCreditNote || undefined,
         });
+        const docLabel = uploadIsCreditNote ? "credit note" : "tax invoice";
         alert({
-          message: `${uploadFiles.length} tax invoice${uploadFiles.length > 1 ? "s" : ""} uploaded`,
+          message: `${uploadFiles.length} ${docLabel}${uploadFiles.length > 1 ? "s" : ""} uploaded — NIX is extracting the details`,
           variant: "success",
         });
       } else {
@@ -1311,24 +1313,38 @@ export default function SupplierTaxInvoicesPage() {
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Invoice Number</label>
-                  <input
-                    type="text"
-                    value={uploadInvoiceNumber}
-                    onChange={(e) => setUploadInvoiceNumber(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm border p-2"
-                    placeholder="e.g., INV-001"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Invoice Date</label>
-                  <DateInput
-                    value={uploadInvoiceDate}
-                    onChange={(value) => setUploadInvoiceDate(value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm border p-2"
-                  />
-                </div>
+                {uploadFiles.length > 0 ? (
+                  <p className="text-sm text-gray-500">
+                    NIX reads the {uploadIsCreditNote ? "credit note" : "invoice"} number, date and
+                    rolls from the document — you don't need to enter them. Review the extracted
+                    details after upload.
+                  </p>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Invoice Number
+                      </label>
+                      <input
+                        type="text"
+                        value={uploadInvoiceNumber}
+                        onChange={(e) => setUploadInvoiceNumber(e.target.value)}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm border p-2"
+                        placeholder="e.g., INV-001"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Invoice Date
+                      </label>
+                      <DateInput
+                        value={uploadInvoiceDate}
+                        onChange={(value) => setUploadInvoiceDate(value)}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm border p-2"
+                      />
+                    </div>
+                  </>
+                )}
               </div>
               <div className="mt-6 flex justify-end space-x-3">
                 <button

@@ -13,6 +13,15 @@ export enum TaxInvoiceStatus {
   FAILED = "FAILED",
 }
 
+// A supplier credit note is not always a physical return of rolls — it can be a
+// pure financial credit (price adjustment, rebate, short delivery). Only a
+// PHYSICAL_RETURN removes rolls from stock / unwinds allocations; a
+// FINANCIAL_ONLY credit affects accounting only and never touches stock.
+export enum CreditNoteType {
+  PHYSICAL_RETURN = "PHYSICAL_RETURN",
+  FINANCIAL_ONLY = "FINANCIAL_ONLY",
+}
+
 export interface ExtractedRollDetail {
   rollNumber: string;
   weightKg: number | null;
@@ -88,11 +97,33 @@ export class RubberTaxInvoice {
 
   isCreditNote: boolean;
 
+  // Whether a credit note physically returns rolls or is a financial-only
+  // credit. Null until a human classifies it; stock effects only run for
+  // PHYSICAL_RETURN.
+  creditNoteType: CreditNoteType | null;
+
   originalInvoiceId: number | null;
 
   originalInvoice: RubberTaxInvoice | null;
 
   creditNoteRollNumbers: string[];
+
+  // Rolls returned on this (supplier) credit note that were already shipped to a
+  // customer on an AU CoC + CDN. Their certificate is already with the customer,
+  // so the system never silently un-ships them — it records them here and the UI
+  // prompts the user to raise a customer credit note. Cleared once handled.
+  customerCreditNeeded: {
+    rollNumber: string;
+    auCocId: number;
+    customerDeliveryNoteId: number;
+  }[];
+
+  // Rolls on a returned (PHYSICAL_RETURN) credit note that could not be fully
+  // processed at approval, with a reason code, so the operator is shown what
+  // still needs attention: WRONG_SUPPLIER (skipped — belongs to another
+  // supplier, likely an OCR mis-read), NOT_FOUND (roll not in stock), or
+  // MANUAL_KG (returned but kg not auto-deducted — manual adjustment needed).
+  returnExceptions: { rollNumber: string; reason: string }[];
 
   linkedAuCocId: number | null;
 

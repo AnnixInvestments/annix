@@ -159,7 +159,11 @@ import { RollRejectionStatus } from "./entities/rubber-roll-rejection.entity";
 import { RollStockStatus } from "./entities/rubber-roll-stock.entity";
 import { ReconciliationStatus } from "./entities/rubber-statement-reconciliation.entity";
 import { CocProcessingStatus, SupplierCocType } from "./entities/rubber-supplier-coc.entity";
-import { TaxInvoiceStatus, TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
+import {
+  CreditNoteType,
+  TaxInvoiceStatus,
+  TaxInvoiceType,
+} from "./entities/rubber-tax-invoice.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
 import { AuRubberFeatureGuard } from "./guards/au-rubber-feature.guard";
 import {
@@ -3823,6 +3827,38 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiParam({ name: "id", description: "Tax invoice ID" })
   async approveTaxInvoice(@Param("id") id: string): Promise<RubberTaxInvoiceDto> {
     const invoice = await this.rubberTaxInvoiceService.approveTaxInvoice(Number(id));
+    if (!invoice) throw new NotFoundException("Tax invoice not found");
+    return invoice;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
+  @ApiBearerAuth()
+  @Put("portal/tax-invoices/:id/credit-note-type")
+  @ApiOperation({ summary: "Classify a credit note as a physical return or financial-only credit" })
+  @ApiParam({ name: "id", description: "Tax invoice ID" })
+  async classifyCreditNote(
+    @Param("id") id: string,
+    @Body() body: { creditNoteType: CreditNoteType },
+  ): Promise<RubberTaxInvoiceDto> {
+    const invoice = await this.rubberTaxInvoiceService.classifyCreditNote(
+      Number(id),
+      body.creditNoteType,
+    );
+    if (!invoice) throw new NotFoundException("Tax invoice not found");
+    return invoice;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
+  @ApiBearerAuth()
+  @Post("portal/tax-invoices/:id/customer-credit-notes")
+  @ApiOperation({
+    summary: "Raise draft customer credit note(s) for rolls returned that were already shipped",
+  })
+  @ApiParam({ name: "id", description: "Tax invoice ID" })
+  async createCustomerCreditNotesForReturn(@Param("id") id: string): Promise<RubberTaxInvoiceDto> {
+    const invoice = await this.rubberTaxInvoiceService.createCustomerCreditNotesForReturn(
+      Number(id),
+    );
     if (!invoice) throw new NotFoundException("Tax invoice not found");
     return invoice;
   }

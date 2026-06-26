@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, Logger } from "@nestjs/common";
 import { PDFDocument } from "pdf-lib";
-import { formatISODate, fromISO, generateUniqueId } from "../lib/datetime";
+import { formatISODate, fromISO, generateUniqueId, now } from "../lib/datetime";
 import { PaginatedResult } from "../lib/dto/pagination-query.dto";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import {
@@ -13,6 +13,7 @@ import { ProductCodingType, RubberProductCoding } from "./entities/rubber-produc
 import { RollStockStatus } from "./entities/rubber-roll-stock.entity";
 import { SupplierCocType } from "./entities/rubber-supplier-coc.entity";
 import {
+  CreditNoteType,
   ExtractedTaxInvoiceData,
   RubberTaxInvoice,
   TaxInvoiceStatus,
@@ -24,6 +25,7 @@ import {
   auRubberDocumentPath,
   sanitizeAuRubberDocNumber,
 } from "./lib/au-rubber-document-paths";
+import { RubberAuCocRepository } from "./repositories/rubber-au-coc.repository";
 import { RubberCompanyRepository } from "./repositories/rubber-company.repository";
 import { RubberDeliveryNoteRepository } from "./repositories/rubber-delivery-note.repository";
 import { RubberProductRepository } from "./repositories/rubber-product.repository";
@@ -88,9 +90,12 @@ export interface RubberTaxInvoiceDto {
   versionStatusLabel: string;
   previousVersionId: number | null;
   isCreditNote: boolean;
+  creditNoteType: CreditNoteType | null;
   originalInvoiceId: number | null;
   originalInvoiceNumber: string | null;
   creditNoteRollNumbers: string[];
+  customerCreditNeeded: { rollNumber: string; auCocId: number; auCocNumber: string | null }[];
+  returnExceptions: { rollNumber: string; reason: string }[];
   linkedCalenderRollCocId: number | null;
   linkedCalenderRollCocNumber: string | null;
 }
@@ -122,6 +127,32 @@ export interface UpdateTaxInvoiceDto {
   correctedBy?: string;
 }
 
+interface CreditNoteReturnShippedRoll {
+  rollNumber: string;
+  auCocId: number;
+  customerDeliveryNoteId: number;
+}
+
+export interface CreditNoteReturnResult {
+  rejected: number;
+  deductedKg: number;
+  alreadyShipped: CreditNoteReturnShippedRoll[];
+  unmatched: string[];
+  // Rolls whose number matched a roll that AU received from a DIFFERENT supplier
+  // than the one issuing this credit note — a strong sign of an OCR mis-read, so
+  // they are skipped (not rejected/deducted) rather than corrupting the wrong roll.
+  wrongSupplier: string[];
+  // Rolls that were returned (marked REJECTED) but whose kg could not be
+  // auto-deducted — no compound coding, or an implausible weight — so a human
+  // must adjust compound stock manually.
+  needsManualKg: string[];
+}
+
+// A single rubber roll is realistically well under this; a weight above it is
+// almost certainly an OCR mis-read (e.g. "5000" for "50.00"), so the kg is not
+// auto-deducted and is left for a manual stock adjustment instead.
+const MAX_RETURN_ROLL_WEIGHT_KG = 5000;
+
 @Injectable()
 export class RubberTaxInvoiceService {
   private readonly logger = new Logger(RubberTaxInvoiceService.name);
@@ -138,6 +169,7 @@ export class RubberTaxInvoiceService {
     private rubberStockService: RubberStockService,
     private versioningService: RubberDocumentVersioningService,
     private rollStockService: RubberRollStockService,
+    private auCocRepository: RubberAuCocRepository,
     @Inject(STORAGE_SERVICE)
     private storageService: IStorageService,
   ) {}
@@ -405,7 +437,21 @@ export class RubberTaxInvoiceService {
     await this.taxInvoiceRepository.save(invoice);
 
     if (invoice.isCreditNote) {
-      await this.processCreditNoteRollRejections(invoice);
+      const creditResult = await this.processCreditNoteRollRejections(invoice);
+      // Persist the rolls that did not fully process so the detail page can show
+      // the operator exactly what still needs attention.
+      invoice.returnExceptions = [
+        ...creditResult.wrongSupplier.map((rollNumber) => ({
+          rollNumber,
+          reason: "WRONG_SUPPLIER",
+        })),
+        ...creditResult.unmatched.map((rollNumber) => ({ rollNumber, reason: "NOT_FOUND" })),
+        ...creditResult.needsManualKg.map((rollNumber) => ({ rollNumber, reason: "MANUAL_KG" })),
+      ];
+      await this.taxInvoiceRepository.save(invoice);
+      if (creditResult.alreadyShipped.length > 0) {
+        await this.flagCustomerCreditNeeded(invoice, creditResult);
+      }
     } else if (invoice.invoiceType === TaxInvoiceType.SUPPLIER) {
       const isCalendarer = await this.isCalendarerCompany(invoice.companyId);
       if (isCalendarer) {
@@ -418,6 +464,27 @@ export class RubberTaxInvoiceService {
       await this.processCustomerPerRollShipment(invoice);
     }
 
+    const result = await this.taxInvoiceRepository.findOneByIdWithCompany(id);
+    return this.mapSingleToDto(result!);
+  }
+
+  async classifyCreditNote(
+    id: number,
+    creditNoteType: CreditNoteType,
+  ): Promise<RubberTaxInvoiceDto | null> {
+    const invoice = await this.taxInvoiceRepository.findOneByIdWithCompany(id);
+    if (!invoice) return null;
+    if (!invoice.isCreditNote) {
+      throw new BadRequestException("Only a credit note can be classified");
+    }
+    // Classification drives the destructive stock effect at approval time, so it
+    // must be locked once approved — otherwise a FINANCIAL_ONLY could be flipped
+    // to PHYSICAL_RETURN after the fact, leaving stock and the record out of sync.
+    if (invoice.status === TaxInvoiceStatus.APPROVED) {
+      throw new BadRequestException("Cannot re-classify an already-approved credit note");
+    }
+    invoice.creditNoteType = creditNoteType;
+    await this.taxInvoiceRepository.save(invoice);
     const result = await this.taxInvoiceRepository.findOneByIdWithCompany(id);
     return this.mapSingleToDto(result!);
   }
@@ -1258,38 +1325,284 @@ export class RubberTaxInvoiceService {
     return { quantity: aiQuantity, unit: aiUnit };
   }
 
-  private async processCreditNoteRollRejections(invoice: RubberTaxInvoice): Promise<void> {
+  private async processCreditNoteRollRejections(
+    invoice: RubberTaxInvoice,
+  ): Promise<CreditNoteReturnResult> {
+    const empty: CreditNoteReturnResult = {
+      rejected: 0,
+      deductedKg: 0,
+      alreadyShipped: [],
+      unmatched: [],
+      wrongSupplier: [],
+      needsManualKg: [],
+    };
+
+    // Only a physical return removes rolls from stock. A financial-only credit
+    // (price adjustment / rebate / short delivery), or one not yet classified,
+    // never touches stock or allocations.
+    if (invoice.creditNoteType !== CreditNoteType.PHYSICAL_RETURN) {
+      this.logger.log(
+        `Credit note ${invoice.invoiceNumber}: creditNoteType=${invoice.creditNoteType ?? "unclassified"} — no stock effect (only a PHYSICAL_RETURN removes rolls)`,
+      );
+      return empty;
+    }
+
     const rollNumbers = invoice.creditNoteRollNumbers;
     if (!rollNumbers || rollNumbers.length === 0) {
-      this.logger.log(`Credit note ${invoice.invoiceNumber} has no roll numbers to reject`);
-      return;
+      this.logger.log(`Credit note ${invoice.invoiceNumber} has no roll numbers to return`);
+      return empty;
     }
+
+    // Idempotency: re-approving must not deduct kg twice.
+    const alreadyDeducted = await this.rubberStockService.movementExistsForReference(
+      CompoundMovementReferenceType.CREDIT_NOTE_RETURN,
+      invoice.id,
+    );
 
     const rolls = await this.rollStockRepository.findManyByRollNumbers(rollNumbers);
 
-    const rejectedCount = await rolls.reduce(async (prevPromise, roll) => {
-      const count = await prevPromise;
-      if (roll.status === RollStockStatus.REJECTED) {
-        this.logger.log(`Roll ${roll.rollNumber} already rejected, skipping`);
-        return count;
+    // Resolve each matched roll's source supplier (the company on the supplier
+    // tax invoice it was received against) so we can reject only rolls that AU
+    // actually got from THIS supplier. A roll number from OCR can collide with an
+    // unrelated roll from another supplier; rejecting that would corrupt the
+    // wrong stock, so any positive cross-supplier mismatch is skipped.
+    const sourceInvoiceIds = Array.from(
+      new Set(rolls.map((r) => r.supplierTaxInvoiceId).filter((idv): idv is number => idv != null)),
+    );
+    const supplierByInvoiceId = new Map<number, number>();
+    if (sourceInvoiceIds.length > 0) {
+      const sourceInvoices =
+        await this.taxInvoiceRepository.findManyByIdsWithCompany(sourceInvoiceIds);
+      for (const si of sourceInvoices) {
+        supplierByInvoiceId.set(si.id, si.companyId);
       }
-      roll.status = RollStockStatus.REJECTED;
-      await this.rollStockRepository.save(roll);
-      this.logger.log(
-        `Rejected roll ${roll.rollNumber} (id=${roll.id}) via credit note ${invoice.invoiceNumber}`,
-      );
-      return count + 1;
-    }, Promise.resolve(0));
+    }
+
+    const tallied = await rolls.reduce<Promise<CreditNoteReturnResult>>(
+      async (prevPromise, roll) => {
+        const acc = await prevPromise;
+
+        // Skip a roll whose KNOWN source supplier differs from this credit note's
+        // supplier — almost certainly an OCR mis-read onto an unrelated roll.
+        // Rolls with no traceable source (e.g. opening stock) are left alone.
+        const rollSupplierId =
+          roll.supplierTaxInvoiceId != null
+            ? supplierByInvoiceId.get(roll.supplierTaxInvoiceId)
+            : undefined;
+        if (rollSupplierId != null && rollSupplierId !== invoice.companyId) {
+          this.logger.warn(
+            `Credit note ${invoice.invoiceNumber}: roll ${roll.rollNumber} belongs to supplier #${rollSupplierId}, not this credit note's supplier #${invoice.companyId} — skipped (likely OCR mis-read)`,
+          );
+          return { ...acc, wrongSupplier: [...acc.wrongSupplier, roll.rollNumber] };
+        }
+
+        // A roll already certified AND shipped to a customer (on an AU CoC + a
+        // customer delivery note) is FLAGGED, never silently un-allocated — its
+        // certificate is already with the customer. Returning it requires a
+        // customer credit note to bring the books straight.
+        const isAlreadyShipped = roll.auCocId != null && roll.customerDeliveryNoteId != null;
+        const alreadyShipped = isAlreadyShipped
+          ? [
+              ...acc.alreadyShipped,
+              {
+                rollNumber: roll.rollNumber,
+                auCocId: roll.auCocId as number,
+                customerDeliveryNoteId: roll.customerDeliveryNoteId as number,
+              },
+            ]
+          : acc.alreadyShipped;
+
+        const wasRejected = roll.status === RollStockStatus.REJECTED;
+        if (!wasRejected) {
+          roll.status = RollStockStatus.REJECTED;
+          await this.rollStockRepository.save(roll);
+          this.logger.log(
+            `Returned roll ${roll.rollNumber} (id=${roll.id}) via credit note ${invoice.invoiceNumber}`,
+          );
+        }
+
+        const weightKg = roll.weightKg ?? 0;
+        const weightSane = weightKg > 0 && weightKg <= MAX_RETURN_ROLL_WEIGHT_KG;
+        const canDeduct = !alreadyDeducted && roll.compoundCodingId != null && weightSane;
+        let needsManualKg = acc.needsManualKg;
+        if (canDeduct) {
+          await this.rubberStockService.deductCompoundStockByCoding(
+            roll.compoundCodingId as number,
+            weightKg,
+            CompoundMovementReferenceType.CREDIT_NOTE_RETURN,
+            invoice.id,
+            `Credit note ${invoice.invoiceNumber} return (roll ${roll.rollNumber}, ${weightKg.toFixed(1)} kg)`,
+          );
+        } else if (!alreadyDeducted && roll.compoundCodingId == null) {
+          needsManualKg = [...needsManualKg, roll.rollNumber];
+          this.logger.warn(
+            `Credit note ${invoice.invoiceNumber}: roll ${roll.rollNumber} has no compound coding — kg not deducted, manual stock adjustment needed`,
+          );
+        } else if (!alreadyDeducted && roll.compoundCodingId != null && !weightSane) {
+          needsManualKg = [...needsManualKg, roll.rollNumber];
+          this.logger.warn(
+            `Credit note ${invoice.invoiceNumber}: roll ${roll.rollNumber} has an implausible weight (${weightKg} kg) — kg not deducted, manual stock adjustment needed`,
+          );
+        }
+
+        return {
+          rejected: acc.rejected + (wasRejected ? 0 : 1),
+          deductedKg: acc.deductedKg + (canDeduct ? weightKg : 0),
+          alreadyShipped,
+          unmatched: acc.unmatched,
+          wrongSupplier: acc.wrongSupplier,
+          needsManualKg,
+        };
+      },
+      Promise.resolve(empty),
+    );
 
     const unmatched = rollNumbers.filter((rn) => !rolls.some((r) => r.rollNumber === rn));
-    if (unmatched.length > 0) {
+    const result: CreditNoteReturnResult = { ...tallied, unmatched };
+
+    if (result.wrongSupplier.length > 0) {
       this.logger.warn(
-        `Credit note ${invoice.invoiceNumber}: could not find rolls in stock: ${unmatched.join(", ")}`,
+        `Credit note ${invoice.invoiceNumber}: ${result.wrongSupplier.length} roll(s) skipped — they belong to a different supplier (likely OCR mis-read): ${result.wrongSupplier.join(", ")}`,
       );
     }
 
+    if (result.alreadyShipped.length > 0) {
+      this.logger.warn(
+        `Credit note ${invoice.invoiceNumber}: ${result.alreadyShipped.length} returned roll(s) were ALREADY shipped to a customer — a customer credit note is required: ${result.alreadyShipped
+          .map((s) => `${s.rollNumber}→AU CoC ${s.auCocId}`)
+          .join(", ")}`,
+      );
+    }
+    if (unmatched.length > 0) {
+      this.logger.warn(
+        `Credit note ${invoice.invoiceNumber}: rolls not found in stock: ${unmatched.join(", ")}`,
+      );
+    }
     this.logger.log(
-      `Credit note ${invoice.invoiceNumber}: rejected ${rejectedCount} roll(s), ${unmatched.length} not found in stock`,
+      `Credit note ${invoice.invoiceNumber}: returned ${result.rejected} roll(s), deducted ${result.deductedKg.toFixed(1)} kg, ${result.alreadyShipped.length} already-shipped, ${unmatched.length} unmatched, ${result.wrongSupplier.length} wrong-supplier`,
+    );
+    return result;
+  }
+
+  // A returned roll that was already certified + shipped to a customer needs a
+  // customer credit note to balance the books. Default behaviour is prompt-only
+  // (the UI surfaces the rejected-but-still-allocated rolls); flipping
+  // AU_RUBBER_AUTO_CREATE_CUSTOMER_CREDIT=true switches on auto-drafting, which
+  // a human still approves before it is issued.
+  private async flagCustomerCreditNeeded(
+    invoice: RubberTaxInvoice,
+    result: CreditNoteReturnResult,
+  ): Promise<void> {
+    // Always record the shipped rolls on the invoice so the UI can prompt the
+    // user to raise the customer credit note (manual path).
+    invoice.customerCreditNeeded = result.alreadyShipped.map((s) => ({
+      rollNumber: s.rollNumber,
+      auCocId: s.auCocId,
+      customerDeliveryNoteId: s.customerDeliveryNoteId,
+    }));
+    await this.taxInvoiceRepository.save(invoice);
+
+    const autoCreate = process.env.AU_RUBBER_AUTO_CREATE_CUSTOMER_CREDIT === "true";
+    if (!autoCreate) {
+      this.logger.log(
+        `Credit note ${invoice.invoiceNumber}: ${result.alreadyShipped.length} shipped roll(s) need a customer credit note — prompting in the UI (auto-create off)`,
+      );
+      return;
+    }
+
+    // Auto-create path (env-gated): raise the draft customer credit notes now and
+    // clear the prompt, since they no longer need a manual trigger. Warn loudly —
+    // this issues financial documents without an explicit per-event human click,
+    // so it must be visible in the logs whenever it fires.
+    this.logger.warn(
+      `Credit note ${invoice.invoiceNumber}: AU_RUBBER_AUTO_CREATE_CUSTOMER_CREDIT is ON — auto-drafting customer credit note(s) for ${result.alreadyShipped.length} shipped roll(s) without an explicit operator action`,
+    );
+    await this.autoCreateCustomerCreditDrafts(invoice, result);
+    invoice.customerCreditNeeded = [];
+    await this.taxInvoiceRepository.save(invoice);
+  }
+
+  // Manual trigger for the UI "Create customer credit note(s)" prompt: raises a
+  // draft customer credit note per affected AU CoC from the rolls recorded on
+  // this supplier credit note, then clears the prompt. Reuses the same drafting
+  // logic as the env-gated auto-create path.
+  async createCustomerCreditNotesForReturn(id: number): Promise<RubberTaxInvoiceDto | null> {
+    const invoice = await this.taxInvoiceRepository.findOneByIdWithCompany(id);
+    if (!invoice) return null;
+    const pending =
+      (invoice.customerCreditNeeded as
+        | { rollNumber: string; auCocId: number; customerDeliveryNoteId: number }[]
+        | undefined) ?? [];
+    if (pending.length === 0) {
+      throw new BadRequestException("No shipped rolls awaiting a customer credit note");
+    }
+    // Claim the work before drafting: clear the pending list and persist first so
+    // a concurrent/double-clicked call sees an empty list and is rejected, rather
+    // than both calls drafting a duplicate customer credit note per CoC.
+    invoice.customerCreditNeeded = [];
+    await this.taxInvoiceRepository.save(invoice);
+    await this.autoCreateCustomerCreditDrafts(invoice, {
+      rejected: 0,
+      deductedKg: 0,
+      alreadyShipped: pending,
+      unmatched: [],
+      wrongSupplier: [],
+      needsManualKg: [],
+    });
+    const result = await this.taxInvoiceRepository.findOneByIdWithCompany(id);
+    return this.mapSingleToDto(result!);
+  }
+
+  private async autoCreateCustomerCreditDrafts(
+    invoice: RubberTaxInvoice,
+    result: CreditNoteReturnResult,
+  ): Promise<void> {
+    // One draft customer credit note per affected AU CoC's customer; amounts are
+    // left null for a human to set from AU's own sale value (never the supplier
+    // credit value).
+    const rollsByCoc = result.alreadyShipped.reduce<Record<number, string[]>>(
+      (acc, shipped) => ({
+        ...acc,
+        [shipped.auCocId]: [...(acc[shipped.auCocId] ?? []), shipped.rollNumber],
+      }),
+      {},
+    );
+
+    await Object.entries(rollsByCoc).reduce<Promise<void>>(
+      async (prev, [cocIdStr, rollNumbers]) => {
+        await prev;
+        const auCoc = await this.auCocRepository.findById(Number(cocIdStr));
+        if (!auCoc?.customerCompanyId) {
+          this.logger.warn(
+            `Credit note ${invoice.invoiceNumber}: cannot auto-draft customer credit for AU CoC ${cocIdStr} — no customer on the CoC`,
+          );
+          return;
+        }
+
+        const draft = this.taxInvoiceRepository.build({
+          firebaseUid: `pg_${generateUniqueId()}`,
+          invoiceNumber: `CCN-${auCoc.cocNumber}`,
+          invoiceDate: now().toJSDate(),
+          invoiceType: TaxInvoiceType.CUSTOMER,
+          companyId: auCoc.customerCompanyId,
+          documentPath: null,
+          status: TaxInvoiceStatus.PENDING,
+          totalAmount: null,
+          vatAmount: null,
+          createdBy: `auto: return on supplier credit #${invoice.id} (${invoice.invoiceNumber})`,
+          version: 1,
+          previousVersionId: null,
+          versionStatus: DocumentVersionStatus.ACTIVE,
+          isCreditNote: true,
+          creditNoteType: CreditNoteType.PHYSICAL_RETURN,
+          creditNoteRollNumbers: rollNumbers,
+        });
+        await this.taxInvoiceRepository.create(draft);
+        this.logger.log(
+          `Auto-drafted customer credit note CCN-${auCoc.cocNumber} for customer ${auCoc.customerCompanyId} (${rollNumbers.length} roll(s)) from supplier credit ${invoice.invoiceNumber}`,
+        );
+      },
+      Promise.resolve(),
     );
   }
 
@@ -1306,7 +1619,29 @@ export class RubberTaxInvoiceService {
         cocNumberById.set(coc.id, coc.cocNumber);
       }
     }
-    return invoices.map((inv) => this.mapToDto(inv, cocNumberById));
+
+    // customerCreditNeeded references AU CoC ids (a different id space from the
+    // supplier CoCs above), so resolve their numbers from the AU CoC repository
+    // into a separate map — mixing the two id spaces would risk a wrong label.
+    const auCocIds = Array.from(
+      new Set(
+        invoices.flatMap(
+          (inv) =>
+            (inv.customerCreditNeeded as { auCocId: number }[] | undefined)?.map(
+              (r) => r.auCocId,
+            ) ?? [],
+        ),
+      ),
+    );
+    const auCocNumberById = new Map<number, string | null>();
+    if (auCocIds.length > 0) {
+      const auCocs = await this.auCocRepository.findByIdsOrderedById(auCocIds);
+      for (const coc of auCocs) {
+        auCocNumberById.set(coc.id, coc.cocNumber);
+      }
+    }
+
+    return invoices.map((inv) => this.mapToDto(inv, cocNumberById, auCocNumberById));
   }
 
   private async mapSingleToDto(invoice: RubberTaxInvoice): Promise<RubberTaxInvoiceDto> {
@@ -1317,6 +1652,7 @@ export class RubberTaxInvoiceService {
   private mapToDto(
     invoice: RubberTaxInvoice,
     cocNumberById?: Map<number, string | null>,
+    auCocNumberById?: Map<number, string | null>,
   ): RubberTaxInvoiceDto {
     const productSummary = this.extractProductSummary(invoice.extractedData);
     const linkedCalenderRollCocId = invoice.linkedCalenderRollCocId ?? null;
@@ -1355,9 +1691,20 @@ export class RubberTaxInvoiceService {
       versionStatusLabel: DOCUMENT_VERSION_STATUS_LABELS[invoice.versionStatus],
       previousVersionId: invoice.previousVersionId,
       isCreditNote: invoice.isCreditNote ?? false,
+      creditNoteType: (invoice.creditNoteType as CreditNoteType | null) ?? null,
       originalInvoiceId: invoice.originalInvoiceId ?? null,
       originalInvoiceNumber: invoice.originalInvoice?.invoiceNumber ?? null,
       creditNoteRollNumbers: invoice.creditNoteRollNumbers ?? [],
+      customerCreditNeeded: (
+        (invoice.customerCreditNeeded as { rollNumber: string; auCocId: number }[] | undefined) ??
+        []
+      ).map((r) => ({
+        rollNumber: r.rollNumber,
+        auCocId: r.auCocId,
+        auCocNumber: auCocNumberById?.get(r.auCocId) ?? null,
+      })),
+      returnExceptions:
+        (invoice.returnExceptions as { rollNumber: string; reason: string }[] | undefined) ?? [],
       linkedCalenderRollCocId,
       linkedCalenderRollCocNumber,
     };
