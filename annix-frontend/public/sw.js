@@ -1,27 +1,25 @@
-const CACHE_NAME = "fieldflow-v3";
-const STATIC_CACHE_NAME = "fieldflow-static-v3";
-const DYNAMIC_CACHE_NAME = "fieldflow-dynamic-v3";
-const API_CACHE_NAME = "fieldflow-api-v3";
+// This worker is registered for Annix Pulse at scope /annix-pulse (see
+// ServiceWorkerRegistration). Its routes and cache names were inherited from
+// the app's former FieldFlow identity and pointed at /fieldflow, so under the
+// /annix-pulse scope the navigation/offline logic never matched — it is now
+// aligned to the real /annix-pulse paths.
+const CACHE_NAME = "annix-pulse-v1";
+const STATIC_CACHE_NAME = "annix-pulse-static-v1";
+const DYNAMIC_CACHE_NAME = "annix-pulse-dynamic-v1";
+const API_CACHE_NAME = "annix-pulse-api-v1";
 
 const STATIC_ASSETS = [
-  "/fieldflow",
-  "/fieldflow/prospects",
-  "/fieldflow/meetings",
-  "/fieldflow/schedule",
-  "/fieldflow/settings",
+  "/annix-pulse",
+  "/annix-pulse/prospects",
+  "/annix-pulse/meetings",
+  "/annix-pulse/schedule",
+  "/annix-pulse/settings",
   "/manifest.json",
 ];
 
-const API_ROUTES = [
-  "/fieldflow/prospects",
-  "/fieldflow/meetings",
-  "/fieldflow/meetings/today",
-  "/fieldflow/meetings/upcoming",
-  "/fieldflow/visits",
-  "/fieldflow/visits/today",
-];
+const API_ROUTES = ["/annix-pulse/prospects", "/annix-pulse/meetings", "/annix-pulse/visits"];
 
-const OFFLINE_FALLBACK_PAGE = "/fieldflow/offline";
+const OFFLINE_FALLBACK_PAGE = "/annix-pulse/offline";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -43,8 +41,11 @@ self.addEventListener("activate", (event) => {
         return Promise.all(
           cacheNames
             .filter((name) => {
+              // Purge this app's own old caches only — both the legacy
+              // fieldflow-* names and any superseded annix-pulse-* version.
+              // Never touch other apps' caches (orbit-*, stock-control-*).
               return (
-                name.startsWith("fieldflow-") &&
+                (name.startsWith("annix-pulse-") || name.startsWith("fieldflow-")) &&
                 name !== STATIC_CACHE_NAME &&
                 name !== DYNAMIC_CACHE_NAME &&
                 name !== API_CACHE_NAME
@@ -71,7 +72,7 @@ self.addEventListener("fetch", (event) => {
 
   if (
     url.pathname.startsWith("/api/") ||
-    (url.pathname.startsWith("/fieldflow/") && url.hostname !== self.location.hostname)
+    (url.pathname.startsWith("/annix-pulse/") && url.hostname !== self.location.hostname)
   ) {
     event.respondWith(handleApiRequest(request));
     return;
@@ -85,7 +86,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (url.pathname.startsWith("/fieldflow")) {
+  if (url.pathname.startsWith("/annix-pulse")) {
     event.respondWith(handleNavigationRequest(request));
     return;
   }
@@ -135,7 +136,7 @@ async function handleNavigationRequest(request) {
       `<!DOCTYPE html>
       <html>
         <head>
-          <title>Offline - FieldFlow</title>
+          <title>Offline - Annix Pulse</title>
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <style>
             body { font-family: system-ui; padding: 2rem; text-align: center; background: #0f172a; color: white; }
@@ -232,6 +233,9 @@ async function queueOfflineAction(action) {
 
 function openDatabase() {
   return new Promise((resolve, reject) => {
+    // Kept as "fieldflow-offline" deliberately: this DB holds queued offline
+    // mutations not yet synced. Renaming it would orphan a user's pending
+    // actions. The name is internal and never shown to users.
     const request = indexedDB.open("fieldflow-offline", 1);
 
     request.onerror = () => reject(request.error);
@@ -374,11 +378,11 @@ self.addEventListener("push", (event) => {
   const data = event.data.json();
 
   event.waitUntil(
-    self.registration.showNotification(data.title || "FieldFlow", {
+    self.registration.showNotification(data.title || "Annix Pulse", {
       body: data.body,
       icon: "/icons/icon-192x192.png",
       badge: "/icons/icon-72x72.png",
-      tag: data.tag || "fieldflow-notification",
+      tag: data.tag || "annix-pulse-notification",
       data: data.data,
     }),
   );
@@ -387,11 +391,11 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  const urlToOpen = event.notification.data?.url || "/fieldflow";
+  const urlToOpen = event.notification.data?.url || "/annix-pulse";
 
   event.waitUntil(
     self.clients.matchAll({ type: "window" }).then((clients) => {
-      const existingClient = clients.find((client) => client.url.includes("/fieldflow"));
+      const existingClient = clients.find((client) => client.url.includes("/annix-pulse"));
 
       if (existingClient) {
         existingClient.focus();
