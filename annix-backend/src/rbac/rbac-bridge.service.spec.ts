@@ -12,13 +12,15 @@ describe("RbacBridgeService (issue #311 step 4.1)", () => {
       create: jest.fn(),
     } as unknown as jest.Mocked<UserAppAccessRepository>;
     const accessDetailsCache = { invalidate: jest.fn() };
+    const cacheEpoch = { bump: jest.fn() };
     const service = new RbacBridgeService(
       appRepo,
       roleRepo,
       accessRepo,
       accessDetailsCache as never,
+      cacheEpoch as never,
     );
-    return { service, appRepo, roleRepo, accessRepo, accessDetailsCache };
+    return { service, appRepo, roleRepo, accessRepo, accessDetailsCache, cacheEpoch };
   };
 
   it("creates a grant with the resolved role when none exists", async () => {
@@ -36,7 +38,8 @@ describe("RbacBridgeService (issue #311 step 4.1)", () => {
   });
 
   it("invalidates the (userId, appCode) access-details cache after creating a grant", async () => {
-    const { service, appRepo, roleRepo, accessRepo, accessDetailsCache } = makeService();
+    const { service, appRepo, roleRepo, accessRepo, accessDetailsCache, cacheEpoch } =
+      makeService();
     appRepo.findByCode.mockResolvedValue({ id: 7, code: "au-rubber" } as never);
     accessRepo.findOneByUserAndApp.mockResolvedValue(null);
     roleRepo.findByAppIdAndCode.mockResolvedValue({ id: 3, code: "viewer" } as never);
@@ -45,6 +48,7 @@ describe("RbacBridgeService (issue #311 step 4.1)", () => {
     await service.ensureAppAccess(42, "au-rubber", "viewer");
 
     expect(accessDetailsCache.invalidate).toHaveBeenCalledWith(42, "au-rubber");
+    expect(cacheEpoch.bump).toHaveBeenCalled();
   });
 
   it("does not invalidate the cache when the grant already exists", async () => {

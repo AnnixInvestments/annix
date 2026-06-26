@@ -44,6 +44,7 @@ import {
   UserAppPermissionRepository,
 } from "./rbac.repository";
 import { RbacAccessDetailsCache } from "./rbac-access-details-cache";
+import { RbacCacheEpochService } from "./rbac-cache-epoch.service";
 import type { ResolvedAccessDetails } from "./resolved-access-details";
 
 export const STOCK_CONTROL_ROLE_NAMES: Record<string, string> = {
@@ -65,6 +66,7 @@ export class RbacService {
 
   constructor(
     private readonly accessDetailsCache: RbacAccessDetailsCache,
+    private readonly cacheEpoch: RbacCacheEpochService,
     private readonly appRepo: AppRepository,
     private readonly permissionRepo: AppPermissionRepository,
     private readonly roleRepo: AppRoleRepository,
@@ -96,14 +98,17 @@ export class RbacService {
 
   private invalidateAccessDetails(userId: number, appCode: string): void {
     this.accessDetailsCache.invalidate(userId, appCode);
+    this.cacheEpoch.bump();
   }
 
   private invalidateAccessDetailsForApp(appCode: string): void {
     this.accessDetailsCache.invalidateApp(appCode);
+    this.cacheEpoch.bump();
   }
 
   private clearAccessDetailsCache(): void {
     this.accessDetailsCache.clear();
+    this.cacheEpoch.bump();
   }
 
   private async appCodeForId(appId: number): Promise<string | null> {

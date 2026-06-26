@@ -49,6 +49,7 @@ function makeService() {
 
   const service = new RbacService(
     new RbacAccessDetailsCache() as never,
+    { bump: jest.fn() } as never,
     appRepo as never,
     permissionRepo as never,
     roleRepo as never,

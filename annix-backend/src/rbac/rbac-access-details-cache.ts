@@ -7,10 +7,10 @@ interface CachedAccessDetails {
   expiresAtMillis: number;
 }
 
-// Scale-out note: this cache is per-process. On multi-machine Fly (min_machines_running > 1)
-// each instance keeps its own copy, so an invalidation on one machine does not clear another —
-// a revoke/grant can stay stale for up to the TTL on other instances. Wire a shared invalidation
-// channel (Redis pub/sub or a Mongo version-stamp) before raising min_machines_running above 1.
+// Scale-out note: this cache is per-process. Cross-machine invalidation is handled by
+// RbacCacheEpochService (#405 devops-1) — every RBAC mutation bumps a Mongo epoch and each
+// machine clears on the next 5s poll — so it is safe at min_machines_running > 1. If that
+// service is ever removed, a revoke/grant would again stay stale for up to the TTL on peers.
 const ACCESS_DETAILS_TTL_MILLIS = 45_000;
 const ACCESS_DETAILS_CACHE_MAX_ENTRIES = 50_000;
 

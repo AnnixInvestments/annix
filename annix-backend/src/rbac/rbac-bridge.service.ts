@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { now } from "../lib/datetime";
 import { AppRepository, AppRoleRepository, UserAppAccessRepository } from "./rbac.repository";
 import { RbacAccessDetailsCache } from "./rbac-access-details-cache";
+import { RbacCacheEpochService } from "./rbac-cache-epoch.service";
 
 /**
  * Low-dependency RBAC grant primitive for issue #311 step 4.1.
@@ -28,6 +29,7 @@ export class RbacBridgeService {
     private readonly roleRepo: AppRoleRepository,
     private readonly accessRepo: UserAppAccessRepository,
     private readonly accessDetailsCache: RbacAccessDetailsCache,
+    private readonly cacheEpoch: RbacCacheEpochService,
   ) {}
 
   async ensureAppAccess(userId: number, appCode: string, roleCode: string): Promise<void> {
@@ -54,6 +56,7 @@ export class RbacBridgeService {
         grantedAt: now().toJSDate(),
       });
       this.accessDetailsCache.invalidate(userId, appCode);
+      this.cacheEpoch.bump();
       this.logger.log(`Anchored user ${userId} to app '${appCode}' (role '${roleCode}')`);
     } catch (error) {
       this.logger.warn(

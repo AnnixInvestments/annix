@@ -5,24 +5,45 @@ import { cleanupEmptyCollections } from "../src/lib/persistence/empty-collection
 dotenvConfig({ path: ".env" });
 
 async function main(): Promise<void> {
-  const uri = process.env.MONGODB_URI;
-  const databaseName = process.env.MONGO_DATABASE;
+  const useOrbit = process.argv.includes("--orbit");
+  const uri = useOrbit ? process.env.ORBIT_MONGODB_URI : process.env.MONGODB_URI;
+  const databaseName = useOrbit ? process.env.ORBIT_MONGO_DATABASE : process.env.MONGO_DATABASE;
   if (!uri || !databaseName) {
-    throw new Error("MONGODB_URI and MONGO_DATABASE are required");
+    const required = useOrbit
+      ? "ORBIT_MONGODB_URI and ORBIT_MONGO_DATABASE"
+      : "MONGODB_URI and MONGO_DATABASE";
+    throw new Error(`${required} are required`);
   }
 
   const apply = process.argv.includes("--apply");
   const allowProduction =
     process.argv.includes("--allow-production") || process.env.ALLOW_PRODUCTION === "true";
+  const nearCapOnly = process.argv.includes("--near-cap-only");
+  const collectionCap = 500;
+  const nearCapThreshold = Number(process.env.EMPTY_SWEEP_THRESHOLD ?? 450);
 
-  if (databaseName === "annix_production" && !allowProduction) {
+  const protectedDatabaseName = useOrbit ? "orbit_production" : "annix_production";
+  if (databaseName === protectedDatabaseName && !allowProduction) {
     throw new Error(
-      "Refusing to target annix_production without --allow-production (or ALLOW_PRODUCTION=true)",
+      `Refusing to target ${protectedDatabaseName} without --allow-production (or ALLOW_PRODUCTION=true)`,
     );
   }
 
   const connection = await mongoose.createConnection(uri, { dbName: databaseName }).asPromise();
   try {
+    if (nearCapOnly && connection.db != null) {
+      const existing = await connection.db.listCollections({}, { nameOnly: true }).toArray();
+      if (existing.length < nearCapThreshold) {
+        console.log(
+          `Collection count ${existing.length} is below the near-cap threshold ${nearCapThreshold} (cap ${collectionCap}) in ${databaseName} — skipping deploy-time sweep (the nightly cron still sweeps fully).`,
+        );
+        return;
+      }
+      console.log(
+        `Collection count ${existing.length} >= near-cap threshold ${nearCapThreshold} (cap ${collectionCap}) in ${databaseName} — running sweep.`,
+      );
+    }
+
     const result = await cleanupEmptyCollections(connection, {
       apply,
       onProgress: (dropped, total) => console.log(`Dropped ${dropped}/${total}...`),

@@ -12,8 +12,10 @@ interface MigrateMongoDatabaseApi {
 type MigrateMongoUp = (db: unknown, client: unknown) => Promise<string[]>;
 
 // Auto-migration is a developer convenience and must never touch a shared
-// environment. Migrations on these databases run only through the deploy
-// release command, even if a local .env happens to point at them.
+// environment. This name list is a backstop behind the explicit opt-in gate in
+// runMongoMigrationsOnBoot (ALLOW_BOOT_MIGRATIONS / NODE_ENV=development): even
+// when boot migrations are enabled, these databases migrate only through the
+// deploy release command, even if a local .env happens to point at them.
 const CORE_PROTECTED_DATABASES = new Set(["annix_production", "annix_staging"]);
 const ORBIT_PROTECTED_DATABASES = new Set(["orbit_production", "orbit_staging"]);
 
@@ -89,6 +91,17 @@ export async function runMongoMigrationsOnBoot(): Promise<void> {
   const logger = new Logger("MongoMigrations");
 
   if (process.env.NODE_ENV === "production") {
+    return;
+  }
+
+  const bootMigrationsAllowed =
+    process.env.ALLOW_BOOT_MIGRATIONS === "true" || process.env.NODE_ENV === "development";
+  if (!bootMigrationsAllowed) {
+    logger.warn(
+      "Skipping auto-migration — boot migrations are opt-in. Set NODE_ENV=development or " +
+        "ALLOW_BOOT_MIGRATIONS=true on a dev machine, or run `pnpm migrate:up` manually. " +
+        "Shared environments migrate via the deploy release command only.",
+    );
     return;
   }
   if (!process.env.MONGODB_URI && !process.env.ORBIT_MONGODB_URI) {

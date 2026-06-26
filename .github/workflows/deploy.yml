@@ -67,7 +67,7 @@ jobs:
             run_staging=true
           elif { [ "$EVENT_NAME" = "push" ] && [ "$REF_NAME" = "main" ]; } || { [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$INPUT_ENVS" = "all" ]; }; then
             run_promote=true
-            promote="[${PROD},${TEST}]"
+            promote="[${TEST},${PROD}]"
             if [ -n "$HOLDER" ]; then
               echo "::warning title=Staging claim held::PR #${HOLDER} holds the \`on-staging\` claim. The staging smoke-test is SKIPPED for this run; prod + test still deploy."
               run_staging=false
@@ -195,18 +195,21 @@ jobs:
 
       - name: Verify app is serving traffic (staging)
         run: |
-          URL="https://annix-app-staging.fly.dev/health"
-          echo "Probing $URL until healthy..."
+          BASE="https://annix-app-staging.fly.dev"
+          echo "Probing $BASE/api/health/db until DB-ready (Fly liveness still uses $BASE/health)..."
           for i in $(seq 1 30); do
-            CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL" || echo "000")
-            if [ "$CODE" = "200" ]; then
-              echo "App healthy after $i attempt(s) (HTTP $CODE)"
+            BODY=$(curl -s --max-time 10 "$BASE/api/health/db" || echo "")
+            MAIN=$(printf '%s' "$BODY" | jq -r '.main.connected' 2>/dev/null || echo "")
+            ORBIT_CONN=$(printf '%s' "$BODY" | jq -r '.orbit.connected' 2>/dev/null || echo "")
+            ORBIT_DB=$(printf '%s' "$BODY" | jq -r '.orbit.database' 2>/dev/null || echo "")
+            if [ "$MAIN" = "true" ] && { [ "$ORBIT_CONN" = "true" ] || [ "$ORBIT_DB" = "null" ]; }; then
+              echo "App DB-ready after $i attempt(s) (main.connected=$MAIN orbit.connected=$ORBIT_CONN)"
               exit 0
             fi
-            echo "Attempt $i: HTTP $CODE - not serving yet, retrying in 10s..."
+            echo "Attempt $i: main.connected=$MAIN orbit.connected=$ORBIT_CONN - not DB-ready, retrying in 10s..."
             sleep 10
           done
-          echo "App did not return HTTP 200 on /health within timeout - staging deploy is unhealthy"
+          echo "App did not report main(+orbit) DB connectivity on /api/health/db within timeout - staging deploy is unhealthy"
           exit 1
 
       - name: Get Logs on Failure
@@ -224,8 +227,12 @@ jobs:
       && needs.build-image.result == 'success'
       && (needs.deploy-staging.result == 'success' || needs.deploy-staging.result == 'skipped')
     strategy:
+      # Sequential (max-parallel 1) with the matrix ordered test-first, prod-last:
+      # test (which serves real Orbit users) acts as the canary and must deploy +
+      # pass its DB-readiness verify before prod promotes. fail-fast cancels prod
+      # if test fails, so a bad shared deploy never reaches prod and test together.
       fail-fast: true
-      max-parallel: 2
+      max-parallel: 1
       matrix:
         include: ${{ fromJson(needs.plan.outputs.promote_matrix) }}
     environment: ${{ matrix.environment }}
@@ -259,18 +266,21 @@ jobs:
 
       - name: Verify app is serving traffic (${{ matrix.environment }})
         run: |
-          URL="https://${{ matrix.app_name }}.fly.dev/health"
-          echo "Probing $URL until healthy..."
+          BASE="https://${{ matrix.app_name }}.fly.dev"
+          echo "Probing $BASE/api/health/db until DB-ready (Fly liveness still uses $BASE/health)..."
           for i in $(seq 1 30); do
-            CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL" || echo "000")
-            if [ "$CODE" = "200" ]; then
-              echo "App healthy after $i attempt(s) (HTTP $CODE)"
+            BODY=$(curl -s --max-time 10 "$BASE/api/health/db" || echo "")
+            MAIN=$(printf '%s' "$BODY" | jq -r '.main.connected' 2>/dev/null || echo "")
+            ORBIT_CONN=$(printf '%s' "$BODY" | jq -r '.orbit.connected' 2>/dev/null || echo "")
+            ORBIT_DB=$(printf '%s' "$BODY" | jq -r '.orbit.database' 2>/dev/null || echo "")
+            if [ "$MAIN" = "true" ] && { [ "$ORBIT_CONN" = "true" ] || [ "$ORBIT_DB" = "null" ]; }; then
+              echo "App DB-ready after $i attempt(s) (main.connected=$MAIN orbit.connected=$ORBIT_CONN)"
               exit 0
             fi
-            echo "Attempt $i: HTTP $CODE - not serving yet, retrying in 10s..."
+            echo "Attempt $i: main.connected=$MAIN orbit.connected=$ORBIT_CONN - not DB-ready, retrying in 10s..."
             sleep 10
           done
-          echo "App did not return HTTP 200 on /health within timeout - deploy is unhealthy"
+          echo "App did not report main(+orbit) DB connectivity on /api/health/db within timeout - deploy is unhealthy"
           exit 1
 
       - name: Get Logs on Failure
