@@ -36,7 +36,12 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  output: "standalone",
+  // No `output: "standalone"`: the server is the NestJS backend embedding Next
+  // via next({ dev: false }).getRequestHandler() (see annix-backend/src/main.ts),
+  // and the runtime image has the full node_modules (pnpm install). The
+  // standalone bundle was never read — it only bloated the build and printed
+  // `"next start" does not work with "output: standalone"` on every boot.
+  // outputFileTracingRoot stays: it keeps monorepo dep tracing correct.
   outputFileTracingRoot: path.join(__dirname, ".."),
   // The swarm runs `next dev` against the default `.next`. Pre-push runs
   // `next build` (production) — sharing `.next` makes the two clobber each
