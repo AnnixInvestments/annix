@@ -1260,23 +1260,45 @@ export class RubberAuCocService {
 
     if (!deliveryNote) return;
 
-    const rolls = deliveryNote.extractedData?.rolls || [];
-    if (rolls.length === 0) return;
+    // Roll line items live in rubber_delivery_note_items since the line-item
+    // refactor; deliveryNote.extractedData.rolls is the legacy home and is empty
+    // for newer CDNs. Reading only the legacy field left every recent auto-CoC
+    // with no roll data, so readiness bailed at "No roll data on the CoC" before
+    // it ever resolved the supplier CoC. Read items first, fall back to legacy.
+    const items = await this.deliveryNoteItemRepository.findManyWhere({
+      deliveryNoteId: coc.sourceDeliveryNoteId,
+    });
+    const itemRolls = items.filter((item) => (item.rollNumber || "").trim().length > 0);
 
-    const extractedRollData: ExtractedRollData[] = rolls.map((roll) => ({
-      rollNumber: roll.rollNumber ?? "",
-      thicknessMm: roll.thicknessMm ?? null,
-      widthMm: roll.widthMm ?? null,
-      lengthM: roll.lengthM ?? null,
-      weightKg: roll.weightKg ?? null,
-      areaSqM: roll.areaSqM ?? null,
-    }));
+    const extractedRollData: ExtractedRollData[] =
+      itemRolls.length > 0
+        ? itemRolls.map((item) => ({
+            rollNumber: item.rollNumber ?? "",
+            thicknessMm: item.thicknessMm ?? null,
+            widthMm: item.widthMm ?? null,
+            lengthM: item.lengthM ?? null,
+            weightKg: item.weightKg ?? null,
+            areaSqM:
+              item.widthMm != null && item.lengthM != null
+                ? (item.widthMm / 1000) * item.lengthM
+                : null,
+          }))
+        : (deliveryNote.extractedData?.rolls || []).map((roll) => ({
+            rollNumber: roll.rollNumber ?? "",
+            thicknessMm: roll.thicknessMm ?? null,
+            widthMm: roll.widthMm ?? null,
+            lengthM: roll.lengthM ?? null,
+            weightKg: roll.weightKg ?? null,
+            areaSqM: roll.areaSqM ?? null,
+          }));
+
+    if (extractedRollData.length === 0) return;
 
     coc.extractedRollData = extractedRollData;
     await this.auCocRepository.updateById(coc.id, { extractedRollData });
 
     this.logger.log(
-      `Populated ${extractedRollData.length} rolls from DN ${deliveryNote.deliveryNoteNumber} for AU CoC ${coc.cocNumber}`,
+      `Populated ${extractedRollData.length} rolls from DN ${deliveryNote.deliveryNoteNumber} (source: ${itemRolls.length > 0 ? "line items" : "legacy extractedData"}) for AU CoC ${coc.cocNumber}`,
     );
   }
 

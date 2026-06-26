@@ -186,4 +186,81 @@ describe("RubberAuCocService", () => {
       expect(savedRow.status).toBe(AuCocStatus.GENERATED);
     });
   });
+
+  describe("populateRollDataFromDeliveryNote — reads roll data from line items (regression: stranded AU CoCs)", () => {
+    const populate = (coc: RubberAuCoc): Promise<void> =>
+      (
+        service as never as {
+          populateRollDataFromDeliveryNote(c: RubberAuCoc): Promise<void>;
+        }
+      ).populateRollDataFromDeliveryNote(coc);
+
+    const coc = (): RubberAuCoc =>
+      ({
+        id: 7,
+        cocNumber: "AU-COC-0007",
+        sourceDeliveryNoteId: 50,
+        extractedRollData: null,
+      }) as unknown as RubberAuCoc;
+
+    it("populates extractedRollData from rubber_delivery_note_items when present", async () => {
+      deliveryNoteRepo.findById.mockResolvedValue({
+        id: 50,
+        deliveryNoteNumber: "1346",
+        extractedData: { rolls: [] },
+      });
+      deliveryNoteItemRepo.findManyWhere.mockResolvedValue([
+        { rollNumber: "43299", thicknessMm: 6, widthMm: 1100, lengthM: 12.5, weightKg: 82.62 },
+        { rollNumber: " ", weightKg: 10 },
+      ]);
+
+      const c = coc();
+      await populate(c);
+
+      const saved = auCocRepo.updateById.mock.calls.at(-1)?.[1] as {
+        extractedRollData: Array<{ rollNumber: string }>;
+      };
+      expect(saved.extractedRollData).toHaveLength(1);
+      expect(saved.extractedRollData[0]).toEqual(
+        expect.objectContaining({
+          rollNumber: "43299",
+          thicknessMm: 6,
+          widthMm: 1100,
+          lengthM: 12.5,
+          weightKg: 82.62,
+        }),
+      );
+    });
+
+    it("falls back to legacy extractedData.rolls when there are no line items", async () => {
+      deliveryNoteRepo.findById.mockResolvedValue({
+        id: 50,
+        deliveryNoteNumber: "1346",
+        extractedData: { rolls: [{ rollNumber: "9001", thicknessMm: 4 }] },
+      });
+      deliveryNoteItemRepo.findManyWhere.mockResolvedValue([]);
+
+      await populate(coc());
+
+      const saved = auCocRepo.updateById.mock.calls.at(-1)?.[1] as {
+        extractedRollData: Array<{ rollNumber: string }>;
+      };
+      expect(saved.extractedRollData).toEqual([
+        expect.objectContaining({ rollNumber: "9001", thicknessMm: 4 }),
+      ]);
+    });
+
+    it("does not write when neither line items nor legacy rolls have data", async () => {
+      deliveryNoteRepo.findById.mockResolvedValue({
+        id: 50,
+        deliveryNoteNumber: "1346",
+        extractedData: { rolls: [] },
+      });
+      deliveryNoteItemRepo.findManyWhere.mockResolvedValue([]);
+
+      await populate(coc());
+
+      expect(auCocRepo.updateById).not.toHaveBeenCalled();
+    });
+  });
 });
