@@ -19,6 +19,7 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
 import { now, nowISO } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import {
@@ -32,6 +33,7 @@ import { CreateAllocationDto } from "../dto/create-allocation.dto";
 import { CreateJobCardDto } from "../dto/create-job-card.dto";
 import { UpdateJobCardDto } from "../dto/update-job-card.dto";
 import { RejectAllocationDto } from "../dto/workflow.dto";
+import { AttachmentType } from "../entities/job-card-attachment.entity";
 import { MovementType, ReferenceType } from "../entities/stock-movement.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
@@ -970,10 +972,33 @@ export class JobCardsController {
       file,
       req.user.name,
       dto.notes ?? null,
+      dto.attachmentType === "qc_document" ? AttachmentType.QC_DOCUMENT : AttachmentType.DRAWING,
     );
   }
 
+  @StockControlRoles("manager", "admin")
+  @PermissionKey("job-cards.attachments")
+  @Post(":id/attachments/classify")
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ upload: { ttl: 60000, limit: 20 } })
+  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 15 * 1024 * 1024 } }))
+  @ApiOperation({ summary: "Classify an uploaded document as a drawing or QC document" })
+  async classifyAttachment(
+    @Req() req: any,
+    @Param("id") id: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException("No file provided to classify");
+    }
+    return this.drawingExtractionService.classifyAttachment(req.user.companyId, id, file);
+  }
+
+  @StockControlRoles("manager", "admin")
+  @PermissionKey("job-cards.attachments")
   @Post(":id/attachments/:attachmentId/extract")
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
   @ApiOperation({ summary: "Trigger dimension extraction from attachment" })
   async triggerExtraction(
     @Req() req: any,
@@ -983,7 +1008,11 @@ export class JobCardsController {
     return this.drawingExtractionService.triggerExtraction(req.user.companyId, id, attachmentId);
   }
 
+  @StockControlRoles("manager", "admin")
+  @PermissionKey("job-cards.attachments")
   @Post(":id/extract-all")
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { ttl: 60000, limit: 6 } })
   @ApiOperation({ summary: "Extract dimensions from all attachments together" })
   async extractAll(@Req() req: any, @Param("id") id: number) {
     return this.drawingExtractionService.extractAllFromJobCard(req.user.companyId, id);

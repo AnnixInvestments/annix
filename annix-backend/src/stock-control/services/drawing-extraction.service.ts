@@ -9,7 +9,11 @@ import {
   TextContent,
 } from "../../nix/ai-providers/claude-chat.provider";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
-import { ExtractionStatus, JobCardAttachment } from "../entities/job-card-attachment.entity";
+import {
+  AttachmentType,
+  ExtractionStatus,
+  JobCardAttachment,
+} from "../entities/job-card-attachment.entity";
 import {
   JobCardLineItem,
   type TankComponent,
@@ -68,6 +72,12 @@ interface TankExtractionData {
   // the developed-cone cutting panels. Distinct from `sections` (printed per-part
   // areas, used to cross-check) and `plateParts` (flat plate BOM).
   components: TankComponent[];
+}
+
+export interface DocumentClassification {
+  category: "drawing" | "qc_document";
+  confidence: number;
+  docType: string | null;
 }
 
 export interface DrawingExtractionResult {
@@ -282,6 +292,30 @@ const DRAWING_EXTRACTION_OPTIONS = {
 const DRAWING_CHUNK_PAGE_COUNT = 6;
 const DRAWING_CHUNK_THRESHOLD = 10;
 
+const DOCUMENT_CLASSIFICATION_PROMPT = `You are classifying a single page from an uploaded engineering job-card document. Decide which ONE category it belongs to:
+
+- "drawing" — a fabrication, general-arrangement (GA), or production engineering drawing: dimensioned views, BOM/plate schedules, title block, section callouts, weld details, isometrics.
+- "qc_document" — a quality document: an Inspection & Test Plan (ITP), inspection report, certificate of conformance/analysis (COC/COA), material/mill certificate, data book, QC checklist, NDT/weld inspection record, dimensional report, or sign-off sheet.
+
+Return STRICT JSON only, no prose:
+{
+  "category": "drawing" | "qc_document",
+  "confidence": 0.0,
+  "docType": "GA drawing" | "ITP" | "COC" | "mill certificate" | null
+}
+
+Rules:
+- "confidence" is a number between 0.0 and 1.0 reflecting how certain you are.
+- "docType" is a short human label for the specific document type, or null if unclear.
+- If the page is ambiguous, prefer "drawing".
+- Return valid JSON only, no additional text.`;
+
+const DOCUMENT_CLASSIFICATION_OPTIONS = {
+  temperature: 0,
+  maxOutputTokens: 256,
+  responseFormat: "json" as const,
+};
+
 @Injectable()
 export class DrawingExtractionService {
   private readonly logger = new Logger(DrawingExtractionService.name);
@@ -367,6 +401,7 @@ export class DrawingExtractionService {
     file: Express.Multer.File,
     uploadedBy: string | null,
     notes: string | null,
+    attachmentType: AttachmentType = AttachmentType.DRAWING,
   ): Promise<JobCardAttachment> {
     const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
 
@@ -379,6 +414,7 @@ export class DrawingExtractionService {
     const saved = await this.attachmentRepo.create({
       jobCardId,
       companyId,
+      attachmentType,
       filePath: uploadResult.path,
       originalFilename: file.originalname,
       fileSizeBytes: file.size,
@@ -449,6 +485,17 @@ export class DrawingExtractionService {
   ): Promise<JobCardAttachment> {
     const attachment = await this.attachmentById(companyId, jobCardId, attachmentId);
 
+    if (attachment.attachmentType === AttachmentType.QC_DOCUMENT) {
+      this.logger.log(
+        `Skipping extraction for QC document attachment ${attachmentId} (not a drawing)`,
+      );
+      const signedUrl = await this.storageService.presignedUrl(
+        this.normalizeStoragePath(attachment.filePath),
+        3600,
+      );
+      return { ...attachment, filePath: signedUrl };
+    }
+
     attachment.extractionStatus = ExtractionStatus.PROCESSING;
     await this.attachmentRepo.saveForCompany(companyId, attachment);
 
@@ -489,14 +536,18 @@ export class DrawingExtractionService {
       throw new NotFoundException("Job card not found");
     }
 
-    const allAttachments = await this.attachmentRepo.findExtractableForJobCard(
+    const extractableAttachments = await this.attachmentRepo.findExtractableForJobCard(
       jobCardId,
       companyId,
-      [ExtractionStatus.PENDING, ExtractionStatus.ANALYSED, ExtractionStatus.FAILED],
+      [ExtractionStatus.PENDING, ExtractionStatus.FAILED],
+    );
+
+    const allAttachments = extractableAttachments.filter(
+      (attachment) => attachment.attachmentType !== AttachmentType.QC_DOCUMENT,
     );
 
     if (allAttachments.length === 0) {
-      this.logger.log(`No extractable attachments for job card ${jobCardId}`);
+      this.logger.log(`No extractable drawing attachments for job card ${jobCardId}`);
       return this.emptyResult();
     }
 
@@ -609,6 +660,112 @@ export class DrawingExtractionService {
       this.logger.error(`Multi-doc extraction failed for job card ${jobCardId}: ${message}`);
       throw err;
     }
+  }
+
+  async classifyAttachment(
+    companyId: number,
+    jobCardId: number,
+    file: Express.Multer.File,
+  ): Promise<DocumentClassification> {
+    const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
+
+    if (!jobCard) {
+      throw new NotFoundException("Job card not found");
+    }
+
+    const image = await this.firstPageImageForClassification(file);
+    if (!image) {
+      this.logger.warn(
+        `Could not derive a classifiable image from ${file.originalname}; defaulting to drawing`,
+      );
+      return { category: "drawing", confidence: 0, docType: null };
+    }
+
+    try {
+      const { content } = await this.aiChatService.chatWithImage(
+        image.base64,
+        image.mediaType,
+        "Classify this document page. Respond with JSON only.",
+        DOCUMENT_CLASSIFICATION_PROMPT,
+        DOCUMENT_CLASSIFICATION_OPTIONS,
+      );
+      return this.parseClassification(content);
+    } catch (err) {
+      this.logger.warn(
+        `Document classification failed for ${file.originalname} (${err instanceof Error ? err.message : "unknown"}); defaulting to drawing`,
+      );
+      return { category: "drawing", confidence: 0, docType: null };
+    }
+  }
+
+  private async firstPageImageForClassification(
+    file: Express.Multer.File,
+  ): Promise<{ base64: string; mediaType: "image/png" | "image/jpeg" | "image/webp" } | null> {
+    const filename = file.originalname.toLowerCase();
+    const isPdf = file.mimetype === "application/pdf" || filename.endsWith(".pdf");
+
+    if (isPdf) {
+      const firstPage = await this.convertPdfFirstPageToImage(file.buffer);
+      return firstPage ? { base64: firstPage.toString("base64"), mediaType: "image/png" } : null;
+    }
+
+    if (file.mimetype === "image/png" || filename.endsWith(".png")) {
+      return { base64: file.buffer.toString("base64"), mediaType: "image/png" };
+    }
+    if (file.mimetype === "image/jpeg" || filename.endsWith(".jpg") || filename.endsWith(".jpeg")) {
+      return { base64: file.buffer.toString("base64"), mediaType: "image/jpeg" };
+    }
+    if (file.mimetype === "image/webp" || filename.endsWith(".webp")) {
+      return { base64: file.buffer.toString("base64"), mediaType: "image/webp" };
+    }
+
+    return null;
+  }
+
+  private async convertPdfFirstPageToImage(pdfBuffer: Buffer): Promise<Buffer | null> {
+    const pdfInput = pdfBuffer.buffer.slice(
+      pdfBuffer.byteOffset,
+      pdfBuffer.byteOffset + pdfBuffer.byteLength,
+    );
+    const pages = await pdfToPng(pdfInput, {
+      disableFontFace: true,
+      useSystemFonts: true,
+      viewportScale: 2.0,
+      pagesToProcess: [1],
+    });
+    const page = pages.find((p) => p.content != null);
+    return page ? (page.content as Buffer) : null;
+  }
+
+  private parseClassification(response: string): DocumentClassification {
+    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      this.logger.warn("Classification response did not contain valid JSON; defaulting to drawing");
+      return { category: "drawing", confidence: 0, docType: null };
+    }
+
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(jsonMatch[0]);
+    } catch (err) {
+      this.logger.warn(
+        `Classification JSON parse failed (${err instanceof Error ? err.message : "unknown"}); defaulting to drawing`,
+      );
+      return { category: "drawing", confidence: 0, docType: null };
+    }
+
+    const category = parsed.category === "qc_document" ? "qc_document" : "drawing";
+    const rawConfidence = Number(parsed.confidence);
+    const confidence =
+      Number.isFinite(rawConfidence) && rawConfidence >= 0 && rawConfidence <= 1
+        ? rawConfidence
+        : 0;
+    const docType =
+      typeof parsed.docType === "string" && parsed.docType.trim().length > 0
+        ? parsed.docType.trim().slice(0, 120)
+        : null;
+
+    return { category, confidence, docType };
   }
 
   private async extractFromAttachment(
@@ -1209,6 +1366,12 @@ export class DrawingExtractionService {
     const tankData = result.tankData;
     if (!tankData) return;
 
+    // Append-only: re-extraction of a NEW (PENDING/FAILED) attachment adds its
+    // items. Double-extraction is prevented upstream — extractAllFromJobCard only
+    // processes PENDING/FAILED, never re-runs ANALYSED. We deliberately do NOT
+    // delete prior line items by heuristic: in a rubber-lining shop "R/L "/"COAT "
+    // are natural manual/import item codes, so inferring provenance from them would
+    // delete the user's own data.
     const existingItems = await this.lineItemRepo.findForJobCardOrderedBySort(jobCardId, companyId);
 
     const maxSortOrder = existingItems.reduce((max, item) => Math.max(max, item.sortOrder), 0);

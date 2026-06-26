@@ -987,7 +987,7 @@ export interface JobCardAttachment {
   id: number;
   jobCardId: number;
   companyId: number;
-  attachmentType: string;
+  attachmentType?: "drawing" | "qc_document" | string | null;
   filePath: string;
   originalFilename: string;
   fileSizeBytes: number;

@@ -95,6 +95,11 @@ export class UploadAttachmentDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(["drawing", "qc_document"])
+  attachmentType?: "drawing" | "qc_document";
 }
 
 export class UpdateRequisitionItemDto {

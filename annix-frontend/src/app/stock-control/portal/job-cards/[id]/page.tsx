@@ -176,9 +176,14 @@ export default function JobCardDetailPage() {
     ]).catch(() => null);
   }, [jobId]);
 
+  const [qcDocsRefreshKey, setQcDocsRefreshKey] = useState(0);
+  const handleAttachmentsUploaded = useCallback(() => {
+    setQcDocsRefreshKey((key) => key + 1);
+  }, []);
+
   const coating = useJobCardCoating(jobId);
   const jobFilesHook = useJobCardJobFiles(jobId, confirm);
-  const documents = useJobCardDocuments(jobId, fetchData, confirm);
+  const documents = useJobCardDocuments(jobId, fetchData, confirm, handleAttachmentsUploaded);
 
   const currentStatus = workflowStatus?.currentStatus ? workflowStatus.currentStatus : null;
   const currentStep = workflowStatus?.currentStep ? workflowStatus.currentStep : null;
@@ -878,8 +883,11 @@ export default function JobCardDetailPage() {
               onAmendmentDrop={documents.handleAmendmentDrop}
               onAmendmentDragOver={documents.handleAmendmentDragOver}
               onAmendmentDragLeave={documents.handleAmendmentDragLeave}
-              attachmentFiles={documents.attachmentFiles}
-              onAttachmentFilesChange={documents.setAttachmentFiles}
+              stagedAttachments={documents.stagedAttachments}
+              onAddStagedFiles={documents.addStagedFiles}
+              onSetStagedAttachmentType={documents.setStagedAttachmentType}
+              onRemoveStagedAttachment={documents.removeStagedAttachment}
+              onClearStagedAttachments={documents.clearStagedAttachments}
               isUploadingAttachment={documents.isUploadingAttachment}
               onAttachmentUpload={documents.handleAttachmentUpload}
               isDraggingAttachment={documents.isDraggingAttachment}
@@ -1142,6 +1150,7 @@ export default function JobCardDetailPage() {
                 }
                 currentUserName={effectiveName || authUserName}
                 rubberPlanOverride={jobCard?.rubberPlanOverride ? jobCard.rubberPlanOverride : null}
+                qcDocsRefreshKey={qcDocsRefreshKey}
                 onBatchComplete={
                   workflow.userPendingBgSteps.some(
                     (bg) => bg.branchColor && bg.stepKey === "qc_batch_certs",

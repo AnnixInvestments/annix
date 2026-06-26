@@ -10,6 +10,7 @@ import type {
   DataBookCompleteness,
   DataBookStatus,
   IssuanceBatchRecord,
+  JobCardAttachment,
   QcBlastProfileRecord,
   QcDftReadingRecord,
   QcMeasurementsAggregate,
@@ -19,6 +20,7 @@ import type {
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
 import { log } from "@/app/lib/logger";
+import { useConfirm } from "@/app/stock-control/hooks/useConfirm";
 import { BatchAssignmentSection } from "./BatchAssignmentSection";
 import BlastProfileForm from "./BlastProfileForm";
 import { DataBookCompletenessPanel } from "./DataBookCompletenessPanel";
@@ -47,6 +49,7 @@ interface QualityTabProps {
   stepAssignments: Record<string, { name: string; isPrimary: boolean }[]>;
   currentUserName: string | null;
   rubberPlanOverride?: { manualRolls?: any[] | null } | null;
+  qcDocsRefreshKey?: number;
   lineItems: Array<{
     id: number;
     itemCode: string;
@@ -66,8 +69,13 @@ export function QualityTab(props: QualityTabProps) {
     stepAssignments,
     currentUserName,
     rubberPlanOverride,
+    qcDocsRefreshKey,
     lineItems,
   } = props;
+  const { confirm, ConfirmDialog } = useConfirm();
+  const [qcDocuments, setQcDocuments] = useState<JobCardAttachment[]>([]);
+  const [qcDocsLoading, setQcDocsLoading] = useState(true);
+  const [qcDocsError, setQcDocsError] = useState<string | null>(null);
   const [certificates, setCertificates] = useState<SupplierCertificate[]>([]);
   const [calibrationCerts, setCalibrationCerts] = useState<CalibrationCertificate[]>([]);
   const [batchRecords, setBatchRecords] = useState<IssuanceBatchRecord[]>([]);
@@ -120,10 +128,47 @@ export function QualityTab(props: QualityTabProps) {
     }
   }, [jobCardId]);
 
+  const fetchQcDocuments = useCallback(async () => {
+    try {
+      setQcDocsLoading(true);
+      setQcDocsError(null);
+      const all = await stockControlApiClient.jobCardAttachments(jobCardId);
+      setQcDocuments(all.filter((a) => a.attachmentType === "qc_document"));
+    } catch (err) {
+      setQcDocsError(err instanceof Error ? err.message : "Failed to load QC documents");
+      setQcDocuments([]);
+    } finally {
+      setQcDocsLoading(false);
+    }
+  }, [jobCardId]);
+
   useEffect(() => {
     fetchCoatingAnalysis();
     fetchQualityData();
   }, [fetchCoatingAnalysis, fetchQualityData]);
+
+  useEffect(() => {
+    fetchQcDocuments();
+  }, [fetchQcDocuments, qcDocsRefreshKey]);
+
+  const handleDeleteQcDocument = useCallback(
+    async (attachment: JobCardAttachment) => {
+      const confirmed = await confirm({
+        title: "Delete QC Document",
+        message: `Delete "${attachment.originalFilename}"? This cannot be undone.`,
+        confirmLabel: "Delete",
+        variant: "danger",
+      });
+      if (!confirmed) return;
+      try {
+        await stockControlApiClient.deleteJobCardAttachment(jobCardId, attachment.id);
+        setQcDocuments((prev) => prev.filter((doc) => doc.id !== attachment.id));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to delete QC document");
+      }
+    },
+    [jobCardId, confirm],
+  );
 
   const handleCompile = async (force = false) => {
     try {
@@ -249,6 +294,7 @@ export function QualityTab(props: QualityTabProps) {
 
   return (
     <div className="space-y-6">
+      {ConfirmDialog}
       {error && (
         <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
           {error}
@@ -330,6 +376,86 @@ export function QualityTab(props: QualityTabProps) {
         stepAssignments={stepAssignments}
         currentUserName={currentUserName}
       />
+
+      <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div className="border-b border-gray-200 px-3 sm:px-5 py-3">
+          <h3 className="text-sm font-semibold text-gray-900">
+            QC Documents
+            <span className="ml-2 text-xs font-normal text-gray-500">
+              (uploaded with the drawings, kept out of m² extraction)
+            </span>
+          </h3>
+        </div>
+        {qcDocsLoading ? (
+          <div className="flex items-center justify-center gap-2 py-8 text-sm text-gray-500">
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-[var(--sc-primary,#323288)]" />
+            Loading QC documents…
+          </div>
+        ) : qcDocsError ? (
+          <div className="flex flex-col items-center gap-2 py-8 text-center text-sm text-red-600">
+            <span>Couldn&apos;t load QC documents. Please try again.</span>
+            <button
+              type="button"
+              onClick={() => fetchQcDocuments()}
+              className="font-medium text-[var(--sc-primary,#323288)] underline hover:text-[var(--sc-primary-active,#1c1c48)]"
+            >
+              Retry
+            </button>
+          </div>
+        ) : qcDocuments.length === 0 ? (
+          <div className="py-8 text-center text-sm text-gray-500">
+            No QC documents uploaded. Upload an ITP, data book or certificate from the Details tab
+            and tag it as a QC Doc.
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-200">
+            {qcDocuments.map((doc) => (
+              <div
+                key={doc.id}
+                className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-3 sm:px-5 py-3 hover:bg-gray-50"
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <svg
+                    className="h-5 w-5 shrink-0 text-[var(--sc-primary,#323288)]"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <span className="truncate text-sm text-gray-900" title={doc.originalFilename}>
+                    {doc.originalFilename}
+                  </span>
+                  <span className="hidden shrink-0 text-xs text-gray-400 sm:inline">
+                    {formatDateZA(doc.createdAt)}
+                  </span>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <a
+                    href={doc.filePath}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
+                  >
+                    View
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteQcDocument(doc)}
+                    className="text-sm text-red-600 hover:text-red-800"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {isLoading ? (
         <div className="py-12 text-center text-gray-500">Loading quality data...</div>

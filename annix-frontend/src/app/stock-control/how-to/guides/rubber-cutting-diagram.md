@@ -5,10 +5,10 @@ category: Jobs & Workflow
 roles: [quality, manager, admin]
 order: 10
 tags: [rubber, lining, cutting, nesting, jigsaw, tank, panels]
-lastUpdated: 2026-06-26
+lastUpdated: 2026-06-27
 summary: Read the auto-generated rubber cutting plan on a job card, or override it with the drag-and-drop layout editor — arrange panels on rolls, rotate them, and cut an oversized panel in half so it fits the roll width. Tank and chute drawings contribute developed panels (shells, cones, dished heads, rings) automatically. Your layout is saved and Nix learns from it.
 readingMinutes: 4
-relatedPaths: [annix-frontend/src/app/stock-control/portal/job-cards/[id]/components/RubberAllocation.tsx, annix-frontend/src/app/stock-control/components/jigsaw/JigsawEditor.tsx, annix-frontend/src/app/stock-control/components/jigsaw/jigsawLayout.ts, annix-frontend/src/app/stock-control/components/jigsaw/DraggablePanel.tsx, annix-frontend/src/app/stock-control/lib/rubberCuttingCalculator.ts, annix-backend/src/stock-control/services/drawing-extraction.service.ts]
+relatedPaths: [annix-frontend/src/app/stock-control/portal/job-cards/[id]/components/RubberAllocation.tsx, annix-frontend/src/app/stock-control/components/jigsaw/JigsawEditor.tsx, annix-frontend/src/app/stock-control/components/jigsaw/jigsawLayout.ts, annix-frontend/src/app/stock-control/components/jigsaw/DraggablePanel.tsx, annix-frontend/src/app/stock-control/lib/rubberCuttingCalculator.ts, annix-frontend/src/app/stock-control/lib/classifyAttachment.ts, annix-frontend/src/app/stock-control/portal/job-cards/[id]/components/DetailsTab.tsx, annix-frontend/src/app/stock-control/portal/job-cards/[id]/components/QualityTab.tsx, annix-frontend/src/app/stock-control/portal/job-cards/[id]/hooks/useJobCardDocuments.ts, annix-backend/src/stock-control/services/drawing-extraction.service.ts]
 ---
 
 ## What it does
@@ -35,6 +35,10 @@ Use it when the auto plan wastes material, splits the wrong way, or you simply w
 7. **Edit a panel's size** from the tray (the "E" button) if the developed size needs adjusting — the change is remembered for similar items next time.
 8. Add or remove rolls and set each roll's width, length and thickness as needed.
 9. Click **Save Manual Plan**. The saved layout becomes the cutting diagram, and Nix learns from your arrangement for similar future jobs.
+
+## Drawings vs QC documents (what feeds the panels)
+
+Only **drawings** contribute developed panels and m² to the cutting plan. When you add files to **Drawing Attachments** on the Details tab, each file is tagged automatically as either a **Drawing** or a **QC Doc** (ITP, data book, certificate, datasheet, mill cert). Nix double-checks anything it is unsure about and flags low-confidence files with an **Unsure — please confirm** badge — you cannot upload until those are confirmed with the **Drawing / QC Doc** toggle. QC documents are kept out of m² extraction (so they never distort the panel count) and appear read-only under **QC Documents** on the Quality tab, where they can be viewed or deleted. If a tank/cyclone drawing is missing panels, check it was not tagged as a QC Doc by mistake.
 
 ## Notes
 

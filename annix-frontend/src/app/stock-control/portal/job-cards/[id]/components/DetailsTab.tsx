@@ -3,8 +3,10 @@
 import { toPairs as entries, keys } from "es-toolkit/compat";
 import type React from "react";
 import { useState } from "react";
+import { useToast } from "@/app/components/Toast";
 import type { JobCard, JobCardAttachment, JobCardVersion } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import type { StagedAttachment } from "../hooks/useJobCardDocuments";
 import {
   extractionStatusBadge,
   INVALID_LINE_ITEM_PATTERNS,
@@ -30,8 +32,11 @@ interface DetailsTabProps {
   onAmendmentDrop: (e: React.DragEvent) => void;
   onAmendmentDragOver: (e: React.DragEvent) => void;
   onAmendmentDragLeave: (e: React.DragEvent) => void;
-  attachmentFiles: File[];
-  onAttachmentFilesChange: (files: File[]) => void;
+  stagedAttachments: StagedAttachment[];
+  onAddStagedFiles: (files: File[]) => void;
+  onSetStagedAttachmentType: (index: number, type: "drawing" | "qc_document") => void;
+  onRemoveStagedAttachment: (index: number) => void;
+  onClearStagedAttachments: () => void;
   isUploadingAttachment: boolean;
   onAttachmentUpload: () => void;
   isDraggingAttachment: boolean;
@@ -42,7 +47,7 @@ interface DetailsTabProps {
   isExtracting: number | null;
   isExtractingAll: boolean;
   onExtractAll: () => void;
-  onDeleteAttachment: (attachmentId: number) => void;
+  onDeleteAttachment: (attachmentId: number) => Promise<void>;
   canEditNotes: boolean;
   onSaveNotes: (notes: string) => Promise<void>;
   onReExtractNotes: () => Promise<void>;
@@ -80,8 +85,11 @@ export function DetailsTab({
   onAmendmentDragOver,
   onAmendmentDragLeave,
   lineItemsContent,
-  attachmentFiles,
-  onAttachmentFilesChange,
+  stagedAttachments,
+  onAddStagedFiles,
+  onSetStagedAttachmentType,
+  onRemoveStagedAttachment,
+  onClearStagedAttachments,
   isUploadingAttachment,
   onAttachmentUpload,
   isDraggingAttachment,
@@ -98,10 +106,20 @@ export function DetailsTab({
   onReExtractNotes,
   isReExtracting,
 }: DetailsTabProps) {
+  const { showToast } = useToast();
   const filteredNotes = cleanedNotes(jobCard.notes);
   const [editedNotes, setEditedNotes] = useState(filteredNotes);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  const handleDeleteAttachmentClick = async (attachmentId: number) => {
+    try {
+      await onDeleteAttachment(attachmentId);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to delete attachment";
+      showToast(`Could not delete attachment: ${message}`, "error");
+    }
+  };
 
   const handleNotesChange = (value: string) => {
     setEditedNotes(value);
@@ -122,6 +140,13 @@ export function DetailsTab({
   const pageNumber = jobCard.pageNumber;
   const rawCustomerName = jobCard.customerName;
   const customerName = jobCard.customerName;
+
+  const drawingAttachments = attachments.filter((a) => a.attachmentType !== "qc_document");
+  const classifyingCount = stagedAttachments.filter((staged) => staged.classifying).length;
+  const needsReviewCount = stagedAttachments.filter(
+    (staged) => staged.needsReview && !staged.classifying,
+  ).length;
+  const hasUnresolvedStaged = classifyingCount > 0 || needsReviewCount > 0;
 
   return (
     <div className="space-y-6">
@@ -338,8 +363,10 @@ export function DetailsTab({
         <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex items-center justify-between">
           <h3 className="text-lg leading-6 font-medium text-gray-900">Drawing Attachments</h3>
           <div className="flex items-center space-x-3">
-            <span className="text-sm text-gray-500">{attachments.length} attachments</span>
-            {attachments.some(
+            <span className="text-sm text-gray-500">
+              {drawingAttachments.length} attachment{drawingAttachments.length === 1 ? "" : "s"}
+            </span>
+            {drawingAttachments.some(
               (a) => a.extractionStatus === "pending" || a.extractionStatus === "failed",
             ) && (
               <button
@@ -364,42 +391,108 @@ export function DetailsTab({
                 : "border-gray-300 hover:border-gray-400"
             }`}
           >
-            {attachmentFiles.length > 0 ? (
+            {stagedAttachments.length > 0 ? (
               <div className="space-y-3">
                 <p className="text-sm font-medium text-gray-900">
-                  {attachmentFiles.length} file{attachmentFiles.length > 1 ? "s" : ""} ready to
+                  {stagedAttachments.length} file{stagedAttachments.length > 1 ? "s" : ""} ready to
                   upload
                 </p>
-                <ul className="text-sm text-gray-600 space-y-1">
-                  {attachmentFiles.map((file, idx) => (
-                    <li
-                      key={`${file.name}-${idx}`}
-                      className="flex items-center justify-center space-x-2"
-                    >
-                      <span>{file.name}</span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onAttachmentFilesChange(attachmentFiles.filter((_, i) => i !== idx))
-                        }
-                        className="text-red-500 hover:text-red-700 text-xs"
+                <ul className="space-y-2 text-left">
+                  {stagedAttachments.map((staged, idx) => {
+                    const isDrawing = staged.attachmentType === "drawing";
+                    return (
+                      <li
+                        key={staged.id}
+                        className="flex flex-col gap-2 rounded-md border border-gray-200 bg-white p-2 sm:flex-row sm:items-center sm:justify-between"
                       >
-                        Remove
-                      </button>
-                    </li>
-                  ))}
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="truncate text-sm text-gray-700" title={staged.file.name}>
+                            {staged.file.name}
+                          </span>
+                          {staged.classifying && (
+                            <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                              <span className="h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-[var(--sc-primary,#323288)]" />
+                              Nix is checking…
+                            </span>
+                          )}
+                          {staged.classifyFailed && !staged.classifying && (
+                            <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                              Couldn&apos;t auto-classify — please confirm
+                            </span>
+                          )}
+                          {staged.needsReview && !staged.classifyFailed && !staged.classifying && (
+                            <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                              Unsure — please confirm
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="inline-flex overflow-hidden rounded-md border border-gray-300"
+                            role="group"
+                            aria-label={`Document type for ${staged.file.name}`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => onSetStagedAttachmentType(idx, "drawing")}
+                              disabled={staged.classifying}
+                              aria-pressed={isDrawing}
+                              className={`px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
+                                isDrawing
+                                  ? "bg-[var(--sc-primary,#323288)] text-white"
+                                  : "bg-white text-gray-600 hover:bg-gray-50"
+                              }`}
+                            >
+                              Drawing
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onSetStagedAttachmentType(idx, "qc_document")}
+                              disabled={staged.classifying}
+                              aria-pressed={!isDrawing}
+                              className={`px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
+                                !isDrawing
+                                  ? "bg-[var(--sc-primary,#323288)] text-white"
+                                  : "bg-white text-gray-600 hover:bg-gray-50"
+                              }`}
+                            >
+                              QC Doc
+                            </button>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => onRemoveStagedAttachment(idx)}
+                            className="text-xs text-red-500 hover:text-red-700"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
+                {classifyingCount > 0 && (
+                  <p className="inline-flex items-center gap-1.5 text-xs text-gray-500">
+                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-[var(--sc-primary,#323288)]" />
+                    Nix is checking {classifyingCount} file{classifyingCount === 1 ? "" : "s"}…
+                  </p>
+                )}
+                {needsReviewCount > 0 && (
+                  <p className="text-xs text-amber-700">
+                    Confirm the document type for the highlighted files before uploading.
+                  </p>
+                )}
                 <div className="flex justify-center space-x-3">
                   <button
-                    onClick={() => onAttachmentFilesChange([])}
+                    onClick={onClearStagedAttachments}
                     className="text-sm text-gray-500 hover:text-gray-700"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={onAttachmentUpload}
-                    disabled={isUploadingAttachment}
-                    className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400"
+                    disabled={isUploadingAttachment || hasUnresolvedStaged}
+                    className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)] disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
                     {isUploadingAttachment ? "Uploading..." : "Upload All"}
                   </button>
@@ -431,10 +524,7 @@ export function DetailsTab({
                       className="hidden"
                       onChange={(e) => {
                         if (e.target.files && e.target.files.length > 0) {
-                          onAttachmentFilesChange([
-                            ...attachmentFiles,
-                            ...Array.from(e.target.files),
-                          ]);
+                          onAddStagedFiles(Array.from(e.target.files));
                         }
                       }}
                     />
@@ -448,9 +538,9 @@ export function DetailsTab({
             )}
           </div>
 
-          {attachments.length > 0 && (
+          {drawingAttachments.length > 0 && (
             <div className="mt-4 space-y-3">
-              {attachments.map((attachment) => (
+              {drawingAttachments.map((attachment) => (
                 <div
                   key={attachment.id}
                   className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
@@ -578,7 +668,7 @@ export function DetailsTab({
                       View
                     </a>
                     <button
-                      onClick={() => onDeleteAttachment(attachment.id)}
+                      onClick={() => handleDeleteAttachmentClick(attachment.id)}
                       className="text-sm text-red-600 hover:text-red-800"
                     >
                       Delete

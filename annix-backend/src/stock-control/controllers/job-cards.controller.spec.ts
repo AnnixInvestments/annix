@@ -1,5 +1,7 @@
 import { BadRequestException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
+import { ThrottlerGuard } from "@nestjs/throttler";
+import { AttachmentType } from "../entities/job-card-attachment.entity";
 
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
@@ -172,6 +174,8 @@ describe("JobCardsController", () => {
       .overrideGuard(StockControlOnboardingGuard)
       .useValue({ canActivate: () => true })
       .overrideGuard(StockControlRoleGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(ThrottlerGuard)
       .useValue({ canActivate: () => true })
       .compile();
 
@@ -614,6 +618,7 @@ describe("JobCardsController", () => {
         file,
         "Test User",
         "Main drawing",
+        AttachmentType.DRAWING,
       );
       expect(result).toBe(expected);
     });

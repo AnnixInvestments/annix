@@ -128,8 +128,12 @@ declare module "./base" {
     uploadJobCardAttachment(
       jobCardId: number,
       file: File,
-      notes?: string,
+      opts?: { notes?: string; attachmentType?: "drawing" | "qc_document" },
     ): Promise<JobCardAttachment>;
+    classifyJobCardAttachment(
+      jobCardId: number,
+      file: File,
+    ): Promise<{ category: "drawing" | "qc_document"; confidence: number; docType: string | null }>;
     triggerDrawingExtraction(jobCardId: number, attachmentId: number): Promise<JobCardAttachment>;
     extractAllDrawings(jobCardId: number): Promise<Record<string, unknown>>;
     deleteJobCardAttachment(jobCardId: number, attachmentId: number): Promise<void>;
@@ -427,12 +431,22 @@ proto.jobCardAttachments = async function (jobCardId) {
   return this.request(`/stock-control/job-cards/${jobCardId}/attachments`);
 };
 
-proto.uploadJobCardAttachment = async function (jobCardId, file, notes) {
+proto.uploadJobCardAttachment = async function (jobCardId, file, opts) {
+  const rawNotes = opts?.notes;
+  const rawType = opts?.attachmentType;
+  const extraFields: Record<string, string> = {};
+  if (rawNotes) extraFields.notes = rawNotes;
+  if (rawType) extraFields.attachmentType = rawType;
+  const hasExtraFields = Boolean(rawNotes) || Boolean(rawType);
   return this.uploadFile(
     `/stock-control/job-cards/${jobCardId}/attachments`,
     file,
-    notes ? { notes } : undefined,
+    hasExtraFields ? extraFields : undefined,
   );
+};
+
+proto.classifyJobCardAttachment = async function (jobCardId, file) {
+  return this.uploadFile(`/stock-control/job-cards/${jobCardId}/attachments/classify`, file);
 };
 
 proto.triggerDrawingExtraction = async function (jobCardId, attachmentId) {

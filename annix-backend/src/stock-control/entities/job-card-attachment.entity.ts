@@ -4,6 +4,7 @@ import { StockControlCompany } from "./stock-control-company.entity";
 
 export enum AttachmentType {
   DRAWING = "drawing",
+  QC_DOCUMENT = "qc_document",
   SPECIFICATION = "specification",
   OTHER = "other",
 }

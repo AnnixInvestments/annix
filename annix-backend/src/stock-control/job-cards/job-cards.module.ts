@@ -114,7 +114,7 @@ import { WorkflowNotificationModule } from "../workflow-notification/workflow-no
     WorkflowNotificationModule,
     MulterModule.register({
       limits: {
-        fileSize: 10 * 1024 * 1024,
+        fileSize: 50 * 1024 * 1024,
       },
     }),
     MongooseModule.forFeature([
