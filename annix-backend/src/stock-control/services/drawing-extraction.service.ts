@@ -9,7 +9,11 @@ import {
 } from "../../nix/ai-providers/claude-chat.provider";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { ExtractionStatus, JobCardAttachment } from "../entities/job-card-attachment.entity";
-import { JobCardLineItem } from "../entities/job-card-line-item.entity";
+import {
+  JobCardLineItem,
+  type TankComponent,
+  type TankComponentShape,
+} from "../entities/job-card-line-item.entity";
 import { JobCardRepository } from "../repositories/job-card.repository";
 import { JobCardAttachmentRepository } from "../repositories/job-card-attachment.repository";
 import { JobCardLineItemRepository } from "../repositories/job-card-line-item.repository";
@@ -58,6 +62,11 @@ interface TankExtractionData {
     quantity: number;
     liningThicknessMm: number;
   }>;
+  // Shape-classified, dimensioned components (cylindrical shells, cones, dished
+  // heads, rings, branches) that drive the GEOMETRIC tank m² (calculateTankM2) and
+  // the developed-cone cutting panels. Distinct from `sections` (printed per-part
+  // areas, used to cross-check) and `plateParts` (flat plate BOM).
+  components: TankComponent[];
 }
 
 export interface DrawingExtractionResult {
@@ -70,6 +79,38 @@ export interface DrawingExtractionResult {
   totalCoatingM2: number;
   rawText: string;
   confidence: number;
+}
+
+const TANK_COMPONENT_TYPES: ReadonlyArray<TankComponent["componentType"]> = [
+  "shell",
+  "cone",
+  "dished_head",
+  "lid",
+  "ring",
+  "branch",
+  "partition",
+  "plate",
+];
+
+// Guards against hostile/garbage model output reaching persistence and the
+// downstream m²/nesting math (a single crafted drawing could otherwise emit
+// Infinity dimensions or billion-count quantities that DoS the browser).
+const MAX_TANK_COMPONENTS = 500;
+const MAX_TANK_COMPONENT_QUANTITY = 1000;
+const MAX_TANK_DIMENSION_MM = 100000;
+const MAX_TANK_AREA_M2 = 100000;
+
+function finiteInRange(value: unknown, max: number): number | null {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 && n <= max ? n : null;
+}
+
+function clampQuantity(value: unknown): number {
+  const n = Math.floor(Number(value));
+  if (!Number.isFinite(n) || n < 1) {
+    return 1;
+  }
+  return Math.min(n, MAX_TANK_COMPONENT_QUANTITY);
 }
 
 const DRAWING_EXTRACTION_PROMPT = `You are an expert at analysing engineering drawing images. You can handle both pipe drawings and welded steel plate structure drawings (tanks, chutes, hoppers, underpans).
@@ -117,6 +158,12 @@ For TANK/CHUTE drawings, return:
     ],
     "plateParts": [
       { "mark": "P1", "description": "Side plate", "thicknessMm": 10, "lengthMm": 2400, "widthMm": 1200, "quantity": 2, "liningThicknessMm": 6 }
+    ],
+    "components": [
+      { "mark": "S1", "description": "Shell", "componentType": "shell", "shapeType": "cylinder", "innerDiameterMm": 1000, "heightMm": 1200, "liningThicknessMm": 6, "quantity": 1 },
+      { "mark": "C1", "description": "Floor cone", "componentType": "cone", "shapeType": "cone", "largeDiameterMm": 1450, "smallDiameterMm": 450, "slantHeightMm": 805, "liningThicknessMm": 10, "quantity": 1 },
+      { "mark": "LID", "description": "Dished lid", "componentType": "dished_head", "shapeType": "dished_head", "outerDiameterMm": 750, "crownRadiusMm": 642, "knuckleRadiusMm": 45, "liningThicknessMm": 6, "quantity": 1 },
+      { "mark": "ARM", "description": "Distributor arm", "componentType": "branch", "shapeType": "branch_wrap", "boreDiameterMm": 200, "lengthMm": 355, "liningThicknessMm": 6, "quantity": 10 }
     ]
   },
   "dimensions": [],
@@ -135,6 +182,7 @@ Rules:
 - The sum of all section liningAreaM2 values should equal the total liningAreaM2
 - "jobName" should be extracted from the drawing title block (e.g. "Screen 2 Underpan")
 - For tanks: "plateParts" MUST list every plate in the plate BOM table. For each, give thicknessMm (plate gauge), and the DEVELOPED FLAT cut size as lengthMm x widthMm (the rolled-out plate size before forming, read from the cut/plate schedule or computed from the developed dimensions — NOT the folded assembly dimension). Set liningThicknessMm to that plate's rubber/lining thickness (fall back to the tank-level liningThicknessMm when a per-plate value is not given). These developed sizes feed the rubber cutting diagram, so they are required whenever a plate BOM is visible.
+- For tanks: "components" MUST geometrically classify every lined or rolled body so its surface area can be computed. For each, set "componentType" (shell|cone|dished_head|lid|ring|branch|partition|plate) and a "shapeType" with its dimensions in mm: cylindrical shell/barrel → "cylinder" (innerDiameterMm, heightMm); conical section / reducer body / spigot or apex cone → "cone" (largeDiameterMm, smallDiameterMm, slantHeightMm — use the developed slant length or flat-pattern arc radius when shown, NOT the vertical height); dished/domed head or lid → "dished_head" (outerDiameterMm, crownRadiusMm, knuckleRadiusMm); flat ring / flange face / annular plate → "annular_ring" (outerDiameterMm, innerDiameterMm); distributor arm / outlet branch / nozzle pipe → "branch_wrap" (boreDiameterMm, lengthMm); any flat plate → "rectangle" (widthMm, heightMm). Set "liningThicknessMm" PER COMPONENT from that component's own callout — NEVER blanket-propagate one thickness across all components; use null when a component is not rubber-lined. Set "quantity" to the count of identical repeated components (e.g. 10 identical distributor arms → ONE entry with quantity 10). EXCLUDE painted-only structural parts (legs, gussets, lifting lugs, brackets, stiffeners) from "components". Omit a dimension only when it cannot be read; a component with no usable dimensions will be dropped. These components drive the geometric m² and the developed cutting panels.
 - For pipes: extract diameters in NB or mm, lengths in m or mm (convert to m)
 - Set confidence based on clarity of extracted data (0.0 to 1.0)
 - Default quantity to 1 if not specified
@@ -189,6 +237,12 @@ For TANK/CHUTE drawings, return:
     ],
     "plateParts": [
       { "mark": "P1", "description": "Side plate", "thicknessMm": 10, "lengthMm": 2400, "widthMm": 1200, "quantity": 2, "liningThicknessMm": 6 }
+    ],
+    "components": [
+      { "mark": "S1", "description": "Shell", "componentType": "shell", "shapeType": "cylinder", "innerDiameterMm": 1000, "heightMm": 1200, "liningThicknessMm": 6, "quantity": 1 },
+      { "mark": "C1", "description": "Floor cone", "componentType": "cone", "shapeType": "cone", "largeDiameterMm": 1450, "smallDiameterMm": 450, "slantHeightMm": 805, "liningThicknessMm": 10, "quantity": 1 },
+      { "mark": "LID", "description": "Dished lid", "componentType": "dished_head", "shapeType": "dished_head", "outerDiameterMm": 750, "crownRadiusMm": 642, "knuckleRadiusMm": 45, "liningThicknessMm": 6, "quantity": 1 },
+      { "mark": "ARM", "description": "Distributor arm", "componentType": "branch", "shapeType": "branch_wrap", "boreDiameterMm": 200, "lengthMm": 355, "liningThicknessMm": 6, "quantity": 10 }
     ]
   },
   "dimensions": [],
@@ -207,6 +261,7 @@ Rules:
 - The sum of all section liningAreaM2 values should equal the total liningAreaM2
 - "jobName" should be extracted from the drawing title block (e.g. "Screen 2 Underpan")
 - For tanks: "plateParts" MUST list every plate in the plate BOM table. For each, give thicknessMm (plate gauge), and the DEVELOPED FLAT cut size as lengthMm x widthMm (the rolled-out plate size before forming, read from the cut/plate schedule or computed from the developed dimensions — NOT the folded assembly dimension). Set liningThicknessMm to that plate's rubber/lining thickness (fall back to the tank-level liningThicknessMm when a per-plate value is not given). These developed sizes feed the rubber cutting diagram, so they are required whenever a plate BOM is visible.
+- For tanks: "components" MUST geometrically classify every lined or rolled body so its surface area can be computed. For each, set "componentType" (shell|cone|dished_head|lid|ring|branch|partition|plate) and a "shapeType" with its dimensions in mm: cylindrical shell/barrel → "cylinder" (innerDiameterMm, heightMm); conical section / reducer body / spigot or apex cone → "cone" (largeDiameterMm, smallDiameterMm, slantHeightMm — use the developed slant length or flat-pattern arc radius when shown, NOT the vertical height); dished/domed head or lid → "dished_head" (outerDiameterMm, crownRadiusMm, knuckleRadiusMm); flat ring / flange face / annular plate → "annular_ring" (outerDiameterMm, innerDiameterMm); distributor arm / outlet branch / nozzle pipe → "branch_wrap" (boreDiameterMm, lengthMm); any flat plate → "rectangle" (widthMm, heightMm). Set "liningThicknessMm" PER COMPONENT from that component's own callout — NEVER blanket-propagate one thickness across all components; use null when a component is not rubber-lined. Set "quantity" to the count of identical repeated components (e.g. 10 identical distributor arms → ONE entry with quantity 10). EXCLUDE painted-only structural parts (legs, gussets, lifting lugs, brackets, stiffeners) from "components". Omit a dimension only when it cannot be read; a component with no usable dimensions will be dropped. These components drive the geometric m² and the developed cutting panels.
 - For pipes: extract diameters in NB or mm, lengths in m or mm (convert to m)
 - Set confidence based on clarity of extracted data (0.0 to 1.0)
 - Default quantity to 1 if not specified
@@ -712,6 +767,7 @@ export class DrawingExtractionService {
         ...first,
         sections: tankResults.flatMap((result) => result.tankData.sections || []),
         plateParts: tankResults.flatMap((result) => result.tankData.plateParts || []),
+        components: tankResults.flatMap((result) => result.tankData.components || []),
         liningAreaM2: this.sumNullable(tankResults.map((result) => result.tankData.liningAreaM2)),
         coatingAreaM2: this.sumNullable(tankResults.map((result) => result.tankData.coatingAreaM2)),
       },
@@ -868,6 +924,10 @@ export class DrawingExtractionService {
               liningThicknessMm: p.liningThicknessMm ?? 0,
             }))
           : [],
+        // Shape-classified components (flat AI fields → nested developed shape) that
+        // drive the geometric tank m² and the developed cutting panels. Components
+        // with no usable dimensions are dropped during coercion.
+        components: this.coerceTankComponents(td.components),
       };
 
       return {
@@ -894,6 +954,102 @@ export class DrawingExtractionService {
       tankData: null,
       confidence: parsed.confidence || 0.5,
     };
+  }
+
+  private coerceTankComponents(raw: unknown): TankComponent[] {
+    if (!Array.isArray(raw)) {
+      return [];
+    }
+    return raw
+      .slice(0, MAX_TANK_COMPONENTS)
+      .map((component) => this.coerceTankComponent(component))
+      .filter((component): component is TankComponent => component !== null);
+  }
+
+  private coerceTankComponent(component: any): TankComponent | null {
+    const shape = this.coerceTankComponentShape(component);
+    if (!shape) {
+      return null;
+    }
+    return {
+      mark: typeof component.mark === "string" ? component.mark.slice(0, 120) : "",
+      description:
+        typeof component.description === "string" ? component.description.slice(0, 300) : "",
+      componentType: this.coerceTankComponentType(component.componentType),
+      shape,
+      liningType: component.liningType || null,
+      liningThicknessMm: finiteInRange(component.liningThicknessMm, MAX_TANK_DIMENSION_MM),
+      liningAreaM2: finiteInRange(component.liningAreaM2, MAX_TANK_AREA_M2),
+      coatingAreaM2: finiteInRange(component.coatingAreaM2, MAX_TANK_AREA_M2),
+      quantity: clampQuantity(component.quantity),
+      segmentCount: finiteInRange(component.segmentCount, MAX_TANK_COMPONENT_QUANTITY),
+    };
+  }
+
+  private coerceTankComponentType(value: unknown): TankComponent["componentType"] {
+    return TANK_COMPONENT_TYPES.includes(value as TankComponent["componentType"])
+      ? (value as TankComponent["componentType"])
+      : "plate";
+  }
+
+  private coerceTankComponentShape(component: any): TankComponentShape | null {
+    const positive = (value: unknown): number | null => finiteInRange(value, MAX_TANK_DIMENSION_MM);
+    const nonNegative = (value: unknown): number =>
+      finiteInRange(value, MAX_TANK_DIMENSION_MM) ?? 0;
+    const shapeType = component?.shapeType;
+
+    if (shapeType === "rectangle") {
+      const widthMm = positive(component.widthMm);
+      const heightMm = positive(component.heightMm);
+      return widthMm && heightMm ? { type: "rectangle", widthMm, heightMm } : null;
+    }
+    if (shapeType === "cylinder") {
+      const innerDiameterMm = positive(component.innerDiameterMm);
+      const heightMm = positive(component.heightMm);
+      return innerDiameterMm && heightMm ? { type: "cylinder", innerDiameterMm, heightMm } : null;
+    }
+    if (shapeType === "cone") {
+      const largeDiameterMm = positive(component.largeDiameterMm);
+      const slantHeightMm = positive(component.slantHeightMm);
+      return largeDiameterMm && slantHeightMm
+        ? {
+            type: "cone",
+            largeDiameterMm,
+            smallDiameterMm: nonNegative(component.smallDiameterMm),
+            slantHeightMm,
+            sweepAngleDegrees: positive(component.sweepAngleDegrees),
+          }
+        : null;
+    }
+    if (shapeType === "dished_head") {
+      const outerDiameterMm = positive(component.outerDiameterMm);
+      return outerDiameterMm
+        ? {
+            type: "dished_head",
+            outerDiameterMm,
+            crownRadiusMm: nonNegative(component.crownRadiusMm),
+            knuckleRadiusMm: nonNegative(component.knuckleRadiusMm),
+          }
+        : null;
+    }
+    if (shapeType === "annular_ring") {
+      const outerDiameterMm = positive(component.outerDiameterMm);
+      return outerDiameterMm
+        ? {
+            type: "annular_ring",
+            outerDiameterMm,
+            innerDiameterMm: nonNegative(component.innerDiameterMm),
+          }
+        : null;
+    }
+    if (shapeType === "branch_wrap") {
+      const boreDiameterMm = positive(component.boreDiameterMm);
+      const lengthMm = positive(component.lengthMm);
+      return boreDiameterMm && lengthMm
+        ? { type: "branch_wrap", boreDiameterMm, lengthMm, mitred: component.mitred === true }
+        : null;
+    }
+    return null;
   }
 
   private buildExtractionResult(aiResult: {
@@ -1173,10 +1329,23 @@ export class DrawingExtractionService {
           ];
 
     if (newItems.length > 0) {
-      const created = this.lineItemRepo.buildMany(newItems);
+      const plateBom = tankData.plateParts.length > 0 ? tankData.plateParts : null;
+      const tankComponents = tankData.components.length > 0 ? tankData.components : null;
+      const liningIndex = newItems.findIndex(
+        (item) =>
+          item.itemCode?.startsWith("R/L") || /Lining|R\/L/i.test(item.itemDescription || ""),
+      );
+      const carrierIndex = liningIndex >= 0 ? liningIndex : 0;
+      const enriched =
+        plateBom || tankComponents
+          ? newItems.map((item, idx) =>
+              idx === carrierIndex ? { ...item, plateBom, tankComponents } : item,
+            )
+          : newItems;
+      const created = this.lineItemRepo.buildMany(enriched);
       await this.lineItemRepo.saveMany(created);
       this.logger.log(
-        `Created ${newItems.length} tank line items for job card ${jobCardId} (lining: ${tankData.liningAreaM2 ?? 0} m², coating: ${tankData.coatingAreaM2 ?? 0} m²)`,
+        `Created ${enriched.length} tank line items for job card ${jobCardId} (lining: ${tankData.liningAreaM2 ?? 0} m², coating: ${tankData.coatingAreaM2 ?? 0} m², components: ${tankComponents?.length ?? 0}, plates: ${plateBom?.length ?? 0})`,
       );
     }
   }

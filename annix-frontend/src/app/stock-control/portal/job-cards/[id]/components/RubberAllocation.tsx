@@ -13,6 +13,8 @@ import type {
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { JigsawEditor } from "@/app/stock-control/components/jigsaw/JigsawEditor";
 import type {
+  TankComponentPanel,
+  TankComponentSource,
   TankPanelSource,
   TankPlatePanel,
 } from "@/app/stock-control/components/jigsaw/jigsawLayout";
@@ -108,6 +110,7 @@ function manualRollsToCuttingPlan(manualRolls: RubberPlanManualRoll[]): CuttingP
             band: bandIndex,
             stripsPerPiece: 1,
             subPanels: null,
+            shape: cut.shape,
           });
         });
 
@@ -218,6 +221,8 @@ interface RubberAllocationProps {
     itemNo?: string | null;
     quantity: number | null;
     notes?: string | null;
+    plateBom?: TankPlatePanel[] | null;
+    tankComponents?: TankComponentPanel[] | null;
   }>;
   jobCardId: number;
   rubberPlanOverride: RubberPlanOverride | null;
@@ -1141,10 +1146,15 @@ function GenericM2View({
   totalM2: number;
   items: { description: string; m2: number }[];
 }) {
-  const rollsNeededExact = totalM2 / STANDARD_ROLL_AREA_M2;
-  const fullRollsNeeded = Math.ceil(rollsNeededExact);
+  // Defend against a non-finite or absurd m² (e.g. a corrupted/hostile extracted
+  // value persisted on a line item) — an unbounded fullRollsNeeded would crash
+  // the whole job-card view via Array.from({ length }).
+  const MAX_ROLLS_RENDERED = 1000;
+  const safeTotalM2 = Number.isFinite(totalM2) && totalM2 > 0 ? totalM2 : 0;
+  const rollsNeededExact = safeTotalM2 / STANDARD_ROLL_AREA_M2;
+  const fullRollsNeeded = Math.min(Math.ceil(rollsNeededExact), MAX_ROLLS_RENDERED);
   const totalRollArea = fullRollsNeeded * STANDARD_ROLL_AREA_M2;
-  const leftoverM2 = totalRollArea - totalM2;
+  const leftoverM2 = totalRollArea - safeTotalM2;
   const lastRollUsedM2 = STANDARD_ROLL_AREA_M2 - leftoverM2;
   const lastRollUsedPercent = (lastRollUsedM2 / STANDARD_ROLL_AREA_M2) * 100;
 
@@ -1158,7 +1168,7 @@ function GenericM2View({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-blue-50 rounded-lg p-4">
           <p className="text-sm font-medium text-blue-600">Total Required</p>
-          <p className="text-2xl font-bold text-blue-900">{totalM2.toFixed(2)} m&#178;</p>
+          <p className="text-2xl font-bold text-blue-900">{safeTotalM2.toFixed(2)} m&#178;</p>
         </div>
         <div className="bg-[var(--sc-primary-50,#eeeef6)] rounded-lg p-4">
           <p className="text-sm font-medium text-[var(--sc-primary,#323288)]">Rolls Required</p>
@@ -1424,6 +1434,7 @@ function RubberSOHPanel({
     m2: number | null;
     notes?: string | null;
     plateBom?: TankPlatePanel[] | null;
+    tankComponents?: TankComponentPanel[] | null;
   }>;
 }) {
   const [planDecision, setPlanDecision] = useState<"pending" | "accepted" | "rejected">(
@@ -1898,21 +1909,32 @@ function RubberSOHPanel({
         <div className="border-2 border-amber-300 rounded-lg p-4 bg-amber-50">
           <h5 className="text-sm font-semibold text-amber-900 mb-3">Manual Roll Specification</h5>
           <p className="text-xs text-amber-700 mb-4">
-            Drag and drop panels onto rolls to arrange your cutting layout.
+            Drag panels onto rolls to arrange your cutting layout. Use the rotate button to turn a
+            panel 90°, or the scissors to cut an oversized panel in half so it fits the roll width —
+            the two halves drop back into the tray. Your layout is saved and Nix learns from it.
           </p>
           <JigsawEditor
             parsedItems={expandAndRotateItems(
-              lineItems.map((li, idx) =>
-                parsePipeItem(
-                  String(li.id ? li.id : idx),
-                  li.itemDescription ? li.itemDescription : li.itemCode ? li.itemCode : "",
-                  Number(li.quantity ? li.quantity : 1),
-                  li.m2 ? Number(li.m2) : null,
-                  li.itemNo ? li.itemNo : null,
+              lineItems
+                .filter((li) => {
+                  const tc = li.tankComponents;
+                  const pb = li.plateBom;
+                  const isTankRow = (tc && tc.length > 0) || (pb && pb.length > 0);
+                  return !isTankRow;
+                })
+                .map((li, idx) =>
+                  parsePipeItem(
+                    String(li.id ? li.id : idx),
+                    li.itemDescription ? li.itemDescription : li.itemCode ? li.itemCode : "",
+                    Number(li.quantity ? li.quantity : 1),
+                    li.m2 ? Number(li.m2) : null,
+                    li.itemNo ? li.itemNo : null,
+                  ),
                 ),
-              ),
             )}
             tankSources={lineItems.flatMap((li, idx): TankPanelSource[] => {
+              const tc = li.tankComponents;
+              if (tc && tc.length > 0) return [];
               const pb = li.plateBom;
               if (!pb || pb.length === 0) return [];
               const rawItemNo = li.itemNo;
@@ -1926,6 +1948,23 @@ function RubberSOHPanel({
                   itemNo: rawItemNo ?? null,
                   tankName,
                   plates: pb,
+                },
+              ];
+            })}
+            tankComponentSources={lineItems.flatMap((li, idx): TankComponentSource[] => {
+              const tc = li.tankComponents;
+              if (!tc || tc.length === 0) return [];
+              const rawItemNo = li.itemNo;
+              const rawDesc = li.itemDescription;
+              const rawCode = li.itemCode;
+              const rawId = li.id;
+              const tankName = rawDesc || rawCode || "Tank";
+              return [
+                {
+                  itemId: String(rawId ?? idx),
+                  itemNo: rawItemNo ?? null,
+                  tankName,
+                  components: tc,
                 },
               ];
             })}
@@ -2020,15 +2059,21 @@ function RubberAllocationSection({
 
   const totalM2Required = lineItems.reduce((sum, li) => sum + (li.m2 ? Number(li.m2) : 0), 0);
 
-  const lineItemsForPlan = lineItems.map((li, idx) => ({
-    id: li.id ? li.id : idx,
-    itemCode: li.itemCode,
-    itemDescription: li.itemDescription,
-    itemNo: li.itemNo,
-    quantity: li.quantity,
-    m2: li.m2,
-    notes: li.notes,
-  }));
+  const lineItemsForPlan = lineItems.map((li, idx) => {
+    const rawPlateBom = li.plateBom;
+    const rawTankComponents = li.tankComponents;
+    return {
+      id: li.id ? li.id : idx,
+      itemCode: li.itemCode,
+      itemDescription: li.itemDescription,
+      itemNo: li.itemNo,
+      quantity: li.quantity,
+      m2: li.m2,
+      notes: li.notes,
+      plateBom: rawPlateBom ? rawPlateBom : null,
+      tankComponents: rawTankComponents ? rawTankComponents : null,
+    };
+  });
 
   const plyCombos = stockOptions?.plyCombinations ? stockOptions.plyCombinations : [];
   const comboSummaries = plyCombos.map((combo) => {

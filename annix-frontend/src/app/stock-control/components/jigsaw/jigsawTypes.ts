@@ -12,6 +12,25 @@ export interface PanelDimensionContext {
   liningThicknessMm?: number | null;
 }
 
+// The developed (flat-pattern) outline of a panel. Absent means a plain rectangle
+// (the default for every pipe/plate panel), so `shape` is optional everywhere and
+// fully backward-compatible. Non-rectangular panels still carry a bounding
+// widthMm/lengthMm so the existing skyline packer nests them by bounding box.
+// This is the single canonical definition; the backend mirrors it structurally on
+// CutPiece in annix-backend/src/stock-control/lib/rubberCuttingCalculator.ts.
+export type PanelShape =
+  | { type: "rectangle" }
+  | {
+      type: "annular_sector";
+      innerRadiusMm: number;
+      outerRadiusMm: number;
+      sweepAngleDegrees: number;
+    }
+  | { type: "circle"; radiusMm: number }
+  | { type: "annulus"; innerRadiusMm: number; outerRadiusMm: number }
+  | { type: "petal"; baseWidthMm: number; heightMm: number; tipWidthMm: number }
+  | { type: "saddle_wrap"; odMm: number; branchOdMm: number };
+
 export interface JigsawPanel {
   panelId: string;
   itemId: string;
@@ -24,6 +43,7 @@ export interface JigsawPanel {
   rotated: boolean;
   colorIndex: number;
   dimensionContext: PanelDimensionContext;
+  shape?: PanelShape;
 }
 
 export interface PlacedPanel extends JigsawPanel {

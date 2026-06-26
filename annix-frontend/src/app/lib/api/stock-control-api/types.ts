@@ -1,3 +1,5 @@
+import type { PanelShape } from "@/app/stock-control/components/jigsaw/jigsawTypes";
+
 export type PaintCoatRole = "primer" | "intermediate" | "final";
 
 export interface PaintPriceListItem {
@@ -870,6 +872,41 @@ export interface JobCardLineItemPlatePart {
   liningThicknessMm: number;
 }
 
+export type JobCardLineItemTankComponentShape =
+  | { type: "rectangle"; widthMm: number; heightMm: number }
+  | { type: "cylinder"; innerDiameterMm: number; heightMm: number }
+  | {
+      type: "cone";
+      largeDiameterMm: number;
+      smallDiameterMm: number;
+      slantHeightMm: number;
+      sweepAngleDegrees: number | null;
+    }
+  | { type: "dished_head"; crownRadiusMm: number; knuckleRadiusMm: number; outerDiameterMm: number }
+  | { type: "annular_ring"; outerDiameterMm: number; innerDiameterMm: number }
+  | { type: "branch_wrap"; boreDiameterMm: number; lengthMm: number; mitred: boolean };
+
+export interface JobCardLineItemTankComponent {
+  mark: string;
+  description: string;
+  componentType:
+    | "shell"
+    | "cone"
+    | "dished_head"
+    | "lid"
+    | "ring"
+    | "branch"
+    | "partition"
+    | "plate";
+  shape: JobCardLineItemTankComponentShape;
+  liningType: string | null;
+  liningThicknessMm: number | null;
+  liningAreaM2: number | null;
+  coatingAreaM2: number | null;
+  quantity: number;
+  segmentCount: number | null;
+}
+
 export interface JobCardLineItem {
   id: number;
   jobCardId: number;
@@ -883,6 +920,10 @@ export interface JobCardLineItem {
   // Developed flat plate take-off for a fabricated-tank line (from the Nix
   // plateBom) — drives the rubber cutting-diagram nesting. Null for non-tank rows.
   plateBom?: JobCardLineItemPlatePart[] | null;
+  // Shape-classified geometric components (shells, cones, dished heads, rings,
+  // branches) that develop into the rubber cutting-diagram panels. Null for
+  // non-tank rows. Richer than plateBom; preferred when present.
+  tankComponents?: JobCardLineItemTankComponent[] | null;
   notes: string | null;
   sortOrder: number;
   companyId: number;
@@ -1155,6 +1196,7 @@ export interface RubberPlanManualRoll {
     widthMm: number;
     lengthMm: number;
     quantity: number;
+    shape?: PanelShape;
   }>;
 }
 

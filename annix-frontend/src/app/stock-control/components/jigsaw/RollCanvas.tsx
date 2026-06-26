@@ -41,11 +41,13 @@ export function RollCanvas(props: {
   roll: JigsawRoll;
   panels: PlacedPanel[];
   onRotate: (panelId: string) => void;
+  onSplit: (panelId: string) => void;
   rotateFailedId: string | null;
   onUpdateRoll: (rollIndex: number, field: keyof JigsawRoll, value: number) => void;
   onRemoveRoll: (rollIndex: number) => void;
 }) {
-  const { rollIndex, roll, panels, onRotate, rotateFailedId, onUpdateRoll, onRemoveRoll } = props;
+  const { rollIndex, roll, panels, onRotate, onSplit, rotateFailedId, onUpdateRoll, onRemoveRoll } =
+    props;
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(700);
 
@@ -155,6 +157,7 @@ export function RollCanvas(props: {
               panel={panel}
               scale={scale}
               onRotate={onRotate}
+              onSplit={onSplit}
               rotateFailed={rotateFailedId === panel.panelId}
               isPlaced={true}
             />

@@ -3,11 +3,88 @@
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useState } from "react";
-import { CUT_COLORS } from "./jigsawLayout";
-import { effectiveLength, effectiveWidth, type JigsawPanel } from "./jigsawTypes";
+import { CUT_COLORS, canSplitPanel } from "./jigsawLayout";
+import { effectiveLength, effectiveWidth, type JigsawPanel, type PanelShape } from "./jigsawTypes";
 
 function isOverridden(panel: JigsawPanel): boolean {
   return panel.widthMm !== panel.originalWidthMm || panel.lengthMm !== panel.originalLengthMm;
+}
+
+// Draws the true developed outline of a non-rectangular panel (reducer/cone
+// annular sector, dished-head circle, ring annulus) over its bounding box, so the
+// cutter sees the real shape and the offcut. The bounding box div owns drag/position.
+function annularSectorPath(shape: Extract<PanelShape, { type: "annular_sector" }>): {
+  side: number;
+  d: string;
+} {
+  const thetaRad = (shape.sweepAngleDegrees * Math.PI) / 180;
+  const half = thetaRad / 2;
+  const R = shape.outerRadiusMm;
+  const r = shape.innerRadiusMm;
+  // Matches developFrustum: past 180° the sector reaches the full ±R width and its
+  // near edge is the outer arc, so both extents grow.
+  const widthHalf = Math.min(half, Math.PI / 2);
+  const nearEdgeX = (half <= Math.PI / 2 ? r : R) * Math.cos(half);
+  const bboxLength = R - nearEdgeX;
+  const bboxWidth = 2 * R * Math.sin(widthHalf);
+  const side = Math.max(bboxLength, bboxWidth);
+  const tx = (side - bboxLength) / 2 - nearEdgeX;
+  const ty = side / 2;
+  const pt = (rad: number, ang: number) =>
+    `${(rad * Math.cos(ang) + tx).toFixed(1)} ${(rad * Math.sin(ang) + ty).toFixed(1)}`;
+  const large = thetaRad > Math.PI ? 1 : 0;
+  const d = `M ${pt(R, -half)} A ${R} ${R} 0 ${large} 1 ${pt(R, half)} L ${pt(r, half)} A ${r} ${r} 0 ${large} 0 ${pt(r, -half)} Z`;
+  return { side, d };
+}
+
+function circlePathAt(cx: number, cy: number, radius: number): string {
+  return `M ${(cx - radius).toFixed(1)} ${cy.toFixed(1)} a ${radius.toFixed(1)} ${radius.toFixed(1)} 0 1 0 ${(2 * radius).toFixed(1)} 0 a ${radius.toFixed(1)} ${radius.toFixed(1)} 0 1 0 ${(-2 * radius).toFixed(1)} 0 Z`;
+}
+
+function shapeOverlayGeometry(shape: PanelShape): { side: number; d: string } | null {
+  if (shape.type === "annular_sector") {
+    return annularSectorPath(shape);
+  }
+  if (shape.type === "circle") {
+    const side = 2 * shape.radiusMm;
+    return { side, d: circlePathAt(shape.radiusMm, shape.radiusMm, shape.radiusMm) };
+  }
+  if (shape.type === "annulus") {
+    const side = 2 * shape.outerRadiusMm;
+    const center = shape.outerRadiusMm;
+    const outer = circlePathAt(center, center, shape.outerRadiusMm);
+    const inner = circlePathAt(center, center, shape.innerRadiusMm);
+    return { side, d: `${outer} ${inner}` };
+  }
+  return null;
+}
+
+function PanelShapeOverlay({ shape, rotated }: { shape: PanelShape; rotated: boolean }) {
+  const geometry = shapeOverlayGeometry(shape);
+  if (!geometry) {
+    return null;
+  }
+  const { side, d } = geometry;
+  const strokeWidth = side / 90;
+  return (
+    <svg
+      viewBox={`0 0 ${side.toFixed(1)} ${side.toFixed(1)}`}
+      preserveAspectRatio="xMidYMid meet"
+      className="absolute inset-0 h-full w-full pointer-events-none"
+      aria-hidden="true"
+    >
+      <g transform={rotated ? `rotate(90 ${side / 2} ${side / 2})` : undefined}>
+        <path
+          d={d}
+          fill="rgba(255,255,255,0.22)"
+          fillRule="evenodd"
+          stroke="rgba(255,255,255,0.95)"
+          strokeWidth={strokeWidth}
+          strokeLinejoin="round"
+        />
+      </g>
+    </svg>
+  );
 }
 
 function RotateIcon({ className }: { className?: string }) {
@@ -25,16 +102,34 @@ function RotateIcon({ className }: { className?: string }) {
   );
 }
 
+function ScissorsIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      className={className}
+    >
+      <circle cx="3.5" cy="4" r="2" />
+      <circle cx="3.5" cy="12" r="2" />
+      <path d="M5.2 5.2 14 12M5.2 10.8 14 4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function DraggablePanel(props: {
   panel: JigsawPanel;
   scale: number | null;
   onRotate: (panelId: string) => void;
   onEditDimensions?: (panelId: string, widthMm: number, lengthMm: number) => void;
+  onSplit?: (panelId: string) => void;
   rotateFailed?: boolean;
   isPlaced: boolean;
 }) {
-  const { panel, scale, onRotate, onEditDimensions, rotateFailed, isPlaced } = props;
+  const { panel, scale, onRotate, onEditDimensions, onSplit, rotateFailed, isPlaced } = props;
   const rawPanelItemNo = panel.itemNo;
+  const splittable = onSplit !== undefined && canSplitPanel(panel);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: panel.panelId,
   });
@@ -94,6 +189,7 @@ export function DraggablePanel(props: {
         {...attributes}
         className={`${colorClass} absolute rounded cursor-grab active:cursor-grabbing ${overridden ? "border-2 border-yellow-300" : "border border-white/40"} flex flex-col items-center justify-center text-white overflow-hidden select-none ${isDragging ? "opacity-50 shadow-lg" : "shadow-sm"}`}
       >
+        {panel.shape && <PanelShapeOverlay shape={panel.shape} rotated={panel.rotated} />}
         {showFullLabel ? (
           <>
             <span className="text-[10px] font-bold leading-tight truncate px-0.5">
@@ -120,6 +216,21 @@ export function DraggablePanel(props: {
             title={rotateFailed ? "Cannot rotate: panel too large for roll" : "Rotate 90\u00b0"}
           >
             <RotateIcon className="w-3 h-3" />
+          </button>
+        )}
+        {showRotateBtn && splittable && (
+          <button
+            type="button"
+            aria-label="Cut panel in half"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSplit?.(panel.panelId);
+            }}
+            className="absolute top-0 left-0 w-5 h-5 bg-white/30 hover:bg-white/50 rounded-br flex items-center justify-center"
+            title="Cut in half to fit the roll"
+          >
+            <ScissorsIcon className="w-3 h-3" />
           </button>
         )}
       </div>
@@ -230,6 +341,20 @@ export function DraggablePanel(props: {
         >
           <RotateIcon className="w-3.5 h-3.5" />
         </button>
+        {splittable && (
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSplit?.(panel.panelId);
+            }}
+            className="w-6 h-6 bg-white/30 hover:bg-white/50 rounded flex items-center justify-center"
+            title="Cut in half to fit the roll"
+          >
+            <ScissorsIcon className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
     </div>
   );

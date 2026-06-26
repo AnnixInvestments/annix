@@ -1,3 +1,5 @@
+import type { PanelShape } from "../components/jigsaw/jigsawTypes";
+
 const NB_TO_OD_MM: Record<number, number> = {
   15: 21.3,
   20: 26.7,
@@ -237,6 +239,7 @@ export interface ParsedPipeItem {
   fittingRunLengthMm: number | null;
   fittingBranchLengthMm: number | null;
   subPanels: SubPanelSpec[] | null;
+  shape?: PanelShape;
 }
 
 export interface SubPanelSpec {
@@ -245,6 +248,7 @@ export interface SubPanelSpec {
   rubberWidthMm: number;
   rubberLengthMm: number;
   flangeCount: number;
+  shape?: PanelShape;
 }
 
 export interface RollSpecification {
@@ -267,6 +271,7 @@ export interface CutPiece {
   band: number;
   stripsPerPiece: number;
   subPanels: SubPanelSpec[] | null;
+  shape?: PanelShape;
 }
 
 export interface BandSpec {
@@ -939,6 +944,93 @@ function rotateIfNeeded(item: ParsedPipeItem): ParsedPipeItem {
   return w <= l ? item : { ...item, rubberWidthMm: l, rubberLengthMm: w };
 }
 
+export interface FrustumDevelopment {
+  shape: Extract<PanelShape, { type: "annular_sector" }>;
+  bboxWidthMm: number;
+  bboxLengthMm: number;
+  outerArcLengthMm: number;
+}
+
+// Unroll a cone frustum (large diameter dLarge, small diameter dSmall, axial length)
+// into its exact flat pattern: an annular sector. R/r are the apex distances to the
+// large/small rims (R - r = slant length); the sweep is the outer circumference over
+// R. The bounding box is computed off the HALF-angle so the packer nests the sector
+// by its true rectangular envelope.
+export function developFrustum(
+  dLarge: number,
+  dSmall: number,
+  axialLengthMm: number,
+): FrustumDevelopment {
+  const deltaR = (dLarge - dSmall) / 2;
+  const slant = Math.sqrt(axialLengthMm ** 2 + deltaR ** 2);
+  const r = (slant * dSmall) / (dLarge - dSmall);
+  const R = r + slant;
+  const thetaRad = (Math.PI * dLarge) / R;
+  const half = thetaRad / 2;
+  // Flat-pattern bounding box of the developed sector. For sweep <= 180° the width
+  // is the outer chord (2·R·sin(half)) and the near edge sits at the inner arc
+  // (r·cos(half)). Tank apex/floor cones routinely develop PAST 180°, where the
+  // arc reaches the full ±R width and the near edge is the outer arc (R·cos(half),
+  // which is negative) — so both extents grow. Clamp accordingly.
+  const widthHalf = Math.min(half, Math.PI / 2);
+  const nearEdgeX = (half <= Math.PI / 2 ? r : R) * Math.cos(half);
+  const bboxWidthMm = 2 * R * Math.sin(widthHalf);
+  const bboxLengthMm = R - nearEdgeX;
+  const outerArcLengthMm = R * thetaRad;
+  return {
+    shape: {
+      type: "annular_sector",
+      innerRadiusMm: r,
+      outerRadiusMm: R,
+      sweepAngleDegrees: (thetaRad * 180) / Math.PI,
+    },
+    bboxWidthMm,
+    bboxLengthMm,
+    outerArcLengthMm,
+  };
+}
+
+// A reducer's rubber panel is the developed cone (annular sector), not a rectangle.
+// Develops off the rubber bore (OD - 2·wall) to match expandTeeItem's convention.
+function expandReducerItem(item: ParsedPipeItem): ParsedPipeItem {
+  const hasDims =
+    item.itemType === "reducer" &&
+    item.nbMm !== null &&
+    item.branchNbMm !== null &&
+    item.lengthMm > 0;
+  if (!hasDims) return item;
+
+  const schedule = item.schedule;
+  const nbA = item.nbMm as number;
+  const nbB = item.branchNbMm as number;
+  // SWC-safe: hoist the member access to a bare const before `||`.
+  const wallThicknessMm = item.wallThicknessMm;
+  const wtA = wallThicknessMm || wallThickness(nbA, schedule);
+  const wtB = wallThicknessMm || wallThickness(nbB, schedule);
+  const boreA = nbToOd(nbA) - 2 * wtA;
+  const boreB = nbToOd(nbB) - 2 * wtB;
+  const dLarge = Math.max(boreA, boreB);
+  const dSmall = Math.min(boreA, boreB);
+  // ~equal ends ⇒ cylinder ⇒ keep rectangle
+  if (dLarge - dSmall < 1) return item;
+
+  const dev = developFrustum(dLarge, dSmall, item.lengthMm);
+  const rubberWidthMm = roundUpToNearest(
+    dev.bboxWidthMm + BEVEL_ALLOWANCE_MM,
+    ROLL_WIDTH_INCREMENT_MM,
+  );
+  const rubberLengthMm = dev.bboxLengthMm + BEVEL_ALLOWANCE_MM;
+
+  return {
+    ...item,
+    rubberWidthMm,
+    rubberLengthMm,
+    stripsPerPiece: 1,
+    shape: dev.shape,
+    subPanels: null,
+  };
+}
+
 function expandTeeItem(item: ParsedPipeItem): ParsedPipeItem {
   const hasTeeDims =
     item.itemType === "tee" &&
@@ -1007,7 +1099,7 @@ function expandTeeItem(item: ParsedPipeItem): ParsedPipeItem {
 export function expandAndRotateItems(parsedItems: ParsedPipeItem[]): ParsedPipeItem[] {
   return parsedItems
     .filter((item) => item.isValidPipe)
-    .map((item) => expandTeeItem(item))
+    .map((item) => expandReducerItem(expandTeeItem(item)))
     .flatMap((item) => {
       const rotated = rotateIfNeeded(item);
       const count = Number(item.quantity) || 1;

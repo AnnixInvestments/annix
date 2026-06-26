@@ -3,6 +3,24 @@ import { FlangeDimensionService } from "../../flange-dimension/flange-dimension.
 import { NbOdLookupService } from "../../nb-od-lookup/nb-od-lookup.service";
 import { NixItemParserService } from "../../nix/services/nix-item-parser.service";
 import { PipeScheduleService } from "../../pipe-schedule/pipe-schedule.service";
+import type { TankComponent, TankComponentShape } from "../entities/job-card-line-item.entity";
+
+export interface TankComponentBreakdown {
+  mark: string;
+  componentType: string;
+  externalM2: number;
+  internalM2: number;
+  lined: boolean;
+}
+
+export interface TankM2Result {
+  externalM2: number;
+  internalM2: number;
+  components: TankComponentBreakdown[];
+  // Component count whose geometry was usable; surfaced so callers can flag low
+  // confidence when the extraction left components dimensionless.
+  usableComponents: number;
+}
 
 export interface M2Result {
   description: string;
@@ -88,6 +106,8 @@ const FLANGE_COUNT_PATTERNS: { pattern: RegExp; count: number }[] = [
   { pattern: /\bBLANK\s+FLANGES?\b/i, count: 1 },
   { pattern: /\bBLIND\s+FLANGES?\b/i, count: 1 },
   { pattern: /\bFBE\b/i, count: 2 },
+  // FEB is a shop-sheet typo for FBE (flanged both ends).
+  { pattern: /\bFEB\b/i, count: 2 },
   { pattern: /\bF2E\b/i, count: 2 },
   { pattern: /\bFFE\b/i, count: 2 },
   { pattern: /\bF(?:OE|1E)\b/i, count: 1 },
@@ -99,6 +119,7 @@ const FLANGE_CONFIG_PATTERNS: { pattern: RegExp; config: string }[] = [
   { pattern: /\bBLANK\s+FLANGES?\b/i, config: "blank_flange" },
   { pattern: /\bBLIND\s+FLANGES?\b/i, config: "blind_flange" },
   { pattern: /\bFBE\b/i, config: "both_ends" },
+  { pattern: /\bFEB\b/i, config: "both_ends" },
   { pattern: /\bF(?:OE|1E)\b/i, config: "one_end" },
   { pattern: /\bFFE\b/i, config: "both_ends" },
   { pattern: /\bF2E\b/i, config: "both_ends" },
@@ -166,14 +187,114 @@ export class M2CalculationService {
     return Promise.all(descriptions.map((desc) => this.calculateSingle(desc)));
   }
 
+  // Geometric tank surface area from the developed-component take-off. This is the
+  // PRIMARY tank m² source; any area printed on the drawing is used by the caller
+  // only to cross-check and to train Nix. external ≡ paint, internal ≡ lining
+  // (summed only on lined components).
+  calculateTankM2(components: TankComponent[] | null): TankM2Result {
+    const list = components ?? [];
+    const breakdown: TankComponentBreakdown[] = [];
+    let externalM2 = 0;
+    let internalM2 = 0;
+    let usableComponents = 0;
+
+    list.forEach((component) => {
+      const qty = Number(component.quantity) > 0 ? Number(component.quantity) : 1;
+      const lined = component.liningThicknessMm != null && component.liningThicknessMm > 0;
+      const areaMm2 = this.tankComponentAreaMm2(component.shape);
+      if (areaMm2 <= 0) {
+        breakdown.push({
+          mark: component.mark,
+          componentType: component.componentType,
+          externalM2: 0,
+          internalM2: 0,
+          lined,
+        });
+        return;
+      }
+      usableComponents += 1;
+      const areaM2 = (areaMm2 * qty) / 1_000_000;
+      externalM2 += areaM2;
+      if (lined) {
+        internalM2 += areaM2;
+      }
+      breakdown.push({
+        mark: component.mark,
+        componentType: component.componentType,
+        externalM2: Math.round(areaM2 * 10000) / 10000,
+        internalM2: lined ? Math.round(areaM2 * 10000) / 10000 : 0,
+        lined,
+      });
+    });
+
+    return {
+      externalM2: Math.round(externalM2 * 10000) / 10000,
+      internalM2: Math.round(internalM2 * 10000) / 10000,
+      components: breakdown,
+      usableComponents,
+    };
+  }
+
+  // Developed surface area (mm²) of one tank component from its flat-pattern shape.
+  private tankComponentAreaMm2(shape: TankComponentShape): number {
+    const nonNeg = (n: number) => (Number.isFinite(n) && n > 0 ? n : 0);
+    if (shape.type === "rectangle") {
+      return nonNeg(shape.widthMm) * nonNeg(shape.heightMm);
+    }
+    if (shape.type === "cylinder") {
+      return Math.PI * nonNeg(shape.innerDiameterMm) * nonNeg(shape.heightMm);
+    }
+    if (shape.type === "cone") {
+      const large = nonNeg(shape.largeDiameterMm);
+      const small = Math.min(nonNeg(shape.smallDiameterMm), large);
+      const dAvg = (large + small) / 2;
+      return Math.PI * dAvg * nonNeg(shape.slantHeightMm);
+    }
+    if (shape.type === "dished_head") {
+      // Torispherical envelope ≈ 1.07·D² — matches the drawings' printed lid areas.
+      return 1.07 * nonNeg(shape.outerDiameterMm) ** 2;
+    }
+    if (shape.type === "annular_ring") {
+      const dO = nonNeg(shape.outerDiameterMm);
+      const dI = nonNeg(shape.innerDiameterMm);
+      return (Math.PI / 4) * Math.max(0, dO * dO - dI * dI);
+    }
+    if (shape.type === "branch_wrap") {
+      return Math.PI * nonNeg(shape.boreDiameterMm) * nonNeg(shape.lengthMm);
+    }
+    return 0;
+  }
+
   private regexParse(description: string): RegexParseResult {
+    const itemType = ITEM_TYPE_PATTERNS.find((it) => it.pattern.test(description))?.type ?? null;
+
     const boreListMatch = description.match(BORE_LIST_PATTERN);
-    const bores = boreListMatch
+    let bores = boreListMatch
       ? boreListMatch[1]
           .split(/[xX]/)
           .map((s) => parseInt(s.trim(), 10))
           .filter((n) => Number.isFinite(n))
       : [];
+
+    // Tees / laterals are sometimes written "RUNxBRANCH RUNLENxBRANCHLEN" with no NB
+    // suffix on the bore pair (e.g. "350x200 710x355 SPIGOT T-PIECE"). With no NB-tagged
+    // bore list, take the first bare NxN pair as the bores (run, branch) and the second
+    // as the run-length x branch-length pair.
+    let teeLengthPairMm: { a: number; b: number } | null = null;
+    let usedBareBoreFallback = false;
+    if ((itemType === "tee" || itemType === "lateral") && bores.length === 0) {
+      const barePairs = [...description.matchAll(/(\d{2,4})\s*[xX]\s*(\d{2,4})(?!\s*NB)/gi)].map(
+        (m) => [parseInt(m[1], 10), parseInt(m[2], 10)] as [number, number],
+      );
+      if (barePairs.length >= 1) {
+        bores = barePairs[0];
+        usedBareBoreFallback = true;
+      }
+      if (barePairs.length >= 2) {
+        teeLengthPairMm = { a: barePairs[1][0], b: barePairs[1][1] };
+      }
+    }
+
     const nbPrefixMatch = description.match(NB_PREFIX_PATTERN);
     const bareReducingMatch = description.match(BARE_REDUCING_PATTERN);
     const diameterMm =
@@ -191,8 +312,6 @@ export class M2CalculationService {
     const branchDiametersMm = bores.slice(1);
     const smallOdMatch = description.match(SMALL_OD_PATTERN);
     const smallEndOdMm = smallOdMatch ? parseInt(smallOdMatch[1], 10) : null;
-
-    const itemType = ITEM_TYPE_PATTERNS.find((it) => it.pattern.test(description))?.type ?? null;
 
     const bendAngle = this.parseBendAngleDegrees(description);
     const bendType = this.parseBendRadiusType(description);
@@ -248,8 +367,19 @@ export class M2CalculationService {
     const flangeCount = this.parseFlangeCount(description);
     const { standard: flangeStandard, pressureClass } =
       this.parseFlangeStandardAndClass(description);
-    const { a: fittingDimensionsA, b: fittingDimensionsB } =
-      this.parseFittingDimensions(description);
+    const parsedFittingDims = this.parseFittingDimensions(description);
+    // When the no-NB tee fallback consumed the first bare pair as bores, the lengths are
+    // the second pair (teeLengthPairMm) — never re-read the bore pair as fitting lengths.
+    const fittingDimensionsA = teeLengthPairMm
+      ? teeLengthPairMm.a
+      : usedBareBoreFallback
+        ? null
+        : parsedFittingDims.a;
+    const fittingDimensionsB = teeLengthPairMm
+      ? teeLengthPairMm.b
+      : usedBareBoreFallback
+        ? null
+        : parsedFittingDims.b;
 
     return {
       diameterMm,
@@ -464,31 +594,40 @@ export class M2CalculationService {
     dimB: number | null,
     branches: Array<{ odMm: number; idMm: number }>,
   ): { external: number; internal: number } {
-    const armA = dimA ? dimA / 1000 : odMm / 1000;
-    const armB = dimB ? dimB / 1000 : odMm / 1000;
-
-    const mainRunExternal = Math.PI * (odMm / 1000) * (armA + armB);
-    const mainRunInternal = Math.PI * (idMm / 1000) * (armA + armB);
-
     const branchLengthM = dimB ? dimB / 1000 : odMm / 1000;
-    let branchExternal = 0;
-    let branchInternal = 0;
 
     if (branches.length > 0) {
-      // Each parsed branch bore is its own cylinder — handles multi-branch laterals /
-      // manifolds (e.g. 350x80x50) and reducing tees with a different-sized branch.
-      for (const b of branches) {
-        branchExternal += Math.PI * (b.odMm / 1000) * branchLengthM;
-        branchInternal += Math.PI * (b.idMm / 1000) * branchLengthM;
-      }
-    } else {
-      // Equal tee / single-bore lateral: branch is the same size as the run, approximated
-      // with the Steinmetz saddle factor.
-      const isReducing = fittingType === "unequal_tee" || fittingType === "reducing_tee";
-      const branchFactor = isReducing ? 2.0 : STEINMETZ_FACTOR_EQUAL_TEE;
-      branchExternal = (branchFactor * (odMm / 1000) * (odMm / 1000)) / 4;
-      branchInternal = (branchFactor * (idMm / 1000) * (idMm / 1000)) / 4;
+      // Reducing / unequal tee (or multi-branch lateral) with an explicit branch bore:
+      // the dimension pair is run length x branch length. The run barrel uses the full
+      // run length (dimA); each branch is its own bore x branch length (dimB).
+      const runLengthM = dimA ? dimA / 1000 : odMm / 1000;
+      const mainRunExternal = Math.PI * (odMm / 1000) * runLengthM;
+      const mainRunInternal = Math.PI * (idMm / 1000) * runLengthM;
+      const branchExternal = branches.reduce(
+        (sum, b) => sum + Math.PI * (b.odMm / 1000) * branchLengthM,
+        0,
+      );
+      const branchInternal = branches.reduce(
+        (sum, b) => sum + Math.PI * (b.idMm / 1000) * branchLengthM,
+        0,
+      );
+      return {
+        external: mainRunExternal + branchExternal,
+        internal: mainRunInternal + branchInternal,
+      };
     }
+
+    // Equal tee / single-bore lateral: dimA and dimB are the two run arms either side of
+    // the branch (run = armA + armB); the branch is the same size as the run and is
+    // approximated with the Steinmetz saddle factor.
+    const armA = dimA ? dimA / 1000 : odMm / 1000;
+    const armB = dimB ? dimB / 1000 : odMm / 1000;
+    const mainRunExternal = Math.PI * (odMm / 1000) * (armA + armB);
+    const mainRunInternal = Math.PI * (idMm / 1000) * (armA + armB);
+    const isReducing = fittingType === "unequal_tee" || fittingType === "reducing_tee";
+    const branchFactor = isReducing ? 2.0 : STEINMETZ_FACTOR_EQUAL_TEE;
+    const branchExternal = (branchFactor * (odMm / 1000) * (odMm / 1000)) / 4;
+    const branchInternal = (branchFactor * (idMm / 1000) * (idMm / 1000)) / 4;
 
     return {
       external: mainRunExternal + branchExternal,
@@ -505,12 +644,14 @@ export class M2CalculationService {
   ): { external: number; internal: number } {
     const smallEndOd = smallEndOdMm || odMm * 0.7;
     const smallEndId = smallEndIdMm || idMm * 0.7;
-    const avgOd = (odMm + smallEndOd) / 2;
-    const avgId = (idMm + smallEndId) / 2;
+    // Costing is taken off the LARGER end (the panel for the rubber cutting diagram
+    // is the exact developed shape; this column is the costing figure).
+    const largeOd = Math.max(odMm, smallEndOd);
+    const largeId = Math.max(idMm, smallEndId);
 
     return {
-      external: Math.PI * (avgOd / 1000) * lengthM,
-      internal: Math.PI * (avgId / 1000) * lengthM,
+      external: Math.PI * (largeOd / 1000) * lengthM,
+      internal: Math.PI * (largeId / 1000) * lengthM,
     };
   }
 

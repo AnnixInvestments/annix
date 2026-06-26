@@ -19,8 +19,11 @@ import {
   hasOverlap,
   isWithinBounds,
   panelsFromParsedItems,
+  panelsFromTankComponents,
   panelsFromTankPlateBom,
   serializeToManualRolls,
+  splitPanelInHalf,
+  type TankComponentSource,
   type TankPanelSource,
 } from "./jigsawLayout";
 import {
@@ -53,18 +56,33 @@ function unplacePanel(panel: PlacedPanel): JigsawPanel {
 export function JigsawEditor(props: {
   parsedItems: ParsedPipeItem[];
   tankSources?: TankPanelSource[];
+  tankComponentSources?: TankComponentSource[];
   rubberSpec: RubberSpec | null | undefined;
   existingManualRolls: RubberPlanManualRoll[];
   onSave: (rolls: RubberPlanManualRoll[], overrides: RubberDimensionOverride[]) => void;
   saving: boolean;
 }) {
-  const { parsedItems, tankSources, rubberSpec, existingManualRolls, onSave, saving } = props;
+  const {
+    parsedItems,
+    tankSources,
+    tankComponentSources,
+    rubberSpec,
+    existingManualRolls,
+    onSave,
+    saving,
+  } = props;
 
-  // Pipe lining panels + fabricated-tank plate panels (developed flat shapes
-  // from the Forge plateBom) feed the same nester.
+  // Pipe lining panels + fabricated-tank panels feed the same nester: flat
+  // plateBom take-offs (panelsFromTankPlateBom) and the richer shape-classified
+  // geometric components developed to their true flat patterns
+  // (panelsFromTankComponents).
   const allPanels = useMemo(
-    () => [...panelsFromParsedItems(parsedItems), ...panelsFromTankPlateBom(tankSources ?? [])],
-    [parsedItems, tankSources],
+    () => [
+      ...panelsFromParsedItems(parsedItems),
+      ...panelsFromTankPlateBom(tankSources ?? []),
+      ...panelsFromTankComponents(tankComponentSources ?? []),
+    ],
+    [parsedItems, tankSources, tankComponentSources],
   );
 
   const defaultRollWidthMm = useMemo(() => {
@@ -104,19 +122,26 @@ export function JigsawEditor(props: {
     );
   }, [rubberSpec?.thicknessMm]);
 
+  // Signature of the base panels (from the extracted data). Manual edits — splits,
+  // rotations, placements — diverge the tracked set from this on purpose, so the
+  // layout is rebuilt ONLY when the underlying data changes, not on every render.
+  const basePanelSignature = useMemo(
+    () =>
+      allPanels
+        .map((p) => p.panelId)
+        .sort()
+        .join("|"),
+    [allPanels],
+  );
+  const [syncedSignature, setSyncedSignature] = useState(basePanelSignature);
+
   useEffect(() => {
-    const allIds = new Set(allPanels.map((p) => p.panelId));
-    const trackedIds = new Set([
-      ...placedPanels.map((p) => p.panelId),
-      ...unplacedPanels.map((p) => p.panelId),
-    ]);
-    const sameSet =
-      allIds.size === trackedIds.size && [...allIds].every((id) => trackedIds.has(id));
-    if (!sameSet) {
+    if (basePanelSignature !== syncedSignature) {
+      setSyncedSignature(basePanelSignature);
       setPlacedPanels([]);
       setUnplacedPanels(allPanels);
     }
-  }, [allPanels, placedPanels, unplacedPanels]);
+  }, [basePanelSignature, syncedSignature, allPanels]);
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [suggestionsApplied, setSuggestionsApplied] = useState(false);
@@ -391,6 +416,26 @@ export function JigsawEditor(props: {
     [placedPanels, rolls],
   );
 
+  // Cut a panel in half along its longer side; the two halves drop into the tray
+  // for the user to place. Works on a placed panel (removed from its roll) or a
+  // tray panel (replaced in place). Halves can themselves be split again. The
+  // split is persisted in the saved manual plan, so Nix learns the layout.
+  const handleSplit = useCallback(
+    (panelId: string) => {
+      const found = findPanel(panelId);
+      if (!found) return;
+      const halves = splitPanelInHalf(found.panel);
+      if (!halves) return;
+      if (found.source === "roll") {
+        setPlacedPanels((prev) => prev.filter((p) => p.panelId !== panelId));
+        setUnplacedPanels((prev) => [...prev, ...halves]);
+      } else {
+        setUnplacedPanels((prev) => prev.flatMap((p) => (p.panelId === panelId ? halves : [p])));
+      }
+    },
+    [findPanel],
+  );
+
   const addRoll = () => {
     const thicknessMm = rubberSpec?.thicknessMm;
     setRolls((prev) => [
@@ -481,6 +526,7 @@ export function JigsawEditor(props: {
             panels={unplacedPanels}
             onRotate={handleRotate}
             onEditDimensions={handleEditDimensions}
+            onSplit={handleSplit}
           />
 
           <div className="flex-1 space-y-3">
@@ -491,6 +537,7 @@ export function JigsawEditor(props: {
                 roll={roll}
                 panels={placedPanels.filter((p) => p.rollIndex === idx)}
                 onRotate={handleRotate}
+                onSplit={handleSplit}
                 rotateFailedId={rotateFailedId}
                 onUpdateRoll={updateRoll}
                 onRemoveRoll={removeRoll}

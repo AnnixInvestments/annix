@@ -248,6 +248,22 @@ export interface RollSpecification {
   laneWidthMm: number;
 }
 
+// Structural mirror of the frontend PanelShape
+// (annix-frontend/src/app/stock-control/components/jigsaw/jigsawTypes.ts). The
+// backend cannot import the frontend; keep the two in sync. Absent = rectangle.
+export type PanelShape =
+  | { type: "rectangle" }
+  | {
+      type: "annular_sector";
+      innerRadiusMm: number;
+      outerRadiusMm: number;
+      sweepAngleDegrees: number;
+    }
+  | { type: "circle"; radiusMm: number }
+  | { type: "annulus"; innerRadiusMm: number; outerRadiusMm: number }
+  | { type: "petal"; baseWidthMm: number; heightMm: number; tipWidthMm: number }
+  | { type: "saddle_wrap"; odMm: number; branchOdMm: number };
+
 export interface CutPiece {
   itemId: string;
   itemNo: string | null;
@@ -258,6 +274,7 @@ export interface CutPiece {
   lane: number;
   band: number;
   stripsPerPiece: number;
+  shape?: PanelShape;
 }
 
 export interface BandSpec {

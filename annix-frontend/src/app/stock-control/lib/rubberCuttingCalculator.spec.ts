@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { calculateCuttingPlan, parsePipeItem } from "./rubberCuttingCalculator";
+import { panelsFromParsedItems } from "../components/jigsaw/jigsawLayout";
+import {
+  calculateCuttingPlan,
+  expandAndRotateItems,
+  parsePipeItem,
+} from "./rubberCuttingCalculator";
 
 describe("rubberCuttingCalculator", () => {
   describe("parseNb (via parsePipeItem)", () => {
@@ -688,6 +693,38 @@ describe("rubberCuttingCalculator", () => {
       expect(result.itemType).toBe("tee");
       expect(result.fittingRunLengthMm).toBe(810);
       expect(result.fittingBranchLengthMm).toBe(405);
+    });
+  });
+
+  describe("reducer developed cone panel", () => {
+    it("develops a reducer into an annular-sector panel with sane geometry", () => {
+      const parsed = parsePipeItem("1", "200x100NB 400LG CON REDUCER", 1, null, null);
+      expect(parsed.itemType).toBe("reducer");
+      const [expanded] = expandAndRotateItems([parsed]);
+      expect(expanded.shape?.type).toBe("annular_sector");
+      if (expanded.shape?.type === "annular_sector") {
+        const { innerRadiusMm: r, outerRadiusMm: R, sweepAngleDegrees: sweep } = expanded.shape;
+        expect(R).toBeGreaterThan(r);
+        expect(sweep).toBeGreaterThan(0);
+        expect(sweep).toBeLessThan(180);
+        // Outer arc length = large-end circumference: R·θ = π·D_large ⇒ recovered D_large > small bore.
+        const dLarge = (R * ((sweep * Math.PI) / 180)) / Math.PI;
+        expect(dLarge).toBeGreaterThan(100);
+      }
+    });
+
+    it("propagates the annular-sector shape onto the jigsaw panel (FIX-2)", () => {
+      const parsed = parsePipeItem("1", "200x100NB 400LG CON REDUCER", 1, null, null);
+      const expanded = expandAndRotateItems([parsed]);
+      const panels = panelsFromParsedItems(expanded);
+      expect(panels.length).toBeGreaterThan(0);
+      expect(panels[0].shape?.type).toBe("annular_sector");
+    });
+
+    it("keeps an equal-diameter reducer as a plain rectangle (no shape)", () => {
+      const parsed = parsePipeItem("1", "200x200NB 400LG CON REDUCER", 1, null, null);
+      const [expanded] = expandAndRotateItems([parsed]);
+      expect(expanded.shape).toBeUndefined();
     });
   });
 });

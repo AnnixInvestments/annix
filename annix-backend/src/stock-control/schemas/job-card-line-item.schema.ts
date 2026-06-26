@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import type { HydratedDocument } from "mongoose";
+import type { TankComponent } from "../entities/job-card-line-item.entity";
 
 export type JobCardLineItemDocument = HydratedDocument<JobCardLineItem>;
 
@@ -63,6 +64,13 @@ export class JobCardLineItem {
     quantity: number;
     liningThicknessMm: number;
   }>;
+
+  // Developed-component take-off (shells, cones, dished heads, rings, branches)
+  // for geometric tank m² + the cutting diagram. The `shape` field is a
+  // discriminated union with varying members, so stored as a flexible Mixed
+  // array. Embedded sub-document (no collection); null for non-tank rows.
+  @Prop({ type: [Object], required: false })
+  tankComponents: TankComponent[];
 
   @Prop({ type: String, required: false })
   notes: string;

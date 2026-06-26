@@ -1,4 +1,5 @@
 import { Company } from "../../platform/entities/company.entity";
+import type { PanelShape } from "../lib/rubberCuttingCalculator";
 import { CustomerPurchaseOrder } from "./customer-purchase-order.entity";
 import { DispatchCdn } from "./dispatch-cdn.entity";
 import { DispatchLoadPhoto } from "./dispatch-load-photo.entity";
@@ -21,6 +22,9 @@ export interface RubberPlanManualRoll {
     widthMm: number;
     lengthMm: number;
     quantity: number;
+    // Developed outline of a non-rectangular panel (e.g. a reducer/cone annular
+    // sector) carried from the editor so the printed cutting diagram matches.
+    shape?: PanelShape;
   }>;
 }
 

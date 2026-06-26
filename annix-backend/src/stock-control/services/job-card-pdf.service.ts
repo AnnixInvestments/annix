@@ -939,6 +939,44 @@ export class JobCardPdfService {
     return y + 10;
   }
 
+  // SVG path for a developed-cone annular sector, fitted (aspect-preserving,
+  // centred) into a cell at (x, y, w, h) in PDF points. Used to overlay the cone
+  // outline on the schematic roll diagram.
+  private annularSectorCellPath(
+    shape: { innerRadiusMm: number; outerRadiusMm: number; sweepAngleDegrees: number },
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+  ): string {
+    const R = shape.outerRadiusMm;
+    const r = shape.innerRadiusMm;
+    const theta = (shape.sweepAngleDegrees * Math.PI) / 180;
+    const half = theta / 2;
+    const bboxLength = R - r * Math.cos(half);
+    const bboxWidth = 2 * R * Math.sin(half);
+    if (bboxLength <= 0 || bboxWidth <= 0) {
+      return "";
+    }
+    const minX = r * Math.cos(half);
+    const minY = -R * Math.sin(half);
+    const s = Math.min(w / bboxLength, h / bboxWidth);
+    const offX = (w - bboxLength * s) / 2;
+    const offY = (h - bboxWidth * s) / 2;
+    const map = (rad: number, ang: number): string => {
+      const px = x + offX + (rad * Math.cos(ang) - minX) * s;
+      const py = y + offY + (rad * Math.sin(ang) - minY) * s;
+      return `${px.toFixed(2)} ${py.toFixed(2)}`;
+    };
+    const large = theta > Math.PI ? 1 : 0;
+    const Rs = (R * s).toFixed(2);
+    const rs = (r * s).toFixed(2);
+    return (
+      `M ${map(R, -half)} A ${Rs} ${Rs} 0 ${large} 1 ${map(R, half)} ` +
+      `L ${map(r, half)} A ${rs} ${rs} 0 ${large} 0 ${map(r, -half)} Z`
+    );
+  }
+
   private cuttingDiagramHeight(roll: RollAllocation): number {
     const rollRectHeight = 48;
     const headerHeight = 15;
@@ -1013,6 +1051,7 @@ export class JobCardPdfService {
           lane,
           band: bandIndex,
           stripsPerPiece: 1,
+          shape: cut.shape,
         });
         positionMm += cut.lengthMm;
       });
@@ -1130,8 +1169,24 @@ export class JobCardPdfService {
       const rolls = cut.stripsPerPiece ?? 1;
 
       doc.save();
-      doc.rect(cx + 0.5, cy + 0.5, Math.max(cw - 1, 1), Math.max(ch - 1, 1));
+      const cellW = Math.max(cw - 1, 1);
+      const cellH = Math.max(ch - 1, 1);
+      doc.rect(cx + 0.5, cy + 0.5, cellW, cellH);
       doc.fillColor(color).fillOpacity(0.6).fill();
+      const cutShape = cut.shape;
+      if (cutShape && cutShape.type === "annular_sector") {
+        // The roll diagram is a non-to-scale schematic, so the bounding rectangle
+        // above represents the roll space the panel consumes; overlay the developed
+        // sector outline (fitted to the cell) so the cutter sees it is a cone panel.
+        const sectorPath = this.annularSectorCellPath(cutShape, cx + 0.5, cy + 0.5, cellW, cellH);
+        doc
+          .path(sectorPath)
+          .lineWidth(0.6)
+          .strokeColor("#FFFFFF")
+          .fillOpacity(0.25)
+          .fillColor("#FFFFFF")
+          .fillAndStroke();
+      }
       doc.restore();
 
       if (cw > 20) {

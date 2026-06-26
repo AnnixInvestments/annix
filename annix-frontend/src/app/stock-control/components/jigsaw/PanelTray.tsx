@@ -8,8 +8,9 @@ export function PanelTray(props: {
   panels: JigsawPanel[];
   onRotate: (panelId: string) => void;
   onEditDimensions: (panelId: string, widthMm: number, lengthMm: number) => void;
+  onSplit: (panelId: string) => void;
 }) {
-  const { panels, onRotate, onEditDimensions } = props;
+  const { panels, onRotate, onEditDimensions, onSplit } = props;
   const { isOver, setNodeRef } = useDroppable({ id: "tray" });
 
   return (
@@ -30,6 +31,7 @@ export function PanelTray(props: {
             scale={null}
             onRotate={onRotate}
             onEditDimensions={onEditDimensions}
+            onSplit={onSplit}
             isPlaced={false}
           />
         ))

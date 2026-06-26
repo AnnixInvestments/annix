@@ -3,6 +3,7 @@ import { FlangeDimensionService } from "../../flange-dimension/flange-dimension.
 import { NbOdLookupService } from "../../nb-od-lookup/nb-od-lookup.service";
 import { NixItemParserService } from "../../nix/services/nix-item-parser.service";
 import { PipeScheduleService } from "../../pipe-schedule/pipe-schedule.service";
+import type { TankComponent, TankComponentShape } from "../entities/job-card-line-item.entity";
 import { M2CalculationService } from "./m2-calculation.service";
 
 describe("M2CalculationService", () => {
@@ -632,9 +633,10 @@ describe("M2CalculationService", () => {
       expect(result.parsedItemType).toBe("reducer");
       expect(result.externalM2).toBeGreaterThan(0);
 
-      const avgOd = (mainOd + branchOd) / 2;
+      // Costing is taken off the larger end (400NB), not the average of the two ends.
+      const largeOd = Math.max(mainOd, branchOd);
       const lengthM = 1.0;
-      const expectedExt = Math.PI * (avgOd / 1000) * lengthM;
+      const expectedExt = Math.PI * (largeOd / 1000) * lengthM;
       expect(result.externalM2).toBeCloseTo(expectedExt, 2);
     });
   });
@@ -837,12 +839,14 @@ describe("M2CalculationService", () => {
       expect(result.externalM2).toBeGreaterThan(0);
     });
 
-    it("uses an explicit small-end 'NNN OD' for the reducer (smaller than a full-bore pipe)", async () => {
+    it("costs a reducer off its larger end (same area as a full-bore pipe of that size)", async () => {
       setupStandardMocks(355.6, 9.53);
       const [reducer] = await service.calculateM2ForItems(["350NB 180 OD 769LG CON RED PE"]);
       const [pipe] = await service.calculateM2ForItems(["350NB 769LG PIPE PE"]);
-      // a 350->180 reducer body has less surface than a straight 350 pipe of the same length
-      expect(reducer.externalM2!).toBeLessThan(pipe.externalM2!);
+      // Costing is taken off the larger end (350NB), so a 350->180 reducer body costs the
+      // same area as a straight 350 pipe of the same length.
+      expect(reducer.parsedItemType).toBe("reducer");
+      expect(reducer.externalM2!).toBeCloseTo(pipe.externalM2!, 3);
     });
 
     it("recognises 'ECC/REDUCERS' abbreviation as a reducer", async () => {
@@ -920,6 +924,195 @@ describe("M2CalculationService", () => {
       expect(result.parsedPressureClass).toBe("2500");
       expect(result.error).toBeNull();
       expect(result.externalM2).toBeGreaterThan(0);
+    });
+  });
+
+  describe("reducer larger-end costing, FEB flanges, and no-NB reducing tee", () => {
+    const perNbOd = (map: Record<number, number>) =>
+      mockNbOdLookup.nbToOd.mockImplementation((nb: number) =>
+        Promise.resolve({ outsideDiameterMm: map[nb] ?? nb }),
+      );
+
+    it("uses the larger end (not the average) for reducer costing m2", async () => {
+      perNbOd({ 200: 219.1, 100: 114.3 });
+      mockPipeSchedule.getSchedulesByNbMm.mockResolvedValue([]);
+      mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue(null);
+
+      const [result] = await service.calculateM2ForItems(["200x100NB 400LG ECC REDUCER PE"]);
+
+      expect(result.parsedItemType).toBe("reducer");
+      // Larger end = 200NB (219.1mm OD), L = 0.4m.
+      expect(result.externalM2!).toBeCloseTo(Math.PI * (219.1 / 1000) * 0.4, 3);
+    });
+
+    it("recognises FEB as 2 flanges (FBE typo) and adds the flange area", async () => {
+      perNbOd({ 200: 219.1, 100: 114.3 });
+      mockPipeSchedule.getSchedulesByNbMm.mockResolvedValue([]);
+      mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue({ D: 340, d4: 222, b: 24 });
+
+      const [feb] = await service.calculateM2ForItems(["200x100NB 400LG ECC REDUCER FEB 1000/3"]);
+      mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue(null);
+      const [plain] = await service.calculateM2ForItems(["200x100NB 400LG ECC REDUCER PE"]);
+
+      expect(feb.parsedFlangeCount).toBe(2);
+      expect(feb.parsedFlangeConfig).toBe("both_ends");
+      expect(feb.externalM2!).toBeGreaterThan(plain.externalM2!);
+    });
+
+    it("parses a no-NB reducing T-piece as run length x branch length with its branch bore", async () => {
+      perNbOd({ 350: 355.6, 200: 219.1 });
+      mockPipeSchedule.getSchedulesByNbMm.mockResolvedValue([]);
+      mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue(null);
+
+      const [result] = await service.calculateM2ForItems(["350x200 710x355 SPIGOT T-PIECE PE"]);
+
+      expect(result.parsedItemType).toBe("tee");
+      expect(result.parsedDiameterMm).toBe(350);
+      // Run = OD(350NB) x 0.710 run length; branch = OD(200NB) x 0.355 branch length.
+      const run = Math.PI * (355.6 / 1000) * 0.71;
+      const branch = Math.PI * (219.1 / 1000) * 0.355;
+      expect(result.externalM2!).toBeCloseTo(run + branch, 2);
+    });
+  });
+
+  describe("calculateTankM2 (geometric tank surface area)", () => {
+    const tc = (
+      mark: string,
+      componentType: TankComponent["componentType"],
+      shape: TankComponentShape,
+      liningThicknessMm: number | null,
+      quantity = 1,
+    ): TankComponent => ({
+      mark,
+      description: mark,
+      componentType,
+      shape,
+      liningType: liningThicknessMm ? "SANS 1198 40 Shore A" : null,
+      liningThicknessMm,
+      liningAreaM2: null,
+      coatingAreaM2: null,
+      quantity,
+      segmentCount: null,
+    });
+
+    it("computes a dished head as the 1.07·D² envelope (matches printed lid area)", () => {
+      const result = service.calculateTankM2([
+        tc(
+          "LID",
+          "dished_head",
+          { type: "dished_head", crownRadiusMm: 642, knuckleRadiusMm: 45, outerDiameterMm: 750 },
+          6,
+        ),
+      ]);
+      // 1.07 · 750² / 1e6 = 0.602 m² (drawing prints 0.6).
+      expect(result.externalM2).toBeCloseTo(0.602, 2);
+      expect(result.internalM2).toBeCloseTo(0.602, 2);
+    });
+
+    it("sums shell + cone + ring and only counts lining on lined components", () => {
+      const result = service.calculateTankM2([
+        tc("SHELL", "shell", { type: "cylinder", innerDiameterMm: 1000, heightMm: 1000 }, 6),
+        tc(
+          "CONE",
+          "cone",
+          {
+            type: "cone",
+            largeDiameterMm: 1000,
+            smallDiameterMm: 450,
+            slantHeightMm: 800,
+            sweepAngleDegrees: null,
+          },
+          6,
+        ),
+        tc(
+          "LEG-RING",
+          "ring",
+          { type: "annular_ring", outerDiameterMm: 1100, innerDiameterMm: 1000 },
+          null,
+        ),
+      ]);
+      const shell = Math.PI * 1.0 * 1.0; // 3.1416
+      const cone = Math.PI * ((1.0 + 0.45) / 2) * 0.8; // 1.8221
+      const ring = (Math.PI / 4) * (1.1 * 1.1 - 1.0 * 1.0); // 0.1649
+      expect(result.externalM2).toBeCloseTo(shell + cone + ring, 2);
+      // ring is unlined → lining excludes it.
+      expect(result.internalM2).toBeCloseTo(shell + cone, 2);
+      expect(result.usableComponents).toBe(3);
+    });
+
+    it("quantity-expands components and ignores dimensionless ones", () => {
+      const result = service.calculateTankM2([
+        tc(
+          "ARM",
+          "branch",
+          { type: "branch_wrap", boreDiameterMm: 200, lengthMm: 355, mitred: false },
+          6,
+          10,
+        ),
+        tc("BAD", "plate", { type: "rectangle", widthMm: 0, heightMm: 0 }, 6),
+      ]);
+      const arm = Math.PI * 0.2 * 0.355 * 10;
+      expect(result.externalM2).toBeCloseTo(arm, 2);
+      expect(result.usableComponents).toBe(1);
+    });
+
+    it("returns zeros for null/empty components", () => {
+      expect(service.calculateTankM2(null)).toEqual({
+        externalM2: 0,
+        internalM2: 0,
+        components: [],
+        usableComponents: 0,
+      });
+    });
+
+    it("ignores a component with a non-finite dimension so it cannot corrupt the m² sum", () => {
+      const result = service.calculateTankM2([
+        tc(
+          "BAD",
+          "shell",
+          { type: "cylinder", innerDiameterMm: Number.POSITIVE_INFINITY, heightMm: 1000 },
+          6,
+        ),
+        tc("OK", "shell", { type: "cylinder", innerDiameterMm: 1000, heightMm: 1000 }, 6),
+      ]);
+      expect(result.usableComponents).toBe(1);
+      expect(result.externalM2).toBeCloseTo(Math.PI * 1.0 * 1.0, 2);
+      expect(Number.isFinite(result.externalM2)).toBe(true);
+    });
+
+    it("computes a branch-wrap component as π·bore·length", () => {
+      const result = service.calculateTankM2([
+        tc(
+          "ARM",
+          "branch",
+          { type: "branch_wrap", boreDiameterMm: 200, lengthMm: 355, mitred: false },
+          6,
+        ),
+      ]);
+      expect(result.externalM2).toBeCloseTo(Math.PI * 0.2 * 0.355, 3);
+      expect(result.internalM2).toBeCloseTo(Math.PI * 0.2 * 0.355, 3);
+    });
+
+    // A swapped/garbage small>large pair must NOT inflate the geometric m²: the
+    // backend clamps smallDiameter <= largeDiameter (matching the frontend
+    // developTankComponent) before averaging.
+    it("clamps a cone whose small end exceeds the large end (no inflated dAvg)", () => {
+      const result = service.calculateTankM2([
+        tc(
+          "CONE-SWAP",
+          "cone",
+          {
+            type: "cone",
+            largeDiameterMm: 300,
+            smallDiameterMm: 900,
+            slantHeightMm: 500,
+            sweepAngleDegrees: null,
+          },
+          6,
+        ),
+      ]);
+      // small clamped to large (0.3) → dAvg = 0.3, not the inflated 0.6.
+      expect(result.externalM2).toBeCloseTo(Math.PI * 0.3 * 0.5, 2);
     });
   });
 });
