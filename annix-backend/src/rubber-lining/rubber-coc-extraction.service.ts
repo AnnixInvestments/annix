@@ -1,10 +1,10 @@
 import { HttpException, HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { PDFDocument } from "pdf-lib";
-import { pdfToPng } from "pdf-to-png-converter";
 import { AiUsageService } from "../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../ai-usage/entities/ai-usage-log.entity";
 import { nowMillis } from "../lib/datetime";
 import { extractTextFromPdf } from "../lib/document-extraction";
+import { pdfToPngOffThread } from "../lib/pdf/pdf-to-png-offthread";
 import { ExtractionMetricService } from "../metrics/extraction-metric.service";
 import { hardenedExtractionSystemInstruction } from "../nix/ai-providers/untrusted-content";
 import {
@@ -2081,7 +2081,7 @@ format, return { "batches": [] }.
     );
 
     const pageNumbers = await this.safeRasterPageNumbers(documentBuffer, maxPages);
-    const pages = await pdfToPng(pdfInput, {
+    const pages = await pdfToPngOffThread(pdfInput, {
       disableFontFace: true,
       useSystemFonts: true,
       viewportScale: OCR_VIEWPORT_SCALE,

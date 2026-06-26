@@ -3,10 +3,10 @@ import * as path from "node:path";
 import { BadRequestException, Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import PDFMerger from "pdf-merger-js";
-import { pdfToPng } from "pdf-to-png-converter";
 import sharp from "sharp";
 import { EmailService } from "../email/email.service";
 import { formatDateZA, generateUniqueId, now, nowISO } from "../lib/datetime";
+import { pdfToPngOffThread } from "../lib/pdf/pdf-to-png-offthread";
 import { createPdfDocument } from "../lib/pdf-builder";
 import type { PdfDoc } from "../lib/pdf-templates/types";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
@@ -1907,7 +1907,7 @@ export class RubberAuCocService {
         graphBuffer.byteOffset,
         graphBuffer.byteOffset + graphBuffer.byteLength,
       );
-      const pngPages = await pdfToPng(pdfInput, {
+      const pngPages = await pdfToPngOffThread(pdfInput, {
         disableFontFace: true,
         useSystemFonts: true,
         viewportScale: 2.0,

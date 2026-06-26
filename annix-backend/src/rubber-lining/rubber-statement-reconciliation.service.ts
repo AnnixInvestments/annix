@@ -4,6 +4,7 @@ import { isNumber } from "es-toolkit/compat";
 import { AiUsageService } from "../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../ai-usage/entities/ai-usage-log.entity";
 import { now } from "../lib/datetime";
+import { pdfToPngOffThread } from "../lib/pdf/pdf-to-png-offthread";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../storage/storage.interface";
 import { CompanyType } from "./entities/rubber-company.entity";
 import {
@@ -20,10 +21,6 @@ import { RubberCompanyRepository } from "./repositories/rubber-company.repositor
 import { RubberDeliveryNoteRepository } from "./repositories/rubber-delivery-note.repository";
 import { RubberStatementReconciliationRepository } from "./repositories/rubber-statement-reconciliation.repository";
 import { RubberTaxInvoiceRepository } from "./repositories/rubber-tax-invoice.repository";
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfToPngModule = require("pdf-to-png-converter");
-const pdfToPng = pdfToPngModule.pdfToPng ?? pdfToPngModule;
 
 export enum MatchResultType {
   MATCHED = "MATCHED",
@@ -625,7 +622,7 @@ Rules:
       pdfBuffer.byteOffset,
       pdfBuffer.byteOffset + pdfBuffer.byteLength,
     );
-    const pages = await pdfToPng(pdfInput, {
+    const pages = await pdfToPngOffThread(pdfInput, {
       disableFontFace: true,
       useSystemFonts: true,
       viewportScale: 1.5,

@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { pdfToPng } from "pdf-to-png-converter";
 import { now } from "../../lib/datetime";
+import { pdfToPngOffThread } from "../../lib/pdf/pdf-to-png-offthread";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import {
   ChatMessage,
@@ -652,7 +652,7 @@ export class DrawingExtractionService {
       pdfBuffer.byteOffset,
       pdfBuffer.byteOffset + pdfBuffer.byteLength,
     );
-    const pages = await pdfToPng(pdfInput, {
+    const pages = await pdfToPngOffThread(pdfInput, {
       disableFontFace: true,
       useSystemFonts: true,
       viewportScale: 2.0,
