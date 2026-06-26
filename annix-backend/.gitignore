@@ -49,6 +49,9 @@ lerna-debug.log*
 # One-off audit / report output written by scripts/ (CSV reports, etc.)
 scripts-output/
 
+# Local-only dev seed helpers (often carry hardcoded dev credentials)
+scripts/seed-dev-*.cjs
+
 # Local secure document storage
 /secure-documents-storage
 

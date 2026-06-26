@@ -727,7 +727,7 @@ export class DrawingExtractionService {
       pdfBuffer.byteOffset,
       pdfBuffer.byteOffset + pdfBuffer.byteLength,
     );
-    const pages = await pdfToPng(pdfInput, {
+    const pages = await pdfToPngOffThread(pdfInput, {
       disableFontFace: true,
       useSystemFonts: true,
       viewportScale: 2.0,
