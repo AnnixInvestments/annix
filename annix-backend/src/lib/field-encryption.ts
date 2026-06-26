@@ -4,11 +4,10 @@ const ALGORITHM = "aes-256-gcm";
 const PREFIX = "enc:v1:";
 const IV_LENGTH = 12;
 const AUTH_TAG_LENGTH = 16;
-const KEY_HEX_LENGTH = 64;
 
 function encryptionKey(): Buffer | null {
   const hex = process.env.FIELD_ENCRYPTION_KEY;
-  if (!hex || hex.length !== KEY_HEX_LENGTH) {
+  if (!hex || !/^[0-9a-fA-F]{64}$/.test(hex)) {
     return null;
   }
   return Buffer.from(hex, "hex");
@@ -28,7 +27,9 @@ export function encryptField(plaintext: string | null): string | null {
   }
   const key = encryptionKey();
   if (!key) {
-    return plaintext;
+    throw new Error(
+      "FIELD_ENCRYPTION_KEY is not configured (must be 64 hex chars) — refusing to store sensitive data in plaintext (#402). Callers that can tolerate no encryption must check fieldEncryptionEnabled() first.",
+    );
   }
   const iv = randomBytes(IV_LENGTH);
   const cipher = createCipheriv(ALGORITHM, key, iv);

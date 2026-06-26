@@ -31,6 +31,16 @@ const hardRequired: SecretCheck[] = [
     note: "Orbit MongoDB database (boot throws in production)",
   },
   {
+    name: "JWT_SECRET",
+    required: isProduction,
+    note: "auth signing key (boot throws in production if missing or <32 chars)",
+  },
+  {
+    name: "FIELD_ENCRYPTION_KEY",
+    required: isProduction,
+    note: "PII field encryption key (boot throws in production if not 64 hex chars)",
+  },
+  {
     name: "WHATSAPP_APP_SECRET",
     required: whatsAppGateEnabled,
     note: "boot throws when ORBIT_WHATSAPP_QUOTA_GATE=true",

@@ -1,7 +1,17 @@
-import { Body, Controller, Get, Param, Post, UnauthorizedException } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  UnauthorizedException,
+  UseGuards,
+} from "@nestjs/common";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { Throttle } from "@nestjs/throttler";
 import { AuthService } from "./auth.service";
 import { LoginUserDto } from "./dto/login-user.dto";
+import { CoreAuthThrottlerGuard } from "./guards/auth-throttler.guard";
 
 interface RefreshTokenBody {
   refreshToken: string;
@@ -14,10 +24,12 @@ interface AcceptInviteBody {
 
 @ApiTags("auth")
 @Controller("auth")
+@UseGuards(CoreAuthThrottlerGuard)
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post("login")
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: "Login and get JWT token" })
   @ApiResponse({ status: 201, description: "JWT access token returned" })
   @ApiResponse({ status: 401, description: "Invalid credentials" })
@@ -30,6 +42,7 @@ export class AuthController {
   }
 
   @Post("refresh")
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: "Exchange a refresh token for a fresh access + refresh token pair" })
   @ApiResponse({ status: 201, description: "Fresh token pair returned" })
   @ApiResponse({ status: 401, description: "Invalid or expired refresh token" })
@@ -50,6 +63,7 @@ export class AuthController {
   }
 
   @Post("accept-invite")
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: "Set a password from an invite token and activate the account" })
   @ApiResponse({ status: 201, description: "Account activated" })
   @ApiResponse({ status: 400, description: "Invite invalid/expired or password too weak" })

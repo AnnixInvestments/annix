@@ -19,7 +19,10 @@ export class CustomerDeviceGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    if (this.configService.get("DISABLE_DEVICE_FINGERPRINT") === "true") {
+    if (
+      process.env.NODE_ENV !== "production" &&
+      this.configService.get("DISABLE_DEVICE_FINGERPRINT") === "true"
+    ) {
       return true;
     }
 

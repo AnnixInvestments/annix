@@ -11,6 +11,7 @@ import { assertAnnixOrbitWhatsAppQuotaGateConfigured } from "./annix-orbit/annix
 import { AppModule } from "./app.module";
 import { runMongoMigrationsOnBoot } from "./lib/persistence/run-mongo-migrations";
 import { STARTUP_SPLASH_HTML } from "./lib/startup-splash";
+import { assertProductionSecurityConfig } from "./shared/security/production-security.config";
 
 setDefaultResultOrder("ipv4first");
 setDefaultAutoSelectFamily(false);
@@ -29,6 +30,7 @@ if (mongoDnsServers) {
 }
 
 async function bootstrap() {
+  assertProductionSecurityConfig();
   assertAnnixOrbitWhatsAppQuotaGateConfigured();
   await runMongoMigrationsOnBoot();
 
@@ -92,15 +94,17 @@ async function bootstrap() {
     }),
   );
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle("Annix API")
-    .setDescription("API documentation")
-    .setVersion("1.0")
-    .addBearerAuth()
-    .build();
+  if (!isProduction) {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle("Annix API")
+      .setDescription("API documentation")
+      .setVersion("1.0")
+      .addBearerAuth()
+      .build();
 
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup("swagger", app, document);
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup("swagger", app, document);
+  }
 
   const port = process.env.PORT ?? 4001;
 
@@ -115,11 +119,7 @@ async function bootstrap() {
     let nextReady = false;
     const expressApp = app.getHttpAdapter().getInstance();
     expressApp.use((req, res, nextMiddleware) => {
-      if (
-        req.path.startsWith("/api") ||
-        req.path === "/health" ||
-        req.path.startsWith("/swagger")
-      ) {
+      if (req.path.startsWith("/api") || req.path === "/health") {
         return nextMiddleware();
       }
       if (!nextReady) {

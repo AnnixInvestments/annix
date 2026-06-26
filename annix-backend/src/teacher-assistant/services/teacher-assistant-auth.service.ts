@@ -200,7 +200,7 @@ export class TeacherAssistantAuthService {
   }
 
   private jwtSecret(): string {
-    return this.configService.get<string>("JWT_SECRET", "annix-dev-secret-change-me");
+    return this.configService.getOrThrow<string>("JWT_SECRET");
   }
 }
 

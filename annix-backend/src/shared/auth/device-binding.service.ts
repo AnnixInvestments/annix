@@ -17,6 +17,9 @@ export class DeviceBindingService {
   constructor(private readonly configService: ConfigService) {}
 
   isDeviceBindingDisabled(): boolean {
+    if (process.env.NODE_ENV === "production") {
+      return false;
+    }
     return this.configService.get("DISABLE_DEVICE_FINGERPRINT") === "true";
   }
 
@@ -50,7 +53,9 @@ export class DeviceBindingService {
       };
     }
 
-    const ipMismatchCheckDisabled = this.configService.get("DISABLE_IP_MISMATCH_CHECK") === "true";
+    const ipMismatchCheckDisabled =
+      process.env.NODE_ENV !== "production" &&
+      this.configService.get("DISABLE_IP_MISMATCH_CHECK") === "true";
     const ipMismatchWarning = !ipMismatchCheckDisabled && activeBinding.registeredIp !== clientIp;
 
     return {
