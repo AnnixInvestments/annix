@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { now } from "../../lib/datetime";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { parseAiJsonObject } from "../../nix/ai-providers/ai-json";
 import { ChatMessage } from "../../nix/ai-providers/claude-chat.provider";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { lookupCoatingProduct } from "../config/coating-products";
@@ -484,12 +485,7 @@ export class CoatingAnalysisService {
       "You are a technical data sheet parser. Extract volume solids data accurately.",
     );
 
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("Could not extract volume solids from the uploaded TDS");
-    }
-
-    const parsed = JSON.parse(jsonMatch[0]);
+    const parsed = parseAiJsonObject(response) as any;
     const tdsProducts: { product: string; volumeSolidsPercent: number }[] = parsed.products || [];
 
     const retentionFactor = await this.lossFactorForCompany(companyId);
@@ -685,12 +681,7 @@ export class CoatingAnalysisService {
 
     const { content: response } = await this.aiChatService.chat(messages, systemPrompt);
 
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("AI response did not contain valid JSON");
-    }
-
-    const parsed = JSON.parse(jsonMatch[0]);
+    const parsed = parseAiJsonObject(response) as any;
     const validated = validateCoatingExtraction(parsed);
 
     if (validated.coats.length === 0) {

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ExtractionMetricService } from "../metrics/extraction-metric.service";
 import { AiChatService } from "../nix/ai-providers/ai-chat.service";
+import { parseAiJsonObject } from "../nix/ai-providers/ai-json";
 import { ChemicalSupplierDocumentService } from "./chemical-supplier-document.service";
 import type { ChemicalSupplierDocumentDto } from "./dto/chemical-supplier-document.dto";
 import type { ChemicalDocExtractedData } from "./entities/chemical-supplier-document.entity";
@@ -54,12 +55,7 @@ export class ChemicalDocExtractionService {
       CHEMICAL_DOCUMENT_SYSTEM_PROMPT,
     );
 
-    const jsonMatch = response.content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("No JSON object found in chemical document extraction response");
-    }
-
-    const parsed = JSON.parse(jsonMatch[0]) as ChemicalDocExtractedData;
+    const parsed = parseAiJsonObject(response.content) as ChemicalDocExtractedData;
     return this.normalise(parsed);
   }
 

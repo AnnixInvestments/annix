@@ -4,6 +4,7 @@ import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { parseAiJsonObject } from "../../nix/ai-providers/ai-json";
 import { lookupCoatingProduct } from "../config/coating-products";
 import type { PaintPriceListItemInput } from "./paint-price-list.service";
 
@@ -270,13 +271,8 @@ export class PaintPriceListExtractionService {
       .replace(/```json/gi, "")
       .replace(/```/g, "")
       .trim();
-    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      this.logger.error(`Price list extraction returned no JSON (length ${content.length})`);
-      throw new BadRequestException("Could not read the price list — please try a clearer file.");
-    }
     try {
-      return JSON.parse(jsonMatch[0]) as ExtractedPriceList;
+      return parseAiJsonObject(cleaned) as ExtractedPriceList;
     } catch (error) {
       this.logger.error(
         `Price list JSON parse failed (length ${content.length}): ${(error as Error).message}`,
@@ -386,13 +382,8 @@ export class PaintPriceListExtractionService {
       .replace(/```json/gi, "")
       .replace(/```/g, "")
       .trim();
-    const match = cleaned.match(/\{[\s\S]*\}/);
-    if (!match) {
-      this.logger.warn(`Spec lookup batch returned no JSON object (length ${content.length})`);
-      return [];
-    }
     try {
-      const parsed = JSON.parse(match[0]) as { specs?: ProductSpec[] };
+      const parsed = parseAiJsonObject(cleaned) as { specs?: ProductSpec[] };
       return parsed.specs ?? [];
     } catch (error) {
       this.logger.error(`Spec lookup batch parse failed: ${(error as Error).message}`);
@@ -452,12 +443,8 @@ export class PaintPriceListExtractionService {
       .replace(/```json/gi, "")
       .replace(/```/g, "")
       .trim();
-    const match = cleaned.match(/\{[\s\S]*\}/);
-    if (!match) {
-      return [];
-    }
     try {
-      const parsed = JSON.parse(match[0]) as {
+      const parsed = parseAiJsonObject(cleaned) as {
         counts?: { productName: string; componentCount: number }[];
       };
       return parsed.counts ?? [];
@@ -550,7 +537,7 @@ export class PaintPriceListExtractionService {
   }
 
   async extractPriceList(file: Express.Multer.File): Promise<PaintPriceListImportPreview> {
-    if (!file || !file.buffer) {
+    if (!file?.buffer) {
       throw new BadRequestException("No file provided");
     }
     if (this.isSpreadsheet(file)) {

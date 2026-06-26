@@ -9,6 +9,7 @@ import {
 import { LibreOfficeConversionService } from "../../lib/libreoffice-conversion.service";
 import { defaultVisionInputLimits, reduceVisionInput } from "../../lib/pdf/vision-input-guard";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { parseAiJsonObject } from "../../nix/ai-providers/ai-json";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import {
   CANDIDATE_SENIORITY_LEVELS,
@@ -192,12 +193,7 @@ export class CvExtractionService {
         tokensUsed,
       });
 
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error("No JSON found in AI response");
-      }
-
-      const raw = JSON.parse(jsonMatch[0]);
+      const raw = parseAiJsonObject(content);
 
       return this.validateExtractedData(raw);
     } catch (error: unknown) {

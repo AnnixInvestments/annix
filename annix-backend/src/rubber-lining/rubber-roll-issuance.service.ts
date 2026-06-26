@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { EmailService } from "../email/email.service";
 import { generateUniqueId, now } from "../lib/datetime";
 import { AiChatService } from "../nix/ai-providers/ai-chat.service";
+import { parseAiJsonObject } from "../nix/ai-providers/ai-json";
 import { JobCardRepository } from "../stock-control/repositories/job-card.repository";
 import { JobCardLineItemRepository } from "../stock-control/repositories/job-card-line-item.repository";
 import {
@@ -80,8 +81,13 @@ Respond ONLY with valid JSON.`;
       systemPrompt,
     );
 
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
-    const parsed: Record<string, unknown> = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+    const parsed: Record<string, unknown> = (() => {
+      try {
+        return parseAiJsonObject(response);
+      } catch {
+        return {};
+      }
+    })();
 
     const extraction: RollPhotoExtractionDto = {
       date: (parsed.date as string) || null,

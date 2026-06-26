@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { parseAiJsonArray } from "../../nix/ai-providers/ai-json";
 import { fromISO, now } from "../lib/datetime";
 import { AnnixSentinelRegulatoryUpdate } from "./entities/regulatory-update.entity";
 import { AnnixSentinelRegulatoryUpdateRepository } from "./regulatory-update.repository";
@@ -200,12 +201,7 @@ export class AnnixSentinelRegulatoryService {
         EXTRACTION_SYSTEM_PROMPT,
       );
 
-      const parsed = JSON.parse(result.content) as unknown[];
-
-      if (!Array.isArray(parsed)) {
-        this.logger.warn("AI response was not an array");
-        return [];
-      }
+      const parsed = parseAiJsonArray(result.content);
 
       return parsed
         .filter(

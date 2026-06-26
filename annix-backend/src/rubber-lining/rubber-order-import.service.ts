@@ -1,5 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { AiChatService } from "../nix/ai-providers/ai-chat.service";
+import { aiNonNegativeNumber, parseAiJsonObject } from "../nix/ai-providers/ai-json";
+import { hardenedExtractionSystemInstruction } from "../nix/ai-providers/untrusted-content";
 import { DocumentAnnotationService } from "../nix/services/document-annotation.service";
 import type {
   AnalyzedOrderData,
@@ -324,9 +326,10 @@ export class RubberOrderImportService {
       return { lines: [] };
     }
 
-    const systemPrompt = `You are NIX. Parse the following table text into structured line items.
+    const systemPrompt =
+      hardenedExtractionSystemInstruction(`You are NIX. Parse the following table text into structured line items.
 Extract each row as an order line with: lineNumber, productName, thickness (mm), width (mm), length (m), quantity.
-Respond ONLY with JSON: { "lines": [...] }`;
+Respond ONLY with JSON: { "lines": [...] }`);
 
     const userMessage = `Parse this order table:\n\n${tableText}`;
 
@@ -336,23 +339,20 @@ Respond ONLY with JSON: { "lines": [...] }`;
         systemPrompt,
       );
 
-      const jsonMatch = response.content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        return {
-          lines: (parsed.lines || []).map((line: Partial<AnalyzedOrderLine>, idx: number) => ({
-            lineNumber: line.lineNumber || idx + 1,
-            productName: line.productName || null,
-            productId: null,
-            thickness: this.parseNumber(line.thickness),
-            width: this.parseNumber(line.width),
-            length: this.parseNumber(line.length),
-            quantity: this.parseNumber(line.quantity),
-            confidence: 0.7,
-            rawText: null,
-          })),
-        };
-      }
+      const parsed = parseAiJsonObject(response.content) as any;
+      return {
+        lines: (parsed.lines || []).map((line: Partial<AnalyzedOrderLine>, idx: number) => ({
+          lineNumber: line.lineNumber || idx + 1,
+          productName: line.productName || null,
+          productId: null,
+          thickness: this.parseNumber(line.thickness),
+          width: this.parseNumber(line.width),
+          length: this.parseNumber(line.length),
+          quantity: this.parseNumber(line.quantity),
+          confidence: 0.7,
+          rawText: null,
+        })),
+      };
     } catch (error) {
       this.logger.error(`Failed to parse line items: ${error.message}`);
     }
@@ -548,6 +548,7 @@ Respond ONLY with a JSON object:
     if (correctionHints) {
       systemPrompt = `${systemPrompt}\n\n${correctionHints}`;
     }
+    systemPrompt = hardenedExtractionSystemInstruction(systemPrompt);
 
     const userMessage = `Extract order information from this document.
 
@@ -564,40 +565,40 @@ ${truncatedText}`;
 
       this.logger.log(`NIX extraction response: ${response.content.substring(0, 500)}...`);
 
-      const jsonMatch = response.content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        const lines: AnalyzedOrderLine[] = (parsed.lines || []).map(
-          (line: Partial<AnalyzedOrderLine>, idx: number) => ({
-            lineNumber: line.lineNumber || idx + 1,
-            productName: line.productName || null,
-            productId: null,
-            thickness: this.parseNumber(line.thickness),
-            width: this.parseNumber(line.width),
-            length: this.parseNumber(line.length),
-            quantity: this.parseNumber(line.quantity),
-            unitPrice: this.parseNumber(line.unitPrice),
-            confidence: line.confidence || 0.5,
-            rawText: line.rawText || null,
-          }),
-        );
-
+      let parsed: any;
+      try {
+        parsed = parseAiJsonObject(response.content);
+      } catch {
         return {
-          companyName: parsed.companyName || null,
-          companyVatNumber: parsed.companyVatNumber || null,
-          companyAddress: parsed.companyAddress || null,
-          companyRegistrationNumber: parsed.companyRegistrationNumber || null,
-          poNumber: parsed.poNumber || null,
-          orderDate: parsed.orderDate || null,
-          deliveryDate: parsed.deliveryDate || null,
-          lines,
-          confidence: parsed.confidence || 0.5,
+          confidence: 0,
+          errors: ["Could not parse AI response"],
         };
       }
+      const lines: AnalyzedOrderLine[] = (parsed.lines || []).map(
+        (line: Partial<AnalyzedOrderLine>, idx: number) => ({
+          lineNumber: line.lineNumber || idx + 1,
+          productName: line.productName || null,
+          productId: null,
+          thickness: this.parseNumber(line.thickness),
+          width: this.parseNumber(line.width),
+          length: this.parseNumber(line.length),
+          quantity: this.parseNumber(line.quantity),
+          unitPrice: aiNonNegativeNumber(line.unitPrice, { max: 10_000_000 }),
+          confidence: line.confidence || 0.5,
+          rawText: line.rawText || null,
+        }),
+      );
 
       return {
-        confidence: 0,
-        errors: ["Could not parse AI response"],
+        companyName: parsed.companyName || null,
+        companyVatNumber: parsed.companyVatNumber || null,
+        companyAddress: parsed.companyAddress || null,
+        companyRegistrationNumber: parsed.companyRegistrationNumber || null,
+        poNumber: parsed.poNumber || null,
+        orderDate: parsed.orderDate || null,
+        deliveryDate: parsed.deliveryDate || null,
+        lines,
+        confidence: parsed.confidence || 0.5,
       };
     } catch (error) {
       this.logger.error(`AI extraction failed: ${error.message}`);
@@ -827,46 +828,46 @@ Respond ONLY with JSON:
         `Vision PDF extraction response (${content.length} chars): ${content.substring(0, 500)}`,
       );
 
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        const lines: AnalyzedOrderLine[] = (parsed.lines || []).map(
-          (line: Partial<AnalyzedOrderLine>, idx: number) => ({
-            lineNumber: line.lineNumber || idx + 1,
-            productName: line.productName || null,
-            productId: null,
-            thickness: this.parseNumber(line.thickness),
-            width: this.parseNumber(line.width),
-            length: this.parseNumber(line.length),
-            quantity: this.parseNumber(line.quantity),
-            unitPrice: this.parseNumber(line.unitPrice),
-            confidence: line.confidence || 0.6,
-            rawText: line.rawText || null,
-          }),
-        );
-
-        const filenamePo = this.extractPoFromFilename(filename);
-        const poNumber = filenamePo || parsed.poNumber || null;
-
-        this.logger.log(
-          `Full vision extraction: company="${parsed.companyName}", PO="${poNumber}", lines=${lines.length}`,
-        );
-
-        return {
-          companyName: parsed.companyName || null,
-          companyVatNumber: parsed.companyVatNumber || null,
-          companyAddress: parsed.companyAddress || null,
-          companyRegistrationNumber: parsed.companyRegistrationNumber || null,
-          poNumber,
-          orderDate: parsed.orderDate || null,
-          deliveryDate: parsed.deliveryDate || null,
-          lines,
-          confidence: parsed.confidence || 0.6,
-          extractionMethod: "ai",
-        };
+      let parsed: any;
+      try {
+        parsed = parseAiJsonObject(content);
+      } catch {
+        return { confidence: 0, errors: ["Could not parse vision response"] };
       }
+      const lines: AnalyzedOrderLine[] = (parsed.lines || []).map(
+        (line: Partial<AnalyzedOrderLine>, idx: number) => ({
+          lineNumber: line.lineNumber || idx + 1,
+          productName: line.productName || null,
+          productId: null,
+          thickness: this.parseNumber(line.thickness),
+          width: this.parseNumber(line.width),
+          length: this.parseNumber(line.length),
+          quantity: this.parseNumber(line.quantity),
+          unitPrice: aiNonNegativeNumber(line.unitPrice, { max: 10_000_000 }),
+          confidence: line.confidence || 0.6,
+          rawText: line.rawText || null,
+        }),
+      );
 
-      return { confidence: 0, errors: ["Could not parse vision response"] };
+      const filenamePo = this.extractPoFromFilename(filename);
+      const poNumber = filenamePo || parsed.poNumber || null;
+
+      this.logger.log(
+        `Full vision extraction: company="${parsed.companyName}", PO="${poNumber}", lines=${lines.length}`,
+      );
+
+      return {
+        companyName: parsed.companyName || null,
+        companyVatNumber: parsed.companyVatNumber || null,
+        companyAddress: parsed.companyAddress || null,
+        companyRegistrationNumber: parsed.companyRegistrationNumber || null,
+        poNumber,
+        orderDate: parsed.orderDate || null,
+        deliveryDate: parsed.deliveryDate || null,
+        lines,
+        confidence: parsed.confidence || 0.6,
+        extractionMethod: "ai",
+      };
     } catch (error) {
       this.logger.error(`Full vision extraction failed: ${error.message}`);
       return { confidence: 0, errors: [`Vision extraction failed: ${error.message}`] };
@@ -897,7 +898,8 @@ Respond ONLY with JSON:
         `Sending page 1 image (${firstPage.width}x${firstPage.height}) to Gemini Vision`,
       );
 
-      const systemPrompt = `You are NIX, an AI assistant for AU Industries' rubber lining operations.
+      const systemPrompt =
+        hardenedExtractionSystemInstruction(`You are NIX, an AI assistant for AU Industries' rubber lining operations.
 Analyze this purchase order image and extract the order line items.
 
 Look for:
@@ -923,7 +925,7 @@ Respond ONLY with JSON:
       "confidence": 0.0-1.0
     }
   ]
-}`;
+}`);
 
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`,
@@ -962,26 +964,23 @@ Respond ONLY with JSON:
       const content = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
       this.logger.log(`Gemini Vision response: ${content.substring(0, 500)}`);
 
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        const lines = (parsed.lines || []).map((line: Partial<AnalyzedOrderLine>, idx: number) => ({
-          lineNumber: line.lineNumber || idx + 1,
-          productName: line.productName || null,
-          productId: null,
-          thickness: this.parseNumber(line.thickness),
-          width: this.parseNumber(line.width),
-          length: this.parseNumber(line.length),
-          quantity: this.parseNumber(line.quantity),
-          confidence: line.confidence || 0.8,
-          rawText: null,
-        }));
-        this.logger.log(`Vision extracted ${lines.length} order lines`);
-        if (parsed.poNumber) {
-          this.logger.log(`Vision extracted PO Number: ${parsed.poNumber}`);
-        }
-        return { lines, poNumber: parsed.poNumber || undefined };
+      const parsed = parseAiJsonObject(content) as any;
+      const lines = (parsed.lines || []).map((line: Partial<AnalyzedOrderLine>, idx: number) => ({
+        lineNumber: line.lineNumber || idx + 1,
+        productName: line.productName || null,
+        productId: null,
+        thickness: this.parseNumber(line.thickness),
+        width: this.parseNumber(line.width),
+        length: this.parseNumber(line.length),
+        quantity: this.parseNumber(line.quantity),
+        confidence: line.confidence || 0.8,
+        rawText: null,
+      }));
+      this.logger.log(`Vision extracted ${lines.length} order lines`);
+      if (parsed.poNumber) {
+        this.logger.log(`Vision extracted PO Number: ${parsed.poNumber}`);
       }
+      return { lines, poNumber: parsed.poNumber || undefined };
     } catch (error) {
       this.logger.error(`Vision extraction failed: ${error.message}`);
     }

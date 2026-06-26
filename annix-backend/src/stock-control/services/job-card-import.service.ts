@@ -1,6 +1,7 @@
 import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { parseAiJsonArray, parseAiJsonObject } from "../../nix/ai-providers/ai-json";
 import { ChatMessage } from "../../nix/ai-providers/claude-chat.provider";
 import { LearningSource, LearningType } from "../../nix/entities/nix-learning.entity";
 import { NixLearningRepository } from "../../nix/nix-learning.repository";
@@ -833,14 +834,8 @@ export class JobCardImportService {
         PDF_GRID_EXTRACTION_PROMPT,
       );
 
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) {
-        this.logger.warn("AI PDF grid extraction returned no JSON array");
-        return [];
-      }
-
-      const parsed = JSON.parse(jsonMatch[0]);
-      if (!Array.isArray(parsed) || parsed.length === 0) {
+      const parsed = parseAiJsonArray(content);
+      if (parsed.length === 0) {
         return [];
       }
 
@@ -1233,13 +1228,7 @@ export class JobCardImportService {
         JOB_CARD_MAPPING_PROMPT,
       );
 
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        this.logger.warn("AI response did not contain valid JSON, using defaults");
-        return this.defaultMapping();
-      }
-
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed = parseAiJsonObject(response);
       return this.convertAiResponseToMappingConfig(parsed, grid);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";

@@ -311,7 +311,7 @@ describe("InvoiceExtractionService", () => {
       });
 
       await expect(service.extractDeliveryNoteFromImage("base64", "image/png")).rejects.toThrow(
-        "AI response did not contain valid JSON",
+        "AI response contained no balanced JSON",
       );
     });
   });

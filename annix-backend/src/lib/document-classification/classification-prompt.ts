@@ -1,4 +1,5 @@
 import type { ClassificationResult } from "../../inbound-email/interfaces/document-classifier.interface";
+import { parseAiJsonObject } from "../../nix/ai-providers/ai-json";
 
 export const CLASSIFICATION_IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 export type ClassificationImageMime = (typeof CLASSIFICATION_IMAGE_MIME_TYPES)[number];
@@ -79,13 +80,8 @@ export function parseClassificationResponse(
     source: "content_ai",
   };
 
-  const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    return unknownResult;
-  }
-
   try {
-    const parsed = JSON.parse(jsonMatch[0]);
+    const parsed = parseAiJsonObject(responseContent) as any;
     if (parsed.documentType && options.validTypes.includes(parsed.documentType)) {
       return {
         documentType: parsed.documentType,

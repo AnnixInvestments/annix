@@ -3,6 +3,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { createWorker } from "tesseract.js";
 import { AiChatService } from "../ai-providers/ai-chat.service";
 import { AiExtractionService } from "../ai-providers/ai-extraction.service";
+import { parseAiJsonObject } from "../ai-providers/ai-json";
 import {
   hardenedExtractionSystemInstruction,
   wrapUntrustedDocument,
@@ -408,7 +409,7 @@ export class RegistrationDocumentVerifierService {
       const response = await this.callAiForExtraction(prompt, systemPrompt);
       if (!response) return null;
 
-      const parsed = JSON.parse(response);
+      const parsed = parseAiJsonObject(response) as any;
       const fieldsExtracted: string[] = [];
 
       if (parsed.vatNumber) fieldsExtracted.push("vatNumber");

@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { parseAiJsonObject } from "./ai-json";
 import {
   AiExtractionRequest,
   AiExtractionResponse,
@@ -104,13 +105,7 @@ export class GeminiProvider implements AiProvider {
 
   private parseResponse(content: string): AiExtractionResponse {
     try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        this.logger.warn("No JSON found in Gemini response");
-        return this.emptyResponse(0);
-      }
-
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed = parseAiJsonObject(content) as any;
 
       return {
         items: (parsed.items || []).map((item: any) => ({

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { parseAiJsonObject } from "../../nix/ai-providers/ai-json";
 import { IdentifiedItem, IdentifyItemResponse } from "../dto/identify-item.dto";
 import { StockItem } from "../entities/stock-item.entity";
 import { StockItemRepository } from "../repositories/stock-item.repository";
@@ -50,8 +51,13 @@ Rules:
         systemPrompt,
       );
 
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      const parsed: Record<string, unknown> = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+      const parsed: Record<string, unknown> = (() => {
+        try {
+          return parseAiJsonObject(response);
+        } catch {
+          return {};
+        }
+      })();
       const productName = (parsed.productName as string) || null;
       const batchNumber = (parsed.batchNumber as string) || null;
       const confidence = (parsed.confidence as number) || 0;
@@ -130,14 +136,8 @@ If you cannot identify any items or the image is unclear, return an empty items 
   }
 
   private parseJsonResponse(response: string): { items: IdentifiedItem[]; analysis: string } {
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      this.logger.warn("No JSON found in response");
-      return { items: [], analysis: response };
-    }
-
     try {
-      return JSON.parse(jsonMatch[0]);
+      return parseAiJsonObject(response) as { items: IdentifiedItem[]; analysis: string };
     } catch (error) {
       this.logger.warn(`Failed to parse JSON response: ${error.message}`);
       return { items: [], analysis: response };

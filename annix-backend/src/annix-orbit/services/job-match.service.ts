@@ -3,6 +3,7 @@ import { isArray, isNumber, isString } from "es-toolkit/compat";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { parseAiJsonObject } from "../../nix/ai-providers/ai-json";
 import { ExtractedCvData, MatchAnalysis } from "../entities/candidate.entity";
 import { JobPosting } from "../entities/job-posting.entity";
 import { JOB_MATCH_SYSTEM_PROMPT, jobMatchPrompt } from "../prompts/job-match.prompt";
@@ -52,12 +53,7 @@ export class JobMatchService {
         tokensUsed,
       });
 
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error("No JSON found in AI response");
-      }
-
-      const raw = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+      const raw = parseAiJsonObject(content) as Record<string, unknown>;
 
       return this.validateMatchAnalysis(raw);
     } catch (error: unknown) {

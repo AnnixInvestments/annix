@@ -11,6 +11,7 @@ import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { parseAiJsonObject } from "../../nix/ai-providers/ai-json";
 
 type MediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "application/pdf";
 
@@ -367,13 +368,8 @@ export class RubberPriceListExtractionService {
       .replace(/```json/gi, "")
       .replace(/```/g, "")
       .trim();
-    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      this.logger.error(`Rubber price list extraction returned no JSON (length ${content.length})`);
-      throw new BadRequestException("Could not read the price list — please try a clearer file.");
-    }
     try {
-      return JSON.parse(jsonMatch[0]) as T;
+      return parseAiJsonObject(cleaned) as T;
     } catch (error) {
       this.logger.error(
         `Rubber price list JSON parse failed (length ${content.length}): ${(error as Error).message}`,

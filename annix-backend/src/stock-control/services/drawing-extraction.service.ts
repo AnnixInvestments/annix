@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { now } from "../../lib/datetime";
 import { pdfToPngOffThread } from "../../lib/pdf/pdf-to-png-offthread";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { parseAiJsonObject } from "../../nix/ai-providers/ai-json";
 import {
   ChatMessage,
   ImageContent,
@@ -869,15 +870,9 @@ export class DrawingExtractionService {
     tankData: TankExtractionData | null;
     confidence: number;
   } {
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      this.logger.warn("AI response did not contain valid JSON for drawing extraction");
-      return { drawingType: "pipe", dimensions: [], tankData: null, confidence: 0 };
-    }
-
     let parsed: Record<string, any>;
     try {
-      parsed = JSON.parse(jsonMatch[0]);
+      parsed = parseAiJsonObject(response) as Record<string, any>;
     } catch (err) {
       this.logger.warn(
         `AI drawing JSON parse failed (${err instanceof Error ? err.message : "unknown"}) — returning empty result`,

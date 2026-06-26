@@ -9,6 +9,7 @@ import {
   isWordFile,
 } from "../lib/document-extraction";
 import { AiChatService } from "../nix/ai-providers/ai-chat.service";
+import { parseAiJsonObject } from "../nix/ai-providers/ai-json";
 import {
   hardenedExtractionSystemInstruction,
   wrapUntrustedDocument,
@@ -321,15 +322,12 @@ Respond ONLY with JSON: {"role":"seller"|"buyer","counterparty":"other company n
         ],
         hardenedExtractionSystemInstruction(systemPrompt),
       );
-      const match = response.content.match(/\{[\s\S]*\}/);
-      if (match) {
-        const parsed = JSON.parse(match[0]);
-        const direction = parsed.role === "seller" ? "customer" : "supplier";
-        this.logger.log(
-          `Nix direction for ${filename}: ${direction} (AU is ${parsed.role}, counterparty: ${parsed.counterparty ?? "?"}, ${parsed.reason ?? ""})`,
-        );
-        return direction;
-      }
+      const parsed = parseAiJsonObject(response.content) as any;
+      const direction = parsed.role === "seller" ? "customer" : "supplier";
+      this.logger.log(
+        `Nix direction for ${filename}: ${direction} (AU is ${parsed.role}, counterparty: ${parsed.counterparty ?? "?"}, ${parsed.reason ?? ""})`,
+      );
+      return direction;
     } catch (error) {
       this.logger.warn(`Nix direction classification failed for ${filename}: ${error.message}`);
     }
@@ -1231,20 +1229,17 @@ ${wrapUntrustedDocument(truncatedText)}`;
         hardenedExtractionSystemInstruction(systemPrompt),
       );
 
-      const jsonMatch = response.content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        const validTypes: string[] = [
-          SharedDocumentType.COC,
-          SharedDocumentType.DELIVERY_NOTE,
-          SharedDocumentType.TAX_INVOICE,
-        ];
-        if (parsed.documentType && validTypes.includes(parsed.documentType)) {
-          this.logger.log(
-            `AI classification: ${parsed.documentType} (file: ${filename}, reason: ${parsed.reason})`,
-          );
-          return parsed.documentType as SharedDocumentType;
-        }
+      const parsed = parseAiJsonObject(response.content) as any;
+      const validTypes: string[] = [
+        SharedDocumentType.COC,
+        SharedDocumentType.DELIVERY_NOTE,
+        SharedDocumentType.TAX_INVOICE,
+      ];
+      if (parsed.documentType && validTypes.includes(parsed.documentType)) {
+        this.logger.log(
+          `AI classification: ${parsed.documentType} (file: ${filename}, reason: ${parsed.reason})`,
+        );
+        return parsed.documentType as SharedDocumentType;
       }
     } catch (error) {
       this.logger.warn(`AI classification failed for ${filename}: ${error.message}`);
@@ -1998,52 +1993,49 @@ ${wrapUntrustedDocument(truncatedText)}`;
 
       this.logger.log(`NIX response for document classification: ${response.content}`);
 
-      const jsonMatch = response.content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        const validDocTypes = [
-          "SUPPLIER_COC",
-          "DELIVERY_NOTE",
-          "PURCHASE_ORDER",
-          "INVOICE",
-          "QUOTE",
-          "UNKNOWN",
-        ];
+      const parsed = parseAiJsonObject(response.content) as any;
+      const validDocTypes = [
+        "SUPPLIER_COC",
+        "DELIVERY_NOTE",
+        "PURCHASE_ORDER",
+        "INVOICE",
+        "QUOTE",
+        "UNKNOWN",
+      ];
 
-        if (parsed.documentType && validDocTypes.includes(parsed.documentType)) {
+      if (parsed.documentType && validDocTypes.includes(parsed.documentType)) {
+        this.logger.log(
+          `NIX classified as ${parsed.documentType}, supplier: ${parsed.supplierType}, confidence: ${parsed.confidence}`,
+        );
+
+        if (parsed.documentType === "SUPPLIER_COC" && parsed.supplierType) {
+          const cocTypeMap: Record<string, SupplierCocType> = {
+            CALENDARER: SupplierCocType.CALENDARER,
+            COMPOUNDER: SupplierCocType.COMPOUNDER,
+            CALENDER_ROLL: SupplierCocType.CALENDER_ROLL,
+          };
+          const cocType = cocTypeMap[parsed.supplierType] || SupplierCocType.COMPOUNDER;
+
+          const companyId: number | undefined =
+            cocType === SupplierCocType.CALENDARER
+              ? companies.find(
+                  (c) =>
+                    c.name.toLowerCase().includes("impilo") ||
+                    c.name.toLowerCase().includes("calendarer"),
+                )?.id
+              : companies.find(
+                  (c) =>
+                    c.name.toLowerCase().includes("s&n") ||
+                    c.name.toLowerCase().includes("compounder"),
+                )?.id;
+
+          return { cocType, companyId, documentType: parsed.documentType };
+        }
+
+        if (parsed.documentType !== "UNKNOWN") {
           this.logger.log(
-            `NIX classified as ${parsed.documentType}, supplier: ${parsed.supplierType}, confidence: ${parsed.confidence}`,
+            `Document is ${parsed.documentType} - not a supplier CoC, requires manual filing`,
           );
-
-          if (parsed.documentType === "SUPPLIER_COC" && parsed.supplierType) {
-            const cocTypeMap: Record<string, SupplierCocType> = {
-              CALENDARER: SupplierCocType.CALENDARER,
-              COMPOUNDER: SupplierCocType.COMPOUNDER,
-              CALENDER_ROLL: SupplierCocType.CALENDER_ROLL,
-            };
-            const cocType = cocTypeMap[parsed.supplierType] || SupplierCocType.COMPOUNDER;
-
-            const companyId: number | undefined =
-              cocType === SupplierCocType.CALENDARER
-                ? companies.find(
-                    (c) =>
-                      c.name.toLowerCase().includes("impilo") ||
-                      c.name.toLowerCase().includes("calendarer"),
-                  )?.id
-                : companies.find(
-                    (c) =>
-                      c.name.toLowerCase().includes("s&n") ||
-                      c.name.toLowerCase().includes("compounder"),
-                  )?.id;
-
-            return { cocType, companyId, documentType: parsed.documentType };
-          }
-
-          if (parsed.documentType !== "UNKNOWN") {
-            this.logger.log(
-              `Document is ${parsed.documentType} - not a supplier CoC, requires manual filing`,
-            );
-          }
         }
       }
 

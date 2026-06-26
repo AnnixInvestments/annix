@@ -4,6 +4,7 @@ import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { fromISO, fromJSDate, now } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { allowlistKeys, parseAiJsonObject } from "../../nix/ai-providers/ai-json";
 import { hardenedExtractionSystemInstruction } from "../../nix/ai-providers/untrusted-content";
 import { SupplierInvoiceFifoBridgeService } from "../../stock-management/services/supplier-invoice-fifo-bridge.service";
 import {
@@ -289,13 +290,8 @@ export class InvoiceExtractionService {
         pageCount: 1,
       });
 
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error("AI response did not contain valid JSON");
-      }
-
       const extractedData: ExtractedInvoiceData = validateInvoiceExtraction(
-        JSON.parse(jsonMatch[0]),
+        parseAiJsonObject(response),
       );
       invoice.extractedData = extractedData;
 
@@ -389,12 +385,17 @@ export class InvoiceExtractionService {
       pageCount: 1,
     });
 
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("AI response did not contain valid JSON");
-    }
-
-    return JSON.parse(jsonMatch[0]);
+    return allowlistKeys(parseAiJsonObject(response), [
+      "deliveryNumber",
+      "supplierName",
+      "receivedDate",
+      "lineItems",
+    ]) as {
+      deliveryNumber?: string;
+      supplierName?: string;
+      receivedDate?: string;
+      lineItems?: { description: string; quantity: number; sku?: string }[];
+    };
   }
 
   private async autoLinkToDeliveryNote(

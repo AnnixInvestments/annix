@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { nowMillis } from "../../lib/datetime";
 import { pdfToPngOffThread } from "../../lib/pdf/pdf-to-png-offthread";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { parseAiJsonObject } from "../../nix/ai-providers/ai-json";
 import type {
   ChatMessage,
   ImageContent,
@@ -173,14 +174,8 @@ export class CertificateAnalysisService {
   }
 
   private parseResponse(response: string, totalPages: number): IdentifiedCertificate[] {
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      this.logger.warn("AI response did not contain valid JSON for certificate analysis");
-      return [];
-    }
-
     try {
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed = parseAiJsonObject(response) as any;
       const rawCertificates = Array.isArray(parsed.certificates) ? parsed.certificates : [];
 
       return rawCertificates.map(

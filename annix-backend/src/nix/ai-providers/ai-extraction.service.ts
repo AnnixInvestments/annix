@@ -28,14 +28,14 @@ export class AiExtractionService implements OnModuleInit {
 
   constructor(private readonly aiUsageService: AiUsageService) {
     this.providers.set("gemini", new GeminiProvider());
-    this.providers.set("claude", new ClaudeProvider());
+    // Gemini-only policy: Claude is an OPT-IN fallback, registered only when
+    // AI_ALLOW_CLAUDE_FALLBACK=true. Unregistered, it can never be selected.
+    if (process.env.AI_ALLOW_CLAUDE_FALLBACK === "true") {
+      this.providers.set("claude", new ClaudeProvider());
+    }
 
     const envProvider = process.env.AI_EXTRACTION_PROVIDER?.toLowerCase();
-    if (envProvider === "gemini" || envProvider === "auto") {
-      this.preferredProvider = envProvider;
-    } else {
-      this.preferredProvider = "auto";
-    }
+    this.preferredProvider = envProvider === "auto" ? "auto" : "gemini";
   }
 
   async onModuleInit(): Promise<void> {

@@ -3,6 +3,7 @@ import { fromISO } from "../../lib/datetime";
 import type { DeepPartial } from "../../lib/persistence/crud-repository";
 import { selectSheetForMonth } from "../../lib/xlsx-sheet-select";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { parseAiJsonArray } from "../../nix/ai-providers/ai-json";
 import { LearningSource, LearningType } from "../../nix/entities/nix-learning.entity";
 import { NixLearningRepository } from "../../nix/nix-learning.repository";
 import { StockItem } from "../entities/stock-item.entity";
@@ -519,14 +520,8 @@ export class ImportService {
         INVENTORY_PDF_EXTRACTION_PROMPT,
       );
 
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) {
-        this.logger.warn("AI inventory PDF extraction returned no JSON array");
-        return [];
-      }
-
-      const parsed = JSON.parse(jsonMatch[0]);
-      if (!Array.isArray(parsed) || parsed.length === 0) {
+      const parsed = parseAiJsonArray(content);
+      if (parsed.length === 0) {
         return [];
       }
 

@@ -57,14 +57,15 @@ export class AiChatService implements OnModuleInit {
     private readonly aiQuotaService: AiQuotaService,
   ) {
     this.providers.set("gemini", new GeminiChatProvider());
-    this.providers.set("claude", new ClaudeChatProvider());
+    // Gemini-only policy: Claude is an OPT-IN fallback, registered only when
+    // AI_ALLOW_CLAUDE_FALLBACK=true. Unregistered, it can never be selected
+    // (by preference, override, or fallback).
+    if (process.env.AI_ALLOW_CLAUDE_FALLBACK === "true") {
+      this.providers.set("claude", new ClaudeChatProvider());
+    }
 
     const envProvider = process.env.AI_CHAT_PROVIDER?.toLowerCase();
-    if (envProvider === "gemini" || envProvider === "auto") {
-      this.preferredProvider = envProvider;
-    } else {
-      this.preferredProvider = "auto";
-    }
+    this.preferredProvider = envProvider === "auto" ? "auto" : "gemini";
   }
 
   async onModuleInit(): Promise<void> {

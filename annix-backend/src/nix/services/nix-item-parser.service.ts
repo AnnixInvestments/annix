@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { AiChatService } from "../ai-providers/ai-chat.service";
+import { parseAiJsonObject } from "../ai-providers/ai-json";
 import { ChatMessage } from "../ai-providers/claude-chat.provider";
 
 export interface ParsedItemIntent {
@@ -63,13 +64,7 @@ export class NixItemParserService {
     try {
       const { content: response } = await this.aiChatService.chat(messages, systemPrompt);
 
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        this.logger.warn("No JSON found in parser response");
-        return this.unknownIntent(userMessage);
-      }
-
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed = parseAiJsonObject(response) as any;
 
       return {
         action: parsed.action || "unknown",
@@ -104,17 +99,7 @@ export class NixItemParserService {
     try {
       const { content: response } = await this.aiChatService.chat(messages, systemPrompt);
 
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        this.logger.warn("No JSON found in multi-item parser response");
-        return {
-          items: [this.unknownIntent(userMessage)],
-          hasMultipleItems: false,
-          totalConfidence: 0,
-        };
-      }
-
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed = parseAiJsonObject(response) as any;
       const items: ParsedItemIntent[] = (parsed.items || [parsed]).map(
         (item: any, index: number) => ({
           action: item.action || "create_item",

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { AiChatService } from "../nix/ai-providers/ai-chat.service";
+import { aiNonNegativeNumber, parseAiJsonObject } from "../nix/ai-providers/ai-json";
 import type {
   AnalyzedProductData,
   AnalyzedProductLine,
@@ -337,35 +338,35 @@ ${truncatedText}`;
 
       this.logger.log(`NIX extraction response: ${response.content.substring(0, 500)}...`);
 
-      const jsonMatch = response.content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        const lines: AnalyzedProductLine[] = (parsed.lines || []).map(
-          (line: Partial<AnalyzedProductLine>, idx: number) => ({
-            lineNumber: line.lineNumber || idx + 1,
-            title: line.title || null,
-            type: line.type || null,
-            compound: line.compound || null,
-            colour: line.colour || null,
-            hardness: line.hardness || null,
-            grade: line.grade || null,
-            curingMethod: line.curingMethod || null,
-            specificGravity: this.parseNumber(line.specificGravity),
-            baseCostPerKg: this.parseNumber(line.baseCostPerKg),
-            confidence: line.confidence || 0.5,
-            rawText: line.rawText || null,
-          }),
-        );
-
+      let parsed: any;
+      try {
+        parsed = parseAiJsonObject(response.content);
+      } catch {
         return {
-          lines,
-          confidence: parsed.confidence || 0.5,
+          confidence: 0,
+          errors: ["Could not parse AI response"],
         };
       }
+      const lines: AnalyzedProductLine[] = (parsed.lines || []).map(
+        (line: Partial<AnalyzedProductLine>, idx: number) => ({
+          lineNumber: line.lineNumber || idx + 1,
+          title: line.title || null,
+          type: line.type || null,
+          compound: line.compound || null,
+          colour: line.colour || null,
+          hardness: line.hardness || null,
+          grade: line.grade || null,
+          curingMethod: line.curingMethod || null,
+          specificGravity: this.parseNumber(line.specificGravity),
+          baseCostPerKg: aiNonNegativeNumber(line.baseCostPerKg, { max: 10_000_000 }),
+          confidence: line.confidence || 0.5,
+          rawText: line.rawText || null,
+        }),
+      );
 
       return {
-        confidence: 0,
-        errors: ["Could not parse AI response"],
+        lines,
+        confidence: parsed.confidence || 0.5,
       };
     } catch (error) {
       this.logger.error(`AI extraction failed: ${error.message}`);

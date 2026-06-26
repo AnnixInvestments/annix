@@ -18,6 +18,7 @@ import {
   truncateClassificationText,
 } from "../../lib/document-classification";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { parseAiJsonObject } from "../../nix/ai-providers/ai-json";
 import { hardenedExtractionSystemInstruction } from "../../nix/ai-providers/untrusted-content";
 import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
 import { StockControlSupplierRepository } from "../repositories/stock-control-supplier.repository";
@@ -457,11 +458,7 @@ Respond ONLY with a JSON object:
         ),
       );
       const text = response.content.trim();
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        return null;
-      }
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed = parseAiJsonObject(text) as any;
       const productRaw = parsed.productName ? String(parsed.productName).trim() : null;
       const batchRaw = parsed.batchNumber ? String(parsed.batchNumber).trim() : null;
       const productName =
