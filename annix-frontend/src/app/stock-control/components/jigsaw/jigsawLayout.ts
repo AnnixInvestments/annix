@@ -416,6 +416,34 @@ export function splitPanelInHalf(panel: JigsawPanel): [JigsawPanel, JigsawPanel]
   return [makeHalf("s1", "cut A"), makeHalf("s2", "cut B")];
 }
 
+// When a saved manual layout is restored, decide which base panels remain in the
+// tray: drop any panel that is itself placed, and any panel that was split (a
+// placed sibling has panelId "<id>-s..."), since its halves are already placed.
+export function unplacedAfterRestore(
+  allPanels: JigsawPanel[],
+  placements: { panelId: string }[],
+): JigsawPanel[] {
+  const placedIds = new Set(placements.map((p) => p.panelId));
+  return allPanels.filter((panel) => {
+    const id = panel.panelId;
+    if (placedIds.has(id)) {
+      return false;
+    }
+    // A split sibling is "<id>-s<digit>" (splitPanelInHalf). Require the digit so a
+    // sub-panel label that merely starts with "s" (e.g. "<id>-side") never matches.
+    const prefix = `${id}-s`;
+    const wasSplit = placements.some((p) => {
+      const pid = p.panelId;
+      if (!pid.startsWith(prefix)) {
+        return false;
+      }
+      const nextChar = pid.charAt(prefix.length);
+      return nextChar >= "0" && nextChar <= "9";
+    });
+    return !wasSplit;
+  });
+}
+
 export function serializeToManualRolls(
   rolls: JigsawRoll[],
   placedPanels: PlacedPanel[],

@@ -605,6 +605,7 @@ export class JobCardsController {
       status: dto.status,
       selectedPlyCombination: dto.selectedPlyCombination || null,
       manualRolls: dto.manualRolls || null,
+      placements: dto.placements || null,
       reviewedBy: req.user.name,
       reviewedAt: nowISO(),
     };

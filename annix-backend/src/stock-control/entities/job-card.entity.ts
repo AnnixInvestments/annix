@@ -32,9 +32,30 @@ export interface RubberPlanOverride {
   status: "pending" | "accepted" | "manual";
   selectedPlyCombination: number[] | null;
   manualRolls: RubberPlanManualRoll[] | null;
+  // Exact editor placements so the manual cutting-diagram editor can restore the
+  // saved layout on reopen (manualRolls is grouped/positionless and lossy).
+  placements?: RubberPlanPlacement[] | null;
   dimensionOverrides?: RubberDimensionOverrideDto[] | null;
   reviewedBy: string | null;
   reviewedAt: string | null;
+}
+
+export interface RubberPlanPlacement {
+  panelId: string;
+  itemId: string;
+  itemNo: string | null;
+  description: string;
+  widthMm: number;
+  lengthMm: number;
+  originalWidthMm: number;
+  originalLengthMm: number;
+  rotated: boolean;
+  colorIndex: number;
+  rollIndex: number;
+  xMm: number;
+  yMm: number;
+  shape?: unknown;
+  dimensionContext?: unknown;
 }
 
 export interface RubberDimensionOverrideDto {

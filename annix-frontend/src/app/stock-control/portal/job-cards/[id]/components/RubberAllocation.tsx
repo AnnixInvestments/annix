@@ -8,6 +8,7 @@ import type {
   RubberDimensionOverride,
   RubberPlanManualRoll,
   RubberPlanOverride,
+  RubberPlanPlacement,
   RubberStockOptionsResponse,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
@@ -1447,6 +1448,8 @@ function RubberSOHPanel({
   const [manualRolls, setManualRolls] = useState<RubberPlanManualRoll[]>(
     existingOverride?.manualRolls ? existingOverride.manualRolls : [],
   );
+  const rawExistingPlacements = existingOverride?.placements;
+  const existingPlacements = rawExistingPlacements ?? null;
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [allocatingPly, setAllocatingPly] = useState<number | null>(null);
@@ -1571,6 +1574,7 @@ function RubberSOHPanel({
   const handleSaveManual = async (
     rollsToSave?: RubberPlanManualRoll[],
     dimensionOverrides?: RubberDimensionOverride[],
+    placements?: RubberPlanPlacement[],
   ) => {
     const rolls = rollsToSave !== undefined ? rollsToSave : manualRolls;
     setSaving(true);
@@ -1605,6 +1609,7 @@ function RubberSOHPanel({
         status: "manual",
         selectedPlyCombination: null,
         manualRolls: rolls,
+        placements: placements?.length ? placements : null,
         dimensionOverrides: dimensionOverrides?.length ? dimensionOverrides : null,
         autoPlanSnapshot,
         suggestionTrainingId:
@@ -1970,7 +1975,10 @@ function RubberSOHPanel({
             })}
             rubberSpec={stockOptions?.rubberSpec}
             existingManualRolls={manualRolls}
-            onSave={(rolls, overrides) => handleSaveManual(rolls, overrides)}
+            existingPlacements={existingPlacements}
+            onSave={(rolls, overrides, placements) =>
+              handleSaveManual(rolls, overrides, placements)
+            }
             saving={saving}
           />
         </div>

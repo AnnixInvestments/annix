@@ -1200,10 +1200,32 @@ export interface RubberPlanManualRoll {
   }>;
 }
 
+// Exact manual cutting-diagram editor placement (one per placed panel) so the
+// editor restores the saved layout on reopen. shape/dimensionContext are the
+// jigsaw runtime types, kept opaque here to avoid a layering dependency.
+export interface RubberPlanPlacement {
+  panelId: string;
+  itemId: string;
+  itemNo: string | null;
+  description: string;
+  widthMm: number;
+  lengthMm: number;
+  originalWidthMm: number;
+  originalLengthMm: number;
+  rotated: boolean;
+  colorIndex: number;
+  rollIndex: number;
+  xMm: number;
+  yMm: number;
+  shape?: unknown;
+  dimensionContext: unknown;
+}
+
 export interface RubberPlanOverride {
   status: "pending" | "accepted" | "manual";
   selectedPlyCombination: number[] | null;
   manualRolls: RubberPlanManualRoll[] | null;
+  placements?: RubberPlanPlacement[] | null;
   dimensionOverrides?: RubberDimensionOverride[] | null;
   autoPlanSnapshot?: Record<string, any> | null;
   suggestionTrainingId?: number | null;

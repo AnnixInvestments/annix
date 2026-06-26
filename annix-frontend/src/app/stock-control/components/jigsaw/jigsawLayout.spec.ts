@@ -10,6 +10,7 @@ import {
   splitPanelInHalf,
   type TankComponentSource,
   type TankPanelSource,
+  unplacedAfterRestore,
 } from "./jigsawLayout";
 import type { JigsawPanel, JigsawRoll, PlacedPanel } from "./jigsawTypes";
 
@@ -557,5 +558,42 @@ describe("serializeToManualRolls round-trip", () => {
     // effective width = lengthMm when rotated, effective length = widthMm
     expect(serialized.cuts[0].widthMm).toBe(1200);
     expect(serialized.cuts[0].lengthMm).toBe(600);
+  });
+});
+
+describe("unplacedAfterRestore", () => {
+  it("removes a placed panel from the tray", () => {
+    const all = [jigsawPanel({ panelId: "A" }), jigsawPanel({ panelId: "B" })];
+    const result = unplacedAfterRestore(all, [{ panelId: "A" }]);
+    expect(result.map((p) => p.panelId)).toEqual(["B"]);
+  });
+
+  it("removes a split parent when a split sibling is placed", () => {
+    const all = [jigsawPanel({ panelId: "A" }), jigsawPanel({ panelId: "B" })];
+    const result = unplacedAfterRestore(all, [{ panelId: "A-s1" }, { panelId: "A-s2" }]);
+    expect(result.map((p) => p.panelId)).toEqual(["B"]);
+  });
+
+  it("keeps panels that are neither placed nor split", () => {
+    const all = [jigsawPanel({ panelId: "A" }), jigsawPanel({ panelId: "B" })];
+    const result = unplacedAfterRestore(all, [{ panelId: "C" }]);
+    expect(result.map((p) => p.panelId)).toEqual(["A", "B"]);
+  });
+
+  it("does not treat a sub-panel label starting with 's' as a split", () => {
+    const all = [jigsawPanel({ panelId: "A" })];
+    const result = unplacedAfterRestore(all, [{ panelId: "A-side" }]);
+    expect(result.map((p) => p.panelId)).toEqual(["A"]);
+  });
+
+  it("does not over-match a longer base id (A vs A2)", () => {
+    const all = [jigsawPanel({ panelId: "A2" })];
+    const result = unplacedAfterRestore(all, [{ panelId: "A-s1" }]);
+    expect(result.map((p) => p.panelId)).toEqual(["A2"]);
+  });
+
+  it("returns all panels when there are no placements", () => {
+    const all = [jigsawPanel({ panelId: "A" })];
+    expect(unplacedAfterRestore(all, [])).toHaveLength(1);
   });
 });

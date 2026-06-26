@@ -11,7 +11,11 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { RubberDimensionOverride, RubberPlanManualRoll } from "@/app/lib/api/stockControlApi";
+import type {
+  RubberDimensionOverride,
+  RubberPlanManualRoll,
+  RubberPlanPlacement,
+} from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import type { ParsedPipeItem, RubberSpec } from "@/app/stock-control/lib/rubberCuttingCalculator";
 import {
@@ -25,6 +29,7 @@ import {
   splitPanelInHalf,
   type TankComponentSource,
   type TankPanelSource,
+  unplacedAfterRestore,
 } from "./jigsawLayout";
 import {
   effectiveLength,
@@ -59,7 +64,12 @@ export function JigsawEditor(props: {
   tankComponentSources?: TankComponentSource[];
   rubberSpec: RubberSpec | null | undefined;
   existingManualRolls: RubberPlanManualRoll[];
-  onSave: (rolls: RubberPlanManualRoll[], overrides: RubberDimensionOverride[]) => void;
+  existingPlacements?: RubberPlanPlacement[] | null;
+  onSave: (
+    rolls: RubberPlanManualRoll[],
+    overrides: RubberDimensionOverride[],
+    placements: RubberPlanPlacement[],
+  ) => void;
   saving: boolean;
 }) {
   const {
@@ -68,6 +78,7 @@ export function JigsawEditor(props: {
     tankComponentSources,
     rubberSpec,
     existingManualRolls,
+    existingPlacements,
     onSave,
     saving,
   } = props;
@@ -109,8 +120,21 @@ export function JigsawEditor(props: {
     ];
   });
 
-  const [placedPanels, setPlacedPanels] = useState<PlacedPanel[]>([]);
-  const [unplacedPanels, setUnplacedPanels] = useState<JigsawPanel[]>(() => allPanels);
+  // Restore a previously-saved manual layout: placed panels (incl. splits) go
+  // back onto their rolls, and the panels they represent are removed from the
+  // tray. A split sibling (panelId "X-s1") implies its parent "X" was cut up, so
+  // the parent is also kept out of the tray.
+  const savedPlacements =
+    existingPlacements && existingPlacements.length > 0
+      ? (existingPlacements as unknown as PlacedPanel[])
+      : null;
+
+  const [placedPanels, setPlacedPanels] = useState<PlacedPanel[]>(() =>
+    savedPlacements ? savedPlacements : [],
+  );
+  const [unplacedPanels, setUnplacedPanels] = useState<JigsawPanel[]>(() =>
+    savedPlacements ? unplacedAfterRestore(allPanels, savedPlacements) : allPanels,
+  );
 
   useEffect(() => {
     const specThickness = rubberSpec?.thicknessMm;
@@ -506,7 +530,12 @@ export function JigsawEditor(props: {
         overrideLengthMm: p.lengthMm,
       }));
 
-    onSave(serialized, overrides);
+    // Exact placements so reopening the editor restores this layout (manualRolls
+    // is grouped/positionless). PlacedPanel is a structural superset of the
+    // placement shape, so it round-trips through JSON.
+    const placements = placedPanels as unknown as RubberPlanPlacement[];
+
+    onSave(serialized, overrides, placements);
   };
 
   const activePanel = activeDragId ? findPanel(activeDragId) : null;

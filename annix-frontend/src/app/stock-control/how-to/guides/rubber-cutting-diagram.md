@@ -34,7 +34,7 @@ Use it when the auto plan wastes material, splits the wrong way, or you simply w
 6. **Cut a panel in half** with the scissors button when it is too big for the roll width. The panel is cut along its longer side; each half keeps a seam overlap and drops back into the tray for you to place. You can cut a half again for quarters.
 7. **Edit a panel's size** from the tray (the "E" button) if the developed size needs adjusting — the change is remembered for similar items next time.
 8. Add or remove rolls and set each roll's width, length and thickness as needed.
-9. Click **Save Manual Plan**. The saved layout becomes the cutting diagram, and Nix learns from your arrangement for similar future jobs.
+9. Click **Save Manual Plan**. The saved layout becomes the cutting diagram, and Nix learns from your arrangement for similar future jobs. **Reopening Override restores your exact layout** — panels return to the rolls where you placed them (splits included), not the tray.
 
 ## Drawings vs QC documents (what feeds the panels)
 
@@ -45,3 +45,4 @@ Only **drawings** contribute developed panels and m² to the cutting plan. When 
 - A panel cut in half becomes two plain rectangular pieces; the cutter trims any curve from the two flat halves.
 - Editing a panel's dimensions is learned per item type/size and re-suggested on the next matching panel; cutting in half is captured as part of the saved plan.
 - Offcut and stock suggestions (FIFO) appear under the diagram so panels can be cut from existing material instead of a new roll.
+- A saved manual layout is restored exactly when you reopen the editor; re-extracting the drawing (which changes the panels) resets the layout.

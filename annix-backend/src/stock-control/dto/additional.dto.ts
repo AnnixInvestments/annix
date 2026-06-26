@@ -11,6 +11,13 @@ export class UpdateRubberPlanDto {
   @IsArray()
   manualRolls?: any[];
 
+  // Exact editor placements (panel id, roll index, x/y, rotation, dimensions) so
+  // reopening the manual cutting-diagram editor restores the saved layout instead
+  // of dumping every panel back into the tray. Stored on the (Mixed) override.
+  @IsOptional()
+  @IsArray()
+  placements?: any[];
+
   @IsOptional()
   @IsArray()
   dimensionOverrides?: any[];
