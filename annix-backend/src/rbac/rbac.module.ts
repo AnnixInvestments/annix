@@ -32,6 +32,7 @@ import {
   MongoUserAppPermissionRepository,
 } from "./rbac.repository.mongo";
 import { RbacService } from "./rbac.service";
+import { RbacAccessDetailsCacheModule } from "./rbac-access-details-cache.module";
 import { AppSchema } from "./schemas/app.schema";
 import { AppPermissionSchema } from "./schemas/app-permission.schema";
 import { AppRoleSchema } from "./schemas/app-role.schema";
@@ -57,6 +58,7 @@ import { UserAppPermissionSchema } from "./schemas/user-app-permission.schema";
     ]),
     forwardRef(() => AdminModule),
     UserSyncModule,
+    RbacAccessDetailsCacheModule,
   ],
   controllers: [RbacController],
   providers: [

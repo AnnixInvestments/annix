@@ -7,6 +7,7 @@ import {
   MongoAppRoleRepository,
   MongoUserAppAccessRepository,
 } from "./rbac.repository.mongo";
+import { RbacAccessDetailsCacheModule } from "./rbac-access-details-cache.module";
 import { RbacBridgeService } from "./rbac-bridge.service";
 import { AppSchema } from "./schemas/app.schema";
 import { AppRoleSchema } from "./schemas/app-role.schema";
@@ -28,6 +29,7 @@ import { UserAppAccessSchema } from "./schemas/user-app-access.schema";
       { name: "AppRole", schema: AppRoleSchema },
       { name: "UserAppAccess", schema: UserAppAccessSchema },
     ]),
+    RbacAccessDetailsCacheModule,
   ],
   providers: [
     RbacBridgeService,

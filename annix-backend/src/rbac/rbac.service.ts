@@ -9,7 +9,7 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../email/email.service";
-import { now } from "../lib/datetime";
+import { fromISO, now } from "../lib/datetime";
 import { PasswordService } from "../shared/auth/password.service";
 import { StockControlRole } from "../stock-control/entities/stock-control-user.entity";
 import { StockControlUserRepository } from "../stock-control/repositories/stock-control-user.repository";
@@ -43,6 +43,8 @@ import {
   UserAppAccessRepository,
   UserAppPermissionRepository,
 } from "./rbac.repository";
+import { RbacAccessDetailsCache } from "./rbac-access-details-cache";
+import type { ResolvedAccessDetails } from "./resolved-access-details";
 
 export const STOCK_CONTROL_ROLE_NAMES: Record<string, string> = {
   storeman: "Storeman",
@@ -53,6 +55,8 @@ export const STOCK_CONTROL_ROLE_NAMES: Record<string, string> = {
   admin: "Administrator",
 };
 
+export type { ResolvedAccessDetails } from "./resolved-access-details";
+
 @Injectable()
 export class RbacService {
   private readonly logger = new Logger(RbacService.name);
@@ -60,6 +64,7 @@ export class RbacService {
   private appByCodeCache = new Map<string, App | null>();
 
   constructor(
+    private readonly accessDetailsCache: RbacAccessDetailsCache,
     private readonly appRepo: AppRepository,
     private readonly permissionRepo: AppPermissionRepository,
     private readonly roleRepo: AppRoleRepository,
@@ -79,6 +84,31 @@ export class RbacService {
   private invalidateAppCaches(): void {
     this.allActiveAppsCache = null;
     this.appByCodeCache.clear();
+  }
+
+  private cachedAccessDetails(userId: number, appCode: string): ResolvedAccessDetails | null {
+    return this.accessDetailsCache.cached(userId, appCode);
+  }
+
+  private storeAccessDetails(userId: number, appCode: string, value: ResolvedAccessDetails): void {
+    this.accessDetailsCache.store(userId, appCode, value);
+  }
+
+  private invalidateAccessDetails(userId: number, appCode: string): void {
+    this.accessDetailsCache.invalidate(userId, appCode);
+  }
+
+  private invalidateAccessDetailsForApp(appCode: string): void {
+    this.accessDetailsCache.invalidateApp(appCode);
+  }
+
+  private clearAccessDetailsCache(): void {
+    this.accessDetailsCache.clear();
+  }
+
+  private async appCodeForId(appId: number): Promise<string | null> {
+    const apps = await this.allApps();
+    return apps.find((app) => app.id === appId)?.code ?? null;
   }
 
   private async appByCode(code: string): Promise<App | null> {
@@ -313,7 +343,7 @@ export class RbacService {
       roleId: role?.id ?? null,
       useCustomPermissions: dto.useCustomPermissions ?? false,
       grantedById,
-      expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
+      expiresAt: dto.expiresAt ? fromISO(dto.expiresAt).toJSDate() : null,
     });
 
     if (dto.useCustomPermissions && dto.permissionCodes?.length) {
@@ -323,6 +353,8 @@ export class RbacService {
     if (dto.productKeys) {
       await this.setUserProducts(savedAccess.id, dto.productKeys);
     }
+
+    this.invalidateAccessDetails(userId, dto.appCode);
 
     return this.accessResponseDto(savedAccess.id);
   }
@@ -356,7 +388,7 @@ export class RbacService {
     }
 
     if (dto.expiresAt !== undefined) {
-      access.expiresAt = dto.expiresAt ? new Date(dto.expiresAt) : null;
+      access.expiresAt = dto.expiresAt ? fromISO(dto.expiresAt).toJSDate() : null;
     }
 
     await this.accessRepo.save(access);
@@ -369,6 +401,11 @@ export class RbacService {
 
     if (dto.productKeys !== undefined) {
       await this.setUserProducts(accessId, dto.productKeys ?? []);
+    }
+
+    const appCode = access.app?.code ?? (await this.appCodeForId(access.appId));
+    if (appCode) {
+      this.invalidateAccessDetails(access.userId, appCode);
     }
 
     return this.accessResponseDto(accessId);
@@ -427,6 +464,11 @@ export class RbacService {
       throw new NotFoundException(`Access record ${accessId} not found`);
     }
     await this.accessRepo.remove(access);
+
+    const appCode = await this.appCodeForId(access.appId);
+    if (appCode) {
+      this.invalidateAccessDetails(access.userId, appCode);
+    }
   }
 
   private assertManagedUser(userId: number): void {
@@ -532,6 +574,11 @@ export class RbacService {
         await this.accessRepo.remove(access);
       }),
     );
+    accesses.forEach((access) => {
+      if (access.app?.code) {
+        this.invalidateAccessDetails(userId, access.app.code);
+      }
+    });
     await this.userRepo.deleteById(userId);
 
     // The merged user list folds a person's Stock Control account into their
@@ -681,7 +728,7 @@ export class RbacService {
       return false;
     }
 
-    if (access.expiresAt && access.expiresAt < new Date()) {
+    if (access.expiresAt && access.expiresAt < now().toJSDate()) {
       return false;
     }
 
@@ -707,7 +754,7 @@ export class RbacService {
       return [];
     }
 
-    if (access.expiresAt && access.expiresAt < new Date()) {
+    if (access.expiresAt && access.expiresAt < now().toJSDate()) {
       return [];
     }
 
@@ -722,28 +769,41 @@ export class RbacService {
     return [];
   }
 
-  async userAccessDetails(
+  async userAccessDetails(userId: number, appCode: string): Promise<ResolvedAccessDetails> {
+    const cached = this.cachedAccessDetails(userId, appCode);
+    if (cached) {
+      return cached;
+    }
+
+    const resolved = await this.resolveAccessDetails(userId, appCode);
+    this.storeAccessDetails(userId, appCode, resolved);
+    return resolved;
+  }
+
+  private async resolveAccessDetails(
     userId: number,
     appCode: string,
-  ): Promise<{
-    roleCode: string | null;
-    roleName: string | null;
-    permissions: string[];
-    isAdmin: boolean;
-  }> {
-    const permissions = await this.userPermissions(userId, appCode);
-
+  ): Promise<ResolvedAccessDetails> {
     const app = await this.appByCode(appCode);
     const access = app ? await this.accessRepo.findWithPermissionsAndRole(userId, app.id) : null;
+
     if (!app || !access) {
-      return { roleCode: null, roleName: null, permissions: [], isAdmin: false };
+      return { roleCode: null, roleName: null, permissions: [], isAdmin: false, hasAccess: false };
     }
+
+    if (access.expiresAt && access.expiresAt < now().toJSDate()) {
+      return { roleCode: null, roleName: null, permissions: [], isAdmin: false, hasAccess: false };
+    }
+
+    const permissions = access.useCustomPermissions
+      ? access.customPermissions.map((cp) => cp.permission.code)
+      : (access.role?.rolePermissions.map((rp) => rp.permission.code) ?? []);
 
     const roleCode = access.role?.code ?? null;
     const roleName = access.role?.name ?? null;
     const isAdmin = roleCode === "administrator" || permissions.includes("settings:manage");
 
-    return { roleCode, roleName, permissions, isAdmin };
+    return { roleCode, roleName, permissions, isAdmin, hasAccess: true };
   }
 
   async appPermissions(appCode: string): Promise<AppPermission[]> {
@@ -763,6 +823,8 @@ export class RbacService {
 
     await this.rolePermissionRepo.deleteByRoleId(roleId);
 
+    await this.invalidateAccessDetailsForRoleApp(role.appId);
+
     if (permissionCodes.length === 0) {
       return;
     }
@@ -779,6 +841,15 @@ export class RbacService {
     await Promise.all(
       matchedPermissions.map((p) => this.rolePermissionRepo.create({ roleId, permissionId: p.id })),
     );
+  }
+
+  private async invalidateAccessDetailsForRoleApp(appId: number): Promise<void> {
+    const appCode = await this.appCodeForId(appId);
+    if (appCode) {
+      this.invalidateAccessDetailsForApp(appCode);
+    } else {
+      this.clearAccessDetailsCache();
+    }
   }
 
   async roleWithPermissions(roleId: number): Promise<RoleResponseDto & { permissions: string[] }> {
@@ -1006,6 +1077,9 @@ export class RbacService {
     }
 
     const updatedRole = await this.roleRepo.save(role);
+
+    await this.invalidateAccessDetailsForRoleApp(role.appId);
+
     return this.roleToResponseDto(updatedRole);
   }
 
@@ -1043,6 +1117,8 @@ export class RbacService {
     }
 
     await this.roleRepo.remove(role);
+
+    await this.invalidateAccessDetailsForRoleApp(role.appId);
 
     return {
       message: `Role '${role.name}' deleted successfully`,

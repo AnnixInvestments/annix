@@ -11,8 +11,14 @@ describe("RbacBridgeService (issue #311 step 4.1)", () => {
       findOneByUserAndApp: jest.fn(),
       create: jest.fn(),
     } as unknown as jest.Mocked<UserAppAccessRepository>;
-    const service = new RbacBridgeService(appRepo, roleRepo, accessRepo);
-    return { service, appRepo, roleRepo, accessRepo };
+    const accessDetailsCache = { invalidate: jest.fn() };
+    const service = new RbacBridgeService(
+      appRepo,
+      roleRepo,
+      accessRepo,
+      accessDetailsCache as never,
+    );
+    return { service, appRepo, roleRepo, accessRepo, accessDetailsCache };
   };
 
   it("creates a grant with the resolved role when none exists", async () => {
@@ -27,6 +33,28 @@ describe("RbacBridgeService (issue #311 step 4.1)", () => {
     expect(accessRepo.create).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 42, appId: 7, roleId: 3, useCustomPermissions: false }),
     );
+  });
+
+  it("invalidates the (userId, appCode) access-details cache after creating a grant", async () => {
+    const { service, appRepo, roleRepo, accessRepo, accessDetailsCache } = makeService();
+    appRepo.findByCode.mockResolvedValue({ id: 7, code: "au-rubber" } as never);
+    accessRepo.findOneByUserAndApp.mockResolvedValue(null);
+    roleRepo.findByAppIdAndCode.mockResolvedValue({ id: 3, code: "viewer" } as never);
+    accessRepo.create.mockResolvedValue({ id: 1 } as never);
+
+    await service.ensureAppAccess(42, "au-rubber", "viewer");
+
+    expect(accessDetailsCache.invalidate).toHaveBeenCalledWith(42, "au-rubber");
+  });
+
+  it("does not invalidate the cache when the grant already exists", async () => {
+    const { service, appRepo, accessRepo, accessDetailsCache } = makeService();
+    appRepo.findByCode.mockResolvedValue({ id: 7, code: "au-rubber" } as never);
+    accessRepo.findOneByUserAndApp.mockResolvedValue({ id: 99 } as never);
+
+    await service.ensureAppAccess(42, "au-rubber", "viewer");
+
+    expect(accessDetailsCache.invalidate).not.toHaveBeenCalled();
   });
 
   it("is idempotent — never creates a second grant for the same user+app", async () => {
