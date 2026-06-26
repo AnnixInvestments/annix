@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { now } from "../lib/datetime";
 import { estimateAiCostUsd } from "./ai-pricing";
-import { AiUsageDailyPoint, AiUsageLogRepository } from "./ai-usage.repository";
+import { AiUsageDailyPoint, AiUsageFeatureRow, AiUsageLogRepository } from "./ai-usage.repository";
 import { AiApp, AiProvider } from "./entities/ai-usage-log.entity";
 
 export interface LogAiUsageDto {
@@ -44,6 +44,33 @@ export interface AiUsageGroupRow {
 
 export interface AiUsageDailySeriesResponse {
   days: AiUsageDailyPoint[];
+}
+
+export interface AiUsageByFeatureResponse {
+  days: number;
+  from: string;
+  rows: AiUsageFeatureRow[];
+  summary: { totalCostUsd: number; totalCalls: number };
+}
+
+export interface AiUsageDailyByFeaturePoint {
+  date: string;
+  cost: Record<string, number>;
+  calls: Record<string, number>;
+}
+
+export interface AiUsageDailyByFeatureResponse {
+  days: number;
+  from: string;
+  features: string[];
+  series: AiUsageDailyByFeaturePoint[];
+}
+
+export interface AiUsageDailyByAppResponse {
+  days: number;
+  from: string;
+  apps: string[];
+  series: AiUsageDailyByFeaturePoint[];
 }
 
 export interface AiUsageListResponse {
@@ -131,6 +158,104 @@ export class AiUsageService {
       );
     });
     return { days: series };
+  }
+
+  async byFeature(
+    days: number,
+    app: AiApp | null,
+    provider: AiProvider | null,
+  ): Promise<AiUsageByFeatureResponse> {
+    const clamped = Math.min(Math.max(Math.round(days) || 28, 1), 90);
+    const start = now()
+      .minus({ days: clamped - 1 })
+      .startOf("day");
+    const rows = await this.repo.byFeatureUsage(app, provider, start.toJSDate());
+    const summary = rows.reduce(
+      (acc, row) => ({
+        totalCostUsd: acc.totalCostUsd + row.totalCostUsd,
+        totalCalls: acc.totalCalls + row.totalCalls,
+      }),
+      { totalCostUsd: 0, totalCalls: 0 },
+    );
+    return { days: clamped, from: start.toISO() ?? "", rows, summary };
+  }
+
+  async dailyByFeature(
+    days: number,
+    app: AiApp | null,
+    provider: AiProvider | null,
+  ): Promise<AiUsageDailyByFeatureResponse> {
+    const clamped = Math.min(Math.max(Math.round(days) || 28, 1), 90);
+    const start = now()
+      .minus({ days: clamped - 1 })
+      .startOf("day");
+    const cells = await this.repo.dailyByFeatureUsage(app, provider, start.toJSDate());
+
+    const totalsByFeature = cells.reduce((acc, cell) => {
+      acc.set(cell.actionType, (acc.get(cell.actionType) ?? 0) + cell.cost);
+      return acc;
+    }, new Map<string, number>());
+    const features = Array.from(totalsByFeature.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([actionType]) => actionType);
+
+    const byDate = cells.reduce((acc, cell) => {
+      const existing = acc.get(cell.date);
+      const entry = existing ?? { cost: {}, calls: {} };
+      entry.cost[cell.actionType] = cell.cost;
+      entry.calls[cell.actionType] = cell.calls;
+      acc.set(cell.date, entry);
+      return acc;
+    }, new Map<string, { cost: Record<string, number>; calls: Record<string, number> }>());
+
+    const series = Array.from({ length: clamped }, (_, index) => {
+      const date = start.plus({ days: index }).toFormat("yyyy-MM-dd");
+      const existing = byDate.get(date);
+      return {
+        date,
+        cost: existing ? existing.cost : {},
+        calls: existing ? existing.calls : {},
+      };
+    });
+
+    return { days: clamped, from: start.toISO() ?? "", features, series };
+  }
+
+  async dailyByApp(days: number, provider: AiProvider | null): Promise<AiUsageDailyByAppResponse> {
+    const clamped = Math.min(Math.max(Math.round(days) || 28, 1), 90);
+    const start = now()
+      .minus({ days: clamped - 1 })
+      .startOf("day");
+    const cells = await this.repo.dailyByAppUsage(provider, start.toJSDate());
+
+    const totalsByApp = cells.reduce((acc, cell) => {
+      acc.set(cell.app, (acc.get(cell.app) ?? 0) + cell.cost);
+      return acc;
+    }, new Map<string, number>());
+    const apps = Array.from(totalsByApp.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([app]) => app);
+
+    const byDate = cells.reduce((acc, cell) => {
+      const existing = acc.get(cell.date);
+      const entry = existing ?? { cost: {}, calls: {} };
+      entry.cost[cell.app] = cell.cost;
+      entry.calls[cell.app] = cell.calls;
+      acc.set(cell.date, entry);
+      return acc;
+    }, new Map<string, { cost: Record<string, number>; calls: Record<string, number> }>());
+
+    const series = Array.from({ length: clamped }, (_, index) => {
+      const date = start.plus({ days: index }).toFormat("yyyy-MM-dd");
+      const existing = byDate.get(date);
+      return {
+        date,
+        cost: existing ? existing.cost : {},
+        calls: existing ? existing.calls : {},
+      };
+    });
+
+    return { days: clamped, from: start.toISO() ?? "", apps, series };
   }
 
   async dailyTotals(since: Date): Promise<{ calls: number; tokens: number }> {

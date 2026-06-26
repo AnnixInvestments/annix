@@ -3,8 +3,11 @@ import { InjectModel } from "@nestjs/mongoose";
 import type { Model, PipelineStage } from "mongoose";
 import { MongoCrudRepository } from "../lib/persistence/mongo-crud-repository";
 import {
+  AiUsageDailyAppCell,
+  AiUsageDailyFeatureCell,
   AiUsageDailyPoint,
   AiUsageDailySummary,
+  AiUsageFeatureRow,
   AiUsageGroupRow,
   AiUsageLogRepository,
 } from "./ai-usage.repository";
@@ -100,6 +103,141 @@ export class MongoAiUsageLogRepository
       inputTokens: Number(row.inputTokens),
       outputTokens: Number(row.outputTokens),
       costUsd: Number(row.costUsd),
+    }));
+  }
+
+  async byFeatureUsage(
+    app: string | null,
+    provider: string | null,
+    since: Date,
+  ): Promise<AiUsageFeatureRow[]> {
+    const matchStage: Record<string, unknown> = { createdAt: { $gte: since } };
+    if (app) matchStage.app = app;
+    if (provider) matchStage.provider = provider;
+
+    const pipeline: PipelineStage[] = [
+      { $match: matchStage },
+      {
+        $group: {
+          _id: { actionType: "$actionType", app: "$app", model: "$model" },
+          totalCalls: { $sum: 1 },
+          totalTokens: { $sum: { $ifNull: ["$tokensUsed", 0] } },
+          totalCostUsd: { $sum: { $ifNull: ["$costUsd", 0] } },
+        },
+      },
+      { $sort: { totalCostUsd: -1, totalCalls: -1 } },
+      {
+        $project: {
+          _id: 0,
+          actionType: "$_id.actionType",
+          app: "$_id.app",
+          model: "$_id.model",
+          totalCalls: 1,
+          totalTokens: 1,
+          totalCostUsd: 1,
+        },
+      },
+    ];
+
+    const results = await this.documents.aggregate(pipeline).exec();
+    return (results as AiUsageFeatureRow[]).map((row) => ({
+      actionType: row.actionType,
+      app: row.app,
+      model: row.model ?? null,
+      totalCalls: Number(row.totalCalls),
+      totalTokens: Number(row.totalTokens),
+      totalCostUsd: Number(row.totalCostUsd),
+    }));
+  }
+
+  async dailyByFeatureUsage(
+    app: string | null,
+    provider: string | null,
+    since: Date,
+  ): Promise<AiUsageDailyFeatureCell[]> {
+    const matchStage: Record<string, unknown> = { createdAt: { $gte: since } };
+    if (app) matchStage.app = app;
+    if (provider) matchStage.provider = provider;
+
+    const pipeline: PipelineStage[] = [
+      { $match: matchStage },
+      {
+        $group: {
+          _id: {
+            date: {
+              $dateToString: {
+                format: "%Y-%m-%d",
+                date: { $ifNull: ["$createdAt", new Date()] },
+                timezone: "Africa/Johannesburg",
+              },
+            },
+            actionType: "$actionType",
+          },
+          cost: { $sum: { $ifNull: ["$costUsd", 0] } },
+          calls: { $sum: 1 },
+        },
+      },
+      { $sort: { "_id.date": 1 } },
+      {
+        $project: {
+          _id: 0,
+          date: "$_id.date",
+          actionType: "$_id.actionType",
+          cost: 1,
+          calls: 1,
+        },
+      },
+    ];
+
+    const results = await this.documents.aggregate(pipeline).exec();
+    return (results as AiUsageDailyFeatureCell[]).map((row) => ({
+      date: row.date,
+      actionType: row.actionType,
+      cost: Number(row.cost),
+      calls: Number(row.calls),
+    }));
+  }
+
+  async dailyByAppUsage(provider: string | null, since: Date): Promise<AiUsageDailyAppCell[]> {
+    const matchStage: Record<string, unknown> = { createdAt: { $gte: since } };
+    if (provider) matchStage.provider = provider;
+
+    const pipeline: PipelineStage[] = [
+      { $match: matchStage },
+      {
+        $group: {
+          _id: {
+            date: {
+              $dateToString: {
+                format: "%Y-%m-%d",
+                date: { $ifNull: ["$createdAt", new Date()] },
+                timezone: "Africa/Johannesburg",
+              },
+            },
+            app: "$app",
+          },
+          cost: { $sum: { $ifNull: ["$costUsd", 0] } },
+          calls: { $sum: 1 },
+        },
+      },
+      { $sort: { "_id.date": 1 } },
+      {
+        $project: {
+          _id: 0,
+          date: "$_id.date",
+          app: "$_id.app",
+          cost: 1,
+          calls: 1,
+        },
+      },
+    ];
+
+    const results = await this.documents.aggregate(pipeline).exec();
+    return (results as AiUsageDailyAppCell[]).map((row) => ({
+      date: row.date,
+      app: row.app,
+      cost: Number(row.cost),
+      calls: Number(row.calls),
     }));
   }
 

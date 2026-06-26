@@ -1019,6 +1019,49 @@ class AdminApiClient {
     return this.request<AiUsageDailySeriesResponse>(`/admin/ai-usage/daily-series?days=${days}`);
   }
 
+  async aiUsageByFeature(params?: {
+    days?: number;
+    app?: string;
+    provider?: string;
+  }): Promise<AiUsageByFeatureResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.days) searchParams.append("days", params.days.toString());
+    if (params?.app) searchParams.append("app", params.app);
+    if (params?.provider) searchParams.append("provider", params.provider);
+    const queryString = searchParams.toString();
+    return this.request<AiUsageByFeatureResponse>(
+      `/admin/ai-usage/by-feature${queryString ? `?${queryString}` : ""}`,
+    );
+  }
+
+  async aiUsageDailyByFeature(params?: {
+    days?: number;
+    app?: string;
+    provider?: string;
+  }): Promise<AiUsageDailyByFeatureResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.days) searchParams.append("days", params.days.toString());
+    if (params?.app) searchParams.append("app", params.app);
+    if (params?.provider) searchParams.append("provider", params.provider);
+    const queryString = searchParams.toString();
+    return this.request<AiUsageDailyByFeatureResponse>(
+      `/admin/ai-usage/daily-by-feature${queryString ? `?${queryString}` : ""}`,
+    );
+  }
+
+  async aiUsageDailyByApp(params?: {
+    days?: number;
+    provider?: string;
+  }): Promise<AiUsageDailyByAppResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.days) searchParams.append("days", params.days.toString());
+    if (params?.provider) searchParams.append("provider", params.provider);
+    const queryString = searchParams.toString();
+    return this.request<AiUsageDailyByAppResponse>(
+      `/admin/ai-usage/daily-by-app${queryString ? `?${queryString}` : ""}`,
+    );
+  }
+
   companyProfile = createEndpoint<[], CompanyProfileResponse>(apiClient, "GET", {
     path: "/admin/company-profile",
   });
@@ -2250,6 +2293,42 @@ export interface AiUsageDailyPoint {
 
 export interface AiUsageDailySeriesResponse {
   days: AiUsageDailyPoint[];
+}
+
+export interface AiUsageFeatureRow {
+  actionType: string;
+  app: string;
+  model: string | null;
+  totalCalls: number;
+  totalTokens: number;
+  totalCostUsd: number;
+}
+
+export interface AiUsageByFeatureResponse {
+  days: number;
+  from: string;
+  rows: AiUsageFeatureRow[];
+  summary: { totalCostUsd: number; totalCalls: number };
+}
+
+export interface AiUsageDailyByFeaturePoint {
+  date: string;
+  cost: Record<string, number>;
+  calls: Record<string, number>;
+}
+
+export interface AiUsageDailyByFeatureResponse {
+  days: number;
+  from: string;
+  features: string[];
+  series: AiUsageDailyByFeaturePoint[];
+}
+
+export interface AiUsageDailyByAppResponse {
+  days: number;
+  from: string;
+  apps: string[];
+  series: AiUsageDailyByFeaturePoint[];
 }
 
 export interface NixUploadResponse {

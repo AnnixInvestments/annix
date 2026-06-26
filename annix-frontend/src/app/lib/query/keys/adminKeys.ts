@@ -57,6 +57,12 @@ export const adminKeys = {
     list: (params?: AiUsageQueryParams) =>
       [...adminKeys.aiUsage.all, "list", params ?? {}] as const,
     dailySeries: (days: number) => [...adminKeys.aiUsage.all, "dailySeries", days] as const,
+    byFeature: (params: { days?: number; app?: string; provider?: string }) =>
+      [...adminKeys.aiUsage.all, "byFeature", params] as const,
+    dailyByFeature: (params: { days?: number; app?: string; provider?: string }) =>
+      [...adminKeys.aiUsage.all, "dailyByFeature", params] as const,
+    dailyByApp: (params: { days?: number; provider?: string }) =>
+      [...adminKeys.aiUsage.all, "dailyByApp", params] as const,
   },
   scheduledJobs: {
     all: ["admin", "scheduledJobs"] as const,

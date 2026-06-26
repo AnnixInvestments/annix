@@ -126,6 +126,19 @@ function BrandingIcon() {
   );
 }
 
+function AiCostIcon() {
+  return (
+    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    </svg>
+  );
+}
+
 function UsersIcon() {
   return (
     <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -288,6 +301,15 @@ const orbitAdminCards: AppHubCard[] = [
     ),
     color: "bg-slate-100 text-slate-600",
     hoverColor: "hover:border-slate-400 group-hover:bg-slate-600 group-hover:text-white",
+  },
+  {
+    href: "/admin/portal/orbit/ai-cost",
+    title: "AI Cost",
+    description:
+      "Gemini spend by feature + model over time — see exactly where the daily AI cost goes (ref #390).",
+    icon: <AiCostIcon />,
+    color: "bg-lime-100 text-lime-600",
+    hoverColor: "hover:border-lime-400 group-hover:bg-lime-600 group-hover:text-white",
   },
   {
     href: "/admin/portal/branding/annix-orbit",

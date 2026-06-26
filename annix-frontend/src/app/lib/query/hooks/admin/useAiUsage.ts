@@ -16,3 +16,28 @@ export function useAiUsageDailySeries(days: number, enabled: boolean) {
     enabled,
   });
 }
+
+export function useAiUsageByFeature(params: { days?: number; app?: string; provider?: string }) {
+  return useQuery({
+    queryKey: adminKeys.aiUsage.byFeature(params),
+    queryFn: () => adminApiClient.aiUsageByFeature(params),
+  });
+}
+
+export function useAiUsageDailyByFeature(params: {
+  days?: number;
+  app?: string;
+  provider?: string;
+}) {
+  return useQuery({
+    queryKey: adminKeys.aiUsage.dailyByFeature(params),
+    queryFn: () => adminApiClient.aiUsageDailyByFeature(params),
+  });
+}
+
+export function useAiUsageDailyByApp(params: { days?: number; provider?: string }) {
+  return useQuery({
+    queryKey: adminKeys.aiUsage.dailyByApp(params),
+    queryFn: () => adminApiClient.aiUsageDailyByApp(params),
+  });
+}

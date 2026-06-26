@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AiCostDailyChart } from "@/app/components/admin/AiCostDailyChart";
 import type {
   ActivityItem,
   AppAttention,
@@ -8,7 +9,12 @@ import type {
   ScheduledJobDto,
 } from "@/app/lib/api/adminApi";
 import { fromISO, now } from "@/app/lib/datetime";
-import { useAdminDashboard, useAdminFeedback, useScheduledJobs } from "@/app/lib/query/hooks";
+import {
+  useAdminDashboard,
+  useAdminFeedback,
+  useAiUsageDailyByApp,
+  useScheduledJobs,
+} from "@/app/lib/query/hooks";
 import { useAdminAttention } from "@/app/lib/query/hooks/admin/useAdminAttention";
 import { ClusterUsagePanel } from "./components/ClusterUsagePanel";
 import { PlatformLimitsPanel } from "./components/PlatformLimitsPanel";
@@ -363,6 +369,11 @@ export default function AdminDashboardPage() {
   const feedbackQuery = useAdminFeedback();
   const jobsQuery = useScheduledJobs();
   const attentionQuery = useAdminAttention();
+  const aiByAppQuery = useAiUsageDailyByApp({ days: 28 });
+
+  const aiByApp = aiByAppQuery.data;
+  const aiAppSeries = aiByApp ? aiByApp.series : [];
+  const aiAppKeys = aiByApp ? aiByApp.apps : [];
 
   const stats = dashboardQuery.data;
   const rawData = feedbackQuery.data;
@@ -437,6 +448,17 @@ export default function AdminDashboardPage() {
       <PlatformLimitsPanel />
 
       <ClusterUsagePanel />
+
+      <div>
+        <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
+          AI spend by app
+        </h2>
+        <AiCostDailyChart
+          title="Daily Gemini spend by app (last 28 days)"
+          series={aiAppSeries}
+          seriesKeys={aiAppKeys}
+        />
+      </div>
 
       {rfqAttention && rfqAttention.total > 0 && <NeedsAttentionPanel app={rfqAttention} />}
 

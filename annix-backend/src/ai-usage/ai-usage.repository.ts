@@ -30,6 +30,29 @@ export interface AiUsageGroupRow {
   totalTimeMs: number;
 }
 
+export interface AiUsageFeatureRow {
+  actionType: string;
+  app: string;
+  model: string | null;
+  totalCalls: number;
+  totalTokens: number;
+  totalCostUsd: number;
+}
+
+export interface AiUsageDailyFeatureCell {
+  date: string;
+  actionType: string;
+  cost: number;
+  calls: number;
+}
+
+export interface AiUsageDailyAppCell {
+  date: string;
+  app: string;
+  cost: number;
+  calls: number;
+}
+
 export abstract class AiUsageLogRepository extends CrudRepository<AiUsageLog> {
   abstract aggregateDailyUsageByModel(model: string, since: Date): Promise<AiUsageDailySummary>;
   abstract aggregateDailyUsageByActionType(
@@ -37,6 +60,17 @@ export abstract class AiUsageLogRepository extends CrudRepository<AiUsageLog> {
     since: Date,
   ): Promise<AiUsageDailySummary>;
   abstract dailySeries(since: Date): Promise<AiUsageDailyPoint[]>;
+  abstract byFeatureUsage(
+    app: string | null,
+    provider: string | null,
+    since: Date,
+  ): Promise<AiUsageFeatureRow[]>;
+  abstract dailyByFeatureUsage(
+    app: string | null,
+    provider: string | null,
+    since: Date,
+  ): Promise<AiUsageDailyFeatureCell[]>;
+  abstract dailyByAppUsage(provider: string | null, since: Date): Promise<AiUsageDailyAppCell[]>;
   abstract queryGroupedUsage(
     app: string | null,
     provider: string | null,

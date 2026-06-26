@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
+import { AiCostDailyChart } from "@/app/components/admin/AiCostDailyChart";
 import { DateInput } from "@/app/components/ui/DateInput";
 import type { AiUsageQueryParams } from "@/app/lib/api/adminApi";
 import { formatDateZA, fromISO } from "@/app/lib/datetime";
-import { useAiUsageLogs } from "@/app/lib/query/hooks";
+import { useAiUsageDailyByApp, useAiUsageLogs } from "@/app/lib/query/hooks";
 
 const APP_OPTIONS = [
   { value: "", label: "All Apps" },
@@ -73,6 +75,11 @@ export default function AiUsagePage() {
 
   const { data, isLoading } = useAiUsageLogs(filters);
 
+  const dailyByAppQuery = useAiUsageDailyByApp({ days: 28 });
+  const dailyByApp = dailyByAppQuery.data;
+  const appSeries = dailyByApp ? dailyByApp.series : [];
+  const appKeys = dailyByApp ? dailyByApp.apps : [];
+
   const rawData = data?.data;
   const groups = rawData ?? [];
 
@@ -135,6 +142,33 @@ export default function AiUsagePage() {
             </p>
             <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">main cost driver</p>
           </div>
+        </div>
+      )}
+
+      <AiCostDailyChart
+        title="Daily AI spend by app (last 28 days)"
+        series={appSeries}
+        seriesKeys={appKeys}
+      />
+
+      {appKeys.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+            Drill into an app:
+          </span>
+          {appKeys.map((appKey) => {
+            const option = APP_OPTIONS.find((opt) => opt.value === appKey);
+            const appLabel = option ? option.label : appKey;
+            return (
+              <Link
+                key={appKey}
+                href={`/admin/portal/ai-usage/${appKey}`}
+                className="rounded-full border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 hover:border-violet-400 hover:text-violet-600 dark:border-slate-600 dark:text-gray-300 dark:hover:border-violet-400 dark:hover:text-violet-300"
+              >
+                {appLabel} →
+              </Link>
+            );
+          })}
         </div>
       )}
 

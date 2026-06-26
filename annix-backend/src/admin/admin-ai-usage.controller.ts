@@ -1,6 +1,9 @@
 import { Controller, Get, Query, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from "@nestjs/swagger";
 import {
+  AiUsageByFeatureResponse,
+  AiUsageDailyByAppResponse,
+  AiUsageDailyByFeatureResponse,
   AiUsageDailySeriesResponse,
   AiUsageListResponse,
   AiUsageService,
@@ -23,6 +26,51 @@ export class AdminAiUsageController {
   @ApiQuery({ name: "days", required: false, type: Number })
   async dailySeries(@Query("days") days?: string): Promise<AiUsageDailySeriesResponse> {
     return this.aiUsageService.dailySeries(days ? Number(days) : 28);
+  }
+
+  @Get("by-feature")
+  @ApiOperation({ summary: "AI cost rolled up by feature (actionType + model) over a window" })
+  @ApiQuery({ name: "days", required: false, type: Number })
+  @ApiQuery({ name: "app", required: false, enum: AiApp })
+  @ApiQuery({ name: "provider", required: false, enum: AiProvider })
+  async byFeature(
+    @Query("days") days?: string,
+    @Query("app") app?: AiApp,
+    @Query("provider") provider?: AiProvider,
+  ): Promise<AiUsageByFeatureResponse> {
+    return this.aiUsageService.byFeature(days ? Number(days) : 28, app ?? null, provider ?? null);
+  }
+
+  @Get("daily-by-feature")
+  @ApiOperation({
+    summary: "Daily AI cost/calls per feature (actionType) for grouped bar charting",
+  })
+  @ApiQuery({ name: "days", required: false, type: Number })
+  @ApiQuery({ name: "app", required: false, enum: AiApp })
+  @ApiQuery({ name: "provider", required: false, enum: AiProvider })
+  async dailyByFeature(
+    @Query("days") days?: string,
+    @Query("app") app?: AiApp,
+    @Query("provider") provider?: AiProvider,
+  ): Promise<AiUsageDailyByFeatureResponse> {
+    return this.aiUsageService.dailyByFeature(
+      days ? Number(days) : 28,
+      app ?? null,
+      provider ?? null,
+    );
+  }
+
+  @Get("daily-by-app")
+  @ApiOperation({
+    summary: "Daily AI cost/calls per app (all apps) for the global grouped bar chart",
+  })
+  @ApiQuery({ name: "days", required: false, type: Number })
+  @ApiQuery({ name: "provider", required: false, enum: AiProvider })
+  async dailyByApp(
+    @Query("days") days?: string,
+    @Query("provider") provider?: AiProvider,
+  ): Promise<AiUsageDailyByAppResponse> {
+    return this.aiUsageService.dailyByApp(days ? Number(days) : 28, provider ?? null);
   }
 
   @Get()
