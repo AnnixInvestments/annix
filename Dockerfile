@@ -108,12 +108,13 @@ COPY --from=product-data-builder /app/packages/product-data/ ./packages/product-
 # Backend build output
 COPY --from=backend-builder /app/annix-backend/dist ./annix-backend/dist
 
-# Backend migration files (needed for release command)
+# Backend migration files + release-command scripts (run by fly.toml release_command)
 COPY --from=backend-builder /app/annix-backend/tsconfig.json ./annix-backend/tsconfig.json
 COPY --from=backend-builder /app/annix-backend/migrate-mongo-config.ts ./annix-backend/migrate-mongo-config.ts
 COPY --from=backend-builder /app/annix-backend/migrations-mongo ./annix-backend/migrations-mongo
 COPY --from=backend-builder /app/annix-backend/migrate-mongo-orbit-config.ts ./annix-backend/migrate-mongo-orbit-config.ts
 COPY --from=backend-builder /app/annix-backend/migrations-mongo-orbit ./annix-backend/migrations-mongo-orbit
+COPY --from=backend-builder /app/annix-backend/scripts ./annix-backend/scripts
 
 # Frontend build output
 COPY --from=frontend-builder /app/annix-frontend/.next ./annix-frontend/.next
