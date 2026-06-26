@@ -64,10 +64,6 @@ export abstract class CandidateJobMatchRepository extends CrudRepository<Candida
   abstract deleteOrphanMatches(): Promise<number>;
   abstract candidateIdsExceeding(matchCount: number): Promise<number[]>;
   abstract countActiveForCandidates(candidateIds: number[]): Promise<number>;
-  abstract countRecommendedForCandidates(
-    candidateIds: number[],
-    filters: RecommendedMatchCountFilters | null,
-  ): Promise<number>;
   abstract facetRowsForCandidates(candidateIds: number[]): Promise<RecommendedFacetRow[]>;
   abstract countActiveForCandidatesSince(candidateIds: number[], since: Date): Promise<number>;
   abstract weeklyDigestMatches(

@@ -71,15 +71,15 @@ describe("EmbeddingService.embedding cost guard", () => {
     expect(emailService.sendEmail).not.toHaveBeenCalled();
   });
 
-  it("alerts when daily calls breach the threshold", async () => {
+  it("does NOT alert on a call-count spike alone — the embedding guard is cost-only (#390)", async () => {
+    // 5500 calls is above the old 5000 call threshold, but embeddings are
+    // high-volume / near-zero cost, so a volume spike must not page anyone.
     aiUsageService.aggregateDailyUsageByModel.mockResolvedValue({ calls: 5_500, tokens: 100_000 });
 
     const result = await service.runEmbeddingCostGuard();
 
-    expect(result.alerted).toBe(true);
-    expect(emailService.sendEmail).toHaveBeenCalledTimes(1);
-    const args = emailService.sendEmail.mock.calls[0][0];
-    expect(args.subject).toContain("5500 calls");
+    expect(result.alerted).toBe(false);
+    expect(emailService.sendEmail).not.toHaveBeenCalled();
   });
 
   it("alerts when estimated USD breaches the threshold", async () => {

@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v3";
 const STATIC_CACHE_NAME = `orbit-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE_NAME = `orbit-dynamic-${CACHE_VERSION}`;
 
@@ -149,26 +149,26 @@ async function handleStaticAsset(request) {
 }
 
 async function handleNavigationRequest(request) {
-  // Stale-while-revalidate: paint the cached shell instantly and refresh it in
-  // the background. The shell's hashed chunks stay cached alongside it, and the
-  // app fetches its own data, so a stale shell self-heals on the next launch.
-  const cached = await caches.match(request);
-  const network = fetch(request).then(async (response) => {
+  // Network-first for the HTML shell. A stale-while-revalidate shell pinned the
+  // app to an OLD build id: the cached shell reports build A while /app-build-id
+  // returns the live build B, so the "Update available" banner fired forever and
+  // window.location.reload() just re-served the same cached shell — an infinite
+  // loop, and any chunk the old shell lazy-loads 404s on the new build. Serving
+  // the freshly-deployed shell from the network breaks that loop. This only
+  // costs the small HTML document over the network; the immutable
+  // /_next/static chunks stay cache-first, so launch speed is unaffected.
+  try {
+    const response = await fetch(request);
     if (response.ok) {
       const cache = await caches.open(DYNAMIC_CACHE_NAME);
       cache.put(request, response.clone());
     }
     return response;
-  });
-
-  if (cached) {
-    network.catch(() => {});
-    return cached;
-  }
-
-  try {
-    return await network;
   } catch (error) {
+    const cached = await caches.match(request);
+    if (cached) {
+      return cached;
+    }
     return new Response(
       `<!DOCTYPE html>
       <html>

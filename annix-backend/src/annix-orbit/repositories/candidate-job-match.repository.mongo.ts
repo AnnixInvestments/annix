@@ -297,38 +297,6 @@ export class MongoCandidateJobMatchRepository
       .exec();
   }
 
-  async countRecommendedForCandidates(
-    candidateIds: number[],
-    filters: RecommendedMatchCountFilters | null,
-  ): Promise<number> {
-    if (candidateIds.length === 0) return 0;
-
-    const jobMatch = buildLiveJobFilter(filters);
-
-    const result = await this.documents
-      .aggregate<{ total: number }>([
-        { $match: { candidateId: { $in: candidateIds }, dismissed: false } },
-        {
-          $lookup: {
-            from: "cv_assistant_external_jobs",
-            let: { jid: "$externalJobId" },
-            pipeline: [
-              { $match: { $expr: { $eq: ["$_id", "$$jid"] } } },
-              { $match: jobMatch },
-              { $project: { _id: 1 } },
-            ],
-            as: "job",
-          },
-        },
-        { $match: { "job.0": { $exists: true } } },
-        { $group: { _id: "$externalJobId" } },
-        { $count: "total" },
-      ])
-      .exec();
-
-    return result.length > 0 ? result[0].total : 0;
-  }
-
   async facetRowsForCandidates(candidateIds: number[]): Promise<RecommendedFacetRow[]> {
     if (candidateIds.length === 0) return [];
     const rows = await this.documents

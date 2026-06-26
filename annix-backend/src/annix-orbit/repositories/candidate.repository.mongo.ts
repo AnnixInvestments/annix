@@ -1,11 +1,13 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import type { DeepPartial } from "../../lib/persistence/crud-repository";
 import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
 import { encodeEmbedding } from "../lib/embedding-codec";
 import type { EmbeddingSimilarityBatch } from "../lib/embedding-similarity";
+import { candidateMatchKeys } from "../lib/match-keys";
 import {
   ActiveCandidateTargetRow,
   CandidateAllForCompanyFilters,
@@ -28,6 +30,60 @@ export class MongoCandidateRepository
 
   constructor(@InjectModel("Candidate", ORBIT_CONNECTION) model: Model<Candidate>) {
     super(model);
+  }
+
+  // Perf #396 finding 2: keep the candidate's indexed matchKeys in sync on every
+  // full-document write so the narrowed job→candidate scan can find it. create()
+  // (new CV uploads) and save() (the categoriser re-deriving targetCategories,
+  // and any other full save) both flow through here; the three partial-field
+  // updaters below recompute explicitly.
+  async create(data: DeepPartial<Candidate>): Promise<Candidate> {
+    const partial = data as Partial<Candidate>;
+    return super.create({
+      ...data,
+      matchKeys: candidateMatchKeys(
+        partial.matchTier,
+        partial.targetCategories,
+        partial.targetCountries,
+      ),
+    } as DeepPartial<Candidate>);
+  }
+
+  async save(entity: Candidate): Promise<Candidate> {
+    return super.save({
+      ...entity,
+      matchKeys: candidateMatchKeys(
+        entity.matchTier,
+        entity.targetCategories,
+        entity.targetCountries,
+      ),
+    });
+  }
+
+  // Recompute matchKeys when one of the three driving fields changes. The other
+  // two are read from the stored doc so the key set always reflects the full,
+  // merged state (a partial update must not drop the categories/countries that
+  // weren't part of it).
+  private async writeMatchFields(
+    id: number,
+    patch: { matchTier?: string; targetCategories?: string[]; targetCountries?: string[] },
+  ): Promise<void> {
+    const current = await this.documents
+      .findById(id)
+      .select({ matchTier: 1, targetCategories: 1, targetCountries: 1 })
+      .lean()
+      .exec();
+    const matchTier = patch.matchTier ?? (current?.matchTier as string | undefined) ?? null;
+    const targetCategories =
+      patch.targetCategories ?? (current?.targetCategories as string[] | undefined) ?? null;
+    const targetCountries =
+      patch.targetCountries ?? (current?.targetCountries as string[] | undefined) ?? null;
+    await this.documents
+      .findByIdAndUpdate(id, {
+        ...patch,
+        matchKeys: candidateMatchKeys(matchTier, targetCategories, targetCountries),
+      })
+      .exec();
   }
 
   private warnIfTruncated(method: string, count: number, companyId: number): void {
@@ -270,15 +326,15 @@ export class MongoCandidateRepository
   }
 
   async updateTargetCategories(id: number, targetCategories: string[]): Promise<void> {
-    await this.documents.findByIdAndUpdate(id, { targetCategories }).exec();
+    await this.writeMatchFields(id, { targetCategories });
   }
 
   async updateMatchTier(id: number, matchTier: string): Promise<void> {
-    await this.documents.findByIdAndUpdate(id, { matchTier }).exec();
+    await this.writeMatchFields(id, { matchTier });
   }
 
   async updateTargetCountries(id: number, targetCountries: string[]): Promise<void> {
-    await this.documents.findByIdAndUpdate(id, { targetCountries }).exec();
+    await this.writeMatchFields(id, { targetCountries });
   }
 
   async setTrial(id: number, trialTier: string | null, trialEndsAt: Date | null): Promise<void> {
@@ -353,6 +409,37 @@ export class MongoCandidateRepository
   async *candidateEmbeddingBatches(batchSize: number): AsyncGenerator<EmbeddingSimilarityBatch> {
     const cursor = this.documents
       .find({ embedding: { $ne: null } })
+      .select({ _id: 1, embedding: 1 })
+      .sort({ _id: 1 })
+      .lean()
+      .cursor();
+
+    let batch: EmbeddingSimilarityBatch = [];
+    for await (const doc of cursor) {
+      batch.push({ id: Number(doc._id), embedding: doc.embedding ?? null });
+      if (batch.length >= batchSize) {
+        yield batch;
+        batch = [];
+      }
+    }
+    if (batch.length > 0) {
+      yield batch;
+    }
+  }
+
+  // Perf #396 finding 2: the narrowed scan. `{ matchKeys: { $in } }` is served by
+  // the matchKeys index, so a new job only streams the candidates that target its
+  // category+country (+ wildcard seekers) instead of every candidate embedding.
+  // Same `_id`-ordered batch shape as the full scan.
+  async *candidateEmbeddingBatchesForJob(
+    matchKeys: string[],
+    batchSize: number,
+  ): AsyncGenerator<EmbeddingSimilarityBatch> {
+    if (matchKeys.length === 0) {
+      return;
+    }
+    const cursor = this.documents
+      .find({ embedding: { $ne: null }, matchKeys: { $in: matchKeys } })
       .select({ _id: 1, embedding: 1 })
       .sort({ _id: 1 })
       .lean()

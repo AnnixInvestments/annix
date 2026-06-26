@@ -66,6 +66,13 @@ export abstract class CandidateRepository extends CrudRepository<Candidate> {
   abstract withdrawMatching(ids: number[]): Promise<void>;
   abstract candidatesWithEmbedding(): Promise<Candidate[]>;
   abstract candidateEmbeddingBatches(batchSize: number): AsyncIterable<EmbeddingSimilarityBatch>;
+  // Perf #396 finding 2: narrowed variant — only candidates whose precomputed
+  // matchKeys intersect the job's keys (jobMatchKeyQuery), instead of every
+  // candidate embedding.
+  abstract candidateEmbeddingBatchesForJob(
+    matchKeys: string[],
+    batchSize: number,
+  ): AsyncIterable<EmbeddingSimilarityBatch>;
   abstract jobAlertCandidates(): Promise<Candidate[]>;
   abstract countNewForJobsSince(jobPostingIds: number[], since: Date): Promise<number>;
   abstract countForCompanyByStatuses(

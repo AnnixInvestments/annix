@@ -94,6 +94,11 @@ export class Candidate {
   @Prop({ type: [String], required: false })
   targetCountries: string[];
 
+  // Perf #396 finding 2: indexed (via migration) "<category>|<country>" keys for
+  // the narrowed job→candidate match scan. Kept in sync by candidateMatchKeys.
+  @Prop({ type: [String], required: false, default: undefined })
+  matchKeys: string[];
+
   @Prop({ type: String, required: false })
   trialTier: string;
 

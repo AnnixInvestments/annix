@@ -20,6 +20,7 @@ import {
   parseEmbedding,
   rankEmbeddingBatches,
 } from "../lib/embedding-similarity";
+import { jobMatchKeyQuery } from "../lib/match-keys";
 import { CandidateRepository } from "../repositories/candidate.repository";
 import { CandidateJobMatchRepository } from "../repositories/candidate-job-match.repository";
 import { ExternalJobRepository } from "../repositories/external-job.repository";
@@ -582,9 +583,18 @@ export class CandidateJobMatchingService {
       return [];
     }
 
+    // Perf #396 finding 2: narrow to candidates whose precomputed matchKeys
+    // cover this job's category+country (+ wildcard seekers), instead of cosining
+    // every candidate embedding. Mirrors the candidate→job narrowing above. A job
+    // with no country yields no keys → no candidates (it can't be targeted).
+    const matchKeys = jobMatchKeyQuery(job.canonicalCategory, job.country);
+    if (matchKeys.length === 0) {
+      return [];
+    }
+
     const ranked = await rankEmbeddingBatches(
       jobVector,
-      this.candidateRepo.candidateEmbeddingBatches(EMBEDDING_SCAN_BATCH_SIZE),
+      this.candidateRepo.candidateEmbeddingBatchesForJob(matchKeys, EMBEDDING_SCAN_BATCH_SIZE),
       limit,
     );
     return ranked.map((row) => ({ candidateId: row.id, similarity: row.similarity }));

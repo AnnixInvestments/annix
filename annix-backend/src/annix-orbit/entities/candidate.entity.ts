@@ -123,6 +123,12 @@ export class Candidate {
 
   matchTier: string;
 
+  // Perf #396 finding 2: precomputed "<category>|<country>" (+ "*|<country>")
+  // keys derived from matchTier/targetCategories/targetCountries, so the
+  // job→candidate match scan narrows to an indexed `$in` instead of scanning
+  // every candidate embedding. Maintained via candidateMatchKeys on every write.
+  matchKeys: string[] | null;
+
   trialTier: string | null;
 
   trialEndsAt: Date | null;

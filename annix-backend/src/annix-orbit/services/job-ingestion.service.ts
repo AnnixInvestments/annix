@@ -46,7 +46,13 @@ const HEALTH_ALERT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const ALERT_AFTER_CONSECUTIVE_FAILURES = 2;
 const ADZUNA_PAGE_SIZE = 50;
 const ADZUNA_PAGES_PER_CATEGORY = 4;
-const ADZUNA_CATEGORIES_PER_DAY = 29;
+// Gemini cost #390: Adzuna is ~88% of all per-job ingestion AI (categorise / vet
+// / skills-analysis / embed). Previously all 29 ZA categories were pulled every
+// day. Rotating ~half the categories per day (so the full set still cycles every
+// ~2 days) roughly halves the daily Adzuna AI volume — the biggest remaining
+// cost lever after the flash-lite switch. Env-overridable via
+// ADZUNA_CATEGORIES_PER_DAY; the per-category freshness lag grows by ~1 day.
+const ADZUNA_CATEGORIES_PER_DAY = 15;
 const ADZUNA_MAX_DAYS_OLD = 45;
 const UPSERT_BATCH_SIZE = 50;
 const ENRICH_CONCURRENCY = 6;
@@ -82,6 +88,24 @@ const ADZUNA_ZA_CATEGORIES = [
   "part-time-jobs",
   "other-general-jobs",
 ];
+
+// Even round-robin selection of which categories to pull on a given day. Pure +
+// exported for testing. Guarantees every category is fetched exactly once per
+// `ceil(total / perDay)`-day cycle, with daily groups balanced to within one —
+// so trimming the daily volume never silently drops a category from the pool.
+export function selectAdzunaCategoriesForDay(
+  categories: string[],
+  perDay: number,
+  dayMillis: number,
+): string[] {
+  const total = categories.length;
+  if (perDay <= 0 || perDay >= total) {
+    return [...categories];
+  }
+  const dayCount = Math.ceil(total / perDay);
+  const todayGroup = Math.floor(dayMillis / 86_400_000) % dayCount;
+  return categories.filter((_, index) => index % dayCount === todayGroup);
+}
 
 @Injectable()
 export class JobIngestionService {
@@ -1127,11 +1151,24 @@ export class JobIngestionService {
     return collected.jobs;
   }
 
+  // How many Adzuna categories to pull per day. Env override (ADZUNA_CATEGORIES_
+  // PER_DAY) wins so the cost lever can be tuned without a deploy; clamped to a
+  // positive count no larger than the full category list.
+  private adzunaCategoriesPerDay(): number {
+    const raw = this.configService.get<string>("ADZUNA_CATEGORIES_PER_DAY");
+    const parsed = raw != null ? Number.parseInt(raw, 10) : Number.NaN;
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return Math.min(parsed, ADZUNA_ZA_CATEGORIES.length);
+    }
+    return ADZUNA_CATEGORIES_PER_DAY;
+  }
+
   private adzunaCategoriesForToday(): string[] {
-    const groupCount = Math.ceil(ADZUNA_ZA_CATEGORIES.length / ADZUNA_CATEGORIES_PER_DAY);
-    const dayIndex = Math.floor(nowMillis() / 86_400_000) % groupCount;
-    const start = dayIndex * ADZUNA_CATEGORIES_PER_DAY;
-    return ADZUNA_ZA_CATEGORIES.slice(start, start + ADZUNA_CATEGORIES_PER_DAY);
+    return selectAdzunaCategoriesForDay(
+      ADZUNA_ZA_CATEGORIES,
+      this.adzunaCategoriesPerDay(),
+      nowMillis(),
+    );
   }
 
   private async upsertJobs(

@@ -47,7 +47,11 @@ const LAZY_BACKFILL_CAP = 1_000;
 const ACTIVE_DEMAND_TTL_MS = 10 * 60 * 1000;
 
 const DEFAULT_EMBEDDING_DAILY_CALLS_THRESHOLD = 5_000;
-const DEFAULT_EMBEDDING_DAILY_COST_USD_THRESHOLD = 5;
+// Gemini cost #390: embeddings are high-volume but near-zero cost (~$0.05/day),
+// so the embedding guard is now cost-only — the call-count limb tripped false
+// alarms on normal volume. $2 is a per-stream runaway ceiling, well below the old
+// $5 and near the ~$1/day target without firing on normal per-stream variance.
+const DEFAULT_EMBEDDING_DAILY_COST_USD_THRESHOLD = 2;
 const GEMINI_EMBEDDING_USD_PER_1K_TOKENS = 0.000025;
 
 // The classifier model the vetting/analysis/category actionTypes run on — used to
@@ -562,6 +566,9 @@ export class EmbeddingService {
         callsThreshold: this.callsThreshold(),
         costThreshold: this.costThreshold(),
       },
+      // Cost-only: embedding volume is high but ~free, so the call-count limb is
+      // pure noise here (#390). The actionType guards keep both limbs.
+      { costOnly: true },
     );
     return { calls, tokens, estimatedUsd, alerted };
   }
@@ -574,9 +581,14 @@ export class EmbeddingService {
     tokens: number,
     estimatedUsd: number,
     thresholds: { callsThreshold: number; costThreshold: number },
+    options: { costOnly?: boolean } = {},
   ): Promise<boolean> {
     const { callsThreshold, costThreshold } = thresholds;
-    if (calls < callsThreshold && estimatedUsd < costThreshold) {
+    // costOnly streams (embeddings) ignore the call-count limb — high volume at
+    // near-zero cost made it a false-alarm source (#390).
+    const callsBreached = !options.costOnly && calls >= callsThreshold;
+    const costBreached = estimatedUsd >= costThreshold;
+    if (!callsBreached && !costBreached) {
       return false;
     }
 
@@ -586,10 +598,10 @@ export class EmbeddingService {
       "info@annix.co.za";
 
     const breaches: string[] = [];
-    if (calls >= callsThreshold) {
+    if (callsBreached) {
       breaches.push(`Calls in 24h: ${calls} (threshold ${callsThreshold})`);
     }
-    if (estimatedUsd >= costThreshold) {
+    if (costBreached) {
       breaches.push(
         `Estimated cost in 24h: $${estimatedUsd.toFixed(4)} (threshold $${costThreshold})`,
       );
