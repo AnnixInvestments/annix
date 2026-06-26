@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Injectable, Logger } from "@nestjs/common";
+import { PDFDocument } from "pdf-lib";
 import { pdfToPng } from "pdf-to-png-converter";
 import { AiUsageService } from "../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../ai-usage/entities/ai-usage-log.entity";
@@ -135,6 +136,28 @@ type SparseColumnVerification = Record<SparseColumn, string[]>;
 // Tunable via AU_RUBBER_MAX_OCR_PAGES so an unusually large legitimate batch
 // can be unblocked without a redeploy.
 const MAX_OCR_PAGES = Number(process.env.AU_RUBBER_MAX_OCR_PAGES) || 50;
+
+// PDF pages are rasterised to PNG at this linear scale before being sent to
+// Gemini vision. 1.0 (~screen DPI) blurs small printed digits — a roll
+// number's "9" misreads as "8" — so the default is 1.5 (2.25x the pixels),
+// which recovers digit legibility at a fraction of the memory/cost of 2.0.
+// Tunable via AU_RUBBER_OCR_VIEWPORT_SCALE to adjust the trade-off without a
+// redeploy.
+const OCR_VIEWPORT_SCALE = Number(process.env.AU_RUBBER_OCR_VIEWPORT_SCALE) || 1.5;
+
+// At >1x scale each page is several times larger, so the flat MAX_OCR_PAGES
+// (sized for 1x) no longer bounds memory. Cap the high-res path to fewer pages,
+// and reject any single page whose rasterised pixel area exceeds a budget — a
+// maliciously huge PDF MediaBox can otherwise OOM the 1GB backend on one page.
+const HIGH_RES_OCR_MAX_PAGES = Number(process.env.AU_RUBBER_HIGH_RES_OCR_MAX_PAGES) || 20;
+const MAX_OCR_PAGE_MEGAPIXELS = Number(process.env.AU_RUBBER_MAX_OCR_PAGE_MEGAPIXELS) || 18;
+// Aggregate ceiling across all admitted pages, so a batch of individually-legal
+// large pages can't sum into a memory spike before the per-POST guard fires.
+const MAX_OCR_TOTAL_MEGAPIXELS = Number(process.env.AU_RUBBER_MAX_OCR_TOTAL_MEGAPIXELS) || 40;
+const MAX_OCR_IMAGE_BYTES = Number(process.env.AU_RUBBER_MAX_OCR_IMAGE_BYTES) || 25_000_000;
+// Gemini rejects inline-data requests above ~20MB; fail fast with a clear
+// message rather than uploading a doomed body three times through the retry.
+const MAX_GEMINI_INLINE_BYTES = Number(process.env.AU_RUBBER_MAX_GEMINI_INLINE_BYTES) || 18_000_000;
 
 // Surfaced verbatim to the operator when Gemini returns 503/429 (overloaded).
 // A transient Google-side outage must read as "try again", never as a failed
@@ -924,6 +947,8 @@ export class RubberCocExtractionService {
     const verifiedBatches = await verificationPromise;
     this.applyBatchVerification(deliveryNotes, verifiedBatches);
 
+    this.warnOnSuspiciousCustomerRollNumbers(deliveryNotes);
+
     const podPages = rawData?.podPages || [];
 
     this.logger.log(
@@ -944,6 +969,44 @@ export class RubberCocExtractionService {
       tokensUsed: response.tokensUsed,
       processingTimeMs,
     };
+  }
+
+  // Customer DN roll numbers are the traceability-critical serial of each
+  // physical roll. They are typically sequential within one note, so a span far
+  // wider than the roll count is a strong signal that a digit was mis-read.
+  // Note: this catches a SINGLE mis-read roll among correct ones — it cannot
+  // catch a uniform shift (e.g. every "9" read as "8"), which stays internally
+  // sequential; the higher raster resolution is what prevents that class.
+  private warnOnSuspiciousCustomerRollNumbers(
+    deliveryNotes: ExtractedCustomerDeliveryNoteData[],
+  ): void {
+    deliveryNotes.forEach((dn) => {
+      const rollNumbers = (dn.lineItems ?? [])
+        .map((item) => item.rollNumber)
+        .filter((r): r is string => typeof r === "string" && r.trim().length > 0);
+      if (rollNumbers.length < 2) return;
+
+      const unreadable = rollNumbers.filter((r) => r.toUpperCase() === "UNREADABLE");
+      if (unreadable.length > 0) {
+        this.logger.warn(
+          `${unreadable.length} unreadable roll number(s) on customer DN ${dn.deliveryNoteNumber ?? "?"}. Manual entry required before approval.`,
+        );
+      }
+
+      const numericRolls = rollNumbers
+        .map((raw) => ({ raw, num: Number.parseInt(raw, 10) }))
+        .filter((r) => Number.isFinite(r.num));
+      if (numericRolls.length < 2) return;
+
+      const sorted = numericRolls.map((r) => r.num).sort((a, b) => a - b);
+      const span = sorted[sorted.length - 1] - sorted[0];
+      const expectedSpan = sorted.length - 1;
+      if (span > expectedSpan + 10) {
+        this.logger.warn(
+          `Suspicious roll numbers on customer DN ${dn.deliveryNoteNumber ?? "?"}: ${rollNumbers.join(", ")}. Span=${span} but expected ~${expectedSpan} for ${numericRolls.length} sequential rolls — a strong signal of an OCR digit error. Verify against the source document before approving.`,
+        );
+      }
+    });
   }
 
   async extractTaxInvoice(
@@ -1998,6 +2061,11 @@ format, return { "batches": [] }.
   ): Promise<Buffer[]> {
     const kind = this.sniffDocumentKind(documentBuffer);
     if (kind === "png" || kind === "jpeg") {
+      if (documentBuffer.byteLength > MAX_OCR_IMAGE_BYTES) {
+        throw new Error(
+          "Uploaded image is too large to analyse for OCR — re-upload a standard-resolution scan of the document.",
+        );
+      }
       this.logger.log(`Document is already an image (${kind}); skipping PDF rasterisation`);
       return [documentBuffer];
     }
@@ -2011,22 +2079,56 @@ format, return { "batches": [] }.
       documentBuffer.byteOffset,
       documentBuffer.byteOffset + documentBuffer.byteLength,
     );
+
+    const pageNumbers = await this.safeRasterPageNumbers(documentBuffer, maxPages);
     const pages = await pdfToPng(pdfInput, {
       disableFontFace: true,
       useSystemFonts: true,
-      viewportScale: 1.0,
+      viewportScale: OCR_VIEWPORT_SCALE,
+      pagesToProcess: pageNumbers,
     });
     const rendered = pages
       .filter((page) => page.content !== undefined)
       .map((page) => page.content as Buffer);
     this.logger.log(`Converted PDF to ${rendered.length} image(s)`);
-    if (rendered.length > maxPages) {
-      this.logger.warn(
-        `PDF has ${rendered.length} pages; capping OCR at the first ${maxPages} to bound extraction cost`,
-      );
-      return rendered.slice(0, maxPages);
-    }
     return rendered;
+  }
+
+  // Decide which pages are safe to rasterise BEFORE rendering, so a huge page
+  // count or a maliciously huge MediaBox can never materialise a giant canvas
+  // in memory. Bounds the page count (tighter at high resolution) and drops any
+  // page whose rasterised pixel area would exceed the per-page budget.
+  private async safeRasterPageNumbers(documentBuffer: Buffer, maxPages: number): Promise<number[]> {
+    const pageCap = OCR_VIEWPORT_SCALE > 1 ? Math.min(maxPages, HIGH_RES_OCR_MAX_PAGES) : maxPages;
+    const perPageBudgetPx = MAX_OCR_PAGE_MEGAPIXELS * 1_000_000;
+    const totalBudgetPx = MAX_OCR_TOTAL_MEGAPIXELS * 1_000_000;
+
+    const probe = await PDFDocument.load(documentBuffer, { updateMetadata: false });
+    const sizes = probe.getPages().map((page) => page.getSize());
+    const totalPages = sizes.length;
+
+    const safe = sizes.reduce<{ pages: number[]; usedPx: number }>(
+      (acc, size, index) => {
+        if (acc.pages.length >= pageCap) return acc;
+        const pixels = size.width * OCR_VIEWPORT_SCALE * (size.height * OCR_VIEWPORT_SCALE);
+        if (pixels > perPageBudgetPx) return acc;
+        if (acc.usedPx + pixels > totalBudgetPx) return acc;
+        return { pages: [...acc.pages, index + 1], usedPx: acc.usedPx + pixels };
+      },
+      { pages: [], usedPx: 0 },
+    ).pages;
+
+    if (safe.length === 0) {
+      throw new Error(
+        "Document pages are too large to rasterise for OCR — re-upload a standard-size (A4/A3) document.",
+      );
+    }
+    if (safe.length < totalPages) {
+      this.logger.warn(
+        `Rasterising ${safe.length}/${totalPages} page(s) for OCR — the rest exceed the page-count or per-page pixel budget`,
+      );
+    }
+    return safe;
   }
 
   /**
@@ -2116,6 +2218,13 @@ format, return { "batches": [] }.
         data: img.toString("base64"),
       },
     }));
+
+    const inlineBytes = imageParts.reduce((sum, part) => sum + part.inline_data.data.length, 0);
+    if (inlineBytes > MAX_GEMINI_INLINE_BYTES) {
+      throw new Error(
+        "Document is too large to analyse at full resolution — split it into smaller files or re-upload a lower-resolution scan.",
+      );
+    }
 
     const body = JSON.stringify({
       contents: [

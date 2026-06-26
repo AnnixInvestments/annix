@@ -66,7 +66,7 @@ export class RubberInboundEmailController {
     description:
       "Receives emails forwarded from SendGrid, Mailgun, or similar services and creates Supplier CoCs or Delivery Notes from PDF attachments",
   })
-  @UseInterceptors(FilesInterceptor("attachments", 20))
+  @UseInterceptors(FilesInterceptor("attachments", 20, { limits: { fileSize: 25 * 1024 * 1024 } }))
   @ApiConsumes("multipart/form-data")
   async receiveInboundEmail(
     @Req() req: Request,
@@ -174,7 +174,7 @@ export class RubberInboundEmailController {
   @Post("portal/supplier-cocs/upload")
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
-  @UseInterceptors(FilesInterceptor("files", 20))
+  @UseInterceptors(FilesInterceptor("files", 20, { limits: { fileSize: 25 * 1024 * 1024 } }))
   @ApiConsumes("multipart/form-data")
   @ApiOperation({ summary: "Upload supplier CoC PDF files" })
   @ApiBody({
@@ -231,7 +231,7 @@ export class RubberInboundEmailController {
   @Post("portal/supplier-cocs/analyze")
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
-  @UseInterceptors(FilesInterceptor("files", 20))
+  @UseInterceptors(FilesInterceptor("files", 20, { limits: { fileSize: 25 * 1024 * 1024 } }))
   @ApiConsumes("multipart/form-data")
   @ApiOperation({ summary: "Analyze supplier CoC PDF files before upload" })
   @ApiBody({
@@ -288,7 +288,7 @@ export class RubberInboundEmailController {
   @Post("portal/supplier-cocs/create-from-analysis")
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
-  @UseInterceptors(FilesInterceptor("files", 20))
+  @UseInterceptors(FilesInterceptor("files", 20, { limits: { fileSize: 25 * 1024 * 1024 } }))
   @ApiConsumes("multipart/form-data")
   @ApiOperation({ summary: "Create supplier CoCs from analyzed files" })
   async createFromAnalysis(
@@ -322,7 +322,7 @@ export class RubberInboundEmailController {
   @Post("portal/delivery-notes/upload")
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
-  @UseInterceptors(FilesInterceptor("files", 20))
+  @UseInterceptors(FilesInterceptor("files", 20, { limits: { fileSize: 25 * 1024 * 1024 } }))
   @ApiConsumes("multipart/form-data")
   @ApiOperation({ summary: "Upload delivery note PDF files" })
   @ApiBody({
@@ -379,7 +379,7 @@ export class RubberInboundEmailController {
   @Post("portal/customer-delivery-notes/analyze")
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
-  @UseInterceptors(FilesInterceptor("files", 20))
+  @UseInterceptors(FilesInterceptor("files", 20, { limits: { fileSize: 25 * 1024 * 1024 } }))
   @ApiConsumes("multipart/form-data")
   @ApiOperation({ summary: "Analyze customer delivery note PDF files for AI extraction" })
   @ApiBody({
@@ -407,7 +407,7 @@ export class RubberInboundEmailController {
   @Post("portal/customer-delivery-notes/create-from-analysis")
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
-  @UseInterceptors(FilesInterceptor("files", 20))
+  @UseInterceptors(FilesInterceptor("files", 20, { limits: { fileSize: 25 * 1024 * 1024 } }))
   @ApiConsumes("multipart/form-data")
   @ApiOperation({ summary: "Create customer delivery notes from analyzed files" })
   async createCustomerDnsFromAnalysis(
@@ -460,7 +460,7 @@ export class RubberInboundEmailController {
   @Post("portal/orders/analyze")
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
-  @UseInterceptors(FilesInterceptor("files", 20))
+  @UseInterceptors(FilesInterceptor("files", 20, { limits: { fileSize: 25 * 1024 * 1024 } }))
   @ApiConsumes("multipart/form-data")
   @ApiOperation({ summary: "Analyze order files (PDF, Excel, Email) for import" })
   @ApiBody({
@@ -509,7 +509,7 @@ export class RubberInboundEmailController {
     summary: "Receive inbound order email webhook",
     description: "Receives order emails and extracts order data from PDF attachments",
   })
-  @UseInterceptors(FilesInterceptor("attachments", 20))
+  @UseInterceptors(FilesInterceptor("attachments", 20, { limits: { fileSize: 25 * 1024 * 1024 } }))
   @ApiConsumes("multipart/form-data")
   async receiveInboundOrderEmail(
     @Req() req: Request,
@@ -548,7 +548,7 @@ export class RubberInboundEmailController {
   @Post("portal/orders/document-pages")
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
-  @UseInterceptors(FileInterceptor("file"))
+  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 25 * 1024 * 1024 } }))
   @ApiConsumes("multipart/form-data")
   @ApiOperation({ summary: "Convert PDF document to page images for training" })
   @ApiBody({
@@ -574,7 +574,7 @@ export class RubberInboundEmailController {
   @Post("portal/orders/extract-region")
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
-  @UseInterceptors(FileInterceptor("file"))
+  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 25 * 1024 * 1024 } }))
   @ApiConsumes("multipart/form-data")
   @ApiOperation({ summary: "Extract text from a drawn region using OCR" })
   @ApiBody({
@@ -674,7 +674,7 @@ export class RubberInboundEmailController {
   @Post("portal/orders/compute-format-hash")
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
-  @UseInterceptors(FileInterceptor("file"))
+  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 25 * 1024 * 1024 } }))
   @ApiConsumes("multipart/form-data")
   @ApiOperation({ summary: "Compute format hash for a document" })
   async computeFormatHash(
@@ -712,7 +712,7 @@ export class RubberInboundEmailController {
   @Post("portal/products/analyze")
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
-  @UseInterceptors(FilesInterceptor("files", 20))
+  @UseInterceptors(FilesInterceptor("files", 20, { limits: { fileSize: 25 * 1024 * 1024 } }))
   @ApiConsumes("multipart/form-data")
   @ApiOperation({ summary: "Analyze product files (PDF, Excel, Word) for import" })
   @ApiBody({
@@ -741,7 +741,7 @@ export class RubberInboundEmailController {
     summary: "Receive inbound tax invoice email webhook",
     description: "Receives forwarded emails with PDF attachments and creates tax invoice records",
   })
-  @UseInterceptors(FilesInterceptor("attachments", 20))
+  @UseInterceptors(FilesInterceptor("attachments", 20, { limits: { fileSize: 25 * 1024 * 1024 } }))
   @ApiConsumes("multipart/form-data")
   async receiveInboundTaxInvoiceEmail(
     @Req() req: Request,
@@ -791,7 +791,7 @@ export class RubberInboundEmailController {
   @Post("portal/tax-invoices/upload")
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
-  @UseInterceptors(FilesInterceptor("files", 20))
+  @UseInterceptors(FilesInterceptor("files", 20, { limits: { fileSize: 25 * 1024 * 1024 } }))
   @ApiConsumes("multipart/form-data")
   @ApiOperation({ summary: "Upload tax invoice PDF files" })
   @ApiBody({

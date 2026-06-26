@@ -1315,6 +1315,25 @@ export class RubberDeliveryNoteService {
       throw new BadRequestException("Parent delivery note has no source document");
     }
 
+    // Sibling backfill exists to split a genuine multi-DN *supplier* document
+    // into its constituent supplier DNs. It must never run against AU's own
+    // outbound customer CDNs: on those, AU is the seller, so resolveSupplierFromRolls
+    // reads the supplier name as "AU Industries" and mints a bogus AU-supplier
+    // sibling (supplierCompanyId=null) that then pollutes the Suppliers list.
+    if (parent.supplierCompany?.companyType === CompanyType.CUSTOMER) {
+      this.logger.warn(
+        `Backfill: refusing to split customer-direction CDN #${parentId} (${parent.deliveryNoteNumber}) into supplier siblings`,
+      );
+      return {
+        created: 0,
+        deliveryNoteIds: [],
+        skipped: extractedDns.map((dn) => ({
+          dnNumber: dn.deliveryNoteNumber?.trim() || "(missing)",
+          reason: "parent is a customer-direction CDN — sibling backfill is supplier-only",
+        })),
+      };
+    }
+
     const suppliers = await this.companyRepository.findByCompanyType(CompanyType.SUPPLIER);
 
     const result = await extractedDns.reduce(
