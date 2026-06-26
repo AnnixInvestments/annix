@@ -3,10 +3,14 @@
 import { Plus, Trash2 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { extractErrorMessage } from "@/app/lib/api/apiError";
+import { metricsApi } from "@/app/lib/api/metricsApi";
 import type { JobCard, JobCardAttachment } from "@/app/lib/api/stockControlApi";
 import { useAddLineItem, useDeleteLineItem, useReExtractLineItems } from "@/app/lib/query/hooks";
 import { isValidLineItem } from "../lib/helpers";
+
+const RE_EXTRACT_FALLBACK_MS = 60000;
 
 function workTypeFromNotes(notes: string | null | undefined): string {
   if (!notes) return "—";
@@ -61,6 +65,7 @@ export function LineItemsTab(props: LineItemsTabProps) {
     showPaintColumn = true,
   } = props;
   const reExtract = useReExtractLineItems();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
   const deleteLineItem = useDeleteLineItem();
   const addLineItem = useAddLineItem();
   const [reExtractResult, setReExtractResult] = useState<string | null>(null);
@@ -89,8 +94,20 @@ export function LineItemsTab(props: LineItemsTabProps) {
     );
   }
 
-  const handleReExtract = () => {
+  const handleReExtract = async () => {
     setReExtractResult(null);
+    const stats = await metricsApi
+      .extractionStats("job-card", "re-extract-with-drawings")
+      .catch(() => null);
+    const learnedMs = stats == null ? null : stats.averageMs;
+    const estimatedDurationMs =
+      learnedMs == null || learnedMs <= 0 ? RE_EXTRACT_FALLBACK_MS : learnedMs;
+    showExtraction({
+      brand: "stock-control",
+      label: "Nix is re-extracting line items and drawing m²…",
+      estimatedDurationMs,
+      backgroundSafe: true,
+    });
     reExtract.mutate(jobCard.id, {
       onSuccess: (result) => {
         setReExtractResult(
@@ -100,6 +117,9 @@ export function LineItemsTab(props: LineItemsTabProps) {
       },
       onError: (err) => {
         setReExtractResult(`Error: ${extractErrorMessage(err, "Re-extraction failed")}`);
+      },
+      onSettled: () => {
+        hideExtraction();
       },
     });
   };

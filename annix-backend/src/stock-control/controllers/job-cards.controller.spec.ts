@@ -1,6 +1,7 @@
 import { BadRequestException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { ThrottlerGuard } from "@nestjs/throttler";
+import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AttachmentType } from "../entities/job-card-attachment.entity";
 
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
@@ -33,6 +34,8 @@ describe("JobCardsController", () => {
   let drawingExtractionService: jest.Mocked<DrawingExtractionService>;
   let workflowService: jest.Mocked<JobCardWorkflowService>;
   let cpoService: jest.Mocked<CpoService>;
+  let jobCardImportService: { reExtractLineItems: jest.Mock };
+  let extractionMetricService: { time: jest.Mock };
   let stockItemRepo: Record<string, jest.Mock>;
   let dimensionOverrideRepo: Record<string, jest.Mock>;
   let stockMovementRepo: Record<string, jest.Mock>;
@@ -66,6 +69,7 @@ describe("JobCardsController", () => {
       unverifiedProducts: jest.fn(),
       verifyFromTds: jest.fn(),
       acceptRecommendation: jest.fn(),
+      analyseJobCards: jest.fn().mockResolvedValue(undefined),
     };
 
     const mockRequisitionService = {
@@ -155,6 +159,10 @@ describe("JobCardsController", () => {
         { provide: RubberDimensionOverrideRepository, useValue: dimensionOverrideRepo },
         { provide: StockMovementRepository, useValue: stockMovementRepo },
         {
+          provide: ExtractionMetricService,
+          useValue: { time: jest.fn((_category, _operation, fn) => fn()) },
+        },
+        {
           provide: JobCardLineItemRepository,
           useValue: {
             findOneForJobCard: jest.fn(),
@@ -187,6 +195,8 @@ describe("JobCardsController", () => {
     drawingExtractionService = module.get(DrawingExtractionService);
     workflowService = module.get(JobCardWorkflowService);
     cpoService = module.get(CpoService);
+    jobCardImportService = module.get(JobCardImportService);
+    extractionMetricService = module.get(ExtractionMetricService);
   });
 
   it("should be defined", () => {
@@ -633,6 +643,29 @@ describe("JobCardsController", () => {
 
       expect(drawingExtractionService.triggerExtraction).toHaveBeenCalledWith(1, 5, 10);
       expect(result).toBe(expected);
+    });
+  });
+
+  describe("POST /:id/re-extract", () => {
+    it("re-extracts line items, runs drawing extraction with reapplyAnalysed, and triggers coating analysis", async () => {
+      const importResult = { replaced: 2, newCount: 5 };
+      jobCardImportService.reExtractLineItems.mockResolvedValue(importResult);
+      drawingExtractionService.extractAllFromJobCard.mockResolvedValue({} as any);
+      coatingAnalysisService.analyseJobCards.mockResolvedValue(undefined as any);
+
+      const result = await controller.reExtract(mockReq(), 5);
+
+      expect(jobCardImportService.reExtractLineItems).toHaveBeenCalledWith(1, 5);
+      expect(drawingExtractionService.extractAllFromJobCard).toHaveBeenCalledWith(1, 5, {
+        reapplyAnalysed: true,
+      });
+      expect(extractionMetricService.time).toHaveBeenCalledWith(
+        "job-card",
+        "re-extract-with-drawings",
+        expect.any(Function),
+      );
+      expect(coatingAnalysisService.analyseJobCards).toHaveBeenCalledWith([5], 1);
+      expect(result).toBe(importResult);
     });
   });
 

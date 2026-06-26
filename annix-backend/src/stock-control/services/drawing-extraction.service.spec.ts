@@ -2,7 +2,7 @@ import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
-import { ExtractionStatus } from "../entities/job-card-attachment.entity";
+import { AttachmentType, ExtractionStatus } from "../entities/job-card-attachment.entity";
 import { JobCardRepository } from "../repositories/job-card.repository";
 import { JobCardAttachmentRepository } from "../repositories/job-card-attachment.repository";
 import { JobCardLineItemRepository } from "../repositories/job-card-line-item.repository";
@@ -451,6 +451,421 @@ describe("DrawingExtractionService", () => {
       const systemPrompt = chatCall[1];
       expect(systemPrompt).toContain("analysing engineering drawing images");
       expect(systemPrompt).not.toContain("multiple engineering documents");
+    });
+  });
+
+  describe("extractAllFromJobCard - per-drawing line item fill", () => {
+    const storedTankResult = () => ({
+      drawingType: "tank_chute",
+      dimensions: [],
+      tankData: {
+        assemblyType: "distributor",
+        drawingReference: "CD1-6147",
+        jobName: "Distributor Body",
+        overallLengthMm: null,
+        overallWidthMm: null,
+        overallHeightMm: null,
+        liningType: "rubber",
+        liningThicknessMm: 6,
+        liningAreaM2: 12.5,
+        coatingAreaM2: 18.25,
+        coatingSystem: null,
+        surfacePrepStandard: null,
+        sections: [],
+        plateParts: [
+          {
+            mark: "P1",
+            description: "Body plate",
+            thicknessMm: 10,
+            lengthMm: 2400,
+            widthMm: 1200,
+            quantity: 2,
+            liningThicknessMm: 6,
+          },
+        ],
+        components: [
+          {
+            mark: "S1",
+            description: "Shell",
+            componentType: "shell",
+            shape: { type: "cylinder", innerDiameterMm: 1000, heightMm: 1200 },
+            liningType: "rubber",
+            liningThicknessMm: 6,
+            liningAreaM2: null,
+            coatingAreaM2: null,
+            quantity: 1,
+            segmentCount: null,
+          },
+        ],
+      },
+      totalExternalM2: 18.25,
+      totalInternalM2: 12.5,
+      totalLiningM2: 12.5,
+      totalCoatingM2: 18.25,
+      rawText: "",
+      confidence: 0.9,
+    });
+
+    const analysedAttachment = () => ({
+      id: 7,
+      jobCardId: 1,
+      companyId: 10,
+      attachmentType: AttachmentType.DRAWING,
+      originalFilename: "CD1-6147_DISTRIBUTOR_BODY_(Rev_0_-_Approval)_PDF.pdf",
+      extractionStatus: ExtractionStatus.ANALYSED,
+      extractedData: storedTankResult(),
+    });
+
+    it("fills the matching line item with liningM², m², plateBom and tankComponents", async () => {
+      mockJobCardRepo.findOneForCompany.mockResolvedValue({ id: 1, companyId: 10 });
+      mockAttachmentRepo.findForJobCard.mockResolvedValue([analysedAttachment()]);
+      const lineItem = {
+        id: 42,
+        jobCardId: 1,
+        companyId: 10,
+        itemNo: "CD1-6147",
+        itemCode: null,
+        m2: null,
+        liningM2: null,
+        plateBom: null,
+        tankComponents: null,
+      };
+      mockLineItemRepo.findForJobCardOrderedBySort.mockResolvedValue([lineItem]);
+
+      const result = await service.extractAllFromJobCard(10, 1, { reapplyAnalysed: true });
+
+      expect(mockLineItemRepo.saveMany).toHaveBeenCalledTimes(1);
+      const saved = mockLineItemRepo.saveMany.mock.calls[0][0];
+      expect(saved).toHaveLength(1);
+      expect(saved[0].id).toBe(42);
+      expect(saved[0].liningM2).toBe(12.5);
+      expect(saved[0].m2).toBe(18.25);
+      expect(saved[0].plateBom).toHaveLength(1);
+      expect(saved[0].tankComponents).toHaveLength(1);
+      expect(mockLineItemRepo.buildMany).not.toHaveBeenCalled();
+      expect(result.drawingType).toBe("tank_chute");
+    });
+
+    it("falls back to appending tank line items when no existing line item matches", async () => {
+      mockJobCardRepo.findOneForCompany.mockResolvedValue({ id: 1, companyId: 10 });
+      mockAttachmentRepo.findForJobCard.mockResolvedValue([analysedAttachment()]);
+      const lineItem = {
+        id: 99,
+        jobCardId: 1,
+        companyId: 10,
+        itemNo: "ZZZ-0000",
+        itemCode: null,
+        sortOrder: 1,
+      };
+      mockLineItemRepo.findForJobCardOrderedBySort.mockResolvedValue([lineItem]);
+
+      await service.extractAllFromJobCard(10, 1, { reapplyAnalysed: true });
+
+      expect(mockLineItemRepo.buildMany).toHaveBeenCalledTimes(1);
+      const appended = mockLineItemRepo.buildMany.mock.calls[0][0];
+      expect(appended.length).toBeGreaterThan(0);
+      expect(mockLineItemRepo.saveMany).toHaveBeenCalled();
+    });
+
+    it("reuses stored extraction data without calling the AI service", async () => {
+      mockJobCardRepo.findOneForCompany.mockResolvedValue({ id: 1, companyId: 10 });
+      mockAttachmentRepo.findForJobCard.mockResolvedValue([analysedAttachment()]);
+      mockLineItemRepo.findForJobCardOrderedBySort.mockResolvedValue([
+        { id: 42, jobCardId: 1, companyId: 10, itemNo: "CD1-6147", itemCode: null },
+      ]);
+
+      await service.extractAllFromJobCard(10, 1, { reapplyAnalysed: true });
+
+      expect(mockAiChatService.chat).not.toHaveBeenCalled();
+      expect(mockAiChatService.chatWithImage).not.toHaveBeenCalled();
+      expect(mockStorageService.download).not.toHaveBeenCalled();
+      expect(mockAttachmentRepo.saveForCompany).not.toHaveBeenCalled();
+    });
+
+    it("re-validates poisoned stored data before filling the line item", async () => {
+      mockJobCardRepo.findOneForCompany.mockResolvedValue({ id: 1, companyId: 10 });
+      const poisoned = storedTankResult();
+      poisoned.tankData.liningAreaM2 = 1e9;
+      poisoned.tankData.plateParts = [
+        {
+          mark: "BAD",
+          description: "oversized",
+          thicknessMm: 10,
+          lengthMm: 1e9,
+          widthMm: 1200,
+          quantity: 1e9,
+          liningThicknessMm: 6,
+        },
+        {
+          mark: "OK",
+          description: "valid",
+          thicknessMm: 10,
+          lengthMm: 2400,
+          widthMm: 1200,
+          quantity: 5,
+          liningThicknessMm: 6,
+        },
+      ];
+      const attachment = analysedAttachment();
+      attachment.extractedData = poisoned;
+      mockAttachmentRepo.findForJobCard.mockResolvedValue([attachment]);
+      mockLineItemRepo.findForJobCardOrderedBySort.mockResolvedValue([
+        {
+          id: 42,
+          jobCardId: 1,
+          companyId: 10,
+          itemNo: "CD1-6147",
+          itemCode: null,
+          m2: null,
+          liningM2: null,
+          plateBom: null,
+          tankComponents: null,
+        },
+      ]);
+
+      await service.extractAllFromJobCard(10, 1, { reapplyAnalysed: true });
+
+      const saved = mockLineItemRepo.saveMany.mock.calls[0][0][0];
+      expect(saved.liningM2 ?? null).toBeNull();
+      expect(saved.m2).toBe(18.25);
+      expect(saved.plateBom).toHaveLength(1);
+      expect(saved.plateBom[0].mark).toBe("OK");
+      expect(saved.plateBom[0].quantity).toBe(5);
+    });
+
+    it("falls back to append when more than one line item matches the drawing code", async () => {
+      mockJobCardRepo.findOneForCompany.mockResolvedValue({ id: 1, companyId: 10 });
+      mockAttachmentRepo.findForJobCard.mockResolvedValue([analysedAttachment()]);
+      mockLineItemRepo.findForJobCardOrderedBySort.mockResolvedValue([
+        { id: 1, jobCardId: 1, companyId: 10, itemNo: "CD1-6147", itemCode: null, sortOrder: 1 },
+        { id: 2, jobCardId: 1, companyId: 10, itemNo: "CD1-6147", itemCode: null, sortOrder: 2 },
+      ]);
+
+      await service.extractAllFromJobCard(10, 1, { reapplyAnalysed: true });
+
+      expect(mockLineItemRepo.buildMany).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not fill a pipe line item that shares the drawing code, appends instead", async () => {
+      mockJobCardRepo.findOneForCompany.mockResolvedValue({ id: 1, companyId: 10 });
+      mockAttachmentRepo.findForJobCard.mockResolvedValue([analysedAttachment()]);
+      const pipeRow = {
+        id: 55,
+        jobCardId: 1,
+        companyId: 10,
+        itemNo: "CD1-6147",
+        itemCode: null,
+        itemDescription: "100 NB PIPE",
+        m2: null,
+        liningM2: null,
+        plateBom: null,
+        tankComponents: null,
+        sortOrder: 1,
+      };
+      mockLineItemRepo.findForJobCardOrderedBySort.mockResolvedValue([pipeRow]);
+
+      await service.extractAllFromJobCard(10, 1, { reapplyAnalysed: true });
+
+      expect(pipeRow.liningM2).toBeNull();
+      expect(pipeRow.m2).toBeNull();
+      expect(pipeRow.plateBom).toBeNull();
+      expect(pipeRow.tankComponents).toBeNull();
+      expect(mockLineItemRepo.buildMany).toHaveBeenCalledTimes(1);
+    });
+
+    it("ignores the model-controlled drawingReference and matches only on the filename code", async () => {
+      mockJobCardRepo.findOneForCompany.mockResolvedValue({ id: 1, companyId: 10 });
+      const attachment = analysedAttachment();
+      attachment.originalFilename = "scan.pdf";
+      mockAttachmentRepo.findForJobCard.mockResolvedValue([attachment]);
+      mockLineItemRepo.findForJobCardOrderedBySort.mockResolvedValue([
+        {
+          id: 7,
+          jobCardId: 1,
+          companyId: 10,
+          itemNo: "CD1-6147",
+          itemCode: null,
+          sortOrder: 1,
+          m2: null,
+          liningM2: null,
+        },
+      ]);
+
+      await service.extractAllFromJobCard(10, 1, { reapplyAnalysed: true });
+
+      expect(mockLineItemRepo.buildMany).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not append duplicate section rows across multiple drawings on the same job", async () => {
+      mockJobCardRepo.findOneForCompany.mockResolvedValue({ id: 1, companyId: 10 });
+      const first = analysedAttachment();
+      first.id = 11;
+      first.originalFilename = "tank-scan.pdf";
+      const second = analysedAttachment();
+      second.id = 12;
+      second.originalFilename = "tank-scan-copy.pdf";
+      mockAttachmentRepo.findForJobCard.mockResolvedValue([first, second]);
+
+      const drawingOneRows = [
+        { itemDescription: "Distributor Internal Lining (CD1-6147) - Type: rubber - 6mm thick" },
+        { itemDescription: "Distributor External Coating (CD1-6147)" },
+      ];
+      mockLineItemRepo.findForJobCardOrderedBySort
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce(drawingOneRows);
+
+      await service.extractAllFromJobCard(10, 1, { reapplyAnalysed: true });
+
+      expect(mockLineItemRepo.buildMany).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not match a line item when the only derived code is shorter than 4 chars", async () => {
+      const tankData = storedTankResult().tankData;
+      mockLineItemRepo.findForJobCardOrderedBySort.mockResolvedValue([
+        {
+          id: 1,
+          jobCardId: 1,
+          companyId: 10,
+          itemNo: "ABC",
+          itemCode: null,
+          m2: null,
+          liningM2: null,
+        },
+      ]);
+
+      const filled = await (service as any).fillMatchingLineItemFromTank(10, 1, tankData, ["ABC"]);
+
+      expect(filled).toBe(false);
+      expect(mockLineItemRepo.saveMany).not.toHaveBeenCalled();
+    });
+
+    it("append path writes lining area to liningM2 and coating area to m2 (no double count)", async () => {
+      mockJobCardRepo.findOneForCompany.mockResolvedValue({ id: 1, companyId: 10 });
+      const attachment = analysedAttachment();
+      attachment.originalFilename = "scan.pdf";
+      mockAttachmentRepo.findForJobCard.mockResolvedValue([attachment]);
+      mockLineItemRepo.findForJobCardOrderedBySort.mockResolvedValue([]);
+
+      await service.extractAllFromJobCard(10, 1, { reapplyAnalysed: true });
+
+      const rows = mockLineItemRepo.buildMany.mock.calls[0][0];
+      const liningRow = rows.find((r: any) => (r.liningM2 ?? 0) > 0);
+      const coatingRow = rows.find((r: any) => (r.m2 ?? 0) > 0);
+      expect(liningRow.liningM2).toBe(12.5);
+      expect(liningRow.m2 ?? null).toBeNull();
+      expect(coatingRow.m2).toBe(18.25);
+      expect(coatingRow.liningM2 ?? null).toBeNull();
+    });
+
+    it("fills liningM2 but leaves the existing m2 untouched when the tank has lining area only", async () => {
+      mockJobCardRepo.findOneForCompany.mockResolvedValue({ id: 1, companyId: 10 });
+      const attachment = analysedAttachment();
+      const data = storedTankResult();
+      (data.tankData as { coatingAreaM2: number | null }).coatingAreaM2 = null;
+      attachment.extractedData = data;
+      mockAttachmentRepo.findForJobCard.mockResolvedValue([attachment]);
+      mockLineItemRepo.findForJobCardOrderedBySort.mockResolvedValue([
+        {
+          id: 42,
+          jobCardId: 1,
+          companyId: 10,
+          itemNo: "CD1-6147",
+          itemCode: null,
+          m2: 7,
+          liningM2: null,
+          plateBom: null,
+          tankComponents: null,
+        },
+      ]);
+
+      await service.extractAllFromJobCard(10, 1, { reapplyAnalysed: true });
+
+      const saved = mockLineItemRepo.saveMany.mock.calls[0][0][0];
+      expect(saved.liningM2).toBe(12.5);
+      expect(saved.m2).toBe(7);
+      expect(mockLineItemRepo.buildMany).not.toHaveBeenCalled();
+    });
+
+    it("returns an empty result and writes nothing when there are no drawing attachments", async () => {
+      mockJobCardRepo.findOneForCompany.mockResolvedValue({ id: 1, companyId: 10 });
+      mockAttachmentRepo.findForJobCard.mockResolvedValue([]);
+
+      const result = await service.extractAllFromJobCard(10, 1, { reapplyAnalysed: true });
+
+      expect(result.totalLiningM2).toBe(0);
+      expect(mockAiChatService.chat).not.toHaveBeenCalled();
+      expect(mockLineItemRepo.buildMany).not.toHaveBeenCalled();
+      expect(mockLineItemRepo.saveMany).not.toHaveBeenCalled();
+    });
+
+    it("skips an attachment still in PROCESSING during re-extract (no AI, no writes)", async () => {
+      mockJobCardRepo.findOneForCompany.mockResolvedValue({ id: 1, companyId: 10 });
+      const attachment = analysedAttachment();
+      attachment.extractionStatus = ExtractionStatus.PROCESSING;
+      mockAttachmentRepo.findForJobCard.mockResolvedValue([attachment]);
+
+      const result = await service.extractAllFromJobCard(10, 1, { reapplyAnalysed: true });
+
+      expect(result.totalLiningM2).toBe(0);
+      expect(mockAiChatService.chat).not.toHaveBeenCalled();
+      expect(mockAttachmentRepo.saveForCompany).not.toHaveBeenCalled();
+      expect(mockLineItemRepo.buildMany).not.toHaveBeenCalled();
+      expect(mockLineItemRepo.saveMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("parseAiResponse - hostile input clamping", () => {
+    it("clamps out-of-range tank areas and coerces oversized plateParts", async () => {
+      const aiResponse = {
+        drawingType: "tank_chute",
+        tankData: {
+          assemblyType: "tank",
+          drawingReference: "GPW-001",
+          liningType: "rubber",
+          liningThicknessMm: 6,
+          liningAreaM2: 1e9,
+          coatingAreaM2: -5,
+          sections: [],
+          plateParts: [
+            {
+              mark: "P1",
+              description: "ok",
+              thicknessMm: 10,
+              lengthMm: 2400,
+              widthMm: 1200,
+              quantity: 1e9,
+              liningThicknessMm: 6,
+            },
+            {
+              mark: "P2",
+              description: "huge",
+              thicknessMm: 10,
+              lengthMm: 1e9,
+              widthMm: 1200,
+              quantity: 2,
+              liningThicknessMm: 6,
+            },
+            { mark: "P3", description: "no dims", thicknessMm: 10, quantity: 2 },
+          ],
+          components: [],
+        },
+        dimensions: [],
+        confidence: 0.9,
+      };
+
+      jest.spyOn(service as any, "convertPdfToImages").mockResolvedValue([Buffer.from("img")]);
+      mockAiChatService.chat.mockResolvedValue({ content: JSON.stringify(aiResponse) });
+
+      const result = await service.extractFromPdfBuffers([
+        { buffer: Buffer.from("pdf"), filename: "tank.pdf" },
+      ]);
+
+      expect(result.tankData!.liningAreaM2).toBeNull();
+      expect(result.tankData!.coatingAreaM2).toBeNull();
+      expect(result.tankData!.plateParts).toHaveLength(1);
+      expect(result.tankData!.plateParts[0].mark).toBe("P1");
+      expect(result.tankData!.plateParts[0].quantity).toBe(1000);
+      expect(result.totalLiningM2).toBe(0);
     });
   });
 });

@@ -19,6 +19,7 @@ import {
   type TankComponent,
   type TankComponentShape,
 } from "../entities/job-card-line-item.entity";
+import { isPipeLineItem } from "../lib/pipe-item-pattern";
 import { JobCardRepository } from "../repositories/job-card.repository";
 import { JobCardAttachmentRepository } from "../repositories/job-card-attachment.repository";
 import { JobCardLineItemRepository } from "../repositories/job-card-line-item.repository";
@@ -107,6 +108,7 @@ const TANK_COMPONENT_TYPES: ReadonlyArray<TankComponent["componentType"]> = [
 // downstream m²/nesting math (a single crafted drawing could otherwise emit
 // Infinity dimensions or billion-count quantities that DoS the browser).
 const MAX_TANK_COMPONENTS = 500;
+const MAX_PLATE_PARTS = 500;
 const MAX_TANK_COMPONENT_QUANTITY = 1000;
 const MAX_TANK_DIMENSION_MM = 100000;
 const MAX_TANK_AREA_M2 = 100000;
@@ -122,6 +124,10 @@ function clampQuantity(value: unknown): number {
     return 1;
   }
   return Math.min(n, MAX_TANK_COMPONENT_QUANTITY);
+}
+
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
 }
 
 const DRAWING_EXTRACTION_PROMPT = `You are an expert at analysing engineering drawing images. You can handle both pipe drawings and welded steel plate structure drawings (tanks, chutes, hoppers, underpans).
@@ -512,7 +518,9 @@ export class DrawingExtractionService {
         `Extraction complete for attachment ${attachmentId}: ${result.dimensions.length} dimensions, totalExtM2=${result.totalExternalM2}`,
       );
 
-      await this.updateLineItemsFromExtraction(companyId, jobCardId, result);
+      await this.updateLineItemsFromExtraction(companyId, jobCardId, result, [
+        this.drawingCodeFromFilename(attachment.originalFilename),
+      ]);
 
       const signedUrl = await this.storageService.presignedUrl(saved.filePath, 3600);
       return { ...saved, filePath: signedUrl };
@@ -529,6 +537,7 @@ export class DrawingExtractionService {
   async extractAllFromJobCard(
     companyId: number,
     jobCardId: number,
+    options: { reapplyAnalysed?: boolean } = {},
   ): Promise<DrawingExtractionResult> {
     const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
 
@@ -536,130 +545,173 @@ export class DrawingExtractionService {
       throw new NotFoundException("Job card not found");
     }
 
-    const extractableAttachments = await this.attachmentRepo.findExtractableForJobCard(
-      jobCardId,
-      companyId,
-      [ExtractionStatus.PENDING, ExtractionStatus.FAILED],
-    );
+    const reapplyAnalysed = options.reapplyAnalysed === true;
 
-    const allAttachments = extractableAttachments.filter(
+    const allAttachments = await this.attachmentRepo.findForJobCard(jobCardId, companyId);
+    const drawingAttachments = allAttachments.filter(
       (attachment) => attachment.attachmentType !== AttachmentType.QC_DOCUMENT,
     );
 
-    if (allAttachments.length === 0) {
-      this.logger.log(`No extractable drawing attachments for job card ${jobCardId}`);
+    const targets = drawingAttachments.filter((attachment) => {
+      const status = attachment.extractionStatus;
+      const isPendingOrFailed =
+        status === ExtractionStatus.PENDING || status === ExtractionStatus.FAILED;
+      return isPendingOrFailed || (reapplyAnalysed && status === ExtractionStatus.ANALYSED);
+    });
+
+    if (targets.length === 0) {
+      this.logger.log(`No drawing attachments to extract for job card ${jobCardId}`);
       return this.emptyResult();
     }
 
-    await this.attachmentRepo.updateMany(
-      allAttachments.map((a) => a.id),
-      { extractionStatus: ExtractionStatus.PROCESSING },
+    const results = await targets.reduce(
+      async (accPromise, attachment) => {
+        const acc = await accPromise;
+        try {
+          const result = await this.extractOrReuseAttachment(companyId, attachment);
+          await this.updateLineItemsFromExtraction(companyId, jobCardId, result, [
+            this.drawingCodeFromFilename(attachment.originalFilename),
+          ]);
+          return [...acc, result];
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Unknown error";
+          attachment.extractionStatus = ExtractionStatus.FAILED;
+          attachment.extractionError = message;
+          await this.attachmentRepo.saveForCompany(companyId, attachment);
+          this.logger.error(
+            `Drawing extraction failed for attachment ${attachment.id} on job card ${jobCardId}: ${message}`,
+          );
+          return acc;
+        }
+      },
+      Promise.resolve([] as DrawingExtractionResult[]),
     );
 
-    try {
-      const contentParts: (TextContent | ImageContent)[] = [];
+    this.logger.log(
+      `Per-drawing extraction complete for job card ${jobCardId}: ${results.length}/${targets.length} drawings processed`,
+    );
 
-      const attachmentParts = await allAttachments.reduce(
-        async (accPromise, attachment) => {
-          const acc = await accPromise;
-          const isPdf = this.isPdfFile(attachment);
-          const isDxf = this.isDxfFile(attachment);
+    return this.mergeExtractionResults(results);
+  }
 
-          if (isPdf) {
-            const normalizedPath = this.normalizeStoragePath(attachment.filePath);
-            const pdfBuffer = await this.storageService.download(normalizedPath);
-            const images = await this.convertPdfToImages(pdfBuffer);
-            const imageContents = images.map(
-              (img): ImageContent => ({
-                type: "image",
-                source: {
-                  type: "base64",
-                  media_type: "image/png",
-                  data: img.toString("base64"),
-                },
-              }),
-            );
-            return [
-              ...acc,
-              {
-                type: "text" as const,
-                text: `--- Pages from: ${attachment.originalFilename} ---`,
-              },
-              ...imageContents,
-            ];
-          } else if (isDxf) {
-            const normalizedPath = this.normalizeStoragePath(attachment.filePath);
-            const fileBuffer = await this.storageService.download(normalizedPath);
-            const dxfText = this.parseDxfFile(fileBuffer);
-            return [
-              ...acc,
-              {
-                type: "text" as const,
-                text: `--- DXF data from: ${attachment.originalFilename} ---\n${dxfText}`,
-              },
-            ];
-          }
-          return acc;
-        },
-        Promise.resolve([] as (TextContent | ImageContent)[]),
-      );
-      contentParts.push(...attachmentParts);
-
-      if (contentParts.length === 0) {
-        await this.attachmentRepo.updateMany(
-          allAttachments.map((a) => a.id),
-          { extractionStatus: ExtractionStatus.PENDING },
-        );
-        return this.emptyResult();
-      }
-
-      contentParts.push({
-        type: "text",
-        text: "Analyse all the above engineering drawing pages and DXF data. Cross-reference information across documents. Respond with JSON only.",
-      });
-
-      const isMultiDoc = allAttachments.length > 1;
-      const prompt = isMultiDoc ? MULTI_DOC_EXTRACTION_PROMPT : DRAWING_EXTRACTION_PROMPT;
-
-      const messages: ChatMessage[] = [{ role: "user", content: contentParts }];
-      const { content: response } = await this.aiChatService.chat(
-        messages,
-        prompt,
-        undefined,
-        DRAWING_EXTRACTION_OPTIONS,
-      );
-      const aiResult = this.parseAiResponse(response);
-      const result = this.buildExtractionResult(aiResult);
-
-      const updateTime = now().toJSDate();
-      const updatedAttachments = allAttachments.map((a) => ({
-        ...a,
-        extractionStatus: ExtractionStatus.ANALYSED,
-        extractedData: result as unknown as Record<string, unknown>,
-        extractedAt: updateTime,
-        extractionError: null,
-      }));
-      await this.attachmentRepo.saveMany(updatedAttachments);
-
-      await this.updateLineItemsFromExtraction(companyId, jobCardId, result);
-
-      this.logger.log(
-        `Multi-doc extraction complete for job card ${jobCardId}: ${allAttachments.length} attachments processed`,
-      );
-
-      return result;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      await this.attachmentRepo.updateMany(
-        allAttachments.map((a) => a.id),
-        {
-          extractionStatus: ExtractionStatus.FAILED,
-          extractionError: message,
-        },
-      );
-      this.logger.error(`Multi-doc extraction failed for job card ${jobCardId}: ${message}`);
-      throw err;
+  private async extractOrReuseAttachment(
+    companyId: number,
+    attachment: JobCardAttachment,
+  ): Promise<DrawingExtractionResult> {
+    const stored = this.storedExtractionResult(attachment);
+    if (attachment.extractionStatus === ExtractionStatus.ANALYSED && stored) {
+      return stored;
     }
+
+    const result = await this.extractFromAttachment(attachment);
+    attachment.extractionStatus = ExtractionStatus.ANALYSED;
+    attachment.extractedData = result as unknown as Record<string, unknown>;
+    attachment.extractedAt = now().toJSDate();
+    attachment.extractionError = null;
+    await this.attachmentRepo.saveForCompany(companyId, attachment);
+    return result;
+  }
+
+  private storedExtractionResult(attachment: JobCardAttachment): DrawingExtractionResult | null {
+    const data = attachment.extractedData;
+    if (!data || typeof data !== "object" || !("drawingType" in data)) {
+      return null;
+    }
+    return this.sanitizeExtractionResult(data as unknown as DrawingExtractionResult);
+  }
+
+  private sanitizeExtractionResult(result: DrawingExtractionResult): DrawingExtractionResult {
+    const confidence = Number.isFinite(result.confidence) ? result.confidence : 0;
+
+    if (result.drawingType === "tank_chute" && result.tankData) {
+      return this.buildExtractionResult({
+        drawingType: "tank_chute",
+        dimensions: [],
+        tankData: this.sanitizeTankData(result.tankData),
+        confidence,
+      });
+    }
+
+    const dimensions: ExtractedDimension[] = Array.isArray(result.dimensions)
+      ? result.dimensions.map((dim) => ({
+          description:
+            typeof dim.description === "string" ? dim.description.slice(0, 300) : "Unknown item",
+          diameterMm: finiteInRange(dim.diameterMm, MAX_TANK_DIMENSION_MM),
+          lengthM: finiteInRange(dim.lengthM, MAX_TANK_DIMENSION_MM),
+          quantity: clampQuantity(dim.quantity),
+          itemType: typeof dim.itemType === "string" ? dim.itemType : "other",
+          externalSurfaceM2: null,
+          internalSurfaceM2: null,
+        }))
+      : [];
+
+    return this.buildExtractionResult({
+      drawingType: "pipe",
+      dimensions,
+      tankData: null,
+      confidence,
+    });
+  }
+
+  private sanitizeTankData(tankData: TankExtractionData): TankExtractionData {
+    return {
+      ...tankData,
+      liningThicknessMm: finiteInRange(tankData.liningThicknessMm, MAX_TANK_DIMENSION_MM),
+      liningAreaM2: finiteInRange(tankData.liningAreaM2, MAX_TANK_AREA_M2),
+      coatingAreaM2: finiteInRange(tankData.coatingAreaM2, MAX_TANK_AREA_M2),
+      sections: Array.isArray(tankData.sections)
+        ? tankData.sections.map((section) => ({
+            mark: typeof section.mark === "string" ? section.mark.slice(0, 120) : "",
+            description:
+              typeof section.description === "string" ? section.description.slice(0, 300) : "",
+            liningAreaM2: finiteInRange(section.liningAreaM2, MAX_TANK_AREA_M2),
+            coatingAreaM2: finiteInRange(section.coatingAreaM2, MAX_TANK_AREA_M2),
+          }))
+        : [],
+      plateParts: this.coercePlateParts(tankData.plateParts),
+      components: this.sanitizeStoredComponents(tankData.components),
+    };
+  }
+
+  private sanitizeStoredComponents(raw: unknown): TankComponent[] {
+    if (!Array.isArray(raw)) {
+      return [];
+    }
+    return raw
+      .slice(0, MAX_TANK_COMPONENTS)
+      .map((component) => this.reCoerceStoredComponent(component))
+      .filter((component): component is TankComponent => component !== null);
+  }
+
+  private reCoerceStoredComponent(component: any): TankComponent | null {
+    const shape = component?.shape;
+    return this.coerceTankComponent({
+      ...component,
+      ...shape,
+      shapeType: shape?.type,
+    });
+  }
+
+  private mergeExtractionResults(results: DrawingExtractionResult[]): DrawingExtractionResult {
+    if (results.length === 0) {
+      return this.emptyResult();
+    }
+
+    const tankResult = results.find(
+      (result) => result.drawingType === "tank_chute" && result.tankData !== null,
+    );
+
+    return {
+      drawingType: tankResult ? "tank_chute" : "pipe",
+      dimensions: results.flatMap((result) => result.dimensions),
+      tankData: tankResult ? tankResult.tankData : null,
+      totalExternalM2: round2(results.reduce((sum, result) => sum + result.totalExternalM2, 0)),
+      totalInternalM2: round2(results.reduce((sum, result) => sum + result.totalInternalM2, 0)),
+      totalLiningM2: round2(results.reduce((sum, result) => sum + result.totalLiningM2, 0)),
+      totalCoatingM2: round2(results.reduce((sum, result) => sum + result.totalCoatingM2, 0)),
+      rawText: "",
+      confidence: results.reduce((max, result) => Math.max(max, result.confidence), 0),
+    };
   }
 
   async classifyAttachment(
@@ -1048,34 +1100,24 @@ export class DrawingExtractionService {
         overallWidthMm: td.overallWidthMm ?? null,
         overallHeightMm: td.overallHeightMm ?? null,
         liningType: td.liningType || null,
-        liningThicknessMm: td.liningThicknessMm ?? null,
-        liningAreaM2: td.liningAreaM2 ?? null,
-        coatingAreaM2: td.coatingAreaM2 ?? null,
+        liningThicknessMm: finiteInRange(td.liningThicknessMm, MAX_TANK_DIMENSION_MM),
+        liningAreaM2: finiteInRange(td.liningAreaM2, MAX_TANK_AREA_M2),
+        coatingAreaM2: finiteInRange(td.coatingAreaM2, MAX_TANK_AREA_M2),
         coatingSystem: td.coatingSystem || null,
         surfacePrepStandard: td.surfacePrepStandard || null,
         sections: Array.isArray(td.sections)
           ? td.sections.map((s: any) => ({
-              mark: s.mark || "",
-              description: s.description || "",
-              liningAreaM2: s.liningAreaM2 ?? null,
-              coatingAreaM2: s.coatingAreaM2 ?? null,
+              mark: typeof s.mark === "string" ? s.mark.slice(0, 120) : "",
+              description: typeof s.description === "string" ? s.description.slice(0, 300) : "",
+              liningAreaM2: finiteInRange(s.liningAreaM2, MAX_TANK_AREA_M2),
+              coatingAreaM2: finiteInRange(s.coatingAreaM2, MAX_TANK_AREA_M2),
             }))
           : [],
         // Developed flat plate parts — extracted in this single vision call
         // (lengthMm/widthMm are the developed cut sizes, liningThicknessMm the
         // per-plate rubber thickness) so the import needs only ONE call per
         // drawing instead of a second Nix plate take-off.
-        plateParts: Array.isArray(td.plateParts)
-          ? td.plateParts.map((p: any) => ({
-              mark: p.mark || "",
-              description: p.description || "",
-              thicknessMm: p.thicknessMm ?? 0,
-              lengthMm: p.lengthMm ?? 0,
-              widthMm: p.widthMm ?? 0,
-              quantity: p.quantity ?? 1,
-              liningThicknessMm: p.liningThicknessMm ?? 0,
-            }))
-          : [],
+        plateParts: this.coercePlateParts(td.plateParts),
         // Shape-classified components (flat AI fields → nested developed shape) that
         // drive the geometric tank m² and the developed cutting panels. Components
         // with no usable dimensions are dropped during coercion.
@@ -1116,6 +1158,33 @@ export class DrawingExtractionService {
       .slice(0, MAX_TANK_COMPONENTS)
       .map((component) => this.coerceTankComponent(component))
       .filter((component): component is TankComponent => component !== null);
+  }
+
+  private coercePlateParts(raw: unknown): TankExtractionData["plateParts"] {
+    if (!Array.isArray(raw)) {
+      return [];
+    }
+    return raw
+      .slice(0, MAX_PLATE_PARTS)
+      .map((part) => this.coercePlatePart(part))
+      .filter((part): part is TankExtractionData["plateParts"][number] => part !== null);
+  }
+
+  private coercePlatePart(part: any): TankExtractionData["plateParts"][number] | null {
+    const lengthMm = finiteInRange(part?.lengthMm, MAX_TANK_DIMENSION_MM);
+    const widthMm = finiteInRange(part?.widthMm, MAX_TANK_DIMENSION_MM);
+    if (!lengthMm || !widthMm) {
+      return null;
+    }
+    return {
+      mark: typeof part.mark === "string" ? part.mark.slice(0, 120) : "",
+      description: typeof part.description === "string" ? part.description.slice(0, 300) : "",
+      thicknessMm: finiteInRange(part.thicknessMm, MAX_TANK_DIMENSION_MM) ?? 0,
+      lengthMm,
+      widthMm,
+      quantity: clampQuantity(part.quantity),
+      liningThicknessMm: finiteInRange(part.liningThicknessMm, MAX_TANK_DIMENSION_MM) ?? 0,
+    };
   }
 
   private coerceTankComponent(component: any): TankComponent | null {
@@ -1318,13 +1387,98 @@ export class DrawingExtractionService {
     return 12.7;
   }
 
+  private normaliseItemCode(value: string | null): string | null {
+    if (!value) {
+      return null;
+    }
+    const normalised = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    return normalised.length >= 3 ? normalised : null;
+  }
+
+  private drawingCodeFromFilename(filename: string | null): string | null {
+    if (!filename) {
+      return null;
+    }
+    const withoutExtension = filename.replace(/\.[^.]+$/, "");
+    const match = withoutExtension.match(/^([A-Za-z]{1,4}\d+[-_\s]?\d{2,6})/);
+    return match ? match[1] : null;
+  }
+
+  private async fillMatchingLineItemFromTank(
+    companyId: number,
+    jobCardId: number,
+    tankData: TankExtractionData,
+    matchKeys: (string | null)[],
+  ): Promise<boolean> {
+    const keys = new Set(
+      matchKeys
+        .map((key) => this.normaliseItemCode(key))
+        .filter((key): key is string => key !== null && key.length >= 4),
+    );
+    if (keys.size === 0) {
+      return false;
+    }
+
+    const liningAreaM2 = finiteInRange(tankData.liningAreaM2, MAX_TANK_AREA_M2) ?? 0;
+    const coatingAreaM2 = finiteInRange(tankData.coatingAreaM2, MAX_TANK_AREA_M2) ?? 0;
+    if (liningAreaM2 <= 0 && coatingAreaM2 <= 0) {
+      return false;
+    }
+
+    const lineItems = await this.lineItemRepo.findForJobCardOrderedBySort(jobCardId, companyId);
+    const matches = lineItems.filter((item) => {
+      const byItemNo = this.normaliseItemCode(item.itemNo);
+      const byItemCode = this.normaliseItemCode(item.itemCode);
+      return (
+        (byItemNo !== null && keys.has(byItemNo)) || (byItemCode !== null && keys.has(byItemCode))
+      );
+    });
+
+    if (matches.length !== 1) {
+      return false;
+    }
+    const match = matches[0];
+
+    if (isPipeLineItem(match.itemDescription) || isPipeLineItem(match.itemCode)) {
+      return false;
+    }
+
+    if (liningAreaM2 > 0) {
+      match.liningM2 = round2(liningAreaM2);
+    }
+    if (coatingAreaM2 > 0) {
+      match.m2 = round2(coatingAreaM2);
+    }
+    if (tankData.plateParts.length > 0) {
+      match.plateBom = tankData.plateParts;
+    }
+    if (tankData.components.length > 0) {
+      match.tankComponents = tankData.components;
+    }
+
+    await this.lineItemRepo.saveMany([match]);
+    this.logger.log(
+      `Filled line item ${match.id} (itemNo ${match.itemNo ?? "?"}) from tank drawing for job card ${jobCardId}: liningM²=${match.liningM2 ?? 0}, m²=${match.m2 ?? 0}`,
+    );
+    return true;
+  }
+
   private async updateLineItemsFromExtraction(
     companyId: number,
     jobCardId: number,
     result: DrawingExtractionResult,
+    matchKeys: (string | null)[] = [],
   ): Promise<void> {
     if (result.drawingType === "tank_chute" && result.tankData) {
-      await this.createTankLineItems(companyId, jobCardId, result);
+      const filled = await this.fillMatchingLineItemFromTank(
+        companyId,
+        jobCardId,
+        result.tankData,
+        matchKeys,
+      );
+      if (!filled) {
+        await this.createTankLineItems(companyId, jobCardId, result);
+      }
       return;
     }
 
@@ -1366,13 +1520,20 @@ export class DrawingExtractionService {
     const tankData = result.tankData;
     if (!tankData) return;
 
-    // Append-only: re-extraction of a NEW (PENDING/FAILED) attachment adds its
-    // items. Double-extraction is prevented upstream — extractAllFromJobCard only
-    // processes PENDING/FAILED, never re-runs ANALYSED. We deliberately do NOT
-    // delete prior line items by heuristic: in a rubber-lining shop "R/L "/"COAT "
-    // are natural manual/import item codes, so inferring provenance from them would
-    // delete the user's own data.
+    // Append fallback when no existing line item matches the drawing. This runs
+    // once per drawing in the re-extract loop and re-runs on ANALYSED drawings
+    // when reapplyAnalysed is set, so we dedupe by itemDescription against the
+    // rows already present to avoid stacking duplicate R/L/COAT rows on repeat
+    // runs. We deliberately do NOT delete prior line items by heuristic: in a
+    // rubber-lining shop "R/L "/"COAT " are natural manual/import item codes, so
+    // inferring provenance from them would delete the user's own data.
     const existingItems = await this.lineItemRepo.findForJobCardOrderedBySort(jobCardId, companyId);
+
+    const existingDescriptions = new Set(
+      existingItems
+        .map((item) => (item.itemDescription || "").trim().toLowerCase())
+        .filter((description) => description.length > 0),
+    );
 
     const maxSortOrder = existingItems.reduce((max, item) => Math.max(max, item.sortOrder), 0);
 
@@ -1406,7 +1567,7 @@ export class DrawingExtractionService {
                           .join(" - "),
                         itemCode: `R/L ${section.mark}`,
                         quantity: 1,
-                        m2: Math.round(section.liningAreaM2 * 100) / 100,
+                        liningM2: round2(section.liningAreaM2),
                         sortOrder: acc.nextOrder,
                       },
                     ]
@@ -1429,7 +1590,7 @@ export class DrawingExtractionService {
                           .join(" - "),
                         itemCode: `COAT ${section.mark}`,
                         quantity: 1,
-                        m2: Math.round(section.coatingAreaM2 * 100) / 100,
+                        m2: round2(section.coatingAreaM2),
                         sortOrder: acc.nextOrder + liningItem.length,
                       },
                     ]
@@ -1457,7 +1618,7 @@ export class DrawingExtractionService {
                       .join(" - "),
                     itemCode: tankData.drawingReference || null,
                     quantity: 1,
-                    m2: Math.round(tankData.liningAreaM2 * 100) / 100,
+                    liningM2: round2(tankData.liningAreaM2),
                     sortOrder: maxSortOrder + 1,
                   },
                 ]
@@ -1476,7 +1637,7 @@ export class DrawingExtractionService {
                       .join(" - "),
                     itemCode: tankData.drawingReference || null,
                     quantity: 1,
-                    m2: Math.round(tankData.coatingAreaM2 * 100) / 100,
+                    m2: round2(tankData.coatingAreaM2),
                     sortOrder:
                       maxSortOrder +
                       1 +
@@ -1486,20 +1647,24 @@ export class DrawingExtractionService {
               : []),
           ];
 
-    if (newItems.length > 0) {
+    const dedupedItems = newItems.filter(
+      (item) => !existingDescriptions.has((item.itemDescription || "").trim().toLowerCase()),
+    );
+
+    if (dedupedItems.length > 0) {
       const plateBom = tankData.plateParts.length > 0 ? tankData.plateParts : null;
       const tankComponents = tankData.components.length > 0 ? tankData.components : null;
-      const liningIndex = newItems.findIndex(
+      const liningIndex = dedupedItems.findIndex(
         (item) =>
           item.itemCode?.startsWith("R/L") || /Lining|R\/L/i.test(item.itemDescription || ""),
       );
       const carrierIndex = liningIndex >= 0 ? liningIndex : 0;
       const enriched =
         plateBom || tankComponents
-          ? newItems.map((item, idx) =>
+          ? dedupedItems.map((item, idx) =>
               idx === carrierIndex ? { ...item, plateBom, tankComponents } : item,
             )
-          : newItems;
+          : dedupedItems;
       const created = this.lineItemRepo.buildMany(enriched);
       await this.lineItemRepo.saveMany(created);
       this.logger.log(

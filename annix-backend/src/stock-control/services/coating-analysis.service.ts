@@ -16,6 +16,7 @@ import { JobCardExtractionCorrection } from "../entities/job-card-extraction-cor
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { INVALID_LINE_ITEM_PATTERNS } from "../lib/line-item-validation";
+import { PIPE_ITEM_PATTERN } from "../lib/pipe-item-pattern";
 import { JobCardCoatingAnalysisRepository } from "../repositories/coating-analysis.repository";
 import { CustomerPurchaseOrderRepository } from "../repositories/customer-purchase-order.repository";
 import { JobCardRepository } from "../repositories/job-card.repository";
@@ -158,8 +159,6 @@ export class CoatingAnalysisService {
 
       const lineItems = allLineItems.filter((li) => !junkItemIds.has(li.id));
 
-      const PIPE_ITEM_PATTERN =
-        /(?:\d+\s*NB|NB\s*\d+|^\d{2,4}\s*x\s*\d{2,4}\b|\bPIPE\b|\bBEND\b|\bELBOW\b|\bTEE\b|\bT[- ]?PIECE\b|\bREDUCER\b|\bLATERAL\b|\bFLANGE\b|\bOFFSET\b|\bVALVE\b|\bSCH(?:EDULE)?\s*\d+|\d+\s*LG\b|\d+(?:\.\d+)?\s*m\s*(?:²|2))/i;
       const hasPipeItems = lineItems.some((li) => {
         const desc = li.itemDescription || li.itemCode || "";
         return PIPE_ITEM_PATTERN.test(desc);
@@ -174,7 +173,8 @@ export class CoatingAnalysisService {
         calculatedIntM2 = calculated.intM2;
       }
 
-      const lineItemTotalM2 = this.sumLineItemM2WithQuantity(lineItems);
+      const lineItemExtM2 = this.sumLineItemM2WithQuantity(lineItems);
+      const lineItemIntM2 = this.sumLineItemLiningM2WithQuantity(lineItems);
       const paintM2 = this.sumPaintM2(lineItems);
 
       const SPEC_NOTE_PATTERN =
@@ -249,9 +249,9 @@ export class CoatingAnalysisService {
       const hasInt = aiResult.coats.some((c) => c.area === "internal");
       const needsIntM2 = hasInt || hasInternalRubberLining;
 
-      if (lineItemTotalM2 > 0) {
-        analysis.extM2 = hasExt ? lineItemTotalM2 : 0;
-        analysis.intM2 = needsIntM2 ? lineItemTotalM2 : 0;
+      if (lineItemExtM2 > 0 || lineItemIntM2 > 0) {
+        analysis.extM2 = hasExt ? lineItemExtM2 : 0;
+        analysis.intM2 = needsIntM2 ? lineItemIntM2 : 0;
       } else if (paintM2 > 0) {
         analysis.extM2 = hasExt ? paintM2 : 0;
         analysis.intM2 = needsIntM2 ? paintM2 : 0;
@@ -571,11 +571,17 @@ export class CoatingAnalysisService {
     }, 0);
   }
 
+  private sumLineItemLiningM2WithQuantity(lineItems: JobCardLineItem[]): number {
+    return lineItems.reduce((sum, li) => {
+      const liningM2 = Number(li.liningM2) || 0;
+      const qty = Number(li.quantity) || 1;
+      return sum + liningM2 * qty;
+    }, 0);
+  }
+
   async recalculateLineItemM2(companyId: number, jobCardId: number): Promise<JobCardLineItem[]> {
     const lineItems = await this.lineItemRepo.findForJobCardAndCompany(jobCardId, companyId);
 
-    const PIPE_ITEM_PATTERN =
-      /(?:\d+\s*NB|NB\s*\d+|^\d{2,4}\s*x\s*\d{2,4}\b|\bPIPE\b|\bBEND\b|\bELBOW\b|\bTEE\b|\bT[- ]?PIECE\b|\bREDUCER\b|\bLATERAL\b|\bFLANGE\b|\bOFFSET\b|\bVALVE\b|\bSCH(?:EDULE)?\s*\d+|\d+\s*LG\b|\d+(?:\.\d+)?\s*m\s*(?:²|2))/i;
     const pipeItems = lineItems.filter((li) => {
       const desc = li.itemDescription || li.itemCode || "";
       return PIPE_ITEM_PATTERN.test(desc);
@@ -614,8 +620,6 @@ export class CoatingAnalysisService {
   private async calculatePipeM2(
     lineItems: JobCardLineItem[],
   ): Promise<{ extM2: number; intM2: number }> {
-    const PIPE_ITEM_PATTERN =
-      /(?:\d+\s*NB|NB\s*\d+|^\d{2,4}\s*x\s*\d{2,4}\b|\bPIPE\b|\bBEND\b|\bELBOW\b|\bTEE\b|\bT[- ]?PIECE\b|\bREDUCER\b|\bLATERAL\b|\bFLANGE\b|\bOFFSET\b|\bVALVE\b|\bSCH(?:EDULE)?\s*\d+|\d+\s*LG\b|\d+(?:\.\d+)?\s*m\s*(?:²|2))/i;
     const pipeItems = lineItems.filter((li) => {
       const desc = li.itemDescription || li.itemCode || "";
       return PIPE_ITEM_PATTERN.test(desc);

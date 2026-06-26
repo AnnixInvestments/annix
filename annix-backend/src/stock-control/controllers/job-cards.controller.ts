@@ -21,6 +21,7 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
 import { now, nowISO } from "../../lib/datetime";
+import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import {
   MarkOffcutAsWastageDto,
@@ -83,6 +84,7 @@ export class JobCardsController {
     private readonly dimensionOverrideRepo: RubberDimensionOverrideRepository,
     private readonly stockMovementRepo: StockMovementRepository,
     private readonly lineItemRepo: JobCardLineItemRepository,
+    private readonly extractionMetricService: ExtractionMetricService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
@@ -423,11 +425,18 @@ export class JobCardsController {
 
   @StockControlRoles("admin", "accounts")
   @Post(":id/re-extract")
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { ttl: 60000, limit: 6 } })
   @ApiOperation({ summary: "Re-extract line items from source file with improved validation" })
   async reExtract(@Req() req: any, @Param("id") id: number) {
-    const result = await this.jobCardImportService.reExtractLineItems(req.user.companyId, id);
+    const companyId = req.user.companyId;
+    const result = await this.jobCardImportService.reExtractLineItems(companyId, id);
 
-    this.coatingAnalysisService.analyseJobCards([id], req.user.companyId).catch((err) => {
+    await this.extractionMetricService.time("job-card", "re-extract-with-drawings", () =>
+      this.drawingExtractionService.extractAllFromJobCard(companyId, id, { reapplyAnalysed: true }),
+    );
+
+    this.coatingAnalysisService.analyseJobCards([id], companyId).catch((err) => {
       const message = err instanceof Error ? err.message : "Unknown error";
       this.logger.error(`Background coating analysis failed after re-extract: ${message}`);
     });

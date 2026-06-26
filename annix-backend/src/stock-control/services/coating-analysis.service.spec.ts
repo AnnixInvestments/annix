@@ -262,6 +262,73 @@ describe("CoatingAnalysisService", () => {
     });
   });
 
+  describe("per-surface area sums (via analyseJobCard)", () => {
+    it("reads extM2 from m2 and intM2 from liningM2 separately, scaled by quantity", async () => {
+      mockAnalysisRepo.findOneForJobCard.mockResolvedValue(null);
+      mockJobCardRepo.findOne.mockResolvedValue({ id: 1, notes: "INT: R/L 6mm\nEXT: PAINT" });
+      mockLineItemRepo.find.mockResolvedValue([
+        {
+          itemCode: "CD1-6147",
+          itemDescription: "Tank body",
+          m2: 18.25,
+          liningM2: 12.5,
+          quantity: 2,
+        },
+      ]);
+      mockStockItemRepo.findForCompanySelectMatch.mockResolvedValue([]);
+      mockAiChatService.chat.mockResolvedValue({
+        content: JSON.stringify({
+          applicationType: "internal",
+          surfacePrep: null,
+          coats: [
+            {
+              product: "RubberX",
+              genericType: "rubber",
+              area: "internal",
+              minDftUm: 6000,
+              maxDftUm: 6000,
+              solidsByVolumePercent: 100,
+            },
+            {
+              product: "EpoxyY",
+              genericType: "epoxy",
+              area: "external",
+              minDftUm: 100,
+              maxDftUm: 100,
+              solidsByVolumePercent: 60,
+            },
+          ],
+        }),
+      });
+
+      const result = await service.analyseJobCard(1, 1);
+      expect(result.extM2).toBe(36.5);
+      expect(result.intM2).toBe(25);
+    });
+
+    it("does not leak m2 into extM2 when only an internal lining is specified", async () => {
+      mockAnalysisRepo.findOneForJobCard.mockResolvedValue(null);
+      mockJobCardRepo.findOne.mockResolvedValue({ id: 1, notes: "INT: R/L 6mm" });
+      mockLineItemRepo.find.mockResolvedValue([
+        {
+          itemCode: "CD1-6147",
+          itemDescription: "Tank body",
+          m2: 18.25,
+          liningM2: 12.5,
+          quantity: 2,
+        },
+      ]);
+      mockStockItemRepo.findForCompanySelectMatch.mockResolvedValue([]);
+      mockAiChatService.chat.mockResolvedValue({
+        content: JSON.stringify({ applicationType: "internal", surfacePrep: null, coats: [] }),
+      });
+
+      const result = await service.analyseJobCard(1, 1);
+      expect(result.intM2).toBe(25);
+      expect(result.extM2).toBe(0);
+    });
+  });
+
   describe("fuzzy stock matching (via assessStock)", () => {
     function setupForStockMatch(stockItems: { id: number; name: string; quantity: number }[]) {
       mockAnalysisRepo.findOneForJobCard.mockResolvedValue(null);
