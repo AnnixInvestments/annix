@@ -1978,16 +1978,24 @@ Formula: totalPrice = totalKg × salePricePerKg
       });
 
     const documentPath = note.documentPath;
+    const sourcePages = note.sourcePageNumbers;
     // A split/sibling DN points at a per-DN slice; if that slice is missing from
     // storage, fall back to the full source PDF and map this DN's own pages out
     // of it via sourcePageNumbers, so the operator can still verify extraction.
     const resolved = await (async (): Promise<{ images: Buffer[]; pageIndices: number[] }> => {
       try {
         const sliceImages = await imagesFor(documentPath);
-        return { images: sliceImages, pageIndices: sliceImages.map((_, i) => i) };
+        // A true per-DN slice already holds only this DN's pages. Legacy rows
+        // still point documentPath at the full multi-DN source; there
+        // sourcePageNumbers identifies this DN's pages, so restrict to them.
+        // Either way the viewer receives just this DN, re-indexed from page 1.
+        const pageIndices =
+          sourcePages && sourcePages.length > 0 && sourcePages.length < sliceImages.length
+            ? sourcePages.filter((p) => p >= 1 && p <= sliceImages.length).map((p) => p - 1)
+            : sliceImages.map((_, i) => i);
+        return { images: sliceImages, pageIndices };
       } catch (err) {
         const fallback = note.sourceDocumentPath;
-        const sourcePages = note.sourcePageNumbers;
         if (!fallback || fallback === documentPath || !sourcePages || sourcePages.length === 0) {
           throw err;
         }

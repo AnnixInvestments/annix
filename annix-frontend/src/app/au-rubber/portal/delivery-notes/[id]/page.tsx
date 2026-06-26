@@ -231,14 +231,23 @@ export default function DeliveryNoteDetailPage() {
   // Show the scanned document beside the extracted data by default, so the
   // values can be verified against the source without opening it separately.
   const docAutoShownRef = useRef(false);
+  // The App Router reuses this component instance when navigating between
+  // /delivery-notes/[id] pages, so the one-shot ref below would stay set and
+  // the viewer would keep showing the first DN's PDF. Re-arm it on every id
+  // change so the scanned document reloads for the DN actually opened.
+  useEffect(() => {
+    docAutoShownRef.current = false;
+  }, [noteId]);
   useEffect(() => {
     if (docAutoShownRef.current) return;
     if (!note?.documentPath) return;
     docAutoShownRef.current = true;
     setShowDocViewer(true);
-    const firstPage =
-      note.sourcePageNumbers && note.sourcePageNumbers.length > 0 ? note.sourcePageNumbers[0] : 1;
-    void loadDocPage(firstPage);
+    // The page endpoint always returns THIS DN's own pages re-indexed from 1
+    // (a per-DN slice, or the source PDF restricted to its sourcePageNumbers),
+    // so the viewer must start at local page 1. Passing the original source
+    // page number here made every DN not on page 1 show "Document unavailable".
+    void loadDocPage(1);
     // loadDocPage is a stable per-render closure; the ref guard keeps this
     // one-shot, so it intentionally does not belong in the dependency list.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -577,9 +586,8 @@ export default function DeliveryNoteDetailPage() {
   const handleOpenDocViewer = async () => {
     if (!note?.documentPath) return;
     setShowDocViewer(true);
-    const firstPage =
-      note.sourcePageNumbers && note.sourcePageNumbers.length > 0 ? note.sourcePageNumbers[0] : 1;
-    await loadDocPage(firstPage);
+    // Endpoint re-indexes this DN's pages from 1 — always open local page 1.
+    await loadDocPage(1);
   };
 
   const handleCloseDocViewer = () => {
