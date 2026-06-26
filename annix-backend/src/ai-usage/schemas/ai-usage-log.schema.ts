@@ -49,6 +49,12 @@ export class AiUsageLog {
   @Prop({ type: Object, required: false })
   contextInfo: Record<string, unknown>;
 
+  @Prop({ type: Number, required: false })
+  companyId: number;
+
+  @Prop({ type: Number, required: false })
+  userId: number;
+
   @Prop({ type: Date, required: false })
   createdAt: Date;
 }

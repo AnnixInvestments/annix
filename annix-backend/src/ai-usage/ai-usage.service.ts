@@ -16,6 +16,8 @@ export interface LogAiUsageDto {
   pageCount?: number;
   processingTimeMs?: number;
   contextInfo?: Record<string, unknown>;
+  companyId?: number;
+  userId?: number;
 }
 
 export interface AiUsageQueryDto {
@@ -116,6 +118,8 @@ export class AiUsageService {
         pageCount: dto.pageCount ?? null,
         processingTimeMs: dto.processingTimeMs ?? null,
         contextInfo: dto.contextInfo ?? null,
+        companyId: dto.companyId ?? null,
+        userId: dto.userId ?? null,
       })
       .catch((error) => {
         this.logger.error(`Failed to log AI usage: ${error.message}`);

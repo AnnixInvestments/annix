@@ -1,11 +1,10 @@
-import { exec } from "node:child_process";
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
-import { promisify } from "node:util";
 import { Injectable, Logger } from "@nestjs/common";
 import sharp from "sharp";
 import { createWorker } from "tesseract.js";
+import { renderPdfToPng } from "../../lib/pdf/ghostscript";
 import {
   PdfPageImageDto,
   PdfPagesResponseDto,
@@ -13,8 +12,6 @@ import {
 } from "../dto/extraction-region.dto";
 import { NixExtractionRegion, RegionCoordinates } from "../entities/nix-extraction-region.entity";
 import { NixExtractionRegionRepository } from "../nix-extraction-region.repository";
-
-const execAsync = promisify(exec);
 
 @Injectable()
 export class DocumentAnnotationService {
@@ -37,15 +34,14 @@ export class DocumentAnnotationService {
       await fs.writeFile(inputPath, buffer);
 
       const dpi = Math.round(150 * scale);
-      const gsCommand =
-        process.platform === "win32"
-          ? '"C:\\Program Files\\gs\\gs10.06.0\\bin\\gswin64c.exe"'
-          : "gs";
-      const command = `${gsCommand} -dNOPAUSE -dBATCH -dSAFER -sDEVICE=png16m -r${dpi} -dTextAlphaBits=4 -dGraphicsAlphaBits=4 "-sOutputFile=${outputPattern}" "${inputPath}"`;
 
       this.logger.log("Running Ghostscript command");
 
-      const { stderr: gsStderr } = await execAsync(command, { timeout: 60000 });
+      const { stderr: gsStderr } = await renderPdfToPng({
+        inputPath,
+        outputPath: outputPattern,
+        dpi,
+      });
       if (gsStderr) {
         this.logger.warn(`Ghostscript stderr: ${gsStderr.substring(0, 500)}`);
       }
@@ -124,19 +120,19 @@ export class DocumentAnnotationService {
         `[extractFromRegion] Wrote PDF to ${inputPath}, size: ${buffer.length} bytes`,
       );
 
-      const gsCommand =
-        process.platform === "win32"
-          ? '"C:\\Program Files\\gs\\gs10.06.0\\bin\\gswin64c.exe"'
-          : "gs";
       const extractionDpi = 300;
-      const command = `${gsCommand} -dNOPAUSE -dBATCH -dSAFER -sDEVICE=png16m -r${extractionDpi} -dTextAlphaBits=4 -dGraphicsAlphaBits=4 -dFirstPage=${regionCoordinates.pageNumber} -dLastPage=${regionCoordinates.pageNumber} "-sOutputFile=${outputPath}" "${inputPath}"`;
 
       this.logger.log(
         `[extractFromRegion] Running Ghostscript command for page ${regionCoordinates.pageNumber}`,
       );
-      this.logger.log(`[extractFromRegion] GS command: ${command}`);
 
-      const { stdout, stderr } = await execAsync(command, { timeout: 60000 });
+      const { stdout, stderr } = await renderPdfToPng({
+        inputPath,
+        outputPath,
+        dpi: extractionDpi,
+        firstPage: regionCoordinates.pageNumber,
+        lastPage: regionCoordinates.pageNumber,
+      });
       this.logger.log(
         `[extractFromRegion] Ghostscript completed, stdout: ${stdout?.substring(0, 200) || "empty"}`,
       );

@@ -271,6 +271,13 @@ export class InvoiceExtractionService {
           mediaType,
           "Extract the invoice details from this scanned invoice image. Return JSON only.",
           systemPrompt,
+          undefined,
+          {
+            app: AiApp.STOCK_CONTROL,
+            actionType: "invoice-extraction",
+            quotaScope: "company",
+            companyId: invoice.companyId,
+          },
         ),
       );
 

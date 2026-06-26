@@ -1,7 +1,10 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import { AiQuotaService } from "../../ai-usage/ai-quota.service";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
+import type { AiQuotaScope } from "../../ai-usage/config/ai-quota.config";
 import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { nowMillis } from "../../lib/datetime";
+import { defaultVisionInputLimits, reduceVisionInput } from "../../lib/pdf/vision-input-guard";
 import {
   ChatMessage,
   ClaudeChatProvider,
@@ -27,6 +30,9 @@ export interface AiUsageLogContext {
   app: AiApp;
   actionType: string;
   contextInfo?: Record<string, unknown>;
+  companyId?: number;
+  userId?: number;
+  quotaScope?: AiQuotaScope;
 }
 
 interface ChatProvider {
@@ -46,7 +52,10 @@ export class AiChatService implements OnModuleInit {
   private readonly providers: Map<string, ChatProvider> = new Map();
   private preferredProvider: AiChatProviderType;
 
-  constructor(private readonly aiUsageService: AiUsageService) {
+  constructor(
+    private readonly aiUsageService: AiUsageService,
+    private readonly aiQuotaService: AiQuotaService,
+  ) {
     this.providers.set("gemini", new GeminiChatProvider());
     this.providers.set("claude", new ClaudeChatProvider());
 
@@ -115,6 +124,10 @@ export class AiChatService implements OnModuleInit {
     options?: ChatGenerationOptions,
     usageLog?: AiUsageLogContext,
   ): Promise<{ content: string; providerUsed: string; tokensUsed?: number; usage?: AiUsage }> {
+    await this.aiQuotaService.assertWithinQuota(
+      usageLog ?? { app: AiApp.UNKNOWN, actionType: "uncontextualized" },
+    );
+
     const providerToUse = providerOverride || this.preferredProvider;
     const { provider, usedFallback } = await this.selectProviderWithFallback(providerToUse);
 
@@ -193,6 +206,12 @@ export class AiChatService implements OnModuleInit {
     options?: ChatGenerationOptions,
     usageLog?: AiUsageLogContext,
   ): Promise<{ content: string; providerUsed: string; tokensUsed?: number; usage?: AiUsage }> {
+    const reducedBuffer = await reduceVisionInput(
+      Buffer.from(imageBase64, "base64"),
+      mediaType,
+      defaultVisionInputLimits(),
+    );
+    const reducedBase64 = reducedBuffer.toString("base64");
     const fileContent: ImageContent | DocumentContent =
       mediaType === "application/pdf"
         ? {
@@ -200,7 +219,7 @@ export class AiChatService implements OnModuleInit {
             source: {
               type: "base64",
               media_type: "application/pdf",
-              data: imageBase64,
+              data: reducedBase64,
             },
           }
         : {
@@ -208,7 +227,7 @@ export class AiChatService implements OnModuleInit {
             source: {
               type: "base64",
               media_type: mediaType,
-              data: imageBase64,
+              data: reducedBase64,
             },
           };
 
@@ -253,7 +272,10 @@ export class AiChatService implements OnModuleInit {
       tokensUsed: usage?.totalTokens,
       processingTimeMs,
       contextInfo: context.contextInfo,
+      companyId: context.companyId,
+      userId: context.userId,
     });
+    this.aiQuotaService.debit(context, usage?.totalTokens ?? 0);
   }
 
   async *streamChat(

@@ -944,13 +944,11 @@ export class CustomerAdminService {
   }
 
   private async convertPdfToImages(pdfBuffer: Buffer): Promise<string[]> {
-    const { exec } = await import("node:child_process");
-    const { promisify } = await import("node:util");
+    const { renderPdfToPng } = await import("../lib/pdf/ghostscript");
     const fs = await import("node:fs/promises");
     const path = await import("node:path");
     const os = await import("node:os");
 
-    const execAsync = promisify(exec);
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "pdf-preview-"));
     const inputPath = path.join(tempDir, "input.pdf");
     const outputPattern = path.join(tempDir, "page-%d.png");
@@ -963,15 +961,13 @@ export class CustomerAdminService {
       await fs.writeFile(inputPath, pdfBuffer);
       this.logger.debug("[PDF Preview] Wrote input PDF to:", inputPath);
 
-      const gsCommand =
-        process.platform === "win32"
-          ? '"C:\\Program Files\\gs\\gs10.06.0\\bin\\gswin64c.exe"'
-          : "gs";
-      const command = `${gsCommand} -dNOPAUSE -dBATCH -dSAFER -sDEVICE=png16m -r150 -dTextAlphaBits=4 -dGraphicsAlphaBits=4 "-sOutputFile=${outputPattern}" "${inputPath}"`;
+      this.logger.debug("[PDF Preview] Running Ghostscript");
 
-      this.logger.debug("[PDF Preview] Running command:", command);
-
-      const { stdout, stderr } = await execAsync(command, { timeout: 60000 });
+      const { stdout, stderr } = await renderPdfToPng({
+        inputPath,
+        outputPath: outputPattern,
+        dpi: 150,
+      });
       this.logger.debug("[PDF Preview] GS stdout:", stdout);
       if (stderr) {
         this.logger.debug("[PDF Preview] GS stderr:", stderr);

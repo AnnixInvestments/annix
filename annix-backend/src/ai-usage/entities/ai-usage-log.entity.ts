@@ -38,5 +38,9 @@ export class AiUsageLog {
 
   contextInfo: Record<string, unknown> | null;
 
+  companyId: number | null;
+
+  userId: number | null;
+
   createdAt: Date;
 }
