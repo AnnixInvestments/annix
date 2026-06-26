@@ -1,5 +1,6 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
+import { now } from "../../lib/datetime";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
 import { AttachmentType, ExtractionStatus } from "../entities/job-card-attachment.entity";
@@ -696,6 +697,85 @@ describe("DrawingExtractionService", () => {
       expect(mockLineItemRepo.buildMany).toHaveBeenCalledTimes(1);
     });
 
+    it("recovers an orphaned PROCESSING drawing on an explicit re-extract", async () => {
+      mockJobCardRepo.findOneForCompany.mockResolvedValue({ id: 1, companyId: 10 });
+      const processing = analysedAttachment();
+      processing.extractionStatus = ExtractionStatus.PROCESSING;
+      (processing as any).updatedAt = now().toJSDate();
+      mockAttachmentRepo.findForJobCard.mockResolvedValue([processing]);
+      const extractSpy = jest
+        .spyOn(service as any, "extractFromAttachment")
+        .mockResolvedValue(storedTankResult());
+      mockLineItemRepo.findForJobCardOrderedBySort.mockResolvedValue([
+        {
+          id: 42,
+          jobCardId: 1,
+          companyId: 10,
+          itemNo: "CD1-6147",
+          itemCode: null,
+          m2: null,
+          liningM2: null,
+          plateBom: null,
+          tankComponents: null,
+        },
+      ]);
+
+      await service.extractAllFromJobCard(10, 1, { reapplyAnalysed: true });
+
+      expect(extractSpy).toHaveBeenCalled();
+      expect(processing.extractionStatus).toBe(ExtractionStatus.ANALYSED);
+      expect(mockAttachmentRepo.saveForCompany).toHaveBeenCalled();
+      const saved = mockLineItemRepo.saveMany.mock.calls[0][0][0];
+      expect(saved.liningM2).toBe(12.5);
+      expect(saved.m2).toBe(18.25);
+    });
+
+    it("skips a fresh PROCESSING drawing on the Extract-All path", async () => {
+      mockJobCardRepo.findOneForCompany.mockResolvedValue({ id: 1, companyId: 10 });
+      const processing = analysedAttachment();
+      processing.extractionStatus = ExtractionStatus.PROCESSING;
+      (processing as any).updatedAt = now().toJSDate();
+      mockAttachmentRepo.findForJobCard.mockResolvedValue([processing]);
+      const extractSpy = jest.spyOn(service as any, "extractFromAttachment");
+
+      await service.extractAllFromJobCard(10, 1);
+
+      expect(extractSpy).not.toHaveBeenCalled();
+      expect(mockAttachmentRepo.saveForCompany).not.toHaveBeenCalled();
+    });
+
+    it("recovers a stale PROCESSING drawing on the Extract-All path", async () => {
+      mockJobCardRepo.findOneForCompany.mockResolvedValue({ id: 1, companyId: 10 });
+      const processing = analysedAttachment();
+      processing.extractionStatus = ExtractionStatus.PROCESSING;
+      (processing as any).updatedAt = now().minus({ minutes: 10 }).toJSDate();
+      mockAttachmentRepo.findForJobCard.mockResolvedValue([processing]);
+      const extractSpy = jest
+        .spyOn(service as any, "extractFromAttachment")
+        .mockResolvedValue(storedTankResult());
+      mockLineItemRepo.findForJobCardOrderedBySort.mockResolvedValue([
+        {
+          id: 42,
+          jobCardId: 1,
+          companyId: 10,
+          itemNo: "CD1-6147",
+          itemCode: null,
+          m2: null,
+          liningM2: null,
+          plateBom: null,
+          tankComponents: null,
+        },
+      ]);
+
+      await service.extractAllFromJobCard(10, 1);
+
+      expect(extractSpy).toHaveBeenCalled();
+      expect(processing.extractionStatus).toBe(ExtractionStatus.ANALYSED);
+      const saved = mockLineItemRepo.saveMany.mock.calls[0][0][0];
+      expect(saved.liningM2).toBe(12.5);
+      expect(saved.m2).toBe(18.25);
+    });
+
     it("does not append duplicate section rows across multiple drawings on the same job", async () => {
       mockJobCardRepo.findOneForCompany.mockResolvedValue({ id: 1, companyId: 10 });
       const first = analysedAttachment();
@@ -794,21 +874,6 @@ describe("DrawingExtractionService", () => {
 
       expect(result.totalLiningM2).toBe(0);
       expect(mockAiChatService.chat).not.toHaveBeenCalled();
-      expect(mockLineItemRepo.buildMany).not.toHaveBeenCalled();
-      expect(mockLineItemRepo.saveMany).not.toHaveBeenCalled();
-    });
-
-    it("skips an attachment still in PROCESSING during re-extract (no AI, no writes)", async () => {
-      mockJobCardRepo.findOneForCompany.mockResolvedValue({ id: 1, companyId: 10 });
-      const attachment = analysedAttachment();
-      attachment.extractionStatus = ExtractionStatus.PROCESSING;
-      mockAttachmentRepo.findForJobCard.mockResolvedValue([attachment]);
-
-      const result = await service.extractAllFromJobCard(10, 1, { reapplyAnalysed: true });
-
-      expect(result.totalLiningM2).toBe(0);
-      expect(mockAiChatService.chat).not.toHaveBeenCalled();
-      expect(mockAttachmentRepo.saveForCompany).not.toHaveBeenCalled();
       expect(mockLineItemRepo.buildMany).not.toHaveBeenCalled();
       expect(mockLineItemRepo.saveMany).not.toHaveBeenCalled();
     });

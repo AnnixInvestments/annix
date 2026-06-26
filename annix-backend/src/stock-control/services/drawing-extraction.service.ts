@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { now } from "../../lib/datetime";
+import { fromJSDate, now, nowMillis } from "../../lib/datetime";
 import { pdfToPngOffThread } from "../../lib/pdf/pdf-to-png-offthread";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { parseAiJsonObject } from "../../nix/ai-providers/ai-json";
@@ -107,6 +107,7 @@ const TANK_COMPONENT_TYPES: ReadonlyArray<TankComponent["componentType"]> = [
 // Guards against hostile/garbage model output reaching persistence and the
 // downstream m²/nesting math (a single crafted drawing could otherwise emit
 // Infinity dimensions or billion-count quantities that DoS the browser).
+const STALE_PROCESSING_MS = 5 * 60 * 1000;
 const MAX_TANK_COMPONENTS = 500;
 const MAX_PLATE_PARTS = 500;
 const MAX_TANK_COMPONENT_QUANTITY = 1000;
@@ -554,13 +555,27 @@ export class DrawingExtractionService {
 
     const targets = drawingAttachments.filter((attachment) => {
       const status = attachment.extractionStatus;
-      const isPendingOrFailed =
-        status === ExtractionStatus.PENDING || status === ExtractionStatus.FAILED;
-      return isPendingOrFailed || (reapplyAnalysed && status === ExtractionStatus.ANALYSED);
+      if (status === ExtractionStatus.PENDING || status === ExtractionStatus.FAILED) {
+        return true;
+      }
+      if (status === ExtractionStatus.ANALYSED) {
+        return reapplyAnalysed;
+      }
+      if (status === ExtractionStatus.PROCESSING) {
+        return reapplyAnalysed || this.isStaleProcessing(attachment);
+      }
+      return false;
     });
 
     if (targets.length === 0) {
-      this.logger.log(`No drawing attachments to extract for job card ${jobCardId}`);
+      const activeProcessing = drawingAttachments.filter(
+        (attachment) => attachment.extractionStatus === ExtractionStatus.PROCESSING,
+      ).length;
+      this.logger.log(
+        activeProcessing > 0
+          ? `No eligible drawing attachments to extract for job card ${jobCardId} (${activeProcessing} still processing)`
+          : `No drawing attachments to extract for job card ${jobCardId}`,
+      );
       return this.emptyResult();
     }
 
@@ -592,6 +607,15 @@ export class DrawingExtractionService {
     );
 
     return this.mergeExtractionResults(results);
+  }
+
+  private isStaleProcessing(attachment: JobCardAttachment): boolean {
+    const timestamp =
+      attachment.updatedAt ?? attachment.extractedAt ?? attachment.createdAt ?? null;
+    if (!timestamp) {
+      return false;
+    }
+    return nowMillis() - fromJSDate(timestamp).toMillis() > STALE_PROCESSING_MS;
   }
 
   private async extractOrReuseAttachment(
