@@ -51,6 +51,13 @@ export class Company {
 
   heroImageUrl: string | null;
 
+  // Per-company branding for generated documents + outbound emails. letterheadPath
+  // is a banner image placed at the top of this company's PDFs; emailSignaturePath
+  // is appended to this company's emails. Storage keys; null = bundled default.
+  letterheadPath: string | null;
+
+  emailSignaturePath: string | null;
+
   smtpHost: string | null;
 
   smtpPort: number | null;

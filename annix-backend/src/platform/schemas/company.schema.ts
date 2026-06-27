@@ -73,6 +73,12 @@ export class Company {
   heroImageUrl: string;
 
   @Prop({ type: String, required: false })
+  letterheadPath: string;
+
+  @Prop({ type: String, required: false })
+  emailSignaturePath: string;
+
+  @Prop({ type: String, required: false })
   smtpHost: string;
 
   @Prop({ type: Number, required: false })

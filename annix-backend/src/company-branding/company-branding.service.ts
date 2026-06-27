@@ -1,15 +1,16 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { CompanyProfileRepository } from "../admin/repositories/company-profile.repository";
+import { CompanyRepository } from "../platform/company.repository";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 
-// Central access to the admin-configured company branding (letterhead banner +
-// email signature) for use across generated documents and outbound emails.
-// Returns null when nothing is configured so callers fall back to bundled
-// defaults. Buffers are cached briefly to avoid a storage round-trip per
+// Per-tenant company branding (letterhead banner + email signature) for use
+// across that company's generated documents and outbound emails. Keyed by the
+// tenant company id (resolved from the acting user). Returns null when the
+// company has nothing configured so callers fall back to bundled defaults.
+// Buffers are cached briefly per company to avoid a storage round-trip per
 // document/email.
 const CACHE_TTL_MS = 60_000;
 
-interface BrandingCache {
+interface BrandingEntry {
   at: number;
   letterhead: Buffer | null;
   signature: Buffer | null;
@@ -18,49 +19,103 @@ interface BrandingCache {
 @Injectable()
 export class CompanyBrandingService {
   private readonly logger = new Logger(CompanyBrandingService.name);
-  private cache: BrandingCache | null = null;
+  private readonly cache = new Map<number, BrandingEntry>();
 
   constructor(
-    private readonly profileRepo: CompanyProfileRepository,
+    private readonly companyRepo: CompanyRepository,
     @Inject(STORAGE_SERVICE) private readonly storage: IStorageService,
   ) {}
 
-  private async load(): Promise<BrandingCache> {
-    if (this.cache && Date.now() - this.cache.at < CACHE_TTL_MS) {
-      return this.cache;
+  private async load(companyId: number): Promise<BrandingEntry> {
+    const cached = this.cache.get(companyId);
+    if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
+      return cached;
     }
-    const profile = await this.profileRepo.findSingleton().catch(() => null);
+    const company = await this.companyRepo.findById(companyId).catch(() => null);
     const download = async (key: string | null | undefined): Promise<Buffer | null> => {
       if (!key) return null;
       try {
         return await this.storage.download(key);
       } catch (err) {
         this.logger.warn(
-          `Could not load branding asset "${key}": ${err instanceof Error ? err.message : String(err)}`,
+          `Could not load branding asset "${key}" for company ${companyId}: ${err instanceof Error ? err.message : String(err)}`,
         );
         return null;
       }
     };
-    this.cache = {
+    const entry: BrandingEntry = {
       at: Date.now(),
-      letterhead: await download(profile?.letterheadPath),
-      signature: await download(profile?.emailSignaturePath),
+      letterhead: await download(company?.letterheadPath),
+      signature: await download(company?.emailSignaturePath),
     };
-    return this.cache;
+    this.cache.set(companyId, entry);
+    return entry;
   }
 
-  // The uploaded letterhead banner image, or null to use the bundled default.
-  async letterheadImage(): Promise<Buffer | null> {
-    return (await this.load()).letterhead;
+  // The company's uploaded letterhead banner, or null to use the bundled default.
+  async letterheadImage(companyId?: number | null): Promise<Buffer | null> {
+    if (companyId == null) return null;
+    return (await this.load(companyId)).letterhead;
   }
 
-  // The uploaded email-signature image, or null if none configured.
-  async emailSignatureImage(): Promise<Buffer | null> {
-    return (await this.load()).signature;
+  // The company's uploaded email-signature image, or null if none configured.
+  async emailSignatureImage(companyId?: number | null): Promise<Buffer | null> {
+    if (companyId == null) return null;
+    return (await this.load(companyId)).signature;
   }
 
-  // Drop the cache so a freshly uploaded asset is picked up immediately.
-  invalidate(): void {
-    this.cache = null;
+  private pathField(kind: CompanyBrandingKind): "letterheadPath" | "emailSignaturePath" {
+    return kind === "letterhead" ? "letterheadPath" : "emailSignaturePath";
+  }
+
+  // Store an uploaded branding image against the company and refresh its cache.
+  async uploadAsset(
+    companyId: number,
+    kind: CompanyBrandingKind,
+    file: Express.Multer.File,
+  ): Promise<void> {
+    const company = await this.companyRepo.findById(companyId);
+    if (!company) {
+      throw new Error("Company not found");
+    }
+    const result = await this.storage.upload(file, `platform/companies/${companyId}/branding`);
+    await this.companyRepo.save({ ...company, [this.pathField(kind)]: result.path });
+    this.invalidate(companyId);
+    this.logger.log(`Company ${companyId} ${kind} uploaded → ${result.path}`);
+  }
+
+  async removeAsset(companyId: number, kind: CompanyBrandingKind): Promise<void> {
+    const company = await this.companyRepo.findById(companyId);
+    if (!company) {
+      throw new Error("Company not found");
+    }
+    await this.companyRepo.save({ ...company, [this.pathField(kind)]: null });
+    this.invalidate(companyId);
+  }
+
+  // Presigned URLs for previewing this company's branding in the settings UI.
+  async assetUrls(
+    companyId: number,
+  ): Promise<{ letterheadUrl: string | null; emailSignatureUrl: string | null }> {
+    const company = await this.companyRepo.findById(companyId).catch(() => null);
+    const sign = async (key: string | null | undefined): Promise<string | null> => {
+      if (!key) return null;
+      try {
+        return await this.storage.presignedUrl(key, 3600);
+      } catch {
+        return null;
+      }
+    };
+    return {
+      letterheadUrl: await sign(company?.letterheadPath),
+      emailSignatureUrl: await sign(company?.emailSignaturePath),
+    };
+  }
+
+  // Drop a company's cache so a freshly uploaded asset is picked up immediately.
+  invalidate(companyId: number): void {
+    this.cache.delete(companyId);
   }
 }
+
+export type CompanyBrandingKind = "letterhead" | "emailSignature";

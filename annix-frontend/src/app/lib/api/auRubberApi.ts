@@ -2520,6 +2520,30 @@ class AuRubberApiClient {
     path: (id) => `/rubber-lining/portal/accounting/board-meetings/${id}`,
   });
 
+  // ---- Company branding (this company's letterhead + email signature) ----
+
+  companyBrandingUrls = createEndpoint<
+    [],
+    { letterheadUrl: string | null; emailSignatureUrl: string | null }
+  >(apiClient, "GET", {
+    path: "/rubber-lining/portal/settings/branding-urls",
+  });
+
+  uploadCompanyBranding(kind: "letterhead" | "email-signature", file: File): Promise<{ ok: true }> {
+    return apiClient.uploadFile<{ ok: true }>(
+      `/rubber-lining/portal/settings/branding/${kind}`,
+      file,
+    );
+  }
+
+  removeCompanyBranding = createEndpoint<[kind: "letterhead" | "email-signature"], { ok: true }>(
+    apiClient,
+    "DELETE",
+    {
+      path: (kind) => `/rubber-lining/portal/settings/branding/${kind}`,
+    },
+  );
+
   async accountingPayable(
     year: number,
     month: number,

@@ -34,6 +34,10 @@ import {
 import { Response } from "express";
 import { AdminAuthGuard, AdminRequest } from "../admin/guards/admin-auth.guard";
 import { Public } from "../auth/public.decorator";
+import {
+  type CompanyBrandingKind,
+  CompanyBrandingService,
+} from "../company-branding/company-branding.service";
 import { nowISO, nowMillis } from "../lib/datetime";
 import { PaginatedResult } from "../lib/dto/pagination-query.dto";
 import { SageExportFilterDto } from "../sage-export/dto/sage-export.dto";
@@ -284,6 +288,7 @@ export class RubberLiningController {
     private readonly rubberAccountingService: RubberAccountingService,
     private readonly rubberCompanyDirectorService: RubberCompanyDirectorService,
     private readonly rubberBoardMeetingService: RubberBoardMeetingService,
+    private readonly companyBranding: CompanyBrandingService,
     private readonly rubberStatementReconciliationService: RubberStatementReconciliationService,
     private readonly rubberRollIssuanceService: RubberRollIssuanceService,
     private readonly rubberOrderConfirmationService: RubberOrderConfirmationService,
@@ -4606,8 +4611,9 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiOperation({ summary: "Download the board minutes as a letterheaded PDF" })
   async downloadBoardMeetingMinutes(
     @Param("id") id: string,
+    @Req() req: AdminRequest,
   ): Promise<{ filename: string; dataUrl: string }> {
-    return this.rubberBoardMeetingService.downloadMinutes(Number(id));
+    return this.rubberBoardMeetingService.downloadMinutes(Number(id), req.user?.companyId ?? null);
   }
 
   @Post("portal/accounting/board-meetings/generate-agenda")
@@ -4623,6 +4629,57 @@ Formula: totalPrice = totalKg × salePricePerKg
   async deleteBoardMeeting(@Param("id") id: string): Promise<void> {
     const deleted = await this.rubberBoardMeetingService.deleteMeeting(Number(id));
     if (!deleted) throw new NotFoundException("Board meeting not found");
+  }
+
+  // ---- Company branding (self-service: the acting user's own company) ----
+
+  @Get("portal/settings/branding-urls")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
+  @ApiOperation({ summary: "Preview URLs for this company's letterhead + email signature" })
+  async companyBrandingUrls(
+    @Req() req: AdminRequest,
+  ): Promise<{ letterheadUrl: string | null; emailSignatureUrl: string | null }> {
+    const companyId = req.user?.companyId;
+    if (companyId == null) throw new BadRequestException("No company on the current session");
+    return this.companyBranding.assetUrls(companyId);
+  }
+
+  // kind = "letterhead" | "email-signature"
+  @Post("portal/settings/branding/:kind")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
+  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 5 * 1024 * 1024 } }))
+  @ApiOperation({ summary: "Upload this company's letterhead or email signature" })
+  async uploadCompanyBranding(
+    @Param("kind") kind: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: AdminRequest,
+  ): Promise<{ ok: true }> {
+    const companyId = req.user?.companyId;
+    if (companyId == null) throw new BadRequestException("No company on the current session");
+    const assetKind = this.brandingKind(kind);
+    if (!file) throw new BadRequestException("No file uploaded");
+    if (!/^image\//.test(file.mimetype)) throw new BadRequestException("Only image files allowed");
+    await this.companyBranding.uploadAsset(companyId, assetKind, file);
+    return { ok: true };
+  }
+
+  @Delete("portal/settings/branding/:kind")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
+  @ApiOperation({ summary: "Remove this company's letterhead or email signature" })
+  async removeCompanyBranding(
+    @Param("kind") kind: string,
+    @Req() req: AdminRequest,
+  ): Promise<{ ok: true }> {
+    const companyId = req.user?.companyId;
+    if (companyId == null) throw new BadRequestException("No company on the current session");
+    await this.companyBranding.removeAsset(companyId, this.brandingKind(kind));
+    return { ok: true };
+  }
+
+  private brandingKind(kind: string): CompanyBrandingKind {
+    if (kind === "letterhead") return "letterhead";
+    if (kind === "email-signature") return "emailSignature";
+    throw new BadRequestException("Unknown branding kind");
   }
 
   @Get("portal/accounting/payable")

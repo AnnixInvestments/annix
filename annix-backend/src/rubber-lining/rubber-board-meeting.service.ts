@@ -49,7 +49,10 @@ export class RubberBoardMeetingService {
 
   // Render the meeting's minutes onto the company letterhead and return them as a
   // base64 PDF data URL the browser can download.
-  async downloadMinutes(id: number): Promise<{ filename: string; dataUrl: string }> {
+  async downloadMinutes(
+    id: number,
+    companyId: number | null,
+  ): Promise<{ filename: string; dataUrl: string }> {
     const meeting = await this.repository.findById(id);
     if (!meeting) {
       throw new BadRequestException("Board meeting not found");
@@ -62,7 +65,7 @@ export class RubberBoardMeetingService {
       meetingDate: meeting.meetingDate ? meeting.meetingDate.toISOString() : null,
       attendees: meeting.attendees ?? [],
       minutes: meeting.minutes,
-      letterhead: await this.branding.letterheadImage(),
+      letterhead: await this.branding.letterheadImage(companyId),
     });
     const safe =
       meeting.title

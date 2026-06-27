@@ -24,6 +24,10 @@ export interface EmailOptions {
   fromName?: string;
   isTransactional?: boolean;
   attachments?: EmailAttachment[];
+  // Tenant company on whose behalf this email is sent. When set and that company
+  // has an email signature configured, it is appended inline. Sends without a
+  // company carry no signature.
+  companyId?: number | null;
 }
 
 @Injectable()
@@ -44,8 +48,9 @@ export class EmailService {
   private async withSignature(
     html: string,
     attachments: EmailAttachment[],
+    companyId: number | null | undefined,
   ): Promise<{ html: string; attachments: EmailAttachment[] }> {
-    const sig = await this.branding.emailSignatureImage();
+    const sig = await this.branding.emailSignatureImage(companyId);
     if (!sig || sig.length < 4) {
       return { html, attachments };
     }
@@ -142,6 +147,7 @@ export class EmailService {
     const { html: bodyHtml, attachments } = await this.withSignature(
       options.html,
       options.attachments ?? [],
+      options.companyId,
     );
 
     try {

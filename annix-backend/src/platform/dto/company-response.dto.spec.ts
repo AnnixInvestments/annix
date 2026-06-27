@@ -33,6 +33,8 @@ describe("toCompanyResponse", () => {
     accentColor: "#ffffff",
     logoUrl: "https://acme.example/logo.png",
     heroImageUrl: null,
+    letterheadPath: null,
+    emailSignaturePath: null,
     smtpHost: "smtp.acme.example",
     smtpPort: 587,
     smtpUser: "mailer",

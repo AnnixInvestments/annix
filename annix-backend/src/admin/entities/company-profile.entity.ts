@@ -51,13 +51,6 @@ export class CompanyProfile {
 
   mailerName: string | null;
 
-  // Storage keys for uploaded company branding. letterheadPath is a banner image
-  // (like the AU CoC header) embedded atop generated PDFs; emailSignaturePath is
-  // an image appended to outbound emails. Null = fall back to bundled defaults.
-  letterheadPath: string | null;
-
-  emailSignaturePath: string | null;
-
   directors: Director[];
 
   createdAt: Date;

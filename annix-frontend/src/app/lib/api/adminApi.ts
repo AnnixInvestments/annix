@@ -1074,30 +1074,6 @@ class AdminApiClient {
     body: (data) => data,
   });
 
-  companyAssetUrls = createEndpoint<
-    [],
-    { letterheadUrl: string | null; emailSignatureUrl: string | null }
-  >(apiClient, "GET", {
-    path: "/admin/company-profile/asset-urls",
-  });
-
-  uploadCompanyAsset(
-    kind: "letterhead" | "email-signature",
-    file: File,
-  ): Promise<CompanyProfileResponse> {
-    return apiClient.uploadFile<CompanyProfileResponse>(
-      `/admin/company-profile/assets/${kind}`,
-      file,
-    );
-  }
-
-  removeCompanyAsset = createEndpoint<
-    [kind: "letterhead" | "email-signature"],
-    CompanyProfileResponse
-  >(apiClient, "DELETE", {
-    path: (kind) => `/admin/company-profile/assets/${kind}`,
-  });
-
   inboundEmailConfigs = createEndpoint<[], AdminInboundConfigGroup[]>(apiClient, "GET", {
     path: "/admin/inbound-emails/configs",
   });
@@ -2949,8 +2925,6 @@ export interface CompanyProfileResponse {
   primaryDomain: string | null;
   noReplyEmail: string | null;
   mailerName: string | null;
-  letterheadPath: string | null;
-  emailSignaturePath: string | null;
   directors: DirectorResponse[];
   createdAt: string;
   updatedAt: string;

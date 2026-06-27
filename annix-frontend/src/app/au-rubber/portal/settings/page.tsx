@@ -1,7 +1,7 @@
 "use client";
 
 import { toPairs as entries } from "es-toolkit/compat";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { PasskeyManagementSection } from "@/app/components/PasskeyManagementSection";
 import { useToast } from "@/app/components/Toast";
@@ -14,6 +14,7 @@ import type {
   AuRubberUserAccessDto,
   CandidateImage,
 } from "@/app/lib/api/auRubberApi";
+import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import { auRubberTokenStore } from "@/app/lib/api/portalTokenStores";
 import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
@@ -506,6 +507,127 @@ function BrandingTab() {
             <ColorSwatch color={colors.sidebarText} />
           </div>
         </div>
+      </div>
+      <DocumentBrandingSection />
+    </div>
+  );
+}
+
+// Per-company letterhead + email signature used on generated documents (board
+// minutes, CoCs…) and outbound emails. Stored against this company.
+function DocumentBrandingSection() {
+  const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
+  const [urls, setUrls] = useState<{
+    letterheadUrl: string | null;
+    emailSignatureUrl: string | null;
+  }>({ letterheadUrl: null, emailSignatureUrl: null });
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const refresh = async () => {
+    try {
+      setUrls(await auRubberApiClient.companyBrandingUrls());
+    } catch {
+      // non-fatal — preview just won't show
+    }
+  };
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  const upload = async (kind: "letterhead" | "email-signature", file: File | undefined) => {
+    if (!file) return;
+    setBusy(kind);
+    try {
+      await auRubberApiClient.uploadCompanyBranding(kind, file);
+      await refresh();
+      showToast("Uploaded", "success");
+    } catch (err) {
+      alert({ message: err instanceof Error ? err.message : "Upload failed", variant: "error" });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const remove = async (kind: "letterhead" | "email-signature") => {
+    setBusy(kind);
+    try {
+      await auRubberApiClient.removeCompanyBranding(kind);
+      await refresh();
+      showToast("Removed", "success");
+    } catch (err) {
+      alert({ message: err instanceof Error ? err.message : "Remove failed", variant: "error" });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const widget = (
+    kind: "letterhead" | "email-signature",
+    label: string,
+    help: string,
+    url: string | null,
+  ) => (
+    <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{label}</h3>
+      <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{help}</p>
+      <div className="mt-3 flex items-center justify-center h-28 bg-gray-50 dark:bg-slate-700 rounded border border-dashed border-gray-300 dark:border-slate-500 overflow-hidden">
+        {url ? (
+          // biome-ignore lint/performance/noImgElement: external presigned preview
+          <img src={url} alt={label} className="max-h-full max-w-full object-contain" />
+        ) : (
+          <span className="text-xs text-gray-400">Not set</span>
+        )}
+      </div>
+      <div className="mt-3 flex items-center gap-3">
+        <label className="px-3 py-1.5 text-sm font-medium text-white bg-[var(--au-rubber-primary,#b45309)] rounded-md cursor-pointer hover:opacity-90">
+          {busy === kind ? "Uploading…" : url ? "Replace" : "Upload"}
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            disabled={busy === kind}
+            onChange={(e) => upload(kind, e.target.files?.[0])}
+          />
+        </label>
+        {url && (
+          <button
+            type="button"
+            onClick={() => remove(kind)}
+            disabled={busy === kind}
+            className="text-sm text-red-600 hover:underline disabled:opacity-50"
+          >
+            Remove
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      {AlertDialog}
+      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+        Documents & email branding
+      </h2>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        Your company's letterhead goes on generated documents (board minutes, CoCs); your email
+        signature is appended to outbound emails. Leave empty to use the built-in defaults.
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {widget(
+          "letterhead",
+          "Letterhead",
+          "Wide banner image at the top of PDFs (PNG/JPG/WEBP).",
+          urls.letterheadUrl,
+        )}
+        {widget(
+          "email-signature",
+          "Email signature",
+          "Image appended to the foot of outbound emails.",
+          urls.emailSignatureUrl,
+        )}
       </div>
     </div>
   );
