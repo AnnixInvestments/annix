@@ -71,8 +71,14 @@ describe("toCompanyResponse", () => {
     updatedAt: testDate,
   };
 
-  it("maps every entity field onto the flat DTO, flattening the nested value-objects", () => {
-    const { address, contact, ...flatRest } = fullCompany;
+  it("maps every exposed entity field onto the flat DTO, flattening the nested value-objects", () => {
+    const {
+      address,
+      contact,
+      letterheadPath: _letterheadPath,
+      emailSignaturePath: _emailSignaturePath,
+      ...flatRest
+    } = fullCompany;
     const result = toCompanyResponse(fullCompany);
     expect(result).toEqual({
       ...flatRest,
@@ -85,10 +91,12 @@ describe("toCompanyResponse", () => {
     });
   });
 
-  it("never exposes the nested address or contact value-objects on the DTO", () => {
+  it("never exposes the nested address/contact value-objects or the per-tenant branding paths on the DTO", () => {
     const result = toCompanyResponse(fullCompany);
     expect("address" in result).toBe(false);
     expect("contact" in result).toBe(false);
+    expect("letterheadPath" in result).toBe(false);
+    expect("emailSignaturePath" in result).toBe(false);
   });
 
   it("preserves the flat address and contact fields", () => {
