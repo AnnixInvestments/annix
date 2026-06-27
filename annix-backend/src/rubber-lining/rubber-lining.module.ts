@@ -157,6 +157,7 @@ import { RubberOtherStockService } from "./rubber-other-stock.service";
 import { RubberPoTemplateService } from "./rubber-po-template.service";
 import { RubberProductImportService } from "./rubber-product-import.service";
 import { RubberQualityTrackingService } from "./rubber-quality-tracking.service";
+import { RubberReferenceCacheService } from "./rubber-reference-cache.service";
 import { RubberReferenceDataController } from "./rubber-reference-data.controller";
 import { RubberRequisitionService } from "./rubber-requisition.service";
 import { RubberRollIssuanceService } from "./rubber-roll-issuance.service";
@@ -342,6 +343,7 @@ import { WebsitePagesService } from "./website-pages.service";
   providers: [
     RubberSupplierCocReminderService,
     AuRubberLicensingRegistrar,
+    RubberReferenceCacheService,
     RubberLiningService,
     RubberStockService,
     RubberBrandingService,

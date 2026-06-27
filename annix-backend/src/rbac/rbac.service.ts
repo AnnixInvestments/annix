@@ -191,13 +191,15 @@ export class RbacService {
       {} as Record<number, typeof allAccessRecords>,
     );
 
+    const appById = new Map(allApps.map((app) => [app.id, app] as const));
+
     const mainUsers: UserWithAccessSummaryDto[] = users.map((user) => {
       const userAccessRecords = accessByUserId[user.id] ?? [];
 
       const appAccess = userAccessRecords
-        .filter((access) => allApps.some((a) => a.id === access.appId))
+        .filter((access) => appById.has(access.appId))
         .map((access) => {
-          const app = allApps.find((a) => a.id === access.appId)!;
+          const app = appById.get(access.appId)!;
           return {
             appCode: app.code,
             appName: app.name,

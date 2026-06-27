@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { Logger } from "@nestjs/common";
 import type { ClientSession, Model, Schema } from "mongoose";
 import { fromISO } from "../datetime";
 import type { PaginatedResult } from "../dto/pagination-query.dto";
@@ -42,6 +43,10 @@ function isDuplicateIdError(error: unknown): boolean {
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 25;
 const MAX_LIMIT = 200;
+const UNBOUNDED_READ_SAFETY_CAP = 1000;
+
+const crudLogger = new Logger("MongoCrudRepository");
+const warnedReadCaps = new Set<string>();
 
 const relationRefsCache = new WeakMap<Schema, Map<string, string>>();
 
@@ -326,6 +331,20 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
     return this.toDomain(document);
   }
 
+  private warnIfReadCapHit(count: number, method: string): void {
+    if (count <= UNBOUNDED_READ_SAFETY_CAP) {
+      return;
+    }
+    const key = `${this.model.modelName}.${method}`;
+    if (warnedReadCaps.has(key)) {
+      return;
+    }
+    warnedReadCaps.add(key);
+    crudLogger.warn(
+      `${key} returned ${count} rows (over the ${UNBOUNDED_READ_SAFETY_CAP}-row guideline) — if this is a transactional collection, route the read through findPage.`,
+    );
+  }
+
   async findAll(relations: string[] = []): Promise<Entity[]> {
     const documents = await this.documents
       .find()
@@ -333,6 +352,7 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
       .session(this.session)
       .lean()
       .exec();
+    this.warnIfReadCapHit(documents.length, "findAll");
     return this.toDomainList(documents);
   }
 
@@ -351,6 +371,7 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
       .session(this.session)
       .lean()
       .exec();
+    this.warnIfReadCapHit(documents.length, "findManyWhere");
     return this.toDomainList(documents);
   }
 
@@ -370,11 +391,14 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
         )
       : null;
 
+    const skipExactCount = options.skipExactCount === true;
+    const fetchLimit = skipExactCount ? limit + 1 : limit;
+
     const query = this.documents
       .find(finalFilter)
       .populate(nestPopulate(options.relations ?? []))
       .skip((page - 1) * limit)
-      .limit(limit)
+      .limit(fetchLimit)
       .allowDiskUse(true)
       .session(this.session)
       .lean();
@@ -388,6 +412,21 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
       query.select(options.projection.join(" "));
     }
 
+    if (skipExactCount) {
+      const documents = await query.exec();
+      const hasNextPage = documents.length > limit;
+      const items = this.toDomainList(hasNextPage ? documents.slice(0, limit) : documents);
+      const seenSoFar = (page - 1) * limit + items.length;
+      return {
+        items,
+        total: seenSoFar,
+        page,
+        limit,
+        totalPages: hasNextPage ? page + 1 : page,
+        hasNextPage,
+      };
+    }
+
     const [documents, total] = await Promise.all([
       query.exec(),
       this.documents.countDocuments(finalFilter).session(this.session).exec(),
@@ -399,6 +438,7 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
       page,
       limit,
       totalPages: Math.max(1, Math.ceil(total / limit)),
+      hasNextPage: page * limit < total,
     };
   }
 

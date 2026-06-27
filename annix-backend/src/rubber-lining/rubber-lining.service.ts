@@ -57,10 +57,12 @@ import { RubberProductCodingRepository } from "./repositories/rubber-product-cod
 import { RubberSpecificationRepository } from "./repositories/rubber-specification.repository";
 import { RubberThicknessRecommendationRepository } from "./repositories/rubber-thickness-recommendation.repository";
 import { RubberTypeRepository } from "./repositories/rubber-type.repository";
+import { RubberReferenceCacheService } from "./rubber-reference-cache.service";
 
 @Injectable()
 export class RubberLiningService {
   constructor(
+    private readonly referenceCache: RubberReferenceCacheService,
     private rubberTypeRepository: RubberTypeRepository,
     private rubberSpecRepository: RubberSpecificationRepository,
     private applicationRatingRepository: RubberApplicationRatingRepository,
@@ -144,7 +146,7 @@ export class RubberLiningService {
   async recommendRubberLining(
     request: RubberRecommendationRequestDto,
   ): Promise<RubberRecommendationDto> {
-    const allTypes = await this.rubberTypeRepository.findAll();
+    const allTypes = await this.referenceCache.allTypes();
     const reasoning: string[] = [];
     const warnings: string[] = [];
     let suitableTypeIds: number[] = allTypes.map((t) => t.id);
@@ -391,6 +393,7 @@ export class RubberLiningService {
       firebaseUid: `pg_${generateUniqueId()}`,
     });
     const saved = await this.productCodingRepository.save(coding);
+    this.referenceCache.invalidateCodings();
     return this.mapProductCodingToDto(saved);
   }
 
@@ -405,11 +408,14 @@ export class RubberLiningService {
       coding.needsReview = false;
     }
     const saved = await this.productCodingRepository.save(coding);
+    this.referenceCache.invalidateCodings();
     return this.mapProductCodingToDto(saved);
   }
 
   async deleteProductCoding(id: number): Promise<boolean> {
-    return this.productCodingRepository.deleteById(id);
+    const deleted = await this.productCodingRepository.deleteById(id);
+    this.referenceCache.invalidateCodings();
+    return deleted;
   }
 
   async countProductCodingsNeedingReview(): Promise<{ count: number }> {
@@ -481,6 +487,7 @@ export class RubberLiningService {
     company.autoApproveAuCocs = dto.autoApproveAuCocs || false;
 
     const saved = await this.companyRepository.save(company);
+    this.referenceCache.invalidateCompanies();
     const result = await this.companyRepository.findById(saved.id, ["pricingTier"]);
     return this.mapCompanyToDto(result!);
   }
@@ -508,26 +515,29 @@ export class RubberLiningService {
     if (dto.autoApproveAuCocs !== undefined) company.autoApproveAuCocs = dto.autoApproveAuCocs;
 
     await this.companyRepository.save(company);
+    this.referenceCache.invalidateCompanies();
     const result = await this.companyRepository.findById(id, ["pricingTier"]);
     return this.mapCompanyToDto(result!);
   }
 
   async deleteCompany(id: number): Promise<boolean> {
-    return this.companyRepository.deleteById(id);
+    const deleted = await this.companyRepository.deleteById(id);
+    this.referenceCache.invalidateCompanies();
+    return deleted;
   }
 
   async allProducts(): Promise<RubberProductDto[]> {
     const products = await this.productRepository.findAllOrderedByTitle();
-    const codings = await this.productCodingRepository.findAll();
-    const companies = await this.companyRepository.findAll();
+    const codings = await this.referenceCache.allCodings();
+    const companies = await this.referenceCache.allCompanies();
     return products.map((p) => this.mapProductToDto(p, codings, companies));
   }
 
   async productById(id: number): Promise<RubberProductDto | null> {
     const product = await this.productRepository.findById(id);
     if (!product) return null;
-    const codings = await this.productCodingRepository.findAll();
-    const companies = await this.companyRepository.findAll();
+    const codings = await this.referenceCache.allCodings();
+    const companies = await this.referenceCache.allCompanies();
     return this.mapProductToDto(product, codings, companies);
   }
 
@@ -635,8 +645,8 @@ export class RubberLiningService {
       markup: dto.markup || null,
     });
     const saved = await this.productRepository.save(product);
-    const codings = await this.productCodingRepository.findAll();
-    const companies = await this.companyRepository.findAll();
+    const codings = await this.referenceCache.allCodings();
+    const companies = await this.referenceCache.allCompanies();
     return this.mapProductToDto(saved, codings, companies);
   }
 
@@ -669,8 +679,8 @@ export class RubberLiningService {
     if (dto.markup !== undefined) product.markup = dto.markup || null;
 
     const saved = await this.productRepository.save(product);
-    const codings = await this.productCodingRepository.findAll();
-    const companies = await this.companyRepository.findAll();
+    const codings = await this.referenceCache.allCodings();
+    const companies = await this.referenceCache.allCompanies();
     return this.mapProductToDto(saved, codings, companies);
   }
 

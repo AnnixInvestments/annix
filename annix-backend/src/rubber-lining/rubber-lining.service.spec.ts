@@ -12,6 +12,7 @@ import { RubberSpecificationRepository } from "./repositories/rubber-specificati
 import { RubberThicknessRecommendationRepository } from "./repositories/rubber-thickness-recommendation.repository";
 import { RubberTypeRepository } from "./repositories/rubber-type.repository";
 import { RubberLiningService } from "./rubber-lining.service";
+import { RubberReferenceCacheService } from "./rubber-reference-cache.service";
 
 describe("RubberLiningService", () => {
   let service: RubberLiningService;
@@ -68,10 +69,23 @@ describe("RubberLiningService", () => {
   const mockOrderRepo = mockRepo();
   const mockOrderItemRepo = mockRepo();
 
+  const mockReferenceCache = {
+    allCodings: jest.fn().mockResolvedValue([]),
+    allCompanies: jest.fn().mockResolvedValue([]),
+    allTypes: jest.fn().mockResolvedValue([]),
+    invalidateCodings: jest.fn(),
+    invalidateCompanies: jest.fn(),
+    invalidateTypes: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RubberLiningService,
+        {
+          provide: RubberReferenceCacheService,
+          useValue: mockReferenceCache,
+        },
         {
           provide: RubberTypeRepository,
           useValue: mockRubberTypeRepo,

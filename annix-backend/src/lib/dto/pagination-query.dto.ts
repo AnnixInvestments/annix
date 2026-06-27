@@ -39,6 +39,7 @@ export interface PaginatedResult<T> {
   page: number;
   limit: number;
   totalPages: number;
+  hasNextPage?: boolean;
 }
 
 export const buildPaginatedResult = <T>(

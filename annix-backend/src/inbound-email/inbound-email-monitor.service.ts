@@ -27,6 +27,11 @@ const SUPPORTED_MIME_TYPES = new Set([
 
 const IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
+interface AiClassificationBudget {
+  remaining: number;
+  ceilingLogged: boolean;
+}
+
 @Injectable()
 export class InboundEmailMonitorService {
   private readonly logger = new Logger(InboundEmailMonitorService.name);
@@ -124,8 +129,20 @@ export class InboundEmailMonitorService {
       );
 
       let processedCount = 0;
+      const maxMessages = this.maxMessagesPerPoll();
+      const aiBudget: AiClassificationBudget = {
+        remaining: this.maxAiClassificationsPerPoll(),
+        ceilingLogged: false,
+      };
 
       for (const headerMessage of headerMessages) {
+        if (processedCount >= maxMessages) {
+          this.logger.warn(
+            `[${config.app}] Reached per-poll cap of ${maxMessages} messages for company ${config.companyId}; remaining unseen mail will be processed on the next poll.`,
+          );
+          break;
+        }
+
         const messageId = this.messageIdFromHeader(headerMessage);
         if (!messageId) continue;
 
@@ -142,7 +159,7 @@ export class InboundEmailMonitorService {
         const fullMessage = fullMessages[0];
         if (!fullMessage) continue;
 
-        const status = await this.processMessage(config, fullMessage, messageId);
+        const status = await this.processMessage(config, fullMessage, messageId, aiBudget);
         processedCount += 1;
         if (status === InboundEmailStatus.COMPLETED && this.mailboxIsAutoDeletable(config)) {
           await this.deleteProcessedMessage(connection, config, fullMessage);
@@ -165,6 +182,20 @@ export class InboundEmailMonitorService {
     const raw = this.configService.get<string>("INBOUND_POLL_WINDOW_DAYS");
     const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN;
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 7;
+  }
+
+  private positiveConfigInt(key: string, fallback: number): number {
+    const raw = this.configService.get<string>(key);
+    const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  }
+
+  private maxMessagesPerPoll(): number {
+    return this.positiveConfigInt("INBOUND_MAX_MESSAGES_PER_POLL", 50);
+  }
+
+  private maxAiClassificationsPerPoll(): number {
+    return this.positiveConfigInt("INBOUND_MAX_AI_CLASSIFICATIONS_PER_POLL", 20);
   }
 
   private messageIdFromHeader(message: Imap.Message): string | null {
@@ -194,6 +225,7 @@ export class InboundEmailMonitorService {
     config: InboundEmailConfig,
     message: Imap.Message,
     messageId: string,
+    aiBudget: AiClassificationBudget,
   ): Promise<InboundEmailStatus | null> {
     try {
       const all = message.parts.find((part) => part.which === "");
@@ -254,7 +286,8 @@ export class InboundEmailMonitorService {
           let classification = classifier?.classifyFromSubject(subject, filename) ?? null;
 
           if (!classification || classification.documentType === "unknown") {
-            if (classifier) {
+            if (classifier && aiBudget.remaining > 0) {
+              aiBudget.remaining -= 1;
               const contentForClassification = await this.extractContentForClassification(
                 att.content,
                 att.contentType,
@@ -265,6 +298,11 @@ export class InboundEmailMonitorService {
                 filename,
                 fromEmail,
                 subject,
+              );
+            } else if (classifier && !aiBudget.ceilingLogged) {
+              aiBudget.ceilingLogged = true;
+              this.logger.warn(
+                `[${config.app}] Per-poll AI classification ceiling reached for company ${config.companyId}; remaining attachments are stored as "unknown" for manual triage.`,
               );
             }
           }

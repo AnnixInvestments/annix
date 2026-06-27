@@ -14,6 +14,7 @@ export interface FindPageOptions<Entity> {
   excludeFields?: string[];
   relations?: string[];
   filter?: Record<string, unknown>;
+  skipExactCount?: boolean;
 }
 
 export type DeepPartial<T> = {
