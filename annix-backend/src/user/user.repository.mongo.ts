@@ -107,7 +107,10 @@ export class MongoUserRepository extends MongoCrudRepository<User> implements Us
 
   async findByEmailWithRoles(email: string): Promise<User | null> {
     const doc = await this.documents
-      .findOne({ email, ...NON_ORBIT_SCOPE_FILTER })
+      .findOne({
+        email: { $regex: `^${escapeRegExp(email)}$`, $options: "i" },
+        ...NON_ORBIT_SCOPE_FILTER,
+      })
       .lean()
       .exec();
     return this.withRolesAttached(doc);
@@ -167,7 +170,10 @@ export class MongoUserRepository extends MongoCrudRepository<User> implements Us
 
   async findOneByEmail(email: string): Promise<User | null> {
     const doc = await this.documents
-      .findOne({ email, ...NON_ORBIT_SCOPE_FILTER })
+      .findOne({
+        email: { $regex: `^${escapeRegExp(email)}$`, $options: "i" },
+        ...NON_ORBIT_SCOPE_FILTER,
+      })
       .lean()
       .exec();
     return this.toDomain(doc);
