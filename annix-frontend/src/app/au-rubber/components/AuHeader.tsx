@@ -330,6 +330,11 @@ const navSections: NavSection[] = [
         permission: PAGE_PERMISSIONS["/au-rubber/portal/accounting/directors"],
       },
       {
+        href: "/au-rubber/portal/accounting/board-meetings",
+        label: "Board Meetings",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/accounting/board-meetings"],
+      },
+      {
         href: "/au-rubber/portal/accounting/history",
         label: "History",
         permission: PAGE_PERMISSIONS["/au-rubber/portal/accounting/history"],
