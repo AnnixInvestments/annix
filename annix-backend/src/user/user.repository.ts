@@ -47,6 +47,7 @@ export abstract class UserRepository extends CrudRepository<User> {
   }): Promise<{ users: User[]; total: number }>;
   abstract findIdsByRoleName(roleName: string): Promise<number[]>;
   abstract countByCompanyId(companyId: number): Promise<number>;
+  abstract countByCompanyAndApp(companyId: number, appId: number): Promise<number>;
   abstract findAllIdAndEmail(): Promise<Pick<User, "id" | "email">[]>;
   abstract findByEmailsAnyScope(emails: string[]): Promise<User[]>;
   abstract findWhatsAppCandidates(userIds: number[] | null): Promise<User[]>;

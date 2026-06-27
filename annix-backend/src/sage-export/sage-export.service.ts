@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { formatShortDate, fromJSDate } from "../lib/datetime";
 import type { SageExportInvoice, SageExportLineItem } from "./interfaces/sage-invoice";
 
 const COLUMNS = [
@@ -90,20 +91,11 @@ function addDays(date: Date | null, days: number): Date | null {
   if (date === null) {
     return null;
   }
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
+  return fromJSDate(date).plus({ days }).toJSDate();
 }
 
 function formatDate(date: Date | null): string {
-  if (date === null) {
-    return "";
-  }
-  const d = new Date(date);
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const year = d.getFullYear();
-  return `${day}/${month}/${year}`;
+  return formatShortDate(date);
 }
 
 function formatAmount(value: number | null): string {

@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Logger,
   NotFoundException,
   Param,
   Query,
@@ -21,6 +22,8 @@ import { SageExportService } from "./sage-export.service";
 @UseGuards(SageExportAuthGuard)
 @Controller("sage-export")
 export class SageExportController {
+  private readonly logger = new Logger(SageExportController.name);
+
   constructor(
     private readonly registry: SageAdapterRegistry,
     private readonly sageExportService: SageExportService,
@@ -96,13 +99,26 @@ export class SageExportController {
 
     const { invoices, entityIds } = await adapter.exportableInvoices(filters, context);
     const csvBuffer = this.sageExportService.generateCsv(invoices);
-    await adapter.markExported(entityIds, context);
 
     const filename = `sage-export-${moduleCode}-${adapterKey}.csv`;
     res.set({
       "Content-Type": "text/csv",
       "Content-Disposition": `attachment; filename="${filename}"`,
       "Content-Length": String(csvBuffer.length),
+    });
+
+    // Mark exported only once the CSV is actually delivered (#406 lg-7) — a
+    // failed/aborted transfer must never flag invoices exported and silently
+    // exclude them from the next export.
+    res.on("finish", () => {
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        adapter.markExported(entityIds, context).catch((error: unknown) => {
+          const message = error instanceof Error ? error.message : String(error);
+          this.logger.error(
+            `Failed to mark Sage export delivered (${moduleCode}:${adapterKey}): ${message}`,
+          );
+        });
+      }
     });
     res.send(csvBuffer);
   }

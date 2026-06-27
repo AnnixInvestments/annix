@@ -45,6 +45,7 @@ export class PromoCodeService {
     if (existing) {
       throw new BadRequestException(`A promo code "${code}" already exists.`);
     }
+    this.assertValidDiscount(dto.discountType, dto.discountValue);
     return this.promoRepo.create({
       code,
       description: dto.description ?? "",
@@ -79,6 +80,7 @@ export class PromoCodeService {
     if (dto.discountType) {
       promo.discountType = dto.discountType;
     }
+    this.assertValidDiscount(promo.discountType, promo.discountValue);
     if (Array.isArray(dto.appliesToTiers)) {
       promo.appliesToTiers = dto.appliesToTiers;
     }
@@ -176,21 +178,54 @@ export class PromoCodeService {
     subscriptionId: number | null,
     discountCents: number,
   ): Promise<PromoCodeRedemption> {
+    // Per-company redemption is enforced atomically by the unique
+    // (promoCodeId, companyId) index (#406 lg-10) — create first so concurrent
+    // same-company redeems can't both succeed, then claim the global slot and
+    // compensate if the global cap was already reached.
+    let redemption: PromoCodeRedemption;
+    try {
+      redemption = await this.redemptionRepo.create({
+        promoCodeId,
+        companyId,
+        subscriptionId,
+        discountAppliedCents: discountCents,
+      });
+    } catch (error: unknown) {
+      if (this.isDuplicateKeyError(error)) {
+        throw new BadRequestException("This code has already been redeemed by your company.");
+      }
+      throw error;
+    }
+
     const affected = await this.promoRepo.incrementRedemptionWhenAvailable(promoCodeId);
     if (affected === 0) {
+      await this.redemptionRepo.remove(redemption);
       throw new BadRequestException("This code has been fully redeemed.");
     }
-    return this.redemptionRepo.create({
-      promoCodeId,
-      companyId,
-      subscriptionId,
-      discountAppliedCents: discountCents,
-    });
+    return redemption;
+  }
+
+  private assertValidDiscount(discountType: string, discountValue: number): void {
+    if (!Number.isFinite(discountValue) || discountValue < 0) {
+      throw new BadRequestException("Discount value must be a non-negative number.");
+    }
+    if (discountType === "percentage" && discountValue > 100) {
+      throw new BadRequestException("A percentage discount cannot exceed 100%.");
+    }
+  }
+
+  private isDuplicateKeyError(error: unknown): boolean {
+    return (
+      typeof error === "object" && error !== null && (error as { code?: number }).code === 11000
+    );
   }
 
   private computeDiscount(promo: PromoCode, grossCents: number): number {
     if (promo.discountType === "percentage") {
-      return Math.max(0, Math.round((grossCents * promo.discountValue) / 100));
+      return Math.max(
+        0,
+        Math.min(grossCents, Math.round((grossCents * promo.discountValue) / 100)),
+      );
     }
     return Math.max(0, Math.min(promo.discountValue, grossCents));
   }

@@ -288,6 +288,25 @@ export class MongoUserRepository extends MongoCrudRepository<User> implements Us
     return this.documents.countDocuments({ companyId }).exec();
   }
 
+  async countByCompanyAndApp(companyId: number, appId: number): Promise<number> {
+    const result = await this.documents
+      .aggregate<{ count: number }>([
+        { $match: { companyId } },
+        {
+          $lookup: {
+            from: "user_app_access",
+            localField: "_id",
+            foreignField: "userId",
+            as: "access",
+          },
+        },
+        { $match: { "access.appId": appId } },
+        { $count: "count" },
+      ])
+      .exec();
+    return result[0]?.count ?? 0;
+  }
+
   async findWhatsAppCandidates(userIds: number[] | null): Promise<User[]> {
     const phonePresent = { whatsappPhone: { $nin: [null, ""] } };
     const filter = userIds === null ? phonePresent : { ...phonePresent, _id: { $in: userIds } };

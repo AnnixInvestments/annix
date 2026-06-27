@@ -1,8 +1,14 @@
 import { randomUUID } from "node:crypto";
-import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { EmailService } from "../email/email.service";
-import { now } from "../lib/datetime";
+import { fromJSDate, now } from "../lib/datetime";
 import { TierInvite } from "./entities/tier-invite.entity";
 import { LicensingService } from "./licensing.service";
 import { LicensingCatalogService } from "./licensing-catalog.service";
@@ -90,19 +96,39 @@ export class TierInviteService {
     return invite;
   }
 
-  async grantForCompany(token: string, companyId: number): Promise<{ granted: boolean }> {
+  async grantForCompany(
+    token: string,
+    companyId: number,
+    acceptingEmail?: string,
+  ): Promise<{ granted: boolean }> {
     const invite = await this.inviteRepo.findByToken(token);
     if (!invite) {
       throw new NotFoundException("Invite not found.");
     }
+    if (invite.status !== "pending") {
+      throw new BadRequestException("This invite has already been used or is no longer valid.");
+    }
+    if (invite.expiresAt && fromJSDate(invite.expiresAt) < now()) {
+      throw new BadRequestException("This invite has expired.");
+    }
+    if (
+      acceptingEmail &&
+      invite.email.trim().toLowerCase() !== acceptingEmail.trim().toLowerCase()
+    ) {
+      throw new ForbiddenException("This invite was issued to a different email address.");
+    }
+
+    // Atomically claim the invite (pending -> accepted) BEFORE granting, so two
+    // concurrent accepts of a reusable token can't both grant (#406 lg-9).
+    const claimed = await this.inviteRepo.markAcceptedIfPending(invite.id, now().toJSDate());
+    if (!claimed) {
+      throw new BadRequestException("This invite has already been used.");
+    }
+
     const validFrom = now().toJSDate();
     const validUntil = now().plus({ days: invite.freeDays }).toJSDate();
     await this.licensingService.setTier(companyId, invite.moduleKey, invite.tierKey);
     await this.licensingService.setValidity(companyId, invite.moduleKey, validFrom, validUntil);
-
-    invite.status = "accepted";
-    invite.acceptedAt = now().toJSDate();
-    await this.inviteRepo.save(invite);
 
     this.logger.log(
       `Granted tier invite ${token}: company ${companyId} -> ${invite.moduleKey}/${invite.tierKey}`,

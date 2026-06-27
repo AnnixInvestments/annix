@@ -1,6 +1,6 @@
 import type { ModuleLicensingDefinition, TierDefinition } from "../licensing.types";
 
-function standardTiers(): TierDefinition[] {
+function placeholderTiers(): TierDefinition[] {
   return [
     {
       key: "free",
@@ -41,20 +41,20 @@ function standardTiers(): TierDefinition[] {
   ];
 }
 
-function standardModule(moduleKey: string): ModuleLicensingDefinition {
+function placeholderModule(moduleKey: string): ModuleLicensingDefinition {
   return {
     moduleKey,
     defaultTier: "free",
     features: [],
-    tiers: standardTiers(),
+    tiers: placeholderTiers(),
     tierFeatures: { free: [], pro: [], enterprise: [] },
   };
 }
 
 export const DEFAULT_APP_LICENSING: ModuleLicensingDefinition[] = [
-  standardModule("stock-control"),
-  standardModule("rfq-platform"),
-  standardModule("annix-sentinel"),
-  standardModule("annix-rep"),
-  standardModule("insights"),
+  placeholderModule("stock-control"),
+  placeholderModule("rfq-platform"),
+  placeholderModule("annix-sentinel"),
+  placeholderModule("annix-rep"),
+  placeholderModule("insights"),
 ];

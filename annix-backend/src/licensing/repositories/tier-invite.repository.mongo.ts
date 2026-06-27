@@ -23,4 +23,11 @@ export class MongoTierInviteRepository
     const doc = await this.documents.findOne({ token }).lean().exec();
     return this.toDomain(doc);
   }
+
+  async markAcceptedIfPending(id: number, acceptedAt: Date): Promise<boolean> {
+    const result = await this.documents
+      .updateOne({ _id: id, status: "pending" }, { $set: { status: "accepted", acceptedAt } })
+      .exec();
+    return result.modifiedCount === 1;
+  }
 }

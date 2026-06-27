@@ -75,6 +75,6 @@ import { UserAppPermissionSchema } from "./schemas/user-app-permission.schema";
     repositoryProvider(UserRepository, MongoUserRepository),
     repositoryProvider(StockControlUserRepository, MongoStockControlUserRepository),
   ],
-  exports: [RbacService, AppPermissionGuard],
+  exports: [RbacService, AppPermissionGuard, AppRepository],
 })
 export class RbacModule {}

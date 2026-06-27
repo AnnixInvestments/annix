@@ -3266,12 +3266,19 @@ Formula: totalPrice = totalKg × salePricePerKg
     );
     const csvBuffer = this.sageExportService.generateCsv(invoices);
 
-    await this.rubberSageAdapterService.markExported(entityIds, context);
-
     res!.set({
       "Content-Type": "text/csv",
       "Content-Disposition": "attachment; filename=sage-invoices.csv",
       "Content-Length": csvBuffer.length,
+    });
+
+    res!.on("finish", () => {
+      if (res!.statusCode >= 200 && res!.statusCode < 300) {
+        this.rubberSageAdapterService.markExported(entityIds, context).catch((error: unknown) => {
+          const message = error instanceof Error ? error.message : String(error);
+          this.logger.error(`Failed to mark Sage export delivered (au-rubber): ${message}`);
+        });
+      }
     });
     res!.send(csvBuffer);
   }
