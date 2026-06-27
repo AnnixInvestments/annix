@@ -6,6 +6,18 @@ export interface BaseCrudOptions {
   defaultRelations?: string[];
 }
 
+// Fields a generic update DTO must never overwrite — identity, tenant ownership
+// and creation provenance (#404 architecture-7). A malicious or sloppy DTO
+// carrying e.g. companyId would otherwise silently re-tenant the row.
+const PROTECTED_UPDATE_FIELDS = new Set([
+  "id",
+  "_id",
+  "companyId",
+  "ownerId",
+  "createdById",
+  "createdAt",
+]);
+
 export abstract class BaseCrudService<
   Entity extends { id: number },
   CreateDto = Partial<Entity>,
@@ -42,7 +54,12 @@ export abstract class BaseCrudService<
 
   async update(id: number, dto: UpdateDto): Promise<Entity> {
     const entity = await this.findOne(id);
-    Object.assign(entity as object, dto as object);
+    const safeUpdates = Object.fromEntries(
+      Object.entries(dto as Record<string, unknown>).filter(
+        ([key]) => !PROTECTED_UPDATE_FIELDS.has(key),
+      ),
+    );
+    Object.assign(entity as object, safeUpdates);
     return this.repository.save(entity);
   }
 

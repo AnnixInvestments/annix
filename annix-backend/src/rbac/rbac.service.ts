@@ -9,7 +9,7 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../email/email.service";
-import { fromISO, now } from "../lib/datetime";
+import { fromISO, now, nowMillis } from "../lib/datetime";
 import { PasswordService } from "../shared/auth/password.service";
 import { StockControlRole } from "../stock-control/entities/stock-control-user.entity";
 import { StockControlUserRepository } from "../stock-control/repositories/stock-control-user.repository";
@@ -60,9 +60,11 @@ export type { ResolvedAccessDetails } from "./resolved-access-details";
 
 @Injectable()
 export class RbacService {
+  private static readonly APP_CACHE_TTL_MS = 60_000;
   private readonly logger = new Logger(RbacService.name);
   private allActiveAppsCache: App[] | null = null;
   private appByCodeCache = new Map<string, App | null>();
+  private appCacheLoadedAtMillis = 0;
 
   constructor(
     private readonly accessDetailsCache: RbacAccessDetailsCache,
@@ -86,6 +88,19 @@ export class RbacService {
   private invalidateAppCaches(): void {
     this.allActiveAppsCache = null;
     this.appByCodeCache.clear();
+  }
+
+  // App/role definitions change rarely, but the in-memory cache is per-process,
+  // so on a multi-machine fleet an app edit on one machine would otherwise serve
+  // stale permissions on the others until restart. A short TTL bounds that
+  // staleness without a cross-machine bus (#404 architecture-10); local writes
+  // still invalidate immediately via invalidateAppCaches.
+  private dropAppCachesIfStale(): void {
+    if (nowMillis() - this.appCacheLoadedAtMillis >= RbacService.APP_CACHE_TTL_MS) {
+      this.allActiveAppsCache = null;
+      this.appByCodeCache.clear();
+      this.appCacheLoadedAtMillis = nowMillis();
+    }
   }
 
   private cachedAccessDetails(userId: number, appCode: string): ResolvedAccessDetails | null {
@@ -117,6 +132,7 @@ export class RbacService {
   }
 
   private async appByCode(code: string): Promise<App | null> {
+    this.dropAppCachesIfStale();
     if (this.appByCodeCache.has(code)) {
       return this.appByCodeCache.get(code) ?? null;
     }
@@ -126,6 +142,7 @@ export class RbacService {
   }
 
   async allApps(): Promise<App[]> {
+    this.dropAppCachesIfStale();
     if (this.allActiveAppsCache) {
       return this.allActiveAppsCache;
     }

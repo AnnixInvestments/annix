@@ -419,8 +419,13 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
         )
       : null;
 
-    const skipExactCount = options.skipExactCount === true;
-    const fetchLimit = skipExactCount ? limit + 1 : limit;
+    const countStrategy = options.countStrategy ?? "exact";
+    const hasFilter = Object.keys(finalFilter).length > 0;
+    // "estimated" can only use estimatedDocumentCount on an UNfiltered query
+    // (it ignores the filter), so a filtered "estimated" degrades to "none".
+    const effectiveCountStrategy =
+      countStrategy === "estimated" && hasFilter ? "none" : countStrategy;
+    const fetchLimit = effectiveCountStrategy === "none" ? limit + 1 : limit;
 
     const query = this.documents
       .find(finalFilter)
@@ -440,7 +445,7 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
       query.select(options.projection.join(" "));
     }
 
-    if (skipExactCount) {
+    if (effectiveCountStrategy === "none") {
       const documents = await query.exec();
       const hasNextPage = documents.length > limit;
       const items = this.toDomainList(hasNextPage ? documents.slice(0, limit) : documents);
@@ -455,10 +460,12 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
       };
     }
 
-    const [documents, total] = await Promise.all([
-      query.exec(),
-      this.documents.countDocuments(finalFilter).session(this.session).exec(),
-    ]);
+    const countQuery =
+      effectiveCountStrategy === "estimated"
+        ? this.documents.estimatedDocumentCount().exec()
+        : this.documents.countDocuments(finalFilter).session(this.session).exec();
+
+    const [documents, total] = await Promise.all([query.exec(), countQuery]);
 
     return {
       items: this.toDomainList(documents),

@@ -14,7 +14,18 @@ export interface FindPageOptions<Entity> {
   excludeFields?: string[];
   relations?: string[];
   filter?: Record<string, unknown>;
-  skipExactCount?: boolean;
+  // How to populate total/totalPages (#404 architecture-6):
+  //   "exact"     — countDocuments(filter); accurate but a full scan per page.
+  //   "estimated" — estimatedDocumentCount() when the filter is empty (cheap,
+  //                 collection metadata); falls back to "none" when filtered.
+  //                 Do NOT use on a session/transaction-bound findPage —
+  //                 estimatedDocumentCount is not allowed inside a transaction.
+  //   "none"      — fetch limit+1 to derive hasNextPage only; no count query.
+  // With "none"/"estimated" (filtered), total/totalPages are lower-bound
+  // estimates — drive pagers off hasNextPage, not totalPages. Defaults to
+  // "exact" so existing callers are unchanged; list endpoints that don't display
+  // a precise total should pass "none" or "estimated".
+  countStrategy?: "exact" | "estimated" | "none";
 }
 
 export type DeepPartial<T> = {
