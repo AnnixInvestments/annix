@@ -1,7 +1,8 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { APP_GUARD, Reflector } from "@nestjs/core";
 import { ScheduleModule } from "@nestjs/schedule";
-import { ThrottlerModule } from "@nestjs/throttler";
+import { ThrottlerModule, ThrottlerStorageService } from "@nestjs/throttler";
 import { AiUsageModule } from "./ai-usage/ai-usage.module";
 import { AnnixSentinelModule } from "./annix-sentinel/annix-sentinel.module";
 import { AppController } from "./app.controller";
@@ -42,6 +43,7 @@ import { RemoteAccessModule } from "./remote-access/remote-access.module";
 import { RfqModule } from "./rfq/rfq.module";
 import { AuthSharedModule } from "./shared/auth/auth-shared.module";
 import { SharedModule } from "./shared/shared.module";
+import { GlobalThrottlerGuard } from "./shared/throttler/global-throttler.guard";
 import { MongoThrottlerStorage } from "./shared/throttler/mongo-throttler-storage";
 import { MongoThrottlerStorageModule } from "./shared/throttler/mongo-throttler-storage.module";
 import { SsoModule } from "./sso/sso.module";
@@ -56,6 +58,8 @@ import { UserRolesModule } from "./user-roles/user-roles.module";
 import { UserSyncModule } from "./user-sync/user-sync.module";
 import { WhatsAppModule } from "./whatsapp/whatsapp.module";
 import { WorkflowModule } from "./workflow/workflow.module";
+
+const GLOBAL_THROTTLER_STORAGE = Symbol("GLOBAL_THROTTLER_STORAGE");
 
 @Module({
   imports: [
@@ -138,6 +142,22 @@ import { WorkflowModule } from "./workflow/workflow.module";
     ...(process.env.DISABLE_ANNIX_SENTINEL === "true" ? [] : [AnnixSentinelModule]),
   ],
   controllers: [AppController, BendDimensionController],
-  providers: [BendDimensionService],
+  providers: [
+    BendDimensionService,
+    {
+      provide: GLOBAL_THROTTLER_STORAGE,
+      useClass: ThrottlerStorageService,
+    },
+    {
+      provide: APP_GUARD,
+      useFactory: (reflector: Reflector, storage: ThrottlerStorageService) =>
+        new GlobalThrottlerGuard(
+          { throttlers: [{ name: "global", ttl: 60000, limit: 600 }] },
+          storage,
+          reflector,
+        ),
+      inject: [Reflector, GLOBAL_THROTTLER_STORAGE],
+    },
+  ],
 })
 export class AppModule {}

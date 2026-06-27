@@ -2,11 +2,13 @@ import { UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { Test, TestingModule } from "@nestjs/testing";
+import { AuditService } from "../audit/audit.service";
 import { AppRepository, UserAppAccessRepository } from "../rbac/rbac.repository";
 import { PasswordService } from "../shared/auth/password.service";
 import { User } from "../user/entities/user.entity";
 import { UserRepository } from "../user/user.repository";
 import { AuthService } from "./auth.service";
+import { LoginAttemptService } from "./login-attempt.service";
 
 describe("AuthService", () => {
   let service: AuthService;
@@ -44,6 +46,16 @@ describe("AuthService", () => {
     findById: jest.fn(),
   };
 
+  const mockAuditService = {
+    log: jest.fn().mockResolvedValue(undefined),
+  };
+
+  const mockLoginAttemptService = {
+    assertNotLocked: jest.fn().mockResolvedValue(undefined),
+    recordFailure: jest.fn().mockResolvedValue(undefined),
+    recordSuccess: jest.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -54,6 +66,8 @@ describe("AuthService", () => {
         { provide: PasswordService, useValue: mockPasswordService },
         { provide: UserAppAccessRepository, useValue: mockAccessRepo },
         { provide: AppRepository, useValue: mockAppRepo },
+        { provide: AuditService, useValue: mockAuditService },
+        { provide: LoginAttemptService, useValue: mockLoginAttemptService },
       ],
     }).compile();
 
@@ -62,6 +76,10 @@ describe("AuthService", () => {
     jwtService = module.get(JwtService);
 
     jest.resetAllMocks();
+    mockAuditService.log.mockResolvedValue(undefined);
+    mockLoginAttemptService.assertNotLocked.mockResolvedValue(undefined);
+    mockLoginAttemptService.recordFailure.mockResolvedValue(undefined);
+    mockLoginAttemptService.recordSuccess.mockResolvedValue(undefined);
   });
 
   describe("validateUser", () => {

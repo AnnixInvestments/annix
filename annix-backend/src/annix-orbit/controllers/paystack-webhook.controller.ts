@@ -9,7 +9,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ApiExcludeController } from "@nestjs/swagger";
-import { Throttle } from "@nestjs/throttler";
+import { SkipThrottle, Throttle } from "@nestjs/throttler";
 import type { Request } from "express";
 import { PaystackConfigService } from "../config/paystack.config";
 import { PaystackWebhookThrottlerGuard } from "../guards/paystack-webhook-throttler.guard";
@@ -19,6 +19,7 @@ import { SeekerBillingService } from "../services/seeker-billing.service";
 const MAX_WEBHOOK_BODY_BYTES = 256 * 1024;
 
 @ApiExcludeController()
+@SkipThrottle({ global: true })
 @Controller("public/webhooks/paystack")
 @UseGuards(PaystackWebhookThrottlerGuard)
 @Throttle({ default: { limit: 60, ttl: 60000 } })

@@ -11,6 +11,7 @@ import {
   Req,
 } from "@nestjs/common";
 import { ApiExcludeController } from "@nestjs/swagger";
+import { SkipThrottle } from "@nestjs/throttler";
 import type { Request } from "express";
 import { fromMillis, now } from "../../lib/datetime";
 import { WhatsAppCloudApiService } from "../services/whatsapp-cloud-api.service";
@@ -71,6 +72,7 @@ function messageSentAt(message: WebhookMessage): Date {
 }
 
 @ApiExcludeController()
+@SkipThrottle({ global: true })
 @Controller("public/whatsapp")
 export class WhatsAppWebhookController {
   private readonly logger = new Logger(WhatsAppWebhookController.name);

@@ -1,5 +1,6 @@
 import { UnauthorizedException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
+import type { Request } from "express";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { LoginUserDto } from "./dto/login-user.dto";
@@ -49,17 +50,19 @@ describe("AuthController", () => {
       service.validateUser.mockResolvedValue(user);
       service.login.mockResolvedValue(token);
 
-      const result = await controller.login(dto);
-      expect(service.validateUser).toHaveBeenCalledWith(dto.email, dto.password);
-      expect(service.login).toHaveBeenCalledWith(user);
+      const req = { ip: "127.0.0.1", headers: {} } as unknown as Request;
+      const result = await controller.login(dto, req);
+      expect(service.validateUser).toHaveBeenCalledWith(dto.email, dto.password, "127.0.0.1");
+      expect(service.login).toHaveBeenCalledWith(user, "127.0.0.1");
       expect(result).toEqual(token);
     });
 
     it("should throw UnauthorizedException if validateUser returns null", async () => {
       service.validateUser.mockResolvedValue(null);
 
-      await expect(controller.login(dto)).rejects.toThrow(UnauthorizedException);
-      expect(service.validateUser).toHaveBeenCalledWith(dto.email, dto.password);
+      const req = { ip: "127.0.0.1", headers: {} } as unknown as Request;
+      await expect(controller.login(dto, req)).rejects.toThrow(UnauthorizedException);
+      expect(service.validateUser).toHaveBeenCalledWith(dto.email, dto.password, "127.0.0.1");
       expect(service.login).not.toHaveBeenCalled();
     });
   });

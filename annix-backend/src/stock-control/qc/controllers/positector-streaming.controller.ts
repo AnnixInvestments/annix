@@ -13,6 +13,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { SkipThrottle } from "@nestjs/throttler";
 import type { Response } from "express";
 import type { Observable } from "rxjs";
 import { nowISO } from "../../../lib/datetime";
@@ -30,6 +31,7 @@ import { PositectorStreamingService } from "../services/positector-streaming.ser
 
 @ApiTags("Stock Control - PosiTector Streaming")
 @UseGuards(StockControlOnboardingGuard)
+@SkipThrottle({ global: true })
 @Controller("stock-control/positector-streaming")
 export class PositectorStreamingController {
   private readonly logger = new Logger(PositectorStreamingController.name);

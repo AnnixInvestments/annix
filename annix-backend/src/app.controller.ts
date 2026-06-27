@@ -1,5 +1,6 @@
 import { Controller, Get, Optional } from "@nestjs/common";
 import { InjectConnection } from "@nestjs/mongoose";
+import { SkipThrottle } from "@nestjs/throttler";
 import type { Connection } from "mongoose";
 import { ORBIT_CONNECTION } from "./lib/persistence/mongo-connections";
 
@@ -17,6 +18,7 @@ interface ConnectionHealth {
   host: string | null;
 }
 
+@SkipThrottle({ global: true })
 @Controller()
 export class AppController {
   constructor(

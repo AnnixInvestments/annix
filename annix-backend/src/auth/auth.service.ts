@@ -1,14 +1,20 @@
-import { BadRequestException, Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
+import { AuditService } from "../audit/audit.service";
+import { AuditAction } from "../audit/entities/audit-log.entity";
 import { now } from "../lib/datetime";
+import { maskEmail } from "../lib/pii-log";
 import { AppRepository, UserAppAccessRepository } from "../rbac/rbac.repository";
 import { PasswordService } from "../shared/auth/password.service";
 import { UserRepository } from "../user/user.repository";
 import { JwtPayload } from "./jwt.strategy";
+import { LoginAttemptService } from "./login-attempt.service";
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
@@ -16,25 +22,52 @@ export class AuthService {
     private readonly passwordService: PasswordService,
     private readonly accessRepo: UserAppAccessRepository,
     private readonly appRepo: AppRepository,
+    private readonly auditService: AuditService,
+    private readonly loginAttempts: LoginAttemptService,
   ) {}
 
-  async validateUser(email: string, password: string): Promise<any> {
+  async validateUser(email: string, password: string, ip?: string): Promise<any> {
+    const clientIp = ip ?? "unknown";
+    await this.loginAttempts.assertNotLocked(email, clientIp);
+
     const user = await this.userRepo.findByEmailWithRoles(email);
     if (!user) {
+      await this.loginAttempts.recordFailure(email, clientIp);
+      this.auditLoginFailed(email, ip);
       throw new UnauthorizedException("Invalid credentials");
     }
 
     const isPasswordValid = await this.passwordService.verify(password, user.passwordHash || "");
 
     if (isPasswordValid) {
+      await this.loginAttempts.recordSuccess(email, clientIp);
       const { passwordHash, ...result } = user;
       return result;
     }
 
+    await this.loginAttempts.recordFailure(email, clientIp);
+    this.auditLoginFailed(email, ip);
     throw new UnauthorizedException("Invalid credentials");
   }
 
-  async login(user: any) {
+  private auditLoginFailed(email: string, ip?: string): void {
+    this.auditService
+      .log({
+        action: AuditAction.LOGIN_FAILED,
+        entityType: "auth",
+        metadata: { email: maskEmail(email) },
+        ipAddress: ip,
+      })
+      .catch((error: unknown) =>
+        this.logger.warn(`Failed to write login-failed audit event: ${this.errorMessage(error)}`),
+      );
+  }
+
+  private errorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+  }
+
+  async login(user: any, ip?: string) {
     if (user?.id) {
       const fresh = await this.userRepo.findById(user.id);
       if (fresh) {
@@ -59,6 +92,18 @@ export class AuthService {
       }),
     ]);
 
+    this.auditService
+      .log({
+        userId: user.id,
+        action: AuditAction.LOGIN_SUCCESS,
+        entityType: "auth",
+        metadata: { email: maskEmail(user.email) },
+        ipAddress: ip,
+      })
+      .catch((error: unknown) =>
+        this.logger.warn(`Failed to write login-success audit event: ${this.errorMessage(error)}`),
+      );
+
     return {
       access_token: accessToken,
       refresh_token: refreshToken,
@@ -75,7 +120,7 @@ export class AuthService {
     }
   }
 
-  async refreshToken(refreshToken: string) {
+  async refreshToken(refreshToken: string, ip?: string) {
     try {
       const payload = await this.jwtService.verifyAsync(refreshToken);
 
@@ -85,7 +130,21 @@ export class AuthService {
         throw new UnauthorizedException("User not found");
       }
 
-      return this.login(user);
+      this.auditService
+        .log({
+          userId: payload.sub,
+          action: AuditAction.TOKEN_REFRESH,
+          entityType: "auth",
+          metadata: { email: maskEmail(user.email) },
+          ipAddress: ip,
+        })
+        .catch((error: unknown) =>
+          this.logger.warn(
+            `Failed to write token-refresh audit event: ${this.errorMessage(error)}`,
+          ),
+        );
+
+      return this.login(user, ip);
     } catch (error) {
       throw new UnauthorizedException("Invalid refresh token");
     }
@@ -111,7 +170,7 @@ export class AuthService {
     return apps.filter((app): app is NonNullable<typeof app> => app != null).map((app) => app.code);
   }
 
-  async acceptInvite(token: string, password: string): Promise<{ message: string }> {
+  async acceptInvite(token: string, password: string, ip?: string): Promise<{ message: string }> {
     if (!password || password.length < 8) {
       throw new BadRequestException("Password must be at least 8 characters long.");
     }
@@ -126,6 +185,21 @@ export class AuthService {
       user.status = "active";
     }
     await this.userRepo.save(user);
+
+    this.auditService
+      .log({
+        userId: user.id,
+        action: AuditAction.INVITE_ACCEPTED,
+        entityType: "auth",
+        metadata: { email: maskEmail(user.email) },
+        ipAddress: ip,
+      })
+      .catch((error: unknown) =>
+        this.logger.warn(
+          `Failed to write invite-accepted audit event: ${this.errorMessage(error)}`,
+        ),
+      );
+
     return { message: "Your account is ready. You can now sign in with your new password." };
   }
 }

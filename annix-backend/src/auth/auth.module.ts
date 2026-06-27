@@ -15,6 +15,7 @@ import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { JwtStrategy } from "./jwt.strategy";
 import { JwtAuthGuard } from "./jwt-auth.guard";
+import { LoginAttemptService } from "./login-attempt.service";
 import { UnifiedLoginController } from "./unified-login.controller";
 import { UnifiedLoginService } from "./unified-login.service";
 
@@ -40,6 +41,7 @@ import { UnifiedLoginService } from "./unified-login.service";
   ],
   providers: [
     AuthService,
+    LoginAttemptService,
     UnifiedLoginService,
     JwtStrategy,
     JwtAuthGuard,

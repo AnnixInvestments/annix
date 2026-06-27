@@ -14,6 +14,11 @@ export enum AuditAction {
   ASSIGN_REVIEWER = "assign_reviewer",
   ADD_COMMENT = "add_comment",
   RESOLVE_COMMENT = "resolve_comment",
+  // Core auth actions
+  LOGIN_SUCCESS = "login_success",
+  LOGIN_FAILED = "login_failed",
+  TOKEN_REFRESH = "token_refresh",
+  INVITE_ACCEPTED = "invite_accepted",
   // Admin-specific actions
   ADMIN_LOGIN_SUCCESS = "admin_login_success",
   ADMIN_LOGIN_FAILED = "admin_login_failed",
