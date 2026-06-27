@@ -23,6 +23,7 @@ import { isPipeLineItem } from "../lib/pipe-item-pattern";
 import { JobCardRepository } from "../repositories/job-card.repository";
 import { JobCardAttachmentRepository } from "../repositories/job-card-attachment.repository";
 import { JobCardLineItemRepository } from "../repositories/job-card-line-item.repository";
+import { M2CalculationService } from "./m2-calculation.service";
 
 interface ExtractedDimension {
   description: string;
@@ -129,6 +130,13 @@ function clampQuantity(value: unknown): number {
 
 function round2(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+function clampTankArea(value: number): number {
+  if (!Number.isFinite(value) || value < 0) {
+    return 0;
+  }
+  return Math.min(value, MAX_TANK_AREA_M2);
 }
 
 const DRAWING_EXTRACTION_PROMPT = `You are an expert at analysing engineering drawing images. You can handle both pipe drawings and welded steel plate structure drawings (tanks, chutes, hoppers, underpans).
@@ -334,6 +342,7 @@ export class DrawingExtractionService {
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly aiChatService: AiChatService,
+    private readonly m2CalculationService: M2CalculationService,
   ) {}
 
   async extractFromPdfBuffers(
@@ -1304,17 +1313,26 @@ export class DrawingExtractionService {
     confidence: number;
   }): DrawingExtractionResult {
     if (aiResult.drawingType === "tank_chute" && aiResult.tankData) {
-      const liningM2 = aiResult.tankData.liningAreaM2 ?? 0;
-      const coatingM2 = aiResult.tankData.coatingAreaM2 ?? 0;
+      const geometry = this.m2CalculationService.calculateTankM2(aiResult.tankData.components);
+      const useGeometry = geometry.usableComponents > 0;
+      const liningM2 = useGeometry
+        ? clampTankArea(geometry.internalM2)
+        : (aiResult.tankData.liningAreaM2 ?? 0);
+      const coatingM2 = useGeometry
+        ? clampTankArea(geometry.externalM2)
+        : (aiResult.tankData.coatingAreaM2 ?? 0);
+      const tankData: TankExtractionData = useGeometry
+        ? { ...aiResult.tankData, liningAreaM2: round2(liningM2), coatingAreaM2: round2(coatingM2) }
+        : aiResult.tankData;
 
       return {
         drawingType: "tank_chute",
         dimensions: [],
-        tankData: aiResult.tankData,
-        totalExternalM2: coatingM2,
-        totalInternalM2: liningM2,
-        totalLiningM2: Math.round(liningM2 * 100) / 100,
-        totalCoatingM2: Math.round(coatingM2 * 100) / 100,
+        tankData,
+        totalExternalM2: round2(coatingM2),
+        totalInternalM2: round2(liningM2),
+        totalLiningM2: round2(liningM2),
+        totalCoatingM2: round2(coatingM2),
         rawText: "",
         confidence: aiResult.confidence,
       };

@@ -1,13 +1,18 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
+import { FlangeDimensionService } from "../../flange-dimension/flange-dimension.service";
 import { now } from "../../lib/datetime";
+import { NbOdLookupService } from "../../nb-od-lookup/nb-od-lookup.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { NixItemParserService } from "../../nix/services/nix-item-parser.service";
+import { PipeScheduleService } from "../../pipe-schedule/pipe-schedule.service";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
 import { AttachmentType, ExtractionStatus } from "../entities/job-card-attachment.entity";
 import { JobCardRepository } from "../repositories/job-card.repository";
 import { JobCardAttachmentRepository } from "../repositories/job-card-attachment.repository";
 import { JobCardLineItemRepository } from "../repositories/job-card-line-item.repository";
 import { DrawingExtractionService } from "./drawing-extraction.service";
+import { M2CalculationService } from "./m2-calculation.service";
 
 describe("DrawingExtractionService", () => {
   let service: DrawingExtractionService;
@@ -66,6 +71,11 @@ describe("DrawingExtractionService", () => {
         { provide: JobCardLineItemRepository, useValue: mockLineItemRepo },
         { provide: STORAGE_SERVICE, useValue: mockStorageService },
         { provide: AiChatService, useValue: mockAiChatService },
+        M2CalculationService,
+        { provide: NixItemParserService, useValue: {} },
+        { provide: NbOdLookupService, useValue: {} },
+        { provide: PipeScheduleService, useValue: {} },
+        { provide: FlangeDimensionService, useValue: {} },
       ],
     }).compile();
 
@@ -539,8 +549,8 @@ describe("DrawingExtractionService", () => {
       const saved = mockLineItemRepo.saveMany.mock.calls[0][0];
       expect(saved).toHaveLength(1);
       expect(saved[0].id).toBe(42);
-      expect(saved[0].liningM2).toBe(12.5);
-      expect(saved[0].m2).toBe(18.25);
+      expect(saved[0].liningM2).toBe(3.77);
+      expect(saved[0].m2).toBe(3.77);
       expect(saved[0].plateBom).toHaveLength(1);
       expect(saved[0].tankComponents).toHaveLength(1);
       expect(mockLineItemRepo.buildMany).not.toHaveBeenCalled();
@@ -587,6 +597,7 @@ describe("DrawingExtractionService", () => {
       mockJobCardRepo.findOneForCompany.mockResolvedValue({ id: 1, companyId: 10 });
       const poisoned = storedTankResult();
       poisoned.tankData.liningAreaM2 = 1e9;
+      poisoned.tankData.components = [];
       poisoned.tankData.plateParts = [
         {
           mark: "BAD",
@@ -831,9 +842,9 @@ describe("DrawingExtractionService", () => {
       const rows = mockLineItemRepo.buildMany.mock.calls[0][0];
       const liningRow = rows.find((r: any) => (r.liningM2 ?? 0) > 0);
       const coatingRow = rows.find((r: any) => (r.m2 ?? 0) > 0);
-      expect(liningRow.liningM2).toBe(12.5);
+      expect(liningRow.liningM2).toBe(3.77);
       expect(liningRow.m2 ?? null).toBeNull();
-      expect(coatingRow.m2).toBe(18.25);
+      expect(coatingRow.m2).toBe(3.77);
       expect(coatingRow.liningM2 ?? null).toBeNull();
     });
 
@@ -842,6 +853,7 @@ describe("DrawingExtractionService", () => {
       const attachment = analysedAttachment();
       const data = storedTankResult();
       (data.tankData as { coatingAreaM2: number | null }).coatingAreaM2 = null;
+      (data.tankData as { components: unknown[] }).components = [];
       attachment.extractedData = data;
       mockAttachmentRepo.findForJobCard.mockResolvedValue([attachment]);
       mockLineItemRepo.findForJobCardOrderedBySort.mockResolvedValue([

@@ -3,6 +3,7 @@
 import { toPairs as entries, keys } from "es-toolkit/compat";
 import type React from "react";
 import { useState } from "react";
+import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { useToast } from "@/app/components/Toast";
 import type { JobCard, JobCardAttachment, JobCardVersion } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
@@ -107,6 +108,7 @@ export function DetailsTab({
   isReExtracting,
 }: DetailsTabProps) {
   const { showToast } = useToast();
+  const pdfPreview = usePdfPreview();
   const filteredNotes = cleanedNotes(jobCard.notes);
   const [editedNotes, setEditedNotes] = useState(filteredNotes);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
@@ -340,14 +342,18 @@ export function DetailsTab({
                       )}
                     </div>
                     {version.filePath && (
-                      <a
-                        href={version.filePath}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        type="button"
+                        onClick={() =>
+                          pdfPreview.open(
+                            version.filePath as string,
+                            originalFilename || `v${version.versionNumber}.pdf`,
+                          )
+                        }
                         className="text-sm text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                       >
                         View
-                      </a>
+                      </button>
                     )}
                   </div>
                 );
@@ -649,24 +655,28 @@ export function DetailsTab({
                     )}
                   </div>
                   <div className="flex items-center space-x-2 ml-4">
-                    {(attachment.extractionStatus === "pending" ||
-                      attachment.extractionStatus === "failed") && (
+                    {attachment.extractionStatus !== "processing" && (
                       <button
                         onClick={() => onTriggerExtraction(attachment.id)}
                         disabled={isExtracting === attachment.id}
                         className="text-sm text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] disabled:text-gray-400"
                       >
-                        {isExtracting === attachment.id ? "Extracting..." : "Extract"}
+                        {isExtracting === attachment.id
+                          ? "Extracting..."
+                          : attachment.extractionStatus === "analysed"
+                            ? "Re-extract"
+                            : "Extract"}
                       </button>
                     )}
-                    <a
-                      href={attachment.filePath}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      type="button"
+                      onClick={() =>
+                        pdfPreview.open(attachment.filePath, attachment.originalFilename)
+                      }
                       className="text-sm text-gray-600 hover:text-gray-800"
                     >
                       View
-                    </a>
+                    </button>
                     <button
                       onClick={() => handleDeleteAttachmentClick(attachment.id)}
                       className="text-sm text-red-600 hover:text-red-800"
@@ -797,6 +807,8 @@ export function DetailsTab({
           </div>
         </div>
       )}
+
+      <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
     </div>
   );
 }
