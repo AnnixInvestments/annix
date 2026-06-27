@@ -180,6 +180,21 @@ describe("DrawingExtractionService", () => {
       expect(result.confidence).toBe(0.9);
     });
 
+    it("passes the drawing filename to the vision prompt as a classification hint", async () => {
+      jest.spyOn(service as any, "convertPdfToImages").mockResolvedValue([Buffer.from("img")]);
+      mockAiChatService.chat.mockResolvedValue({
+        content: JSON.stringify({ drawingType: "pipe", dimensions: [], confidence: 0 }),
+      });
+
+      await service.extractFromPdfBuffers([
+        { buffer: Buffer.from("pdf"), filename: "CD1-6148_OVERFLOW_TANK.pdf" },
+      ]);
+
+      const messages = mockAiChatService.chat.mock.calls[0][0];
+      const textPart = messages[0].content.find((part: { type: string }) => part.type === "text");
+      expect(textPart.text).toContain("CD1-6148_OVERFLOW_TANK.pdf");
+    });
+
     it("returns empty result when no PDF buffers provided", async () => {
       jest.spyOn(service as any, "convertPdfToImages").mockResolvedValue([]);
 
