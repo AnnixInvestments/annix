@@ -247,8 +247,19 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
     return database.collection<{ _id: string; seq: number }>(COUNTERS_COLLECTION);
   }
 
+  /**
+   * The `counters` document key this repository mints numeric `_id`s from.
+   * Defaults to the collection name, so every existing collection keeps its own
+   * sequence with no behaviour change. Subclasses can override this to draw ids
+   * from a shared sequence (e.g. the per-module Orbit identity stores all share
+   * one `orbit_identity` key so the global numeric id space is preserved).
+   */
+  protected counterKey(): string {
+    return this.model.collection.collectionName;
+  }
+
   private async nextSequence(): Promise<number> {
-    const name = this.model.collection.collectionName;
+    const name = this.counterKey();
     const counters = this.counters();
     const incremented = await counters.findOneAndUpdate(
       { _id: name },
@@ -258,10 +269,24 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
     if (incremented && Number.isFinite(incremented.seq)) {
       return incremented.seq;
     }
-    return this.reseedSequence(name);
+    return this.reseedSequence();
   }
 
-  private async reseedSequence(name: string): Promise<number> {
+  /**
+   * High-water mark used to reseed the id sequence when the `counters` document
+   * is missing or corrupt. Defaults to the max numeric `_id` in THIS repository's
+   * own collection — correct for the per-collection sequences every existing repo
+   * uses.
+   *
+   * Repositories that mint ids from a SHARED counter (see {@link counterKey})
+   * MUST override this to return the max across EVERY collection that draws from
+   * that counter. Reseeding off a single collection's max could otherwise re-mint
+   * an id already live in a sibling collection; for the Orbit identity stores that
+   * span is the whole global user-id space (core `user` + the four
+   * `orbit_*_identities`), because M1 copies `user` rows preserving `_id` and
+   * every platform FK / JWT `sub` lives in that one numeric space.
+   */
+  protected async highestReseedId(): Promise<number> {
     const highest = await this.documents
       .find({ _id: { $type: "number" } })
       .sort({ _id: -1 })
@@ -270,10 +295,13 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
       .lean()
       .exec();
     const parsed = highest.length > 0 ? Number(highest[0]._id) : 0;
-    const start = Number.isFinite(parsed) ? parsed : 0;
-    const next = start + 1;
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  private async reseedSequence(): Promise<number> {
+    const next = (await this.highestReseedId()) + 1;
     await this.counters().updateOne(
-      { _id: name },
+      { _id: this.counterKey() },
       { $set: { seq: next } },
       { upsert: true, ...this.sessionOption },
     );
@@ -315,7 +343,7 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
         }
         shaped = {
           ...shaped,
-          _id: await this.reseedSequence(this.model.collection.collectionName),
+          _id: await this.reseedSequence(),
         };
       }
     }

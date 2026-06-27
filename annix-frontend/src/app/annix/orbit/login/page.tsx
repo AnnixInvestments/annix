@@ -59,6 +59,11 @@ function AnnixOrbitLoginContent() {
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [needsSignup, setNeedsSignup] = useState(false);
+  // When login fails because the email isn't verified, surface a resend button
+  // inside the error box rather than leaving the user stuck.
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
   const [phoneType, setPhoneType] = useState<"apple" | "android" | null>(null);
   const isJobSeeker = accountType === "individual";
   const isTestEnv = useIsTestEnv();
@@ -90,6 +95,9 @@ function AnnixOrbitLoginContent() {
     const submitPassword = passwordInput ? passwordInput.value : "";
     setError(null);
     setNeedsSignup(false);
+    setNeedsVerification(false);
+    setResendState("idle");
+    setResendMessage(null);
 
     try {
       const profile = await login(submitEmail, submitPassword, rememberMe, accountType);
@@ -119,7 +127,35 @@ function AnnixOrbitLoginContent() {
         setNeedsSignup(true);
       } else {
         setError(message);
+        if (/verify your email/i.test(message)) {
+          setNeedsVerification(true);
+        }
       }
+    }
+  };
+
+  const handleResendVerification = async () => {
+    const emailInput = emailRef.current;
+    const targetEmail = (emailInput ? emailInput.value : email).trim();
+    if (!targetEmail) {
+      setResendState("error");
+      setResendMessage("Enter your email address above, then try again.");
+      return;
+    }
+    setResendState("sending");
+    setResendMessage(null);
+    try {
+      const res = await annixOrbitApiClient.resendVerification(targetEmail);
+      const sentMessage = res?.message;
+      setResendState("sent");
+      setResendMessage(sentMessage || "Verification email sent. Please check your inbox.");
+    } catch (err) {
+      setResendState("error");
+      setResendMessage(
+        err instanceof Error
+          ? err.message
+          : "Could not resend the verification email. Please try again.",
+      );
     }
   };
 
@@ -189,7 +225,28 @@ function AnnixOrbitLoginContent() {
               </div>
             ) : error ? (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                {error}
+                <p>{error}</p>
+                {needsVerification && (
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={handleResendVerification}
+                      disabled={resendState === "sending"}
+                      className="inline-flex w-full items-center justify-center bg-[var(--brand-navbar,#323288)] text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-[var(--brand-navbar-active,#252560)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-navbar-50,#f0f0fc)] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {resendState === "sending" ? "Sending..." : "Resend verification email"}
+                    </button>
+                    {resendMessage && (
+                      <p
+                        className={`mt-2 text-xs ${
+                          resendState === "sent" ? "text-green-700" : "text-red-700"
+                        }`}
+                      >
+                        {resendMessage}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             ) : null}
 
