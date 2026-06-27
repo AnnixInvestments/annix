@@ -79,6 +79,12 @@ export class NixExtraction {
   @Prop({ type: Number, required: false })
   sessionId: number;
 
+  @Prop({ type: String, required: false })
+  scopeKind: string;
+
+  @Prop({ type: String, required: false })
+  scopeRef: string;
+
   @Prop({ type: Number, required: false })
   mineId: number;
 

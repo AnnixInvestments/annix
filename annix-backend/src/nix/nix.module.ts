@@ -29,6 +29,7 @@ import { MongoCompanyRepository } from "../platform/company.repository.mongo";
 import { CompanySchema } from "../platform/schemas/company.schema";
 import { RfqModule } from "../rfq/rfq.module";
 import { SecureDocumentsModule } from "../secure-documents/secure-documents.module";
+import { ThrottlerHitSchema } from "../shared/throttler/throttler-hit.schema";
 import { JobCardRepository } from "../stock-control/repositories/job-card.repository";
 import { MongoJobCardRepository } from "../stock-control/repositories/job-card.repository.mongo";
 import { JobCardLineItemRepository } from "../stock-control/repositories/job-card-line-item.repository";
@@ -107,6 +108,7 @@ import { CustomFieldService } from "./services/custom-field.service";
 import { DocumentAnnotationService } from "./services/document-annotation.service";
 import { DocumentVerificationService } from "./services/document-verification.service";
 import { ExcelExtractorService } from "./services/excel-extractor.service";
+import { NixAnonGeminiCeilingService } from "./services/nix-anon-gemini-ceiling.service";
 import { NixChatService } from "./services/nix-chat.service";
 import { NixChatItemService } from "./services/nix-chat-item.service";
 import { NixExtractionSessionService } from "./services/nix-extraction-session.service";
@@ -144,6 +146,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
       { name: "JobCardLineItem", schema: JobCardLineItemSchema },
       { name: "Company", schema: CompanySchema },
       { name: "User", schema: UserSchema },
+      { name: "ThrottlerHit", schema: ThrottlerHitSchema },
     ]),
     MinesModule,
     MulterModule.register({
@@ -192,6 +195,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
     RevisionTrackingService,
     ProductDataSheetsService,
     NixService,
+    NixAnonGeminiCeilingService,
     NixExtractionSessionService,
     NixChatService,
     NixChatItemService,

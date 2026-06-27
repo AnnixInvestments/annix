@@ -81,6 +81,22 @@ export class ProcessDocumentDto {
   })
   @IsOptional()
   allowVision?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      "Funnel kind for an anonymous (tokenless) upload's scope binding — e.g. 'magic-link' or 'anon-draft'. Persisted on the extraction so an otherwise-orphaned anonymous upload is tied back to the flow that created it (POPIA). Ignored for authenticated uploads.",
+  })
+  @IsString()
+  @IsOptional()
+  scopeKind?: string;
+
+  @ApiPropertyOptional({
+    description:
+      "Funnel ref value for an anonymous upload's scope binding — the magic-link token or anonymous-draft id the client already holds. Paired with scopeKind.",
+  })
+  @IsString()
+  @IsOptional()
+  scopeRef?: string;
 }
 
 export class ProcessDocumentResponseDto {
@@ -137,4 +153,10 @@ export class ProcessDocumentResponseDto {
     otherExtractionId?: number;
     otherRevision?: string | null;
   };
+
+  @ApiPropertyOptional({
+    description:
+      "High-entropy per-extraction capability token, returned ONLY for anonymous uploads. The anonymous uploader must forward it as scopeRef when answering this extraction's clarifications; the backend validates it against the stored token (closing the anonymous clarification IDOR). Absent for authenticated uploads.",
+  })
+  anonAccessToken?: string;
 }

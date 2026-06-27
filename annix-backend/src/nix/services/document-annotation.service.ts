@@ -24,7 +24,11 @@ export class DocumentAnnotationService {
     return category.toLowerCase().replace("_cert", "");
   }
 
-  async convertPdfToImages(buffer: Buffer, scale: number = 2.0): Promise<PdfPagesResponseDto> {
+  async convertPdfToImages(
+    buffer: Buffer,
+    scale: number = 2.0,
+    options?: { maxPages?: number; maxTotalBase64Bytes?: number },
+  ): Promise<PdfPagesResponseDto> {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "nix-pdf-"));
     const inputPath = path.join(tempDir, "input.pdf");
     const outputPattern = path.join(tempDir, "page-%d.png");
@@ -49,6 +53,9 @@ export class DocumentAnnotationService {
         inputPath,
         outputPath: outputPattern,
         dpi,
+        // Bound the rasterize to the page cap so a huge PDF can't burn CPU
+        // rendering hundreds of pages before the byte ceiling trims them.
+        ...(options?.maxPages ? { lastPage: options.maxPages } : {}),
       });
       if (gsStderr) {
         this.logger.warn(`Ghostscript stderr: ${gsStderr.substring(0, 500)}`);
@@ -62,7 +69,7 @@ export class DocumentAnnotationService {
           const numB = parseInt(b.match(/page-(\d+)\.png/)?.[1] || "0", 10);
           return numA - numB;
         })
-        .slice(0, maxPages);
+        .slice(0, options?.maxPages != null ? Math.min(maxPages, options.maxPages) : maxPages);
 
       if (pngFiles.length === 0) {
         this.logger.warn("PDF conversion returned no pages");
@@ -70,14 +77,30 @@ export class DocumentAnnotationService {
       }
 
       const pages: PdfPageImageDto[] = [];
+      let totalBase64Bytes = 0;
       for (let i = 0; i < pngFiles.length; i++) {
         const filePath = path.join(tempDir, pngFiles[i]);
         const imageBuffer = await fs.readFile(filePath);
+        const imageData = imageBuffer.toString("base64");
+
+        // Bound the total JSON payload so a pre-auth browser can't be served
+        // hundreds of MB of base64 — truncate cleanly at the ceiling.
+        if (
+          options?.maxTotalBase64Bytes != null &&
+          totalBase64Bytes + imageData.length > options.maxTotalBase64Bytes
+        ) {
+          this.logger.warn(
+            `Reached base64 byte ceiling (${options.maxTotalBase64Bytes}); truncating at ${pages.length} page(s).`,
+          );
+          break;
+        }
+        totalBase64Bytes += imageData.length;
+
         const metadata = await sharp(imageBuffer).metadata();
 
         pages.push({
           pageNumber: i + 1,
-          imageData: imageBuffer.toString("base64"),
+          imageData,
           width: metadata.width || 0,
           height: metadata.height || 0,
         });
@@ -259,6 +282,11 @@ export class DocumentAnnotationService {
       quarantined,
     );
 
+    // Scope binding only for anonymous (quarantined) writes — ties the
+    // training region back to the funnel that created it. Null otherwise.
+    const scopeKind = quarantined ? dto.scopeKind || null : null;
+    const scopeRef = quarantined ? dto.scopeRef || null : null;
+
     if (existingRegion) {
       existingRegion.regionCoordinates = dto.regionCoordinates;
       existingRegion.labelCoordinates = dto.labelCoordinates || null;
@@ -267,6 +295,10 @@ export class DocumentAnnotationService {
       existingRegion.sampleValue = dto.sampleValue || null;
       existingRegion.isCustomField = dto.isCustomField ?? existingRegion.isCustomField;
       existingRegion.quarantined = quarantined;
+      if (scopeRef != null) {
+        existingRegion.scopeKind = scopeKind ?? undefined;
+        existingRegion.scopeRef = scopeRef;
+      }
       return this.regionRepo.save(existingRegion);
     }
 
@@ -281,6 +313,8 @@ export class DocumentAnnotationService {
       isCustomField: dto.isCustomField ?? false,
       createdByUserId: userId || null,
       quarantined,
+      scopeKind: scopeKind ?? undefined,
+      scopeRef: scopeRef ?? undefined,
     });
   }
 

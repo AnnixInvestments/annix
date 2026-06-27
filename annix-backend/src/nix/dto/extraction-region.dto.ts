@@ -92,6 +92,24 @@ export class SaveExtractionRegionDto {
   @IsBoolean()
   @IsOptional()
   isCustomField?: boolean;
+
+  @ApiProperty({
+    description:
+      "Funnel kind for an anonymous scope binding — e.g. 'registration-draft'. Persisted on a quarantined region so an anonymous training write can be tied back to the flow that created it. Ignored for authenticated callers.",
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  scopeKind?: string;
+
+  @ApiProperty({
+    description:
+      "Funnel ref value for an anonymous region write's scope binding. Paired with scopeKind.",
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  scopeRef?: string;
 }
 
 export class PdfPageImageDto {

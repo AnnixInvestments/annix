@@ -34,6 +34,22 @@ export class SubmitClarificationDto {
   })
   @IsOptional()
   allowLearning?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      "Funnel kind for an anonymous scope check — 'anon-extraction-token'. Paired with scopeRef.",
+  })
+  @IsString()
+  @IsOptional()
+  scopeKind?: string;
+
+  @ApiPropertyOptional({
+    description:
+      "High-entropy per-extraction capability token the anonymous uploader received from the upload response (scopeKind='anon-extraction-token'). REQUIRED for an anonymous answer — it must EXACTLY equal the token stored on the clarification's extraction, else NotFound. Ignored for authenticated callers (owner-scoped). There is no open fallback.",
+  })
+  @IsString()
+  @IsOptional()
+  scopeRef?: string;
 }
 
 export class SubmitClarificationResponseDto {

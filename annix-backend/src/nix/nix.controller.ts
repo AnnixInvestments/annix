@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import * as fs from "node:fs";
 import {
   BadRequestException,
@@ -6,6 +7,8 @@ import {
   Delete,
   ForbiddenException,
   Get,
+  HttpException,
+  HttpStatus,
   Inject,
   NotFoundException,
   Param,
@@ -76,6 +79,7 @@ import { type NixLearningWriteTrust, NixService } from "./nix.service";
 import { CustomFieldService } from "./services/custom-field.service";
 import { DocumentAnnotationService } from "./services/document-annotation.service";
 import type { NixFeedbackPayload } from "./services/learning-feedback.util";
+import { NixAnonGeminiCeilingService } from "./services/nix-anon-gemini-ceiling.service";
 import { NixExtractionSessionService } from "./services/nix-extraction-session.service";
 import { QuotePdfService } from "./services/quote-pdf.service";
 import { QuoteToJobCardService } from "./services/quote-to-job-card.service";
@@ -92,6 +96,10 @@ import { type RoleClassification, RoleClassifierService } from "./services/role-
 const ANON_MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 const ANON_MAX_PAGES = 30;
 const ANON_VISION_MAX_PAGES = 5;
+const ANON_DOCUMENT_PAGES_MAX_SCALE = 1.5;
+const ANON_DOCUMENT_PAGES_MAX_BASE64_BYTES = 40 * 1024 * 1024;
+const ANON_MAX_REGION_DIMENSION = 20000;
+const ANON_VERIFY_MAX_FILES = 5;
 
 @ApiTags("Nix AI Assistant")
 @Controller("nix")
@@ -111,7 +119,30 @@ export class NixController {
     private readonly quoteToJobCardService: QuoteToJobCardService,
     private readonly companyEmailService: CompanyEmailService,
     private readonly companyRepo: CompanyRepository,
+    private readonly anonGeminiCeiling: NixAnonGeminiCeilingService,
   ) {}
+
+  /**
+   * Enforces the global daily ceiling on anonymous Gemini-spending requests
+   * (botnet backstop the per-IP throttle can't provide). Authenticated callers
+   * are never counted or blocked. Rejects with 429 + a friendly message once
+   * the day's cap is exceeded.
+   */
+  private async enforceAnonGeminiDailyCeiling(
+    authUser: AuthenticatedUser | null,
+    count: number = 1,
+  ): Promise<void> {
+    if (authUser != null) {
+      return;
+    }
+    const allowed = await this.anonGeminiCeiling.tryConsume(count);
+    if (!allowed) {
+      throw new HttpException(
+        "Nix is handling a lot of requests right now — please sign in or try again later.",
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+  }
 
   @Post("process")
   @UseGuards(AnyUserAuthGuard)
@@ -151,6 +182,8 @@ export class NixController {
         sessionId: { type: "number" },
         productTypes: { type: "array", items: { type: "string" } },
         skipExtraction: { type: "boolean" },
+        scopeKind: { type: "string" },
+        scopeRef: { type: "string" },
       },
     },
   })
@@ -170,6 +203,8 @@ export class NixController {
     @Body("sessionId") sessionId?: string,
     @Body("productTypes") productTypes?: string,
     @Body("skipExtraction") skipExtraction?: string,
+    @Body("scopeKind") scopeKind?: string,
+    @Body("scopeRef") scopeRef?: string,
   ): Promise<ProcessDocumentResponseDto> {
     if (!file) {
       throw new BadRequestException("No file uploaded");
@@ -188,6 +223,30 @@ export class NixController {
     const skip = skipExtraction === "true" || skipExtraction === "1";
     const authUser = (req["authUser"] ?? null) as AuthenticatedUser | null;
     const allowVision = await this.enforceAnonymousUploadCaps(file, authUser, skip);
+    // Archive-only uploads never hit Gemini, so they don't count toward the
+    // anonymous daily Gemini ceiling.
+    if (!skip) {
+      await this.enforceAnonGeminiDailyCeiling(authUser);
+    }
+
+    // Scope binding for anonymous uploads only. Two cases:
+    //  - the client forwarded its own funnel ref (magic-link token) → keep it
+    //    (POPIA binding; these are skipExtraction archival, no clarifications);
+    //  - otherwise mint a HIGH-ENTROPY per-extraction capability token so only
+    //    the uploader can later answer this extraction's clarifications. The
+    //    token is returned to the uploader and is the sole anonymous clarification
+    //    credential (sequential ids are NOT trusted).
+    // Authenticated callers bind via userId instead.
+    let scopeBinding: { scopeKind?: string; scopeRef?: string } | null = null;
+    let anonAccessToken: string | null = null;
+    if (authUser == null) {
+      if (scopeRef) {
+        scopeBinding = { scopeKind: scopeKind || undefined, scopeRef };
+      } else if (!skip) {
+        anonAccessToken = randomBytes(24).toString("hex");
+        scopeBinding = { scopeKind: "anon-extraction-token", scopeRef: anonAccessToken };
+      }
+    }
 
     const dto: ProcessDocumentDto = {
       documentPath: file.path,
@@ -202,9 +261,15 @@ export class NixController {
       productTypes: parsedProductTypes,
       skipExtraction: skip,
       allowVision,
+      scopeKind: scopeBinding?.scopeKind,
+      scopeRef: scopeBinding?.scopeRef,
     };
 
-    return this.nixService.processDocument(dto);
+    const response = await this.nixService.processDocument(dto);
+    if (anonAccessToken) {
+      response.anonAccessToken = anonAccessToken;
+    }
+    return response;
   }
 
   /**
@@ -849,14 +914,32 @@ export class NixController {
       if (!isAdmin && ownerUserId !== authUser.userId) {
         throw new NotFoundException("Clarification not found");
       }
+    } else {
+      // Anonymous IDOR close: the answer must forward the HIGH-ENTROPY per-
+      // extraction capability token minted at upload time and stored on the
+      // extraction. No token, or a token that doesn't EXACTLY equal the stored
+      // one → NotFound (no existence oracle). There is no sequential-id matching
+      // and no unbound fallback — every new anonymous extraction carries a token,
+      // so there is no legitimate no-token answer.
+      const token = await this.nixService.clarificationAccessToken(dto.clarificationId);
+      if (!dto.scopeRef || token == null || dto.scopeRef !== token) {
+        throw new NotFoundException("Clarification not found");
+      }
     }
 
-    // TODO(#395 Phase 4): anonymous callers can still answer a clarification by
-    // id — the anon RFQ funnel does not yet forward a magic-link / anonymousDraft
-    // token to scope-bind the write. Until it does, the 30/min IP throttle above
-    // blunts blind id-enumeration; do NOT 401/403 here or the live anon funnel
-    // breaks. Anonymous IDOR is REDUCED (throttled), not fully closed, until then.
-    return this.nixService.submitClarification(dto);
+    const trust = this.learningWriteTrust(req, authUser);
+    const response = await this.nixService.submitClarification(dto, trust);
+
+    // Item-leak defense-in-depth: never return the extraction's items to an
+    // anonymous caller (the uploader already holds its own items from the upload
+    // response). Return only the answer outcome.
+    if (authUser == null) {
+      return {
+        success: response.success,
+        remainingClarifications: response.remainingClarifications,
+      };
+    }
+    return response;
   }
 
   @Get("user/:userId/extractions")
@@ -1056,6 +1139,7 @@ export class NixController {
         );
       }
     }
+    await this.enforceAnonGeminiDailyCeiling(authUser);
 
     return this.roleClassifier.classify({
       originalname: file.originalname,
@@ -1090,6 +1174,9 @@ export class NixController {
   }
 
   @Post("verify-registration-document")
+  @UseGuards(OptionalAnyUserAuthGuard, NixThrottlerGuard)
+  @SkipThrottle({ upload: true })
+  @Throttle({ default: { limit: 15, ttl: 60000 } })
   @UseInterceptors(FileInterceptor("file"))
   @ApiConsumes("multipart/form-data")
   @ApiOperation({
@@ -1115,6 +1202,7 @@ export class NixController {
     type: VerifyRegistrationDocumentResponseDto,
   })
   async verifyRegistrationDocument(
+    @Req() req: Request,
     @UploadedFile() file: Express.Multer.File,
     @Body("documentType") documentType: string,
     @Body("expectedData") expectedDataJson: string,
@@ -1122,6 +1210,10 @@ export class NixController {
     if (!file) {
       throw new BadRequestException("No file uploaded");
     }
+
+    const authUser = (req["authUser"] ?? null) as AuthenticatedUser | null;
+    await this.enforceAnonymousUploadCaps(file, authUser, false);
+    await this.enforceAnonGeminiDailyCeiling(authUser);
 
     if (!["vat", "registration", "bee"].includes(documentType)) {
       throw new BadRequestException(
@@ -1149,6 +1241,9 @@ export class NixController {
   }
 
   @Post("verify-registration-batch")
+  @UseGuards(OptionalAnyUserAuthGuard, NixThrottlerGuard)
+  @SkipThrottle({ upload: true })
+  @Throttle({ default: { limit: 15, ttl: 60000 } })
   @UseInterceptors(FilesInterceptor("files", 5))
   @ApiConsumes("multipart/form-data")
   @ApiOperation({ summary: "Verify multiple registration documents at once" })
@@ -1175,6 +1270,7 @@ export class NixController {
     type: VerifyRegistrationBatchResponseDto,
   })
   async verifyRegistrationBatch(
+    @Req() req: Request,
     @UploadedFiles() files: Express.Multer.File[],
     @Body("documentTypes") documentTypesJson: string,
     @Body("expectedData") expectedDataJson: string,
@@ -1182,6 +1278,19 @@ export class NixController {
     if (!files || files.length === 0) {
       throw new BadRequestException("No files uploaded");
     }
+
+    if (files.length > ANON_VERIFY_MAX_FILES) {
+      throw new BadRequestException(
+        `Too many files — verify at most ${ANON_VERIFY_MAX_FILES} documents at once.`,
+      );
+    }
+
+    const authUser = (req["authUser"] ?? null) as AuthenticatedUser | null;
+    for (const file of files) {
+      await this.enforceAnonymousUploadCaps(file, authUser, false);
+    }
+    // Each file in the batch is a separate Gemini verification — count them all.
+    await this.enforceAnonGeminiDailyCeiling(authUser, files.length);
 
     let documentTypes: RegistrationDocumentType[];
     try {
@@ -1542,6 +1651,9 @@ export class NixController {
   }
 
   @Post("document-pages")
+  @UseGuards(OptionalAnyUserAuthGuard, NixThrottlerGuard)
+  @SkipThrottle({ upload: true })
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({
     summary: "Convert uploaded document to page images for annotation",
   })
@@ -1564,6 +1676,7 @@ export class NixController {
   async documentPagesFromUpload(
     @UploadedFile() file: Express.Multer.File,
     @Body() body: { scale?: string },
+    @Req() req: Request,
   ): Promise<PdfPagesResponseDto> {
     if (!file) {
       throw new BadRequestException("No file provided");
@@ -1575,12 +1688,35 @@ export class NixController {
       );
     }
 
+    const authUser = (req["authUser"] ?? null) as AuthenticatedUser | null;
+    // Anonymous: reject oversized / wrong-type / >30-page PDFs BEFORE the
+    // Ghostscript rasterize (CPU/OOM DoS guard); authenticated callers exempt.
+    await this.enforceAnonymousUploadCaps(file, authUser, false);
+
     const buffer = fs.readFileSync(file.path);
-    const scale = body.scale ? parseFloat(body.scale) : 1.5;
-    return this.documentAnnotationService.convertPdfToImages(buffer, scale);
+    const rawScale = body.scale ? parseFloat(body.scale) : 1.5;
+    const safeScale = Number.isFinite(rawScale) && rawScale > 0 ? rawScale : 1.5;
+
+    if (authUser) {
+      return this.documentAnnotationService.convertPdfToImages(buffer, safeScale);
+    }
+
+    // Anonymous resource clamps: scale ≤1.5, page cap, and a total base64 byte
+    // ceiling so a pre-auth browser can't be served hundreds of MB of JSON.
+    return this.documentAnnotationService.convertPdfToImages(
+      buffer,
+      Math.min(safeScale, ANON_DOCUMENT_PAGES_MAX_SCALE),
+      {
+        maxPages: ANON_MAX_PAGES,
+        maxTotalBase64Bytes: ANON_DOCUMENT_PAGES_MAX_BASE64_BYTES,
+      },
+    );
   }
 
   @Post("extract-from-region")
+  @UseGuards(OptionalAnyUserAuthGuard, NixThrottlerGuard)
+  @SkipThrottle({ upload: true })
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   @ApiOperation({
     summary: "Extract text from a region in an uploaded document",
   })
@@ -1603,6 +1739,7 @@ export class NixController {
   async extractFromRegionUpload(
     @UploadedFile() file: Express.Multer.File,
     @Body() body: { regionCoordinates: string; fieldName: string },
+    @Req() req: Request,
   ): Promise<{ text: string; confidence: number }> {
     if (!file) {
       throw new BadRequestException("No file provided");
@@ -1616,7 +1753,59 @@ export class NixController {
     }
 
     const buffer = fs.readFileSync(file.path);
+
+    const authUser = (req["authUser"] ?? null) as AuthenticatedUser | null;
+    if (!authUser) {
+      this.assertAnonymousRegionRequest(file, buffer, coordinates);
+    }
+
     return this.documentAnnotationService.extractFromRegion(buffer, coordinates, body.fieldName);
+  }
+
+  /**
+   * Anonymous-only sanity caps for a region OCR request: file size + magic-byte
+   * allowlist, plus a per-request region sanity cap (valid page within the
+   * anon page cap, positive and bounded width/height) so a tokenless caller
+   * can't drive an unbounded Tesseract/Ghostscript job. Authenticated callers
+   * are exempt (the caller already checks `authUser == null`).
+   */
+  private assertAnonymousRegionRequest(
+    file: Express.Multer.File,
+    buffer: Buffer,
+    coordinates: unknown,
+  ): void {
+    if (file.size > ANON_MAX_UPLOAD_BYTES) {
+      throw new PayloadTooLargeException(
+        `This file is too large to use without signing in (limit ${Math.round(
+          ANON_MAX_UPLOAD_BYTES / 1024 / 1024,
+        )} MB). Please sign in or upload a smaller file.`,
+      );
+    }
+    if (!detectUploadSignature(buffer)) {
+      throw new BadRequestException(
+        "This file type isn't supported here. Please upload a PDF, image (PNG/JPG) or Office document.",
+      );
+    }
+    const region = (coordinates ?? {}) as {
+      pageNumber?: unknown;
+      width?: unknown;
+      height?: unknown;
+    };
+    const pageNumber = Number(region.pageNumber);
+    const width = Number(region.width);
+    const height = Number(region.height);
+    const pageValid =
+      Number.isFinite(pageNumber) && pageNumber >= 1 && pageNumber <= ANON_MAX_PAGES;
+    const dimsValid =
+      Number.isFinite(width) &&
+      Number.isFinite(height) &&
+      width > 0 &&
+      height > 0 &&
+      width <= ANON_MAX_REGION_DIMENSION &&
+      height <= ANON_MAX_REGION_DIMENSION;
+    if (!pageValid || !dimsValid) {
+      throw new BadRequestException("Invalid region — page or selection size is out of range.");
+    }
   }
 
   @Post("save-extraction-region")

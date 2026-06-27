@@ -45,6 +45,10 @@ export class NixExtractionRegion {
    */
   quarantined?: boolean;
 
+  scopeKind?: string;
+
+  scopeRef?: string;
+
   createdAt: Date;
 
   updatedAt: Date;

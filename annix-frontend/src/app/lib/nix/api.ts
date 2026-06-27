@@ -242,6 +242,13 @@ export interface NixProcessResponse {
   profileMetadata?: NixRfqPipingProfileMetadata | Record<string, unknown>;
   error?: string;
   revisionVerdict?: NixRevisionVerdict;
+  /**
+   * High-entropy per-extraction capability token returned for ANONYMOUS uploads.
+   * The uploader must forward it as `scopeRef` when answering this extraction's
+   * clarifications (the backend validates it against the stored token). Absent
+   * for authenticated uploads (owner-scoped instead).
+   */
+  anonAccessToken?: string;
 }
 
 /**
@@ -602,6 +609,7 @@ export const nixApi = {
     clarificationId: number,
     responseText: string,
     allowLearning: boolean = true,
+    scopeRef?: string | null,
   ): Promise<{ success: boolean; remainingClarifications: number }> => {
     const baseUrl = browserBaseUrl();
     const response = await fetch(`${baseUrl}/nix/clarification`, {
@@ -615,6 +623,10 @@ export const nixApi = {
         responseType: "text",
         responseText,
         allowLearning,
+        // Anonymous scope binding: prove ownership of the draft behind this
+        // clarification so the answer can be scope-validated server-side.
+        // Omitted (and ignored) for authenticated users / when unknown.
+        ...(scopeRef ? { scopeKind: "anon-draft", scopeRef } : {}),
       }),
     });
 
@@ -631,7 +643,10 @@ export const nixApi = {
     return response.json();
   },
 
-  skipClarification: async (clarificationId: number): Promise<{ success: boolean }> => {
+  skipClarification: async (
+    clarificationId: number,
+    scopeRef?: string | null,
+  ): Promise<{ success: boolean }> => {
     const baseUrl = browserBaseUrl();
     const response = await fetch(`${baseUrl}/nix/clarification`, {
       method: "POST",
@@ -644,6 +659,9 @@ export const nixApi = {
         responseType: "text",
         responseText: "[SKIPPED]",
         allowLearning: false,
+        // Anonymous scope binding — required by the backend to scope-validate an
+        // anonymous answer. Omitted (and ignored) for authenticated users.
+        ...(scopeRef ? { scopeKind: "anon-draft", scopeRef } : {}),
       }),
     });
 
@@ -733,16 +751,12 @@ export const nixApi = {
     formData.append("expectedData", JSON.stringify(expectedData));
 
     const baseUrl = browserBaseUrl();
-    // eslint-disable-next-line no-restricted-syntax -- SSR guard
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
     log.debug("[Nix] Verifying registration document:", file.name, documentType);
 
     const response = await fetch(`${baseUrl}/nix/verify-registration-document`, {
       method: "POST",
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+      headers: resolveNixAuthHeaders(),
       body: formData,
     });
 
@@ -784,16 +798,12 @@ export const nixApi = {
     formData.append("expectedData", JSON.stringify(expectedData));
 
     const baseUrl = browserBaseUrl();
-    // eslint-disable-next-line no-restricted-syntax -- SSR guard
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
     log.debug("[Nix] Verifying registration batch:", files.length, "documents");
 
     const response = await fetch(`${baseUrl}/nix/verify-registration-batch`, {
       method: "POST",
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+      headers: resolveNixAuthHeaders(),
       body: formData,
     });
 
@@ -825,14 +835,10 @@ export const nixApi = {
     formData.append("scale", scale.toString());
 
     const baseUrl = browserBaseUrl();
-    // eslint-disable-next-line no-restricted-syntax -- SSR guard
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
     const response = await fetch(`${baseUrl}/nix/document-pages`, {
       method: "POST",
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+      headers: resolveNixAuthHeaders(),
       body: formData,
     });
 
@@ -869,14 +875,10 @@ export const nixApi = {
     formData.append("fieldName", fieldName);
 
     const baseUrl = browserBaseUrl();
-    // eslint-disable-next-line no-restricted-syntax -- SSR guard
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
     const response = await fetch(`${baseUrl}/nix/extract-from-region`, {
       method: "POST",
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+      headers: resolveNixAuthHeaders(),
       body: formData,
     });
 
@@ -890,14 +892,12 @@ export const nixApi = {
 
   saveExtractionRegion: async (data: ExtractionRegionData): Promise<{ success: boolean }> => {
     const baseUrl = browserBaseUrl();
-    // eslint-disable-next-line no-restricted-syntax -- SSR guard
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
     const response = await fetch(`${baseUrl}/nix/save-extraction-region`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...resolveNixAuthHeaders(),
       },
       body: JSON.stringify(data),
     });

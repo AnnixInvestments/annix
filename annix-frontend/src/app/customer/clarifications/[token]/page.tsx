@@ -376,6 +376,10 @@ export default function ClarificationFormPage() {
       formData.append("documentRole", "drawing");
       formData.append("sourceModule", "rfq-clarification");
       formData.append("skipExtraction", "true");
+      // Bind this anonymous drawing to the magic-link clarification it belongs
+      // to, so the stored S3 object isn't orphaned (POPIA traceability).
+      formData.append("scopeKind", "magic-link");
+      formData.append("scopeRef", token);
       const res = await fetch(`${API_BASE_URL}/nix/upload`, {
         method: "POST",
         body: formData,

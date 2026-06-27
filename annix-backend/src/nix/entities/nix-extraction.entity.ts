@@ -147,6 +147,20 @@ export class NixExtraction {
   })
   storageMimeType?: string;
 
+  @ApiProperty({
+    description:
+      "Scope binding for anonymous (tokenless) uploads — the kind of funnel ref the client forwarded (e.g. 'magic-link', 'anon-draft'). Ties an otherwise-orphaned anonymous upload back to the customer flow that created it (POPIA traceability) and lets anonymous clarification answers be scope-validated. Null for authenticated uploads.",
+    required: false,
+  })
+  scopeKind?: string;
+
+  @ApiProperty({
+    description:
+      "Scope binding value for anonymous uploads — the funnel's existing ref (magic-link token, anonymous-draft id). Paired with scopeKind. Null for authenticated uploads.",
+    required: false,
+  })
+  scopeRef?: string;
+
   session?: NixExtractionSession;
 
   @ApiProperty({

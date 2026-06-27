@@ -167,6 +167,10 @@ interface RfqWizardState {
   nixExtractionId: number | null;
   nixExtractedItems: NixExtractedItem[];
   nixClarifications: NixClarificationDto[];
+  // Per-extraction anonymous capability token, keyed by clarification id. The
+  // backend mints a high-entropy token per anonymous upload and returns it; an
+  // anonymous clarification answer must forward the matching token as scopeRef.
+  nixClarificationTokens: Record<number, string>;
   currentClarificationIndex: number;
   showNixClarification: boolean;
   nixFormHelperVisible: boolean;
@@ -969,6 +973,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
         nixExtractionId: null,
         nixExtractedItems: [],
         nixClarifications: [],
+        nixClarificationTokens: {},
         currentClarificationIndex: 0,
         showNixClarification: false,
         nixFormHelperVisible: true,
@@ -1650,6 +1655,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
               nixExtractionId: null,
               nixExtractedItems: [],
               nixClarifications: [],
+              nixClarificationTokens: {},
               currentClarificationIndex: 0,
               showNixClarification: false,
               nixFormHelperVisible: true,
@@ -2048,6 +2054,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
 
           const startTime = nowMillis();
           const allClarifications: NixClarificationDto[] = [];
+          const clarificationTokens: Record<number, string> = {};
 
           try {
             for (const [i, doc] of pendingDocuments.entries()) {
@@ -2173,6 +2180,12 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
 
               if (result.pendingClarifications && result.pendingClarifications.length > 0) {
                 allClarifications.push(...result.pendingClarifications);
+                const uploadToken = result.anonAccessToken;
+                if (uploadToken) {
+                  for (const clarification of result.pendingClarifications) {
+                    clarificationTokens[clarification.id] = uploadToken;
+                  }
+                }
                 log.debug(`${result.pendingClarifications.length} clarification(s) needed`);
               }
 
@@ -2219,6 +2232,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                 {
                   isNixProcessing: false,
                   nixClarifications: allClarifications,
+                  nixClarificationTokens: clarificationTokens,
                   currentClarificationIndex: 0,
                   showNixClarification: true,
                 },
@@ -2256,14 +2270,26 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
         },
 
         nixSubmitClarification: async (clarificationId, response, showToast) => {
-          const { currentClarificationIndex, nixClarifications, setCurrentStep } = get();
+          const {
+            currentClarificationIndex,
+            nixClarificationTokens,
+            nixClarifications,
+            setCurrentStep,
+          } = get();
           const isLastQuestion = currentClarificationIndex >= nixClarifications.length - 1;
+          const clarificationToken = nixClarificationTokens[clarificationId];
+          const scopeRef = clarificationToken || null;
           log.debug(
             `Submitting clarification ${clarificationId}, index ${currentClarificationIndex} of ${nixClarifications.length}, isLast: ${isLastQuestion}`,
           );
 
           try {
-            const result = await nixApi.submitClarification(clarificationId, response, true);
+            const result = await nixApi.submitClarification(
+              clarificationId,
+              response,
+              true,
+              scopeRef,
+            );
             log.debug("Clarification submitted:", result);
           } catch (error) {
             const status = error instanceof NixRequestError ? error.status : 0;
@@ -2299,7 +2325,12 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
         },
 
         nixSubmitClarificationBatch: async (responses, showToast) => {
-          const { currentClarificationIndex, nixClarifications, setCurrentStep } = get();
+          const {
+            currentClarificationIndex,
+            nixClarificationTokens,
+            nixClarifications,
+            setCurrentStep,
+          } = get();
           const skipCount = responses.length;
           const newIndex = currentClarificationIndex + skipCount;
           const isLastBatch = newIndex >= nixClarifications.length;
@@ -2310,9 +2341,15 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
 
           try {
             await Promise.all(
-              responses.map(({ clarificationId, response }) =>
-                nixApi.submitClarification(clarificationId, response, true),
-              ),
+              responses.map(({ clarificationId, response }) => {
+                const clarificationToken = nixClarificationTokens[clarificationId];
+                return nixApi.submitClarification(
+                  clarificationId,
+                  response,
+                  true,
+                  clarificationToken || null,
+                );
+              }),
             );
             log.debug("Batch clarifications submitted");
           } catch (error) {
@@ -2345,10 +2382,17 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
         },
 
         nixSkipClarification: async (clarificationId, showToast) => {
-          const { currentClarificationIndex, nixClarifications, setCurrentStep } = get();
+          const {
+            currentClarificationIndex,
+            nixClarificationTokens,
+            nixClarifications,
+            setCurrentStep,
+          } = get();
+          const clarificationToken = nixClarificationTokens[clarificationId];
+          const scopeRef = clarificationToken || null;
 
           try {
-            await nixApi.skipClarification(clarificationId);
+            await nixApi.skipClarification(clarificationId, scopeRef);
             log.debug("Clarification skipped");
           } catch (error) {
             const status = error instanceof NixRequestError ? error.status : 0;

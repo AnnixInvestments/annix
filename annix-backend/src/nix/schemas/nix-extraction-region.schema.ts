@@ -55,6 +55,12 @@ export class NixExtractionRegion {
   @Prop({ type: Boolean, required: false })
   quarantined: boolean;
 
+  @Prop({ type: String, required: false })
+  scopeKind: string;
+
+  @Prop({ type: String, required: false })
+  scopeRef: string;
+
   @Prop({ type: Date, required: false })
   createdAt: Date;
 

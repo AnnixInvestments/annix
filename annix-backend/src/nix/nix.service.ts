@@ -493,6 +493,8 @@ export class NixService {
       extractionProfile,
       documentRole: dto.documentRole,
       sessionId: dto.sessionId,
+      scopeKind: dto.scopeKind,
+      scopeRef: dto.scopeRef,
     });
 
     // Persist the uploaded file to S3 so the source document survives the
@@ -770,7 +772,10 @@ export class NixService {
     );
   }
 
-  async submitClarification(dto: SubmitClarificationDto): Promise<SubmitClarificationResponseDto> {
+  async submitClarification(
+    dto: SubmitClarificationDto,
+    trust: NixLearningWriteTrust = TRUSTED_LEARNING_WRITE,
+  ): Promise<SubmitClarificationResponseDto> {
     const clarification = await this.clarificationRepo.findByIdWithExtraction(dto.clarificationId);
 
     if (!clarification) {
@@ -787,7 +792,7 @@ export class NixService {
     await this.clarificationRepo.save(clarification);
 
     if (dto.allowLearning !== false) {
-      await this.learnFromClarification(clarification);
+      await this.learnFromClarification(clarification, trust);
     }
 
     const remainingCount = await this.clarificationRepo.countPendingForExtraction(
@@ -825,6 +830,18 @@ export class NixService {
   async clarificationOwnerUserId(clarificationId: number): Promise<number | null> {
     const clarification = await this.clarificationRepo.findByIdWithExtraction(clarificationId);
     return clarification?.extraction?.userId ?? null;
+  }
+
+  /**
+   * The high-entropy per-extraction capability token a clarification's
+   * extraction was bound to at anonymous-upload time (stored in scopeRef with
+   * scopeKind="anon-extraction-token"). The anonymous clarification answer must
+   * forward this exact token. Null when the extraction has no token (legacy /
+   * authenticated extractions) — an anonymous answer is then rejected.
+   */
+  async clarificationAccessToken(clarificationId: number): Promise<string | null> {
+    const clarification = await this.clarificationRepo.findByIdWithExtraction(clarificationId);
+    return clarification?.extraction?.scopeRef ?? null;
   }
 
   async pendingClarifications(extractionId: number): Promise<NixClarification[]> {
@@ -1789,29 +1806,48 @@ export class NixService {
     return clarifications;
   }
 
-  private async learnFromClarification(clarification: NixClarification): Promise<void> {
+  private async learnFromClarification(
+    clarification: NixClarification,
+    trust: NixLearningWriteTrust = TRUSTED_LEARNING_WRITE,
+  ): Promise<void> {
     if (!clarification.responseText || !clarification.context?.itemDescription) {
       return;
     }
 
-    const existingRule = await this.learningRepo.findCorrectionByPatternKey(
+    const writeSource = trust.quarantined
+      ? LearningSource.ANON_UNVERIFIED
+      : LearningSource.USER_CORRECTION;
+
+    // Same trust-lane isolation as recordCorrection: an anonymous answer writes
+    // a quarantined row (never feeds a prompt) and can never mutate a trusted
+    // row; an authenticated answer stays in the trusted lane.
+    const existing = await this.learningRepo.findCorrectionByPatternKey(
       clarification.context.itemDescription,
     );
+    const existingRule =
+      existing && (existing.quarantined === true) === trust.quarantined ? existing : null;
 
     if (existingRule) {
       existingRule.learnedValue = clarification.responseText;
       existingRule.confirmationCount += 1;
       existingRule.confidence = Math.min(1, existingRule.confidence + 0.05);
+      existingRule.source = writeSource;
+      existingRule.quarantined = trust.quarantined;
+      if (trust.sourceIpHash != null) {
+        existingRule.sourceIpHash = trust.sourceIpHash;
+      }
       await this.learningRepo.save(existingRule);
     } else {
       await this.learningRepo.create({
         learningType: LearningType.CORRECTION,
-        source: LearningSource.USER_CORRECTION,
+        source: writeSource,
         patternKey: clarification.context.itemDescription,
         originalValue: clarification.context.extractedValue,
         learnedValue: clarification.responseText,
         confidence: 0.6,
         confirmationCount: 1,
+        quarantined: trust.quarantined,
+        sourceIpHash: trust.sourceIpHash ?? undefined,
       });
     }
 

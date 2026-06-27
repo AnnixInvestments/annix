@@ -48,6 +48,8 @@ export async function POST(request: NextRequest) {
       "sessionId",
       "productTypes",
       "skipExtraction",
+      "scopeKind",
+      "scopeRef",
     ] as const;
     for (const field of FORWARDED_FIELDS) {
       const value = formData.get(field);
