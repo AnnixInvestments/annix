@@ -307,7 +307,10 @@ an ordinary domain aggregate.
 - [x] **S1 — M0:** shared `orbit_identity` sequence wired into the new repos
   (global-max-safe reseed hook) + `identity_registry` store. Still inert. *(Done — in
   review.)*
-- [ ] **S2 — M1/M2:** backfill migration script + verification/isolation gate.
+- [x] **S2 — M1/M2:** backfill migration script
+  (`scripts/migrate-orbit-identities.ts`, dry-run default) + M2 verification gate
+  + spec. Runs against no runner; not yet executed on real data. *(Done — in
+  review.)*
 - [ ] **S3 — M3:** dual-read/dual-write in `resolveOrbitLoginUser` and per-app auth;
   drop the module-agnostic fallback behind the new path.
 - [ ] **S4 — M4:** cut writes over; module-aware `forgotPassword`/`resendVerification`.
