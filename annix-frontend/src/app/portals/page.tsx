@@ -63,6 +63,8 @@ export default function HomePage() {
 
           <Link
             href="/core"
+            target="_blank"
+            rel="noopener noreferrer"
             className="group h-full w-full sm:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.334rem)]"
           >
             <div className="relative aspect-[4/5] bg-slate-950 overflow-hidden rounded-xl border-2 border-transparent shadow-lg transition-all duration-300 hover:border-indigo-400 hover:shadow-2xl">
@@ -90,6 +92,7 @@ export default function HomePage() {
           <Link
             href="/annix-sentinel"
             target="_blank"
+            rel="noopener noreferrer"
             className="group h-full w-full sm:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.334rem)]"
           >
             <div className="relative aspect-[4/5] bg-slate-950 overflow-hidden rounded-xl border-2 border-transparent shadow-lg transition-all duration-300 hover:border-blue-400 hover:shadow-2xl">

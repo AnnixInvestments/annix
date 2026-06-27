@@ -198,7 +198,9 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         </div>
       </main>
       <ServiceWorkerRegistration />
-      <PwaInstallPrompt />
+      {/* Only offer the app install once the user is signed in — never on the
+          login/welcome/setup screens. */}
+      {showNavigation && <PwaInstallPrompt />}
       <OfflineIndicator />
       <FeedbackWidget authContext="annix-rep" />
     </div>

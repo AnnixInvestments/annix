@@ -44,6 +44,18 @@ type SortColumn =
   | "status"
   | "createdAt";
 
+// Backend readiness reasons come prefixed with "Not ready — missing: …"; in the
+// per-CoC list that prefix is redundant, so trim it to the actual blocker.
+const cleanCocReason = (reason: string): string => {
+  if (!reason) return "Not ready";
+  return (
+    reason
+      .replace(/^not ready\s*[—-]\s*missing:\s*/i, "")
+      .replace(/^not ready\s*[—-]\s*/i, "")
+      .trim() || "Not ready"
+  );
+};
+
 export default function AuCocsPage() {
   const router = useRouter();
   const { showToast } = useToast();
@@ -101,6 +113,7 @@ export default function AuCocsPage() {
     title: string;
     status: "running" | "done" | "error";
     message: string;
+    details?: { label: string; detail: string }[];
     current?: number;
     total?: number;
     currentLabel?: string;
@@ -120,7 +133,7 @@ export default function AuCocsPage() {
     try {
       setIsAutoGenerating(true);
       let generated = 0;
-      const failures: string[] = [];
+      const failures: { label: string; detail: string }[] = [];
       for (const [i, coc] of draftCocs.entries()) {
         setProgressModal({
           visible: true,
@@ -136,22 +149,27 @@ export default function AuCocsPage() {
           if (result.generated) {
             generated++;
           } else {
-            failures.push(`${coc.cocNumber}: ${result.reason}`);
+            failures.push({ label: coc.cocNumber, detail: cleanCocReason(result.reason) });
           }
         } catch (err) {
-          failures.push(`${coc.cocNumber}: ${err instanceof Error ? err.message : "failed"}`);
+          failures.push({
+            label: coc.cocNumber,
+            detail: err instanceof Error ? err.message : "failed",
+          });
         }
       }
-      const failedInfo = failures.length > 0 ? `\n${failures.join("\n")}` : "";
       const summary =
         generated > 0
-          ? `Auto-generated ${generated} of ${draftCocs.length} draft CoC(s).${failedInfo}`
-          : `Checked ${draftCocs.length} draft CoC(s) — none ready for generation.${failedInfo}`;
+          ? `Generated ${generated} of ${draftCocs.length} draft CoC(s).${
+              failures.length > 0 ? ` ${failures.length} not yet ready:` : ""
+            }`
+          : `Checked ${draftCocs.length} draft CoC(s) — none are ready to generate yet. Each is waiting on:`;
       setProgressModal({
         visible: true,
         title: "Auto-Generation Complete",
         status: failures.length > 0 && generated === 0 ? "error" : "done",
         message: summary,
+        details: failures.length > 0 ? failures : undefined,
       });
       await refresh();
     } catch (err) {
@@ -1055,40 +1073,55 @@ export default function AuCocsPage() {
                       )}
                     </div>
                   )}
-                  {progressModal.status === "done" && (
+                  {(progressModal.status === "done" || progressModal.status === "error") && (
                     <div className="flex items-start space-x-3">
-                      <svg
-                        className="w-6 h-6 text-green-500 flex-shrink-0"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                      <p className="text-sm text-gray-600">{progressModal.message}</p>
-                    </div>
-                  )}
-                  {progressModal.status === "error" && (
-                    <div className="flex items-start space-x-3">
-                      <svg
-                        className="w-6 h-6 text-red-500 flex-shrink-0"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
-                        />
-                      </svg>
-                      <p className="text-sm text-gray-600">{progressModal.message}</p>
+                      {progressModal.status === "done" ? (
+                        <svg
+                          className="w-6 h-6 text-green-500 flex-shrink-0"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      ) : (
+                        <svg
+                          className="w-6 h-6 text-red-500 flex-shrink-0"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+                          />
+                        </svg>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 whitespace-pre-line">
+                          {progressModal.message}
+                        </p>
+                        {progressModal.details && progressModal.details.length > 0 && (
+                          <ul className="mt-3 space-y-2 max-h-72 overflow-y-auto pr-1">
+                            {progressModal.details.map((d) => (
+                              <li
+                                key={d.label}
+                                className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm leading-snug"
+                              >
+                                <span className="font-semibold text-gray-900">{d.label}</span>
+                                <span className="text-gray-600"> — {d.detail}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
