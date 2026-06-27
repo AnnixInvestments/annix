@@ -23,5 +23,6 @@ import { UserService } from "./user.service";
     repositoryProvider(UserRepository, MongoUserRepository),
     repositoryProvider(UserRoleRepository, MongoUserRoleRepository),
   ],
+  exports: [UserRepository],
 })
 export class UserModule {}

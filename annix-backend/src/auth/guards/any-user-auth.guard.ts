@@ -7,6 +7,7 @@ import { AdminAuthService } from "../../admin/admin-auth.service";
 import { resolveAnnixOrbitJwtSecret } from "../../annix-orbit/annix-orbit.constants";
 import { CustomerAuthService } from "../../customer/customer-auth.service";
 import { SupplierAuthService } from "../../supplier/supplier-auth.service";
+import { UserRepository } from "../../user/user.repository";
 
 export interface AnyUserJwtPayload {
   sub: number;
@@ -41,7 +42,20 @@ export class AnyUserAuthGuard implements CanActivate {
     private readonly adminAuthService: AdminAuthService,
     private readonly customerAuthService: CustomerAuthService,
     private readonly supplierAuthService: SupplierAuthService,
+    private readonly userRepository: UserRepository,
   ) {}
+
+  // Stock-control and annix-orbit JWTs both carry the CORE unified User id as
+  // `sub` (signed by us, ~1h expiry). The token alone proved identity but never
+  // checked that the account is still active, so a deactivated user kept access
+  // for the token's lifetime (#402 security-3). Re-check the persisted core
+  // User — the same record rbac.deactivateUser flips to "deactivated".
+  private async assertCoreUserActive(userId: number): Promise<void> {
+    const user = await this.userRepository.findById(userId);
+    if (!user || user.status === "deactivated") {
+      throw new UnauthorizedException("This account is no longer active.");
+    }
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
@@ -142,12 +156,12 @@ export class AnyUserAuthGuard implements CanActivate {
     }
 
     if (payload.type === "stock-control") {
-      // Stock Control tokens don't carry a separate session_token — the
-      // JWT itself is the session credential (it's signed by us, has a 1-hour
-      // expiry, and is refreshed via /stock-control/auth/refresh). The
-      // signature + expiry verification done above is sufficient.
-      // Accept and surface the SC-specific fields (companyId, role) so
-      // downstream guards/services can scope to the right tenant.
+      // Stock Control tokens don't carry a separate session_token — the JWT
+      // itself is the session credential (signed by us, refreshed via
+      // /stock-control/auth/refresh). Re-check the core User is still active so
+      // deactivation revokes outstanding tokens; companyId/role stay from the
+      // signed (non-forgeable) payload.
+      await this.assertCoreUserActive(payload.sub);
       return {
         userId: payload.sub,
         email: payload.email,
@@ -159,10 +173,11 @@ export class AnyUserAuthGuard implements CanActivate {
     }
 
     if (payload.type === "annix-orbit") {
-      // Same model as stock-control: the JWT itself is the credential
-      // (1h expiry, refreshed via /annix-orbit/auth/refresh). Surface the
-      // CV-Assistant payload fields so cross-cutting guards (Nix, etc.)
-      // can scope to the right user/company.
+      // Same model as stock-control — the JWT is the credential (refreshed via
+      // /annix-orbit/auth/refresh). `sub` is the CORE User id, so re-check the
+      // core User is still active (the prior fix wrongly resolved this against
+      // the legacy Orbit user table and 401'd every live user).
+      await this.assertCoreUserActive(payload.sub);
       return {
         userId: payload.sub,
         email: payload.email,

@@ -51,6 +51,7 @@ import { MongoSupplierOnboardingRepository } from "../supplier/supplier-onboardi
 import { SupplierProfileRepository } from "../supplier/supplier-profile.repository";
 import { MongoSupplierProfileRepository } from "../supplier/supplier-profile.repository.mongo";
 import { UserSchema } from "../user/schemas/user.schema";
+import { UserModule } from "../user/user.module";
 import { AiChatService } from "./ai-providers/ai-chat.service";
 import { AiExtractionService } from "./ai-providers/ai-extraction.service";
 import {
@@ -162,6 +163,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
     forwardRef(() => AdminModule),
     forwardRef(() => CustomerModule),
     forwardRef(() => SupplierModule),
+    UserModule,
     StorageModule,
     EmailModule,
     AuditModule,
