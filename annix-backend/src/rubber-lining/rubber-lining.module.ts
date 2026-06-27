@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { AdminModule } from "../admin/admin.module";
+import { CompanyBrandingModule } from "../company-branding/company-branding.module";
 import { EmailModule } from "../email/email.module";
 import { FeatureFlagsModule } from "../feature-flags/feature-flags.module";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
@@ -147,6 +148,7 @@ import { RubberAuCocService } from "./rubber-au-coc.service";
 import { RubberAuCocReadinessService } from "./rubber-au-coc-readiness.service";
 import { RubberBoardMeetingService } from "./rubber-board-meeting.service";
 import { RubberBoardMeetingAiService } from "./rubber-board-meeting-ai.service";
+import { RubberBoardMeetingPdfService } from "./rubber-board-meeting-pdf.service";
 import { RubberBrandingService } from "./rubber-branding.service";
 import { RubberCocService } from "./rubber-coc.service";
 import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
@@ -253,6 +255,7 @@ import { WebsitePagesService } from "./website-pages.service";
     RbacModule,
     SageExportModule,
     SharedModule,
+    CompanyBrandingModule,
     MongooseModule.forFeature([
       { name: "BlogPost", schema: BlogPostSchema },
       {
@@ -396,6 +399,7 @@ import { WebsitePagesService } from "./website-pages.service";
     RubberCompanyDirectorService,
     RubberBoardMeetingService,
     RubberBoardMeetingAiService,
+    RubberBoardMeetingPdfService,
     FathomProvider,
     MeetingProviderRegistry,
     RubberAccountingPdfService,

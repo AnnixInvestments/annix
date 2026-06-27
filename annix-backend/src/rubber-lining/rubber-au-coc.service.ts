@@ -4,6 +4,7 @@ import { BadRequestException, Inject, Injectable, Logger } from "@nestjs/common"
 import { ConfigService } from "@nestjs/config";
 import PDFMerger from "pdf-merger-js";
 import sharp from "sharp";
+import { CompanyBrandingService } from "../company-branding/company-branding.service";
 import { EmailService } from "../email/email.service";
 import { formatDateZA, generateUniqueId, now, nowISO } from "../lib/datetime";
 import { pdfToPngOffThread } from "../lib/pdf/pdf-to-png-offthread";
@@ -96,6 +97,7 @@ export class RubberAuCocService {
     private storageService: IStorageService,
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
+    private readonly branding: CompanyBrandingService,
   ) {}
 
   async allAuCocs(filters?: {
@@ -1504,7 +1506,7 @@ export class RubberAuCocService {
   private async createPdf(data: CocPdfData): Promise<Buffer> {
     const { doc, toBuffer } = createPdfDocument({ margin: 40 });
 
-    this.drawHeader(doc);
+    this.drawHeader(doc, await this.branding.letterheadImage());
     this.drawDetailsSection(doc, data);
     this.drawLabDataTable(doc, data);
     this.drawComments(doc);
@@ -1513,7 +1515,13 @@ export class RubberAuCocService {
     return toBuffer();
   }
 
-  private drawHeader(doc: PdfDoc): void {
+  private drawHeader(doc: PdfDoc, letterhead?: Buffer | null): void {
+    // Prefer the admin-uploaded company letterhead; fall back to the bundled
+    // au-header.jpg, then to a drawn text header.
+    if (letterhead) {
+      doc.image(letterhead, 40, 30, { width: 515 });
+      return;
+    }
     const headerPath = path.join(__dirname, "..", "assets", "au-header.jpg");
     this.logger.debug(`Header image path: ${headerPath}`);
     this.logger.debug(`Header file exists: ${fs.existsSync(headerPath)}`);

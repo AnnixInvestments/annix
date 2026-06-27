@@ -1,5 +1,6 @@
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
+import { CompanyBrandingService } from "../company-branding/company-branding.service";
 import { EmailService } from "../email/email.service";
 import { STORAGE_SERVICE } from "../storage/storage.interface";
 import { AuCocReadinessStatus, AuCocStatus, RubberAuCoc } from "./entities/rubber-au-coc.entity";
@@ -102,6 +103,10 @@ describe("RubberAuCocService", () => {
         { provide: STORAGE_SERVICE, useValue: storageService },
         { provide: ConfigService, useValue: configService },
         { provide: EmailService, useValue: emailService },
+        {
+          provide: CompanyBrandingService,
+          useValue: { letterheadImage: jest.fn().mockResolvedValue(null) },
+        },
       ],
     }).compile();
 

@@ -7,6 +7,7 @@ import type {
   DirectorResponse,
   UpdateCompanyProfileRequest,
 } from "@/app/lib/api/adminApi";
+import { adminApiClient } from "@/app/lib/api/adminApi";
 import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useAnnixCompanyProfile, useUpdateAnnixCompanyProfile } from "@/app/lib/query/hooks";
 
@@ -203,6 +204,122 @@ function formStateFromProfile(
 }
 
 type FormState = ReturnType<typeof formStateFromProfile>;
+
+function BrandingSection() {
+  const { showToast } = useToast();
+  const [urls, setUrls] = useState<{
+    letterheadUrl: string | null;
+    emailSignatureUrl: string | null;
+  }>({ letterheadUrl: null, emailSignatureUrl: null });
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const refresh = async () => {
+    try {
+      setUrls(await adminApiClient.companyAssetUrls());
+    } catch {
+      // non-fatal — preview just won't show
+    }
+  };
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  const upload = async (kind: "letterhead" | "email-signature", file: File | undefined) => {
+    if (!file) return;
+    setBusy(kind);
+    try {
+      await adminApiClient.uploadCompanyAsset(kind, file);
+      await refresh();
+      showToast("Uploaded", "success");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Upload failed", "error");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const remove = async (kind: "letterhead" | "email-signature") => {
+    setBusy(kind);
+    try {
+      await adminApiClient.removeCompanyAsset(kind);
+      await refresh();
+      showToast("Removed", "success");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Remove failed", "error");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const widget = (
+    kind: "letterhead" | "email-signature",
+    label: string,
+    help: string,
+    url: string | null,
+  ) => (
+    <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{label}</h3>
+      <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{help}</p>
+      <div className="mt-3 flex items-center justify-center h-28 bg-gray-50 dark:bg-slate-700 rounded border border-dashed border-gray-300 dark:border-slate-500 overflow-hidden">
+        {url ? (
+          // biome-ignore lint/performance/noImgElement: external presigned preview
+          <img src={url} alt={label} className="max-h-full max-w-full object-contain" />
+        ) : (
+          <span className="text-xs text-gray-400">No {label.toLowerCase()} uploaded</span>
+        )}
+      </div>
+      <div className="mt-3 flex items-center gap-3">
+        <label className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 cursor-pointer">
+          {busy === kind ? "Uploading…" : url ? "Replace" : "Upload"}
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            disabled={busy === kind}
+            onChange={(e) => upload(kind, e.target.files?.[0])}
+          />
+        </label>
+        {url && (
+          <button
+            type="button"
+            onClick={() => remove(kind)}
+            disabled={busy === kind}
+            className="text-sm text-red-600 hover:underline disabled:opacity-50"
+          >
+            Remove
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+        Branding & Documents
+      </h2>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        The letterhead is placed at the top of generated documents (board minutes, CoCs…); the email
+        signature is appended to outbound emails. Leave empty to use the built-in defaults.
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {widget(
+          "letterhead",
+          "Letterhead",
+          "Wide banner image shown at the top of PDFs (PNG/JPG/WEBP).",
+          urls.letterheadUrl,
+        )}
+        {widget(
+          "email-signature",
+          "Email signature",
+          "Image appended to the foot of outbound emails.",
+          urls.emailSignatureUrl,
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function CompanyProfilePage() {
   const { data: profile, isLoading } = useAnnixCompanyProfile();
@@ -480,6 +597,8 @@ export default function CompanyProfilePage() {
         directors={form.directors}
         onChange={(directors) => setForm({ ...form, directors })}
       />
+
+      <BrandingSection />
 
       <div className="flex justify-end pb-8">
         <button

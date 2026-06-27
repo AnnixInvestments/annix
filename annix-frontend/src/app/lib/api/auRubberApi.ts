@@ -2504,6 +2504,14 @@ class AuRubberApiClient {
     path: (id) => `/rubber-lining/portal/accounting/board-meetings/${id}/generate-minutes`,
   });
 
+  boardMeetingMinutesPdf = createEndpoint<[id: number], { filename: string; dataUrl: string }>(
+    apiClient,
+    "GET",
+    {
+      path: (id) => `/rubber-lining/portal/accounting/board-meetings/${id}/minutes-pdf`,
+    },
+  );
+
   generateBoardMeetingAgenda = createEndpoint<[], GeneratedAgendaDto>(apiClient, "POST", {
     path: "/rubber-lining/portal/accounting/board-meetings/generate-agenda",
   });

@@ -1,4 +1,5 @@
 import { BadRequestException, Inject, Injectable, Logger } from "@nestjs/common";
+import { CompanyBrandingService } from "../company-branding/company-branding.service";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import {
   type BoardMeetingMinutes,
@@ -12,6 +13,7 @@ import {
   type GeneratedAgenda,
   RubberBoardMeetingAiService,
 } from "./rubber-board-meeting-ai.service";
+import { RubberBoardMeetingPdfService } from "./rubber-board-meeting-pdf.service";
 
 export interface BoardMeetingDto {
   id: number;
@@ -40,8 +42,38 @@ export class RubberBoardMeetingService {
     private readonly repository: RubberBoardMeetingRepository,
     private readonly providers: MeetingProviderRegistry,
     private readonly aiService: RubberBoardMeetingAiService,
+    private readonly pdfService: RubberBoardMeetingPdfService,
+    private readonly branding: CompanyBrandingService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
+
+  // Render the meeting's minutes onto the company letterhead and return them as a
+  // base64 PDF data URL the browser can download.
+  async downloadMinutes(id: number): Promise<{ filename: string; dataUrl: string }> {
+    const meeting = await this.repository.findById(id);
+    if (!meeting) {
+      throw new BadRequestException("Board meeting not found");
+    }
+    if (!meeting.minutes) {
+      throw new BadRequestException("Generate the minutes before downloading");
+    }
+    const buffer = await this.pdfService.generateMinutesPdf({
+      title: meeting.title,
+      meetingDate: meeting.meetingDate ? meeting.meetingDate.toISOString() : null,
+      attendees: meeting.attendees ?? [],
+      minutes: meeting.minutes,
+      letterhead: await this.branding.letterheadImage(),
+    });
+    const safe =
+      meeting.title
+        .replace(/[^a-z0-9]+/gi, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 60) || "board-meeting";
+    return {
+      filename: `${safe}-minutes.pdf`,
+      dataUrl: `data:application/pdf;base64,${buffer.toString("base64")}`,
+    };
+  }
 
   // Providers that are registered AND configured (have credentials) — drives the
   // "import from…" picker in the UI.

@@ -4601,6 +4601,15 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberBoardMeetingService.generateMinutes(Number(id));
   }
 
+  @Get("portal/accounting/board-meetings/:id/minutes-pdf")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
+  @ApiOperation({ summary: "Download the board minutes as a letterheaded PDF" })
+  async downloadBoardMeetingMinutes(
+    @Param("id") id: string,
+  ): Promise<{ filename: string; dataUrl: string }> {
+    return this.rubberBoardMeetingService.downloadMinutes(Number(id));
+  }
+
   @Post("portal/accounting/board-meetings/generate-agenda")
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiOperation({ summary: "Draft the next meeting's agenda from past minutes" })

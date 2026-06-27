@@ -79,6 +79,12 @@ export class CompanyProfile {
   @Prop({ type: String, required: false })
   mailerName: string;
 
+  @Prop({ type: String, required: false })
+  letterheadPath: string;
+
+  @Prop({ type: String, required: false })
+  emailSignaturePath: string;
+
   @Prop({ type: Object, required: true })
   directors: Record<string, unknown>;
 

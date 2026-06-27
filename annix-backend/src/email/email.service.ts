@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import * as nodemailer from "nodemailer";
 import { Transporter } from "nodemailer";
+import { CompanyBrandingService } from "../company-branding/company-branding.service";
 import { formatDateZA, nowMillis } from "../lib/datetime";
 import { emailLayout } from "./templates/layout";
 
@@ -31,8 +32,40 @@ export class EmailService {
   private transporter: Transporter;
   private isConfigured = false;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly branding: CompanyBrandingService,
+  ) {
     this.initializeTransporter();
+  }
+
+  // Appends the admin-configured company email signature (if any) to the HTML
+  // body as an inline CID image, returning the augmented html + attachments.
+  private async withSignature(
+    html: string,
+    attachments: EmailAttachment[],
+  ): Promise<{ html: string; attachments: EmailAttachment[] }> {
+    const sig = await this.branding.emailSignatureImage();
+    if (!sig || sig.length < 4) {
+      return { html, attachments };
+    }
+    const isJpeg = sig[0] === 0xff && sig[1] === 0xd8;
+    const img = `<div style="margin-top:20px;"><img src="cid:company-signature" alt="Signature" style="max-width:380px;height:auto;" /></div>`;
+    const augmentedHtml = html.includes("</body>")
+      ? html.replace("</body>", `${img}</body>`)
+      : `${html}${img}`;
+    return {
+      html: augmentedHtml,
+      attachments: [
+        ...attachments,
+        {
+          filename: isJpeg ? "signature.jpg" : "signature.png",
+          content: sig,
+          contentType: isJpeg ? "image/jpeg" : "image/png",
+          cid: "company-signature",
+        },
+      ],
+    };
   }
 
   get hasSmtpTransport(): boolean {
@@ -106,6 +139,11 @@ export class EmailService {
       return true;
     }
 
+    const { html: bodyHtml, attachments } = await this.withSignature(
+      options.html,
+      options.attachments ?? [],
+    );
+
     try {
       await this.transporter.sendMail({
         from,
@@ -114,11 +152,11 @@ export class EmailService {
         ...(options.bcc ? { bcc: options.bcc } : {}),
         replyTo,
         subject: options.subject,
-        html: options.html,
+        html: bodyHtml,
         text: options.text,
         messageId,
         headers,
-        attachments: options.attachments?.map((a) => ({
+        attachments: attachments.map((a) => ({
           filename: a.filename,
           content: a.content,
           contentType: a.contentType,
