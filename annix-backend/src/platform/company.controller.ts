@@ -11,6 +11,9 @@ export class CompanyController {
   constructor(private readonly companyService: CompanyService) {}
 
   @Get(":companyId")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  // TODO(#395): scope to the caller's own company once the JWT carries companyId — currently authenticated-only.
   @ApiOperation({ summary: "Get company by ID" })
   @ApiParam({ name: "companyId", type: Number })
   findOne(@Param("companyId", ParseIntPipe) companyId: number) {
@@ -18,6 +21,9 @@ export class CompanyController {
   }
 
   @Get(":companyId/modules")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  // TODO(#395): scope to the caller's own company once the JWT carries companyId — currently authenticated-only.
   @ApiOperation({ summary: "Get active module codes for a company" })
   @ApiParam({ name: "companyId", type: Number })
   activeModules(@Param("companyId", ParseIntPipe) companyId: number) {

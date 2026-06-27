@@ -1,16 +1,18 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { servesRealUsers } from "../security/production-security.config";
 
 @Injectable()
 export class AuthConfigService {
   constructor(private readonly configService: ConfigService) {}
 
-  // Auth/rate-limit bypasses are DEV-only — always ignored in production so a
-  // stray DISABLE_* env var can never weaken a live deployment (#402). The boot
-  // guard (assertProductionSecurityConfig) additionally refuses to start prod if
-  // any is set, so this is defense-in-depth.
+  // Auth/rate-limit bypasses are DEV-only — always ignored on any deployment that
+  // serves real users (production AND the live test app) so a stray DISABLE_* env
+  // var can never weaken a real-user deployment (#402). The boot guard
+  // (assertProductionSecurityConfig) additionally refuses to start those
+  // environments if any is set, so this is defense-in-depth.
   private bypassEnabled(flag: string): boolean {
-    if (process.env.NODE_ENV === "production") {
+    if (servesRealUsers()) {
       return false;
     }
     return this.configService.get(flag) === "true";

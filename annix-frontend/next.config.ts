@@ -98,6 +98,12 @@ const nextConfig: NextConfig = {
         destination: "/annix-pulse/voice-filter",
         permanent: true,
       },
+      // #395 Phase 1: the Stock Control / AU Rubber entry + login routes funnel
+      // through the unified /core login. That redirect is HOST-GATED and lives in
+      // src/middleware.ts (NOT here) — a next.config redirect fires on every host
+      // and on the dedicated stockcontrol/aurubber hosts it would 301 in-app
+      // /stock-control/login links (logout, session-expiry) to /core, which the
+      // host strip-and-rewrite then turns into /stock-control/core → 404.
     ];
   },
 

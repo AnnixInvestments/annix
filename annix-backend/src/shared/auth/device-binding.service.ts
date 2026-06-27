@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { DeepPartial, PersistedEntity } from "../../lib/persistence/crud-repository";
+import { servesRealUsers } from "../security/production-security.config";
 import { DeviceBindingEntity, DeviceVerificationResult } from "./auth.interfaces";
 import type { AuthDeviceBindingRepository } from "./auth-device-binding.repository";
 
@@ -17,7 +18,7 @@ export class DeviceBindingService {
   constructor(private readonly configService: ConfigService) {}
 
   isDeviceBindingDisabled(): boolean {
-    if (process.env.NODE_ENV === "production") {
+    if (servesRealUsers()) {
       return false;
     }
     return this.configService.get("DISABLE_DEVICE_FINGERPRINT") === "true";
@@ -54,8 +55,7 @@ export class DeviceBindingService {
     }
 
     const ipMismatchCheckDisabled =
-      process.env.NODE_ENV !== "production" &&
-      this.configService.get("DISABLE_IP_MISMATCH_CHECK") === "true";
+      !servesRealUsers() && this.configService.get("DISABLE_IP_MISMATCH_CHECK") === "true";
     const ipMismatchWarning = !ipMismatchCheckDisabled && activeBinding.registeredIp !== clientIp;
 
     return {

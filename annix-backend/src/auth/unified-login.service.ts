@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { AppScope } from "../rbac/app-scope";
 import { AuthConfigService } from "../shared/auth/auth-config.service";
@@ -7,11 +8,15 @@ import { ResolveAppResponseDto } from "./dto/resolve-app.dto";
 
 @Injectable()
 export class UnifiedLoginService {
+  private readonly dummyPasswordHash: Promise<string>;
+
   constructor(
     private readonly userRepo: UserRepository,
     private readonly passwordService: PasswordService,
     private readonly authConfigService: AuthConfigService,
-  ) {}
+  ) {
+    this.dummyPasswordHash = this.passwordService.hashSimple(randomBytes(32).toString("hex"));
+  }
 
   async resolveApp(email: string, password: string): Promise<ResolveAppResponseDto> {
     const normalizedEmail = email.toLowerCase().trim();
@@ -32,6 +37,10 @@ export class UnifiedLoginService {
       return { app: "au-rubber" };
     }
 
+    if (!stockControlUser && !adminUser) {
+      await this.consumeTimingForMissingUser(password);
+    }
+
     throw new UnauthorizedException("Invalid credentials");
   }
 
@@ -43,5 +52,12 @@ export class UnifiedLoginService {
       return true;
     }
     return this.passwordService.verify(password, passwordHash || "");
+  }
+
+  private async consumeTimingForMissingUser(password: string): Promise<void> {
+    if (this.authConfigService.isPasswordVerificationDisabled()) {
+      return;
+    }
+    await this.passwordService.verify(password, await this.dummyPasswordHash);
   }
 }

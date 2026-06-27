@@ -12,6 +12,19 @@ const STATIC_FILE_REGEX =
 const ROOT_METADATA_PATHS = new Set(["/robots.txt", "/sitemap.xml"]);
 const MARKETING_SITE_HOST = portalForCode("marketing").prodHost;
 
+// #395 Phase 1: on path-prefix hosts (launcher hub, localhost, annix-app*.fly.dev)
+// the legacy Stock Control / AU Rubber entry + login paths funnel through the
+// unified /core login. This is host-gated below — the dedicated stockcontrol /
+// aurubber hosts are handled by the strip-and-rewrite block and are left
+// untouched, so in-app /stock-control/login links (logout, session-expiry) keep
+// resolving to the app login instead of 404-ing on /stock-control/core.
+const CORE_ENTRY_REDIRECT_PATHS = new Set([
+  "/stock-control",
+  "/stock-control/login",
+  "/au-rubber",
+  "/au-rubber/login",
+]);
+
 export function middleware(request: NextRequest) {
   const hostHeader = request.headers.get("host") ?? "";
   const host = normaliseHost(hostHeader);
@@ -56,6 +69,19 @@ export function middleware(request: NextRequest) {
 
     url.pathname = pathname === "/" ? prefix : `${prefix}${pathname}`;
     return NextResponse.rewrite(url);
+  }
+
+  // #395 Phase 1: funnel the legacy SC / AU entry + login paths to /core on
+  // path-prefix hosts only (we are past the dedicated-host block above, so
+  // `portal` here is marketing or null). The query string is preserved so
+  // ?expired=1 and ?returnUrl survive. Loop-guard: never touch /core itself.
+  // Admin-transfer links (/stock-control/login?admin-transfer=...) are exempt so
+  // they keep reaching the Stock Control login handler that accepts the transfer.
+  const isCoreItself = pathname === "/core" || pathname.startsWith("/core/");
+  const carriesAdminTransfer = url.searchParams.has("admin-transfer");
+  if (!isCoreItself && !carriesAdminTransfer && CORE_ENTRY_REDIRECT_PATHS.has(pathname)) {
+    url.pathname = "/core";
+    return NextResponse.redirect(url, 301);
   }
 
   // Root-prefix hosts. The public marketing website lives ONLY on the marketing

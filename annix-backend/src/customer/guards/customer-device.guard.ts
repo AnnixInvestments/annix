@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { Request } from "express";
 import { AuditService } from "../../audit/audit.service";
 import { AuditAction } from "../../audit/entities/audit-log.entity";
+import { servesRealUsers } from "../../shared/security/production-security.config";
 import { CustomerAuthService } from "../customer-auth.service";
 
 /**
@@ -19,10 +20,7 @@ export class CustomerDeviceGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    if (
-      process.env.NODE_ENV !== "production" &&
-      this.configService.get("DISABLE_DEVICE_FINGERPRINT") === "true"
-    ) {
+    if (!servesRealUsers() && this.configService.get("DISABLE_DEVICE_FINGERPRINT") === "true") {
       return true;
     }
 

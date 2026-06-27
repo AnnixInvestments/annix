@@ -10,15 +10,37 @@ const AUTH_BYPASS_FLAGS = [
 const MIN_JWT_SECRET_LENGTH = 32;
 const FIELD_ENCRYPTION_KEY_HEX_LENGTH = 64;
 
+// Fly apps that serve REAL users. The single fly.toml bakes NODE_ENV=production,
+// but the live `test` deployment (annix-app-test) overrides NODE_ENV to a
+// non-production value via a Fly secret while still serving real Orbit/AU users.
+// Fly injects FLY_APP_NAME into every machine, so it is the reliable
+// per-deployment signal. The staging scratch app (annix-app-staging) and local
+// dev are intentionally excluded — auth/rate-limit bypasses are legitimate there.
+const REAL_USER_FLY_APPS = ["annix-app", "annix-app-test"];
+
+/**
+ * True for any deployment that serves real users — production OR the live `test`
+ * deployment. Used to fail-closed on both the boot guard and the auth bypass
+ * flags so DISABLE_* can never take effect anywhere real users sign in (#402).
+ */
+export function servesRealUsers(): boolean {
+  if (process.env.NODE_ENV === "production") {
+    return true;
+  }
+  const flyAppName = process.env.FLY_APP_NAME;
+  return flyAppName != null && REAL_USER_FLY_APPS.includes(flyAppName);
+}
+
 /**
  * Fail-closed boot guard for production secrets and bypass flags (#402).
- * Refuses to start production unless JWT_SECRET and FIELD_ENCRYPTION_KEY are
- * properly configured, and unless every DISABLE_* auth/rate-limit bypass is off
- * — so a misconfigured deploy can never silently fall back to a weak secret,
- * store PII in plaintext, or ship with authentication disabled.
+ * Refuses to start a real-user deployment unless JWT_SECRET and
+ * FIELD_ENCRYPTION_KEY are properly configured, and unless every DISABLE_*
+ * auth/rate-limit bypass is off — so a misconfigured deploy can never silently
+ * fall back to a weak secret, store PII in plaintext, or ship with
+ * authentication disabled.
  */
 export function assertProductionSecurityConfig(): void {
-  if (process.env.NODE_ENV !== "production") {
+  if (!servesRealUsers()) {
     return;
   }
 

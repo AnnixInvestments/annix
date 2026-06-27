@@ -1,10 +1,12 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { extractErrorMessage } from "@/app/lib/api/apiError";
 import { API_BASE_URL } from "@/lib/api-config";
 import { CoreBrandHeader } from "./CoreBrandHeader";
 
@@ -18,14 +20,39 @@ const DASHBOARD_BY_APP: Record<ResolvedApp, string> = {
   "au-rubber": "/au-rubber/portal/dashboard",
 };
 
+function safeReturnUrl(raw: string | null): string | null {
+  if (!raw) return null;
+  if (!raw.startsWith("/")) return null;
+  if (raw.startsWith("//")) return null;
+  if (raw.startsWith("/\\")) return null;
+  return raw;
+}
+
+function describeLoginError(err: unknown): string {
+  const message = err instanceof Error ? err.message : "";
+  if (message.includes("Invalid credentials")) {
+    return "Invalid email or password. Please try again.";
+  }
+  if (message.includes("not have permission") || message.includes("Forbidden")) {
+    return "You do not have permission to access this application.";
+  }
+  if (message.includes("suspended") || message.includes("deactivated")) {
+    return "Your account has been suspended. Please contact your administrator.";
+  }
+  return extractErrorMessage(err, "Something went wrong while signing in. Please try again.");
+}
+
 async function resolveAppForCredentials(email: string, password: string): Promise<ResolvedApp> {
   const response = await fetch(`${API_BASE_URL}/auth/resolve-app`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
-  if (!response.ok) {
+  if (response.status === 401) {
     throw new Error("Invalid credentials");
+  }
+  if (!response.ok) {
+    throw new Error("Backend unavailable");
   }
   const data = await response.json();
   const app = data.app;
@@ -37,6 +64,9 @@ async function resolveAppForCredentials(email: string, password: string): Promis
 
 export function CoreLoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnUrlParam = searchParams.get("returnUrl");
+  const sessionExpired = searchParams.get("expired") === "1";
   const stockControl = useStockControlAuth();
   const auRubber = useAuRubberAuth();
 
@@ -75,19 +105,6 @@ export function CoreLoginForm() {
     }
   };
 
-  const mapLoginError = (message: string): string => {
-    if (message.includes("Invalid credentials")) {
-      return "Invalid email or password. Please try again.";
-    }
-    if (message.includes("not have permission") || message.includes("Forbidden")) {
-      return "You do not have permission to access this application.";
-    }
-    if (message.includes("suspended") || message.includes("deactivated")) {
-      return "Your account has been suspended. Please contact your administrator.";
-    }
-    return message;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const emailInput = emailRef.current;
@@ -108,10 +125,11 @@ export function CoreLoginForm() {
       }
 
       persistRememberedEmail(submitEmail);
-      router.push(DASHBOARD_BY_APP[app]);
+      const safeReturn = safeReturnUrl(returnUrlParam);
+      const dashboard = DASHBOARD_BY_APP[app];
+      router.push(safeReturn ?? dashboard);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Login failed. Please try again.";
-      setError(mapLoginError(message));
+      setError(describeLoginError(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -130,7 +148,7 @@ export function CoreLoginForm() {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="text-center text-white">
           <CoreBrandHeader />
-          <p className="mt-3 text-lg text-blue-200">Sign in to your operations platform</p>
+          <p className="mt-3 text-lg text-blue-200">Sign in to Stock Control or AU Rubber</p>
         </div>
       </div>
 
@@ -224,6 +242,14 @@ export function CoreLoginForm() {
               </label>
             </div>
 
+            {sessionExpired && !error && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <p className="text-sm text-amber-700">
+                  Your session has expired. Please sign in again.
+                </p>
+              </div>
+            )}
+
             {error && (
               <div className="rounded-lg border border-red-200 bg-red-50 p-4">
                 <div className="flex">
@@ -260,6 +286,29 @@ export function CoreLoginForm() {
               )}
             </button>
           </form>
+
+          <div className="mt-6 space-y-2 text-center">
+            <p className="text-sm text-gray-600">
+              <Link
+                href="/stock-control/forgot-password"
+                className="font-medium text-[#FF8A00] hover:text-[#e67c00]"
+              >
+                Forgot your password?
+              </Link>
+            </p>
+            <p className="text-sm text-gray-600">
+              New to Stock Control?{" "}
+              <Link
+                href="/stock-control/register"
+                className="font-medium text-[#FF8A00] hover:text-[#e67c00]"
+              >
+                Create an account
+              </Link>
+            </p>
+            <p className="text-xs text-gray-500">
+              AU Rubber access is by invitation — contact your administrator.
+            </p>
+          </div>
         </div>
 
         <div className="mt-6 text-center">

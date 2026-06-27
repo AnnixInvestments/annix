@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { BadRequestException, Injectable, Logger, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
@@ -14,6 +15,7 @@ import { LoginAttemptService } from "./login-attempt.service";
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+  private readonly dummyPasswordHash: Promise<string>;
 
   constructor(
     private readonly jwtService: JwtService,
@@ -24,7 +26,9 @@ export class AuthService {
     private readonly appRepo: AppRepository,
     private readonly auditService: AuditService,
     private readonly loginAttempts: LoginAttemptService,
-  ) {}
+  ) {
+    this.dummyPasswordHash = this.passwordService.hashSimple(randomBytes(32).toString("hex"));
+  }
 
   async validateUser(email: string, password: string, ip?: string): Promise<any> {
     const clientIp = ip ?? "unknown";
@@ -32,6 +36,7 @@ export class AuthService {
 
     const user = await this.userRepo.findByEmailWithRoles(email);
     if (!user) {
+      await this.passwordService.verify(password, await this.dummyPasswordHash);
       await this.loginAttempts.recordFailure(email, clientIp);
       this.auditLoginFailed(email, ip);
       throw new UnauthorizedException("Invalid credentials");
