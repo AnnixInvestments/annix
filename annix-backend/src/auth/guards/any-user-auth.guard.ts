@@ -89,7 +89,7 @@ export class AnyUserAuthGuard implements CanActivate {
    * Returns the decoded payload from whichever secret verified, or throws
    * UnauthorizedException when none of them did.
    */
-  private async verifyWithKnownSecrets(token: string): Promise<AnyUserJwtPayload> {
+  protected async verifyWithKnownSecrets(token: string): Promise<AnyUserJwtPayload> {
     const orbitSecret = resolveAnnixOrbitJwtSecret(this.configService);
     const secrets = [this.configService.get<string>("JWT_SECRET"), orbitSecret].filter(
       (s): s is string => Boolean(s),
@@ -106,7 +106,7 @@ export class AnyUserAuthGuard implements CanActivate {
     throw lastError instanceof Error ? lastError : new UnauthorizedException("Invalid token");
   }
 
-  private async validateSessionByType(payload: AnyUserJwtPayload): Promise<AuthenticatedUser> {
+  protected async validateSessionByType(payload: AnyUserJwtPayload): Promise<AuthenticatedUser> {
     if (payload.type === "admin") {
       if (!payload.sessionToken) {
         throw new UnauthorizedException("Missing session token");
@@ -191,7 +191,7 @@ export class AnyUserAuthGuard implements CanActivate {
     throw new UnauthorizedException("Invalid token type");
   }
 
-  private extractTokenFromHeader(request: Request): string | undefined {
+  protected extractTokenFromHeader(request: Request): string | undefined {
     const [type, token] = request.headers.authorization?.split(" ") ?? [];
     return type === "Bearer" ? token : undefined;
   }

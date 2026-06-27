@@ -9,6 +9,7 @@ export abstract class NixExtractionRegionRepository extends CrudRepository<NixEx
   abstract findActiveByCategoryAndField(
     documentCategory: string,
     fieldName: string,
+    quarantined?: boolean,
   ): Promise<NixExtractionRegion | null>;
   abstract findActiveForCategory(documentCategory: string): Promise<NixExtractionRegion[]>;
   abstract findAllActive(): Promise<NixExtractionRegion[]>;

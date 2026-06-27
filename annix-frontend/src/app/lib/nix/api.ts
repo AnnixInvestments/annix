@@ -34,6 +34,23 @@ async function failNixResponse(response: Response, action: string): Promise<neve
   throw new Error(`Failed to ${action}: ${errorText}`);
 }
 
+/**
+ * Typed error carrying the HTTP status so throw-on-non-OK callers (e.g. the RFQ
+ * wizard's clarification flow) can distinguish a transient, retryable 429 from a
+ * scope rejection (403/404) and degrade gracefully instead of dead-ending.
+ */
+export class NixRequestError extends Error {
+  readonly status: number;
+  readonly retryable: boolean;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "NixRequestError";
+    this.status = status;
+    this.retryable = status === 429;
+  }
+}
+
 export interface NixExtractedPlateBomRow {
   mark?: string;
   description?: string;
@@ -455,10 +472,14 @@ export const nixApi = {
 
     const response = await fetch(uploadUrl, {
       method: "POST",
+      headers: resolveNixAuthHeaders(),
       body: formData,
     });
 
     if (!response.ok) {
+      if (response.status === 429) {
+        throw new Error("You're going too fast — please wait a moment and try again.");
+      }
       const errorText = await response.text();
       throw new Error(`Failed to process document: ${errorText}`);
     }
@@ -553,41 +574,27 @@ export const nixApi = {
 
   extraction: async (extractionId: number): Promise<NixProcessResponse> => {
     const baseUrl = browserBaseUrl();
-    // eslint-disable-next-line no-restricted-syntax -- SSR guard
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     const response = await fetch(`${baseUrl}/nix/extraction/${extractionId}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...resolveNixAuthHeaders(),
       },
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to get extraction: ${errorText}`);
-    }
-
+    if (!response.ok) await failNixResponse(response, "get extraction");
     return response.json();
   },
 
   pendingClarifications: async (extractionId: number): Promise<NixClarificationDto[]> => {
     const baseUrl = browserBaseUrl();
-    // eslint-disable-next-line no-restricted-syntax -- SSR guard
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     const response = await fetch(`${baseUrl}/nix/extraction/${extractionId}/clarifications`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...resolveNixAuthHeaders(),
       },
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to get clarifications: ${errorText}`);
-    }
-
+    if (!response.ok) await failNixResponse(response, "get clarifications");
     return response.json();
   },
 
@@ -597,13 +604,11 @@ export const nixApi = {
     allowLearning: boolean = true,
   ): Promise<{ success: boolean; remainingClarifications: number }> => {
     const baseUrl = browserBaseUrl();
-    // eslint-disable-next-line no-restricted-syntax -- SSR guard
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     const response = await fetch(`${baseUrl}/nix/clarification`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...resolveNixAuthHeaders(),
       },
       body: JSON.stringify({
         clarificationId,
@@ -615,7 +620,12 @@ export const nixApi = {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Failed to submit clarification: ${errorText}`);
+      throw new NixRequestError(
+        response.status,
+        response.status === 429
+          ? "You're going too fast — please wait a moment and try again."
+          : `Failed to submit clarification: ${errorText}`,
+      );
     }
 
     return response.json();
@@ -623,13 +633,11 @@ export const nixApi = {
 
   skipClarification: async (clarificationId: number): Promise<{ success: boolean }> => {
     const baseUrl = browserBaseUrl();
-    // eslint-disable-next-line no-restricted-syntax -- SSR guard
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     const response = await fetch(`${baseUrl}/nix/clarification`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...resolveNixAuthHeaders(),
       },
       body: JSON.stringify({
         clarificationId,
@@ -641,7 +649,12 @@ export const nixApi = {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Failed to skip clarification: ${errorText}`);
+      throw new NixRequestError(
+        response.status,
+        response.status === 429
+          ? "You're going too fast — please wait a moment and try again."
+          : `Failed to skip clarification: ${errorText}`,
+      );
     }
 
     return response.json();
@@ -659,13 +672,11 @@ export const nixApi = {
     }>;
   }): Promise<{ success: boolean; recorded: number }> => {
     const baseUrl = browserBaseUrl();
-    // eslint-disable-next-line no-restricted-syntax -- SSR guard
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     const response = await fetch(`${baseUrl}/nix/learning/feedback`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...resolveNixAuthHeaders(),
       },
       body: JSON.stringify(payload),
     });
@@ -680,13 +691,11 @@ export const nixApi = {
 
   submitCorrection: async (correction: NixCorrectionPayload): Promise<{ success: boolean }> => {
     const baseUrl = browserBaseUrl();
-    // eslint-disable-next-line no-restricted-syntax -- SSR guard
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     const response = await fetch(`${baseUrl}/nix/learning/correction`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...resolveNixAuthHeaders(),
       },
       body: JSON.stringify(correction),
     });

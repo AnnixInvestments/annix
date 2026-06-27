@@ -242,14 +242,21 @@ export class DocumentAnnotationService {
 
   async saveExtractionRegion(
     dto: SaveExtractionRegionDto,
-    userId?: number,
+    userId?: number | null,
+    quarantined: boolean = false,
   ): Promise<NixExtractionRegion> {
     const normalizedCategory = this.normalizeDocumentCategory(dto.documentCategory);
-    this.logger.log(`Saving extraction region for ${normalizedCategory}:${dto.fieldName}`);
+    this.logger.log(
+      `Saving extraction region for ${normalizedCategory}:${dto.fieldName}${quarantined ? " (quarantined)" : ""}`,
+    );
 
+    // Only ever read/mutate a region in the WRITER'S OWN trust lane: an
+    // anonymous (quarantined) write must never overwrite an admin-trained
+    // trusted region that feeds the cross-tenant registration verifier.
     const existingRegion = await this.regionRepo.findActiveByCategoryAndField(
       normalizedCategory,
       dto.fieldName,
+      quarantined,
     );
 
     if (existingRegion) {
@@ -259,6 +266,7 @@ export class DocumentAnnotationService {
       existingRegion.extractionPattern = dto.extractionPattern || null;
       existingRegion.sampleValue = dto.sampleValue || null;
       existingRegion.isCustomField = dto.isCustomField ?? existingRegion.isCustomField;
+      existingRegion.quarantined = quarantined;
       return this.regionRepo.save(existingRegion);
     }
 
@@ -272,6 +280,7 @@ export class DocumentAnnotationService {
       sampleValue: dto.sampleValue || null,
       isCustomField: dto.isCustomField ?? false,
       createdByUserId: userId || null,
+      quarantined,
     });
   }
 

@@ -56,9 +56,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Forward the caller's bearer token so the backend's OptionalAnyUserAuthGuard
+    // recognises authenticated portal users — they must stay exempt from the
+    // anonymous-only cost caps + IP throttle. Anonymous callers simply have no
+    // header and fall through to the (capped, throttled) anonymous path.
+    const incomingAuth = request.headers.get("authorization");
+    const forwardHeaders: Record<string, string> = incomingAuth
+      ? { authorization: incomingAuth }
+      : {};
+
     log.info("[API Route] Forwarding to backend:", `${BACKEND_URL}/nix/upload`);
     const response = await fetch(`${BACKEND_URL}/nix/upload`, {
       method: "POST",
+      headers: forwardHeaders,
       body: backendFormData,
     });
 

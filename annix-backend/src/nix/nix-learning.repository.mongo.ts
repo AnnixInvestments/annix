@@ -22,7 +22,11 @@ export class MongoNixLearningRepository
   async findActiveRelevanceRules(): Promise<NixLearning[]> {
     return this.toDomainList(
       await this.documents
-        .find({ learningType: LearningType.RELEVANCE_RULE, isActive: true })
+        .find({
+          learningType: LearningType.RELEVANCE_RULE,
+          isActive: true,
+          quarantined: { $ne: true },
+        })
         .lean()
         .exec(),
     );
@@ -49,7 +53,12 @@ export class MongoNixLearningRepository
   async findActiveCorrectionsByCategory(category: string): Promise<NixLearning[]> {
     return this.toDomainList(
       await this.documents
-        .find({ learningType: LearningType.CORRECTION, category, isActive: true })
+        .find({
+          learningType: LearningType.CORRECTION,
+          category,
+          isActive: true,
+          quarantined: { $ne: true },
+        })
         .lean()
         .exec(),
     );
@@ -60,7 +69,12 @@ export class MongoNixLearningRepository
   ): Promise<NixLearning[]> {
     return this.toDomainList(
       await this.documents
-        .find({ learningType: LearningType.CORRECTION, category, isActive: true })
+        .find({
+          learningType: LearningType.CORRECTION,
+          category,
+          isActive: true,
+          quarantined: { $ne: true },
+        })
         .sort({ confidence: -1, confirmationCount: -1 })
         .lean()
         .exec(),
@@ -73,7 +87,12 @@ export class MongoNixLearningRepository
   ): Promise<NixLearning[]> {
     return this.toDomainList(
       await this.documents
-        .find({ learningType: LearningType.CORRECTION, category, isActive: true })
+        .find({
+          learningType: LearningType.CORRECTION,
+          category,
+          isActive: true,
+          quarantined: { $ne: true },
+        })
         .sort({ confidence: -1 })
         .limit(limit)
         .lean()
@@ -92,6 +111,7 @@ export class MongoNixLearningRepository
           category,
           isActive: true,
           source: LearningSource.ADMIN_SEEDED,
+          quarantined: { $ne: true },
         })
         .sort({ confidence: -1 })
         .limit(limit)
@@ -129,6 +149,7 @@ export class MongoNixLearningRepository
           learningType: LearningType.CORRECTION,
           category,
           isActive: true,
+          quarantined: { $ne: true },
         })
         .sort({ confidence: -1, confirmationCount: -1 })
         .lean()
@@ -151,6 +172,7 @@ export class MongoNixLearningRepository
           learningType: LearningType.CORRECTION,
           category,
           isActive: true,
+          quarantined: { $ne: true },
         })
         .sort({ confidence: -1 })
         .lean()

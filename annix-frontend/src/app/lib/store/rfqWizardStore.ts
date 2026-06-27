@@ -29,6 +29,7 @@ import {
   type NixClarificationDto,
   type NixExtractedItem,
   type NixProductType,
+  NixRequestError,
   nixApi,
 } from "@/app/lib/nix";
 import type { ScheduleData } from "@/app/lib/store/rfqUiStore";
@@ -2265,8 +2266,19 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
             const result = await nixApi.submitClarification(clarificationId, response, true);
             log.debug("Clarification submitted:", result);
           } catch (error) {
-            log.error("Failed to submit clarification:", error);
-            log.error("Clarification submit error:", error);
+            const status = error instanceof NixRequestError ? error.status : 0;
+            if (status === 429) {
+              showToast(
+                "You're going too fast — please wait a moment, then resubmit this clarification.",
+                "error",
+              );
+              return;
+            }
+            if (status === 403 || status === 404) {
+              showToast("We couldn't load this clarification — skipping it.", "info");
+            } else {
+              log.error("Failed to submit clarification:", error);
+            }
           }
 
           if (!isLastQuestion) {
@@ -2304,7 +2316,19 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
             );
             log.debug("Batch clarifications submitted");
           } catch (error) {
-            log.error("Failed to submit batch clarifications:", error);
+            const status = error instanceof NixRequestError ? error.status : 0;
+            if (status === 429) {
+              showToast(
+                "You're going too fast — please wait a moment, then resubmit these clarifications.",
+                "error",
+              );
+              return;
+            }
+            if (status === 403 || status === 404) {
+              showToast("We couldn't load some clarifications — skipping them.", "info");
+            } else {
+              log.error("Failed to submit batch clarifications:", error);
+            }
           }
 
           if (!isLastBatch) {
@@ -2326,23 +2350,28 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
           try {
             await nixApi.skipClarification(clarificationId);
             log.debug("Clarification skipped");
-
-            if (currentClarificationIndex < nixClarifications.length - 1) {
-              set(
-                (state) => ({ currentClarificationIndex: state.currentClarificationIndex + 1 }),
-                false,
-                "nixSkipClarification/next",
-              );
-            } else {
-              set({ showNixClarification: false }, false, "nixSkipClarification/done");
-              setCurrentStep(1);
-              showToast(
-                "Clarifications skipped. Please complete the project details and continue.",
-                "info",
-              );
-            }
           } catch (error) {
+            const status = error instanceof NixRequestError ? error.status : 0;
+            if (status === 429) {
+              showToast("You're going too fast — please wait a moment and try again.", "error");
+              return;
+            }
             log.error("Failed to skip clarification:", error);
+          }
+
+          if (currentClarificationIndex < nixClarifications.length - 1) {
+            set(
+              (state) => ({ currentClarificationIndex: state.currentClarificationIndex + 1 }),
+              false,
+              "nixSkipClarification/next",
+            );
+          } else {
+            set({ showNixClarification: false }, false, "nixSkipClarification/done");
+            setCurrentStep(1);
+            showToast(
+              "Clarifications skipped. Please complete the project details and continue.",
+              "info",
+            );
           }
         },
 

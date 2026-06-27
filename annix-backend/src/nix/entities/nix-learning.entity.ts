@@ -11,6 +11,7 @@ export enum LearningSource {
   USER_CORRECTION = "user_correction",
   AGGREGATED = "aggregated",
   WEB_AUGMENTED = "web_augmented",
+  ANON_UNVERIFIED = "anon_unverified",
 }
 
 export class NixLearning {
@@ -51,6 +52,20 @@ export class NixLearning {
 
   @ApiProperty({ description: "Whether this rule is active" })
   isActive: boolean;
+
+  @ApiProperty({
+    description:
+      "True when this row was written by an UNAUTHENTICATED caller (anonymous RFQ / public funnel). Quarantined rows are persisted but excluded from every learning read that feeds a Gemini prompt, so a tokenless actor cannot poison the shared, tenant-unscoped learning set. Absent/false on all legitimate (authenticated + pre-existing) rows.",
+    required: false,
+  })
+  quarantined?: boolean;
+
+  @ApiProperty({
+    description:
+      "SHA-256 (truncated) of the client IP for an anonymous write — audit correlation of repeat poison sources only. Null/absent for authenticated and pre-existing rows.",
+    required: false,
+  })
+  sourceIpHash?: string;
 
   createdAt: Date;
 

@@ -39,16 +39,25 @@ export class MongoNixExtractionRegionRepository
   async findActiveByCategoryAndField(
     documentCategory: string,
     fieldName: string,
+    quarantined?: boolean,
   ): Promise<NixExtractionRegion | null> {
+    // Lane-scoped: an anonymous (quarantined) write only ever finds/updates a
+    // region in the quarantined lane; a trusted write only the trusted lane
+    // (quarantined absent/false), so anon writes can't mutate admin-trained
+    // regions. Never passes `undefined` as a query value.
+    const laneFilter = quarantined === true ? true : { $ne: true };
     return this.toDomain(
-      await this.documents.findOne({ documentCategory, fieldName, isActive: true }).lean().exec(),
+      await this.documents
+        .findOne({ documentCategory, fieldName, isActive: true, quarantined: laneFilter })
+        .lean()
+        .exec(),
     );
   }
 
   async findActiveForCategory(documentCategory: string): Promise<NixExtractionRegion[]> {
     return this.toDomainList(
       await this.documents
-        .find({ documentCategory, isActive: true })
+        .find({ documentCategory, isActive: true, quarantined: { $ne: true } })
         .sort({ fieldName: 1 })
         .lean()
         .exec(),

@@ -109,7 +109,29 @@ const PORTAL_ROUTE_TO_STORE: ReadonlyArray<{ prefix: string; store: PortalTokenS
   { prefix: "/annix-rep", store: annixRepTokenStore },
   { prefix: "/teacher-assistant", store: teacherAssistantTokenStore },
   { prefix: "/insights", store: insightsTokenStore },
+  { prefix: "/core/portal/stock-control", store: stockControlTokenStore },
+  { prefix: "/core/portal/au-rubber", store: auRubberTokenStore },
 ];
+
+/**
+ * Active portal store override for the unified `/core/portal` shell. Defaults
+ * to null — every legacy caller (and every path outside `/core`) resolves auth
+ * exactly as before. The `/core` portal context is the only thing that sets
+ * this, making per-app auth deterministic on the shared shell instead of
+ * leaking a foreign portal's token.
+ */
+let activePortalStore: PortalTokenStore | null = null;
+
+export function setActivePortalStore(store: PortalTokenStore | null): void {
+  activePortalStore = store;
+}
+
+export function portalAuthHeadersFor(app: "stock-control" | "au-rubber"): Record<string, string> {
+  if (app === "stock-control") {
+    return stockControlTokenStore.authHeaders();
+  }
+  return auRubberTokenStore.authHeaders();
+}
 
 /**
  * Returns Authorization (and any other auth-related) headers for the most
@@ -118,6 +140,10 @@ const PORTAL_ROUTE_TO_STORE: ReadonlyArray<{ prefix: string; store: PortalTokenS
  * match is found. Empty object when nothing is authenticated.
  */
 export function anyPortalAuthHeaders(): Record<string, string> {
+  const active = activePortalStore;
+  if (active?.isAuthenticated()) {
+    return active.authHeaders();
+  }
   // eslint-disable-next-line no-restricted-syntax -- SSR guard
   if (typeof window !== "undefined") {
     const path = window.location.pathname;
@@ -129,6 +155,11 @@ export function anyPortalAuthHeaders(): Record<string, string> {
       // is what produced the stray "session expired / please log in" prompts
       // when moving between apps.
       return match.store.isAuthenticated() ? match.store.authHeaders() : {};
+    }
+    // Fail closed on the unified shell: a `/core` surface with no prefix match
+    // must NOT borrow the first authenticated portal's token (the H2 bug).
+    if (path.startsWith("/core")) {
+      return {};
     }
   }
   for (const store of ALL_PORTAL_TOKEN_STORES) {

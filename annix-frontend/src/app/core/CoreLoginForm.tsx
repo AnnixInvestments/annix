@@ -25,6 +25,27 @@ function safeReturnUrl(raw: string | null): string | null {
   if (!raw.startsWith("/")) return null;
   if (raw.startsWith("//")) return null;
   if (raw.startsWith("/\\")) return null;
+  // Reject embedded control / whitespace chars (\t \n \r and other C0/DEL bytes)
+  // that can be used to smuggle a payload past naive prefix checks.
+  const hasControlChar = Array.from(raw).some((ch) => {
+    const code = ch.charCodeAt(0);
+    return code <= 0x1f || code === 0x7f;
+  });
+  if (hasControlChar) return null;
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; need an origin to normalize against
+  if (typeof window === "undefined") return null;
+  // Normalize BEFORE the namespace check so traversal (`/core/../admin`) and
+  // percent-encoded traversal (`/core/%2e%2e/admin`) can't escape `/core/`.
+  try {
+    const origin = window.location.origin;
+    const parsed = new URL(raw, origin);
+    if (parsed.origin !== origin) return null;
+    if (parsed.pathname.includes("..")) return null;
+    if (decodeURIComponent(parsed.pathname).includes("..")) return null;
+    if (!parsed.pathname.startsWith("/core/")) return null;
+  } catch {
+    return null;
+  }
   return raw;
 }
 

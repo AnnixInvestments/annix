@@ -46,6 +46,26 @@ import {
 import { PdfExtractorService } from "./services/pdf-extractor.service";
 import { WordExtractorService } from "./services/word-extractor.service";
 
+/**
+ * Trust context for a learning write, derived from the request's authenticated
+ * identity (never from a client-supplied body field). Authenticated writes are
+ * trusted (`quarantined:false`, USER_CORRECTION); anonymous writes are
+ * quarantined and tagged with a one-way IP hash for audit. Defaults to a trusted
+ * system write so internal callers (e.g. patchExtractionItem auto-corrections)
+ * are unaffected.
+ */
+export interface NixLearningWriteTrust {
+  ownerUserId: number | null;
+  quarantined: boolean;
+  sourceIpHash: string | null;
+}
+
+export const TRUSTED_LEARNING_WRITE: NixLearningWriteTrust = {
+  ownerUserId: null,
+  quarantined: false,
+  sourceIpHash: null,
+};
+
 @Injectable()
 export class NixService {
   private readonly logger = new Logger(NixService.name);
@@ -565,6 +585,7 @@ export class NixService {
               dto.productTypes,
               profileSystemPrompt,
               dto.documentRole,
+              dto.allowVision !== false,
             ));
             break;
           case DocumentType.EXCEL:
@@ -795,6 +816,17 @@ export class NixService {
     return this.extractionRepo.findByIdWithUserAndRfq(id);
   }
 
+  /**
+   * Resolves the owning userId behind a clarification (clarification →
+   * extraction → userId), used to scope-check who may answer it. Returns null
+   * when the clarification (or its extraction's owner) can't be resolved — e.g.
+   * a clarification on an anonymously-created extraction.
+   */
+  async clarificationOwnerUserId(clarificationId: number): Promise<number | null> {
+    const clarification = await this.clarificationRepo.findByIdWithExtraction(clarificationId);
+    return clarification?.extraction?.userId ?? null;
+  }
+
   async pendingClarifications(extractionId: number): Promise<NixClarification[]> {
     return this.clarificationRepo.findPendingForExtractionOrdered(extractionId);
   }
@@ -837,6 +869,7 @@ export class NixService {
     productTypes?: string[],
     systemPrompt?: string,
     documentRole?: DocumentRole,
+    allowVision: boolean = true,
   ): Promise<{
     extractedData: Record<string, any>;
     extractedItems: Array<any>;
@@ -908,7 +941,12 @@ export class NixService {
           metadataEmpty &&
           specsEmpty;
         const visionWorthRetrying = isImageOnlyPdf || drawingWithNoItems || specWithNoSignal;
-        if (visionWorthRetrying) {
+        if (visionWorthRetrying && !allowVision) {
+          this.logger.log(
+            `Vision fallback suppressed for ${documentName ?? documentPath} (allowVision=false — anonymous over-threshold upload); staying text-only.`,
+          );
+        }
+        if (visionWorthRetrying && allowVision) {
           this.logger.log(
             `Text extraction yielded ${pdfText.trim().length} chars / ${aiResult.items.length} items / metadata-empty=${metadataEmpty} / specs-empty=${specsEmpty} — retrying via vision (chatWithImage, application/pdf).`,
           );
@@ -1886,17 +1924,28 @@ export class NixService {
     return extraction;
   }
 
-  async recordCorrection(correction: {
-    extractionId?: number;
-    itemDescription: string;
-    fieldName: string;
-    originalValue: string | number | null;
-    correctedValue: string | number;
-    userId?: number;
-  }): Promise<{ success: boolean }> {
+  async recordCorrection(
+    correction: {
+      extractionId?: number;
+      itemDescription: string;
+      fieldName: string;
+      originalValue: string | number | null;
+      correctedValue: string | number;
+      userId?: number;
+    },
+    trust: NixLearningWriteTrust = TRUSTED_LEARNING_WRITE,
+  ): Promise<{ success: boolean }> {
     const patternKey = `${correction.itemDescription}::${correction.fieldName}`;
+    const writeSource = trust.quarantined
+      ? LearningSource.ANON_UNVERIFIED
+      : LearningSource.USER_CORRECTION;
 
-    const existingRule = await this.learningRepo.findCorrectionByPatternKey(patternKey);
+    // Only ever read/mutate a row in the WRITER'S OWN trust lane: an anonymous
+    // (quarantined) write must never touch a trusted row (that's the poison
+    // vector), and a trusted write must never adopt a quarantined row's state.
+    const existing = await this.learningRepo.findCorrectionByPatternKey(patternKey);
+    const existingRule =
+      existing && (existing.quarantined === true) === trust.quarantined ? existing : null;
 
     if (existingRule) {
       if (existingRule.learnedValue === String(correction.correctedValue)) {
@@ -1909,12 +1958,17 @@ export class NixService {
         existingRule.confirmationCount = 1;
         existingRule.confidence = 0.6;
       }
+      existingRule.source = writeSource;
+      existingRule.quarantined = trust.quarantined;
+      if (trust.sourceIpHash != null) {
+        existingRule.sourceIpHash = trust.sourceIpHash;
+      }
       await this.learningRepo.save(existingRule);
       this.logger.log(`Updated learning rule for pattern: ${patternKey}`);
     } else {
       await this.learningRepo.create({
         learningType: LearningType.CORRECTION,
-        source: LearningSource.USER_CORRECTION,
+        source: writeSource,
         patternKey,
         category: correction.fieldName,
         originalValue:
@@ -1923,6 +1977,8 @@ export class NixService {
         confidence: 0.6,
         confirmationCount: 1,
         isActive: true,
+        quarantined: trust.quarantined,
+        sourceIpHash: trust.sourceIpHash ?? undefined,
       });
       this.logger.log(`Created new learning rule for pattern: ${patternKey}`);
     }
@@ -1937,18 +1993,36 @@ export class NixService {
   // confirms the existing row instead of duplicating it.
   async recordFeedbackBatch(
     payload: NixFeedbackPayload,
+    trust: NixLearningWriteTrust = TRUSTED_LEARNING_WRITE,
   ): Promise<{ success: boolean; recorded: number }> {
+    const writeSource = trust.quarantined
+      ? LearningSource.ANON_UNVERIFIED
+      : LearningSource.USER_CORRECTION;
     const results = await Promise.all(
       (payload.corrections ?? []).map(async (correction) => {
         const patternKey = feedbackPatternKey(payload.extractionId, correction);
-        const existing = await this.learningRepo.findCorrectionByPatternKey(patternKey);
+        const existingRow = await this.learningRepo.findCorrectionByPatternKey(patternKey);
+        const existing =
+          existingRow && (existingRow.quarantined === true) === trust.quarantined
+            ? existingRow
+            : null;
         if (existing) {
           existing.confirmationCount += 1;
           existing.confidence = 1;
+          existing.source = writeSource;
+          existing.quarantined = trust.quarantined;
+          if (trust.sourceIpHash != null) {
+            existing.sourceIpHash = trust.sourceIpHash;
+          }
           await this.learningRepo.save(existing);
           return existing;
         }
-        return this.learningRepo.create(feedbackLearningRow(payload, correction));
+        return this.learningRepo.create({
+          ...feedbackLearningRow(payload, correction),
+          source: writeSource,
+          quarantined: trust.quarantined,
+          sourceIpHash: trust.sourceIpHash ?? undefined,
+        });
       }),
     );
     this.logger.log(

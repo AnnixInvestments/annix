@@ -52,6 +52,9 @@ export class NixExtractionRegion {
   @Prop({ type: Boolean, required: true })
   isCustomField: boolean;
 
+  @Prop({ type: Boolean, required: false })
+  quarantined: boolean;
+
   @Prop({ type: Date, required: false })
   createdAt: Date;
 

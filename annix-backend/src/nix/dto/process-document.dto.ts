@@ -74,6 +74,13 @@ export class ProcessDocumentDto {
   })
   @IsOptional()
   skipExtraction?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      "Whether the expensive multimodal vision fallback (chatWithImage on the raw PDF, ~10x the text-only cost) is permitted for this extraction. Defaults to allowed. The /nix/upload handler sets this false for ANONYMOUS callers uploading PDFs over the small-doc page threshold, keeping a tokenless cost-DoS to the cheap text path; authenticated callers and small anonymous docs are unaffected.",
+  })
+  @IsOptional()
+  allowVision?: boolean;
 }
 
 export class ProcessDocumentResponseDto {

@@ -46,6 +46,12 @@ export class NixLearning {
   @Prop({ type: Boolean, required: true })
   isActive: boolean;
 
+  @Prop({ type: Boolean, required: false })
+  quarantined: boolean;
+
+  @Prop({ type: String, required: false })
+  sourceIpHash: string;
+
   @Prop({ type: Date, required: false })
   createdAt: Date;
 

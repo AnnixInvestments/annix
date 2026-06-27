@@ -7,9 +7,11 @@ import {
   ForbiddenException,
   Get,
   Inject,
+  NotFoundException,
   Param,
   ParseIntPipe,
   Patch,
+  PayloadTooLargeException,
   Post,
   Query,
   Req,
@@ -28,12 +30,17 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
+import { SkipThrottle, Throttle } from "@nestjs/throttler";
 import type { Response } from "express";
+import { PDFDocument } from "pdf-lib";
 import { AdminAuthGuard, AdminRequest } from "../admin/guards/admin-auth.guard";
 import { AnyUserAuthGuard, AuthenticatedUser } from "../auth/guards/any-user-auth.guard";
+import { OptionalAnyUserAuthGuard } from "../auth/guards/optional-any-user-auth.guard";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { CustomerDocumentRepository } from "../customer/customer-document.repository";
+import { detectUploadSignature } from "../lib/file-magic-bytes";
+import { clientIpFromRequest, hashClientIp } from "../lib/request-ip";
 import { CompanyRepository } from "../platform/company.repository";
 import { CompanyEmailService } from "../stock-control/services/company-email.service";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
@@ -64,7 +71,8 @@ import {
   NixExtractionSessionStatus,
 } from "./entities/nix-extraction-session.entity";
 import { NixLearning } from "./entities/nix-learning.entity";
-import { NixService } from "./nix.service";
+import { NixThrottlerGuard } from "./guards/nix-throttler.guard";
+import { type NixLearningWriteTrust, NixService } from "./nix.service";
 import { CustomFieldService } from "./services/custom-field.service";
 import { DocumentAnnotationService } from "./services/document-annotation.service";
 import type { NixFeedbackPayload } from "./services/learning-feedback.util";
@@ -77,6 +85,13 @@ import {
   RegistrationDocumentVerifierService,
 } from "./services/registration-document-verifier.service";
 import { type RoleClassification, RoleClassifierService } from "./services/role-classifier.service";
+
+// Cost caps applied ONLY to anonymous (tokenless) uploads on the public Nix
+// routes. Authenticated callers are fully exempt — sized above a real anon RFQ
+// / supplier-registration session (1-5 docs) and tight for a tokenless bot.
+const ANON_MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+const ANON_MAX_PAGES = 30;
+const ANON_VISION_MAX_PAGES = 5;
 
 @ApiTags("Nix AI Assistant")
 @Controller("nix")
@@ -99,17 +114,26 @@ export class NixController {
   ) {}
 
   @Post("process")
+  @UseGuards(AnyUserAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: "Process a document for extraction" })
   @ApiResponse({
     status: 201,
     description: "Document processing started",
     type: ProcessDocumentResponseDto,
   })
-  async processDocument(@Body() dto: ProcessDocumentDto): Promise<ProcessDocumentResponseDto> {
-    return this.nixService.processDocument(dto);
+  async processDocument(
+    @Body() dto: ProcessDocumentDto,
+    @Req() req: Request,
+  ): Promise<ProcessDocumentResponseDto> {
+    const authUser = req["authUser"] as AuthenticatedUser;
+    return this.nixService.processDocument({ ...dto, userId: authUser.userId });
   }
 
   @Post("upload")
+  @UseGuards(OptionalAnyUserAuthGuard, NixThrottlerGuard)
+  @SkipThrottle({ upload: true })
+  @Throttle({ default: { limit: 15, ttl: 60000 } })
   @UseInterceptors(FileInterceptor("file"))
   @ApiConsumes("multipart/form-data")
   @ApiOperation({ summary: "Upload and process a document" })
@@ -135,6 +159,7 @@ export class NixController {
     description: "Document uploaded and processing started",
   })
   async uploadDocument(
+    @Req() req: Request,
     @UploadedFile() file: Express.Multer.File,
     @Body("userId") userId?: string,
     @Body("rfqId") rfqId?: string,
@@ -160,11 +185,14 @@ export class NixController {
     }
 
     const role = parseDocumentRole(documentRole);
+    const skip = skipExtraction === "true" || skipExtraction === "1";
+    const authUser = (req["authUser"] ?? null) as AuthenticatedUser | null;
+    const allowVision = await this.enforceAnonymousUploadCaps(file, authUser, skip);
 
     const dto: ProcessDocumentDto = {
       documentPath: file.path,
       documentName: file.originalname,
-      userId: userId ? parseInt(userId, 10) : undefined,
+      userId: authUser ? authUser.userId : userId ? parseInt(userId, 10) : undefined,
       rfqId: rfqId ? parseInt(rfqId, 10) : undefined,
       sourceModule: sourceModule || undefined,
       sourceId: sourceId ? parseInt(sourceId, 10) : undefined,
@@ -172,10 +200,72 @@ export class NixController {
       documentRole: role,
       sessionId: sessionId ? parseInt(sessionId, 10) : undefined,
       productTypes: parsedProductTypes,
-      skipExtraction: skipExtraction === "true" || skipExtraction === "1",
+      skipExtraction: skip,
+      allowVision,
     };
 
     return this.nixService.processDocument(dto);
+  }
+
+  /**
+   * Cheap, pre-Gemini cost caps applied ONLY to anonymous (tokenless) uploads.
+   * Authenticated callers return early, fully exempt. Returns the resolved
+   * `allowVision` flag (anonymous PDFs over the small-doc page threshold stay on
+   * the cheap text path). Archive-only uploads (the customer magic-link drawing
+   * attachment, skipExtraction:true) never reach the Gemini/vision path, so only
+   * the 25 MB ceiling applies to them.
+   */
+  private async enforceAnonymousUploadCaps(
+    file: Express.Multer.File,
+    authUser: AuthenticatedUser | null,
+    skipExtraction: boolean,
+  ): Promise<boolean> {
+    if (authUser) {
+      return true;
+    }
+
+    if (file.size > ANON_MAX_UPLOAD_BYTES) {
+      throw new PayloadTooLargeException(
+        `This file is too large to upload without signing in (limit ${Math.round(
+          ANON_MAX_UPLOAD_BYTES / 1024 / 1024,
+        )} MB). Please sign in or upload a smaller file.`,
+      );
+    }
+
+    if (skipExtraction) {
+      return true;
+    }
+
+    const buffer = fs.readFileSync(file.path);
+    const kind = detectUploadSignature(buffer);
+    if (!kind) {
+      throw new BadRequestException(
+        "This file type isn't supported here. Please upload a PDF, image (PNG/JPG) or Office document.",
+      );
+    }
+
+    if (kind !== "pdf") {
+      return true;
+    }
+
+    let pageCount: number;
+    try {
+      const pdf = await PDFDocument.load(buffer, {
+        ignoreEncryption: true,
+        updateMetadata: false,
+      });
+      pageCount = pdf.getPageCount();
+    } catch {
+      return false;
+    }
+
+    if (pageCount > ANON_MAX_PAGES) {
+      throw new BadRequestException(
+        `This document has ${pageCount} pages, over the ${ANON_MAX_PAGES}-page limit for uploads without signing in. Please sign in or upload a shorter document.`,
+      );
+    }
+
+    return pageCount <= ANON_VISION_MAX_PAGES;
   }
 
   @Post("sessions")
@@ -584,14 +674,28 @@ export class NixController {
   }
 
   @Get("extraction/:id")
+  @UseGuards(AnyUserAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: "Get extraction details by ID" })
   @ApiResponse({
     status: 200,
     description: "Extraction details",
     type: NixExtraction,
   })
-  async extraction(@Param("id", ParseIntPipe) id: number): Promise<NixExtraction | null> {
-    return this.nixService.extraction(id);
+  async extraction(
+    @Param("id", ParseIntPipe) id: number,
+    @Req() req: Request,
+  ): Promise<NixExtraction> {
+    const authUser = req["authUser"] as AuthenticatedUser;
+    const extraction = await this.nixService.extraction(id);
+    if (!extraction) {
+      throw new NotFoundException(`Extraction ${id} not found`);
+    }
+    const isAdmin = authUser.type === "admin";
+    if (!isAdmin && extraction.userId !== authUser.userId) {
+      throw new NotFoundException(`Extraction ${id} not found`);
+    }
+    return extraction;
   }
 
   @Get("extraction/:id/document-url")
@@ -721,6 +825,9 @@ export class NixController {
   }
 
   @Post("clarification")
+  @UseGuards(OptionalAnyUserAuthGuard, NixThrottlerGuard)
+  @SkipThrottle({ upload: true })
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   @ApiOperation({ summary: "Submit a clarification response" })
   @ApiResponse({
     status: 201,
@@ -728,8 +835,27 @@ export class NixController {
     type: SubmitClarificationResponseDto,
   })
   async submitClarification(
+    @Req() req: Request,
     @Body() dto: SubmitClarificationDto,
   ): Promise<SubmitClarificationResponseDto> {
+    const authUser = (req["authUser"] ?? null) as AuthenticatedUser | null;
+
+    if (authUser) {
+      // Authenticated IDOR is fully closed: a signed-in caller may only answer a
+      // clarification on an extraction they own (or admin). NotFoundException —
+      // not Forbidden — so the id is not confirmed to exist for non-owners.
+      const ownerUserId = await this.nixService.clarificationOwnerUserId(dto.clarificationId);
+      const isAdmin = authUser.type === "admin";
+      if (!isAdmin && ownerUserId !== authUser.userId) {
+        throw new NotFoundException("Clarification not found");
+      }
+    }
+
+    // TODO(#395 Phase 4): anonymous callers can still answer a clarification by
+    // id — the anon RFQ funnel does not yet forward a magic-link / anonymousDraft
+    // token to scope-bind the write. Until it does, the 30/min IP throttle above
+    // blunts blind id-enumeration; do NOT 401/403 here or the live anon funnel
+    // breaks. Anonymous IDOR is REDUCED (throttled), not fully closed, until then.
     return this.nixService.submitClarification(dto);
   }
 
@@ -796,9 +922,13 @@ export class NixController {
   }
 
   @Post("learning/correction")
+  @UseGuards(OptionalAnyUserAuthGuard, NixThrottlerGuard)
+  @SkipThrottle({ upload: true })
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   @ApiOperation({ summary: "Submit a user correction for learning" })
   @ApiResponse({ status: 201, description: "Correction recorded for learning" })
   async submitCorrection(
+    @Req() req: Request,
     @Body()
     body: {
       extractionId?: number;
@@ -809,7 +939,62 @@ export class NixController {
       userId?: number;
     },
   ): Promise<{ success: boolean }> {
-    return this.nixService.recordCorrection(body);
+    const authUser = (req["authUser"] ?? null) as AuthenticatedUser | null;
+    const trust = this.learningWriteTrust(req, authUser);
+    const scopedExtractionId = await this.scopedExtractionId(body.extractionId ?? null, authUser);
+    return this.nixService.recordCorrection(
+      {
+        extractionId: scopedExtractionId ?? undefined,
+        itemDescription: body.itemDescription,
+        fieldName: body.fieldName,
+        originalValue: body.originalValue,
+        correctedValue: body.correctedValue,
+        userId: trust.ownerUserId ?? undefined,
+      },
+      trust,
+    );
+  }
+
+  /**
+   * Builds the learning-write trust context from the request's authenticated
+   * identity ONLY — any client-supplied body `userId` is ignored. Authenticated
+   * → trusted (USER_CORRECTION, not quarantined). Anonymous → quarantined +
+   * one-way IP hash so the shared learning set can't be poisoned by a tokenless
+   * actor, while the write still returns 200 (the anon funnel keeps working).
+   */
+  private learningWriteTrust(
+    req: Request,
+    authUser: AuthenticatedUser | null,
+  ): NixLearningWriteTrust {
+    if (authUser) {
+      return { ownerUserId: authUser.userId, quarantined: false, sourceIpHash: null };
+    }
+    const ip = clientIpFromRequest(req as unknown as Record<string, unknown>);
+    return { ownerUserId: null, quarantined: true, sourceIpHash: hashClientIp(ip) };
+  }
+
+  /**
+   * Only trusts a client-supplied extractionId after confirming it belongs to
+   * the authenticated caller's scope (owner or admin). Anonymous callers — who
+   * have no validatable scope yet — store the write WITHOUT an extractionId
+   * rather than trusting the client value.
+   */
+  private async scopedExtractionId(
+    extractionId: number | null,
+    authUser: AuthenticatedUser | null,
+  ): Promise<number | null> {
+    if (extractionId == null || !authUser) {
+      return null;
+    }
+    const extraction = await this.nixService.extraction(extractionId);
+    if (!extraction) {
+      return null;
+    }
+    const isAdmin = authUser.type === "admin";
+    if (!isAdmin && extraction.userId !== authUser.userId) {
+      return null;
+    }
+    return extractionId;
   }
 
   @Post("classify-role")
@@ -823,6 +1008,9 @@ export class NixController {
   }
 
   @Post("classify-role/content")
+  @UseGuards(OptionalAnyUserAuthGuard, NixThrottlerGuard)
+  @SkipThrottle({ upload: true })
+  @Throttle({ default: { limit: 15, ttl: 60000 } })
   @UseInterceptors(FileInterceptor("file"))
   @ApiConsumes("multipart/form-data")
   @ApiOperation({
@@ -839,23 +1027,66 @@ export class NixController {
   @ApiResponse({ status: 201, description: "Role classification" })
   async classifyRoleByContent(
     @UploadedFile() file: Express.Multer.File,
+    @Req() req: Request,
   ): Promise<RoleClassification> {
     if (!file) {
       throw new BadRequestException("No file uploaded");
     }
-    return this.roleClassifier.classify(file);
+
+    // The Nix Multer module uses DISK storage, so file.buffer is undefined —
+    // load the buffer from disk (same pattern as the upload path) before the
+    // Gemini-vision glance, which otherwise throws on file.buffer.length.
+    const buffer = fs.readFileSync(file.path);
+
+    // Anonymous-only cost caps before the Gemini-vision call: size + magic-byte
+    // allowlist (no page cap — the glance only reads page 1). Authenticated
+    // callers are exempt.
+    const authUser = (req["authUser"] ?? null) as AuthenticatedUser | null;
+    if (!authUser) {
+      if (file.size > ANON_MAX_UPLOAD_BYTES) {
+        throw new PayloadTooLargeException(
+          `This file is too large to upload without signing in (limit ${Math.round(
+            ANON_MAX_UPLOAD_BYTES / 1024 / 1024,
+          )} MB). Please sign in or upload a smaller file.`,
+        );
+      }
+      if (!detectUploadSignature(buffer)) {
+        throw new BadRequestException(
+          "This file type isn't supported here. Please upload a PDF, image (PNG/JPG) or Office document.",
+        );
+      }
+    }
+
+    return this.roleClassifier.classify({
+      originalname: file.originalname,
+      buffer,
+      mimetype: file.mimetype,
+    });
   }
 
   @Post("learning/feedback")
+  @UseGuards(OptionalAnyUserAuthGuard, NixThrottlerGuard)
+  @SkipThrottle({ upload: true })
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   @ApiOperation({
     summary:
       "Submit a batch of Step 3 line-item corrections (diff between the Nix extraction and the customer's final items) for learning",
   })
   @ApiResponse({ status: 201, description: "Feedback corrections recorded for learning" })
   async submitLearningFeedback(
+    @Req() req: Request,
     @Body() body: NixFeedbackPayload,
   ): Promise<{ success: boolean; recorded: number }> {
-    return this.nixService.recordFeedbackBatch(body);
+    const authUser = (req["authUser"] ?? null) as AuthenticatedUser | null;
+    const trust = this.learningWriteTrust(req, authUser);
+    const scopedExtractionId = await this.scopedExtractionId(body.extractionId ?? null, authUser);
+    const scopedPayload: NixFeedbackPayload = {
+      ...body,
+      extractionId: scopedExtractionId,
+      userId: trust.ownerUserId,
+      customerId: authUser?.customerId ?? null,
+    };
+    return this.nixService.recordFeedbackBatch(scopedPayload, trust);
   }
 
   @Post("verify-registration-document")
@@ -1389,14 +1620,26 @@ export class NixController {
   }
 
   @Post("save-extraction-region")
+  @UseGuards(OptionalAnyUserAuthGuard, NixThrottlerGuard)
+  @SkipThrottle({ upload: true })
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   @ApiOperation({
     summary: "Save a learned extraction region from portal user",
   })
   @ApiResponse({ status: 201, description: "Region saved successfully" })
   async saveExtractionRegionFromPortal(
     @Body() dto: SaveExtractionRegionDto,
+    @Req() req: Request,
   ): Promise<{ success: boolean; id: number }> {
-    const region = await this.documentAnnotationService.saveExtractionRegion(dto, undefined);
+    const authUser = (req["authUser"] ?? null) as AuthenticatedUser | null;
+    // Lane-isolate: anonymous (tokenless) region writes are quarantined so they
+    // can never overwrite an admin-trained region that feeds the cross-tenant
+    // registration-document verifier (findActiveForCategory excludes quarantined).
+    const region = await this.documentAnnotationService.saveExtractionRegion(
+      dto,
+      authUser?.userId ?? null,
+      authUser == null,
+    );
     return { success: true, id: region.id };
   }
 
