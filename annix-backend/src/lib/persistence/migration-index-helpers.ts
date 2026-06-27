@@ -45,6 +45,17 @@ export async function createUniqueIndexSafely(
   options: mongo.CreateIndexesOptions = {},
 ): Promise<void> {
   const collection = db.collection(collectionName);
+  const collectionExists =
+    (await db.listCollections({ name: collectionName }).toArray()).length > 0;
+  if (!collectionExists) {
+    // The collection has never been written to (autoCreate is off), so there is
+    // nothing to deduplicate and no existing index to reconcile — and calling
+    // collection.indexes() would throw "ns does not exist". Create the
+    // collection-with-index directly so the unique constraint is in place before
+    // the first write (autoIndex is off, so it must be built explicitly here).
+    await collection.createIndex(key as mongo.IndexSpecification, { ...options, unique: true });
+    return;
+  }
   const existingIndexes = await collection.indexes();
   const sameKeyIndex = existingIndexes.find((index) =>
     indexKeyMatches(key, index.key as Record<string, number>),
