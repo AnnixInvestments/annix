@@ -1,12 +1,16 @@
 import { jsonrepair } from "jsonrepair";
 
 export class JsonFromAiError extends Error {
-  constructor(
-    message: string,
-    public readonly rawContent: string,
-  ) {
+  readonly rawContent: string;
+
+  constructor(message: string, rawContent: string) {
     super(message);
     this.name = "JsonFromAiError";
+    Object.defineProperty(this, "rawContent", {
+      value: rawContent,
+      enumerable: false,
+      writable: false,
+    });
   }
 }
 

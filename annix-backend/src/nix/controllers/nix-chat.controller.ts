@@ -25,6 +25,10 @@ import { CreateSessionDto, NixChatService, SendMessageDto } from "../services/ni
 import { NixChatItemService } from "../services/nix-chat-item.service";
 import { NixValidationService } from "../services/nix-validation.service";
 
+const GENERIC_ASSISTANT_ERROR =
+  "The assistant is temporarily unavailable. Please try again shortly.";
+const RATE_LIMIT_ERROR = "Too many requests — please wait a moment and try again.";
+
 @Controller("nix/chat")
 @UseGuards(AnyUserAuthGuard)
 export class NixChatController {
@@ -108,7 +112,10 @@ export class NixChatController {
       const isRateLimit = error.message?.includes("rate limit");
       const status = isRateLimit ? HttpStatus.TOO_MANY_REQUESTS : HttpStatus.SERVICE_UNAVAILABLE;
 
-      throw new HttpException({ error: error.message }, status);
+      throw new HttpException(
+        { error: isRateLimit ? RATE_LIMIT_ERROR : GENERIC_ASSISTANT_ERROR },
+        status,
+      );
     }
   }
 
@@ -139,7 +146,7 @@ export class NixChatController {
       res.end();
     } catch (error) {
       this.logger.error(`Stream failed for session ${sessionId}: ${error.message}`);
-      res.write(`data: ${JSON.stringify({ type: "error", error: error.message })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: "error", error: GENERIC_ASSISTANT_ERROR })}\n\n`);
       res.end();
     }
   }
@@ -190,7 +197,7 @@ export class NixChatController {
       return await this.chatItemService.parseItemsFromMessage(session, dto);
     } catch (error) {
       this.logger.error(`Failed to parse items for session ${sessionId}: ${error.message}`);
-      throw new HttpException({ error: error.message }, HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException({ error: GENERIC_ASSISTANT_ERROR }, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -214,7 +221,7 @@ export class NixChatController {
       return result;
     } catch (error) {
       this.logger.error(`Failed to create items for session ${sessionId}: ${error.message}`);
-      throw new HttpException({ error: error.message }, HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException({ error: GENERIC_ASSISTANT_ERROR }, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 

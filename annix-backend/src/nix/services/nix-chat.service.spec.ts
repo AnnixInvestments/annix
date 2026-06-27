@@ -227,7 +227,7 @@ describe("NixChatService", () => {
 
       await expect(
         serviceWithoutProvider.sendMessage({ sessionId: 1, owner, message: "Hello" }),
-      ).rejects.toThrow("No AI chat provider available");
+      ).rejects.toThrow("The AI service is temporarily unavailable. Please try again shortly.");
     });
 
     it("should reject a message to a session owned by another user", async () => {
@@ -339,7 +339,7 @@ describe("NixChatService", () => {
 
       expect(result.value).toEqual({
         type: "error",
-        error: "No AI chat provider available. Configure GEMINI_API_KEY or ANTHROPIC_API_KEY.",
+        error: "The AI service is temporarily unavailable. Please try again shortly.",
       });
     });
 

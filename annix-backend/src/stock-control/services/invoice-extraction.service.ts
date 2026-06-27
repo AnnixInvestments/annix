@@ -435,56 +435,28 @@ export class InvoiceExtractionService {
     dnNumbers: string[],
     candidates: DeliveryNoteAutoLinkRow[],
   ): DeliveryNoteAutoLinkRow[] {
+    // Auto-link only on an EXACT normalised delivery-note-number match (#401
+    // ai-security-9). AI-extracted DN numbers are attacker-steerable via a
+    // poisoned invoice, so bidirectional substring matching and the
+    // supplier-name-only fallback (which silently mutate linkedDeliveryNoteIds
+    // and downstream FIFO/price reconciliation) are deliberately dropped —
+    // those weaker signals now require a human to link the delivery note.
     const matched: DeliveryNoteAutoLinkRow[] = [];
     const matchedIds = new Set<number>();
 
     dnNumbers.forEach((rawDnNumber) => {
       const dnNumber = rawDnNumber.trim().toLowerCase();
+      if (!dnNumber) return;
       const exactMatch = candidates.find(
-        (dn) => !matchedIds.has(dn.id) && dn.deliveryNumber.trim().toLowerCase() === dnNumber,
+        (dn) => !matchedIds.has(dn.id) && dn.deliveryNumber?.trim().toLowerCase() === dnNumber,
       );
       if (exactMatch) {
         matched.push(exactMatch);
         matchedIds.add(exactMatch.id);
-      } else {
-        const partialMatch = candidates.find(
-          (dn) =>
-            !matchedIds.has(dn.id) &&
-            (dn.deliveryNumber.trim().toLowerCase().includes(dnNumber) ||
-              dnNumber.includes(dn.deliveryNumber.trim().toLowerCase())),
-        );
-        if (partialMatch) {
-          matched.push(partialMatch);
-          matchedIds.add(partialMatch.id);
-        }
       }
     });
 
-    if (matched.length > 0) return matched;
-
-    const supplierMatches = candidates.filter(
-      (dn) => dn.supplierName.toLowerCase() === invoice.supplierName.toLowerCase(),
-    );
-
-    if (supplierMatches.length === 1) {
-      return [supplierMatches[0]];
-    }
-
-    if (supplierMatches.length > 1 && invoice.invoiceDate) {
-      const invoiceDate = fromJSDate(invoice.invoiceDate);
-      const closestMatch = supplierMatches
-        .filter((dn) => dn.receivedDate !== null)
-        .map((dn) => ({
-          dn,
-          daysDiff: Math.abs(invoiceDate.diff(fromJSDate(dn.receivedDate as Date), "days").days),
-        }))
-        .filter((entry) => entry.daysDiff <= 14)
-        .sort((a, b) => a.daysDiff - b.daysDiff)[0];
-
-      if (closestMatch) return [closestMatch.dn];
-    }
-
-    return [];
+    return matched;
   }
 
   async autoLinkAllUnlinked(companyId: number): Promise<{ linked: number; details: string[] }> {

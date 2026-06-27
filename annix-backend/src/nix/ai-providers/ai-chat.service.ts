@@ -46,6 +46,27 @@ interface ChatProvider {
   ): Promise<{ content: string; tokensUsed?: number; usage?: AiUsage }>;
 }
 
+const AI_UNAVAILABLE_MESSAGE =
+  "The AI service is temporarily unavailable. Please try again shortly.";
+const AI_RATE_LIMIT_MESSAGE =
+  "The AI service is busy (rate limit reached). Please try again shortly.";
+
+function aiUnavailableMessage(detail: string): string {
+  const lower = detail.toLowerCase();
+  const rateLimited = [
+    "rate limit",
+    "resource_exhausted",
+    "quota",
+    "429",
+    "too many requests",
+  ].some((marker) => lower.includes(marker));
+  return rateLimited ? AI_RATE_LIMIT_MESSAGE : AI_UNAVAILABLE_MESSAGE;
+}
+
+function aiUnavailableError(error: unknown): Error {
+  return new Error(aiUnavailableMessage(error instanceof Error ? error.message : String(error)));
+}
+
 @Injectable()
 export class AiChatService implements OnModuleInit {
   private readonly logger = new Logger(AiChatService.name);
@@ -133,9 +154,10 @@ export class AiChatService implements OnModuleInit {
     const { provider, usedFallback } = await this.selectProviderWithFallback(providerToUse);
 
     if (!provider) {
-      throw new Error(
-        "No AI chat provider available. Configure GEMINI_API_KEY or ANTHROPIC_API_KEY.",
+      this.logger.error(
+        "No AI chat provider available — configure GEMINI_API_KEY or ANTHROPIC_API_KEY.",
       );
+      throw new Error(AI_UNAVAILABLE_MESSAGE);
     }
 
     if (usedFallback) {
@@ -188,14 +210,14 @@ export class AiChatService implements OnModuleInit {
             usage: result.usage,
           };
         } catch (fallbackError) {
-          this.logger.error(`Fallback also failed: ${fallbackError.message}`);
-          throw new Error(
+          this.logger.error(
             `All AI providers failed. ${provider.name}: ${error.message}; ${fallbackProvider.name}: ${fallbackError.message}`,
           );
+          throw aiUnavailableError(error);
         }
       }
 
-      throw error;
+      throw aiUnavailableError(error);
     }
   }
 
@@ -288,10 +310,10 @@ export class AiChatService implements OnModuleInit {
     const { provider, usedFallback } = await this.selectProviderWithFallback(providerToUse);
 
     if (!provider) {
-      yield {
-        type: "error",
-        error: "No AI chat provider available. Configure GEMINI_API_KEY or ANTHROPIC_API_KEY.",
-      };
+      this.logger.error(
+        "No AI chat provider available — configure GEMINI_API_KEY or ANTHROPIC_API_KEY.",
+      );
+      yield { type: "error", error: AI_UNAVAILABLE_MESSAGE };
       return;
     }
 
@@ -343,13 +365,13 @@ export class AiChatService implements OnModuleInit {
           this.logger.error(`Streaming fallback also failed: ${fallbackError.message}`);
           yield {
             type: "error",
-            error: `All AI providers failed. Last error: ${fallbackError.message}`,
+            error: AI_UNAVAILABLE_MESSAGE,
           };
           return;
         }
       }
 
-      yield { type: "error", error: errorMessage };
+      yield { type: "error", error: aiUnavailableMessage(errorMessage) };
     }
   }
 

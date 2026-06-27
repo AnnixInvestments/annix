@@ -313,7 +313,7 @@ describe("NixChatController", () => {
       await controller.streamMessage(1, { message: "Hi" }, mockResponse as Response, mockRequest);
 
       expect(mockResponse.write).toHaveBeenCalledWith(
-        'data: {"type":"error","error":"Stream failed"}\n\n',
+        'data: {"type":"error","error":"The assistant is temporarily unavailable. Please try again shortly."}\n\n',
       );
       expect(mockResponse.end).toHaveBeenCalled();
     });

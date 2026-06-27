@@ -12,7 +12,11 @@ import { NixChatMessage } from "../entities/nix-chat-message.entity";
 import { NixChatSession, NixSessionOwner } from "../entities/nix-chat-session.entity";
 import { NixChatMessageRepository } from "../nix-chat-message.repository";
 import { NixChatSessionRepository } from "../nix-chat-session.repository";
-import { GUIDED_MODE_INSTRUCTIONS, PIPING_DOMAIN_KNOWLEDGE } from "../prompts/piping-domain.prompt";
+import {
+  GUIDED_MODE_INSTRUCTIONS,
+  PIPING_DOMAIN_KNOWLEDGE,
+  PROMPT_CONFIDENTIALITY_INSTRUCTION,
+} from "../prompts/piping-domain.prompt";
 import { NixItemParserService } from "./nix-item-parser.service";
 
 export interface CreateSessionDto {
@@ -53,6 +57,9 @@ export interface ChatResponseDto {
     suggestionsProvided?: string[];
   };
 }
+
+const AI_UNAVAILABLE_MESSAGE =
+  "The AI service is temporarily unavailable. Please try again shortly.";
 
 @Injectable()
 export class NixChatService {
@@ -111,9 +118,10 @@ export class NixChatService {
 
   async sendMessage(dto: SendMessageDto): Promise<ChatResponseDto> {
     if (!(await this.aiChatService.isAvailable())) {
-      throw new Error(
-        "No AI chat provider available. Configure GEMINI_API_KEY or ANTHROPIC_API_KEY.",
+      this.logger.error(
+        "No AI chat provider available — configure GEMINI_API_KEY or ANTHROPIC_API_KEY.",
       );
+      throw new Error(AI_UNAVAILABLE_MESSAGE);
     }
 
     const session = await this.ownedSession(dto.sessionId, dto.owner);
@@ -183,10 +191,12 @@ export class NixChatService {
     const startTime = Date.now();
 
     const {
-      content: responseContent,
+      content: rawResponseContent,
       providerUsed,
       tokensUsed,
     } = await this.aiChatService.chat(conversationHistory, systemPrompt);
+
+    const responseContent = this.redactPromptLeakage(rawResponseContent);
 
     const processingTimeMs = Date.now() - startTime;
 
@@ -231,10 +241,10 @@ export class NixChatService {
     dto: SendMessageDto,
   ): AsyncGenerator<{ type: string; delta?: string; error?: string; metadata?: any }> {
     if (!(await this.aiChatService.isAvailable())) {
-      yield {
-        type: "error",
-        error: "No AI chat provider available. Configure GEMINI_API_KEY or ANTHROPIC_API_KEY.",
-      };
+      this.logger.error(
+        "No AI chat provider available — configure GEMINI_API_KEY or ANTHROPIC_API_KEY.",
+      );
+      yield { type: "error", error: AI_UNAVAILABLE_MESSAGE };
       return;
     }
 
@@ -421,8 +431,22 @@ export class NixChatService {
     return [...recentHistory, newMessage];
   }
 
+  private redactPromptLeakage(content: string): string {
+    const leakMarkers = [
+      "You are Nix, an expert AI assistant for piping and fabrication quoting systems",
+      "## Confidentiality (non-negotiable)",
+    ];
+    if (leakMarkers.some((marker) => content.includes(marker))) {
+      this.logger.warn(
+        "Nix response post-filter detected potential system-prompt leakage; response redacted.",
+      );
+      return "I can't share my internal instructions, but I'm happy to help with your piping or RFQ request.";
+    }
+    return content;
+  }
+
   private buildSystemPrompt(session: NixChatSession): string {
-    let prompt = PIPING_DOMAIN_KNOWLEDGE;
+    let prompt = PIPING_DOMAIN_KNOWLEDGE + PROMPT_CONFIDENTIALITY_INSTRUCTION;
 
     if (session.userPreferences.preferredMaterials?.length) {
       prompt += `\n\n## User Preferences\n\nPreferred materials: ${session.userPreferences.preferredMaterials.join(", ")}`;

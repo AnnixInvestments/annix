@@ -310,6 +310,21 @@ export class S3StorageService implements IStorageService, OnModuleInit {
     return `https://${this.bucketName}.s3.${this.regionName}.amazonaws.com/${key}`;
   }
 
+  private contentDisposition(rawFilename: string): string {
+    const filename = rawFilename.slice(0, 255);
+    const asciiFallback =
+      filename
+        .replace(/[\r\n]+/g, " ")
+        .replace(/[^\x20-\x7e]/g, "_")
+        .replace(/["\\]/g, "_")
+        .trim() || "download";
+    const encoded = encodeURIComponent(filename).replace(
+      /['()*]/g,
+      (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+    );
+    return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encoded}`;
+  }
+
   async presignedUrl(path: string, expiresIn?: number, filename?: string): Promise<string> {
     const key = path.replace(/\\/g, "/").replace(/^\//, "");
 
@@ -317,7 +332,7 @@ export class S3StorageService implements IStorageService, OnModuleInit {
       const command = new GetObjectCommand({
         Bucket: this.bucketName,
         Key: key,
-        ...(filename ? { ResponseContentDisposition: `attachment; filename="${filename}"` } : {}),
+        ...(filename ? { ResponseContentDisposition: this.contentDisposition(filename) } : {}),
       });
 
       const url = await getSignedUrl(this.s3Client, command, {
