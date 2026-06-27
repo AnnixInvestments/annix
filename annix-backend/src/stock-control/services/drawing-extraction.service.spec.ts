@@ -211,7 +211,7 @@ describe("DrawingExtractionService", () => {
       expect(result.confidence).toBe(0);
     });
 
-    it("handles AI returning no valid JSON gracefully", async () => {
+    it("retries then throws a friendly error when the AI never returns parseable JSON", async () => {
       jest
         .spyOn(service as any, "convertPdfToImages")
         .mockResolvedValue([Buffer.from("fake-image")]);
@@ -220,13 +220,29 @@ describe("DrawingExtractionService", () => {
         content: "I cannot extract any data from this image",
       });
 
+      await expect(
+        service.extractFromPdfBuffers([{ buffer: Buffer.from("fake-pdf"), filename: "bad.pdf" }]),
+      ).rejects.toThrow("Nix could not read this drawing");
+      expect(mockAiChatService.chat).toHaveBeenCalledTimes(3);
+    });
+
+    it("succeeds on a retry when the AI returns parseable JSON on the second attempt", async () => {
+      jest
+        .spyOn(service as any, "convertPdfToImages")
+        .mockResolvedValue([Buffer.from("fake-image")]);
+
+      mockAiChatService.chat
+        .mockResolvedValueOnce({ content: "no json here" })
+        .mockResolvedValueOnce({
+          content: JSON.stringify({ drawingType: "pipe", dimensions: [], confidence: 0.5 }),
+        });
+
       const result = await service.extractFromPdfBuffers([
-        { buffer: Buffer.from("fake-pdf"), filename: "bad.pdf" },
+        { buffer: Buffer.from("fake-pdf"), filename: "retry.pdf" },
       ]);
 
       expect(result.drawingType).toBe("pipe");
-      expect(result.dimensions).toHaveLength(0);
-      expect(result.confidence).toBe(0);
+      expect(mockAiChatService.chat).toHaveBeenCalledTimes(2);
     });
   });
 
