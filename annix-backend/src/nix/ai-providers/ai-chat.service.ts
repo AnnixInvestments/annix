@@ -301,10 +301,20 @@ export class AiChatService implements OnModuleInit {
     this.aiQuotaService.debit(context, usage?.totalTokens ?? 0);
   }
 
+  private usageFromChunk(usage: { inputTokens: number; outputTokens: number }): AiUsage {
+    return {
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      cachedInputTokens: 0,
+      totalTokens: usage.inputTokens + usage.outputTokens,
+    };
+  }
+
   async *streamChat(
     messages: ChatMessage[],
     systemPrompt?: string,
     providerOverride?: AiChatProviderType,
+    usageLog?: AiUsageLogContext,
   ): AsyncGenerator<StreamChunk & { providerUsed?: string }> {
     const providerToUse = providerOverride || this.preferredProvider;
     const { provider, usedFallback } = await this.selectProviderWithFallback(providerToUse);
@@ -323,6 +333,8 @@ export class AiChatService implements OnModuleInit {
 
     this.logger.log(`Streaming with chat provider: ${provider.name}`);
 
+    const startedAt = nowMillis();
+    let capturedUsage: AiUsage | undefined;
     let hasError = false;
     let errorMessage = "";
 
@@ -332,6 +344,10 @@ export class AiChatService implements OnModuleInit {
           hasError = true;
           errorMessage = chunk.error || "Unknown error";
           break;
+        }
+
+        if (chunk.type === "message_stop" && chunk.metadata?.usage) {
+          capturedUsage = this.usageFromChunk(chunk.metadata.usage);
         }
 
         if (chunk.type === "message_start") {
@@ -345,34 +361,42 @@ export class AiChatService implements OnModuleInit {
       errorMessage = error.message;
     }
 
-    if (hasError) {
-      this.logger.error(`Streaming failed with ${provider.name}: ${errorMessage}`);
-
-      const fallbackProvider = await this.fallbackProvider(provider.name);
-      if (fallbackProvider) {
-        this.logger.log(`Attempting streaming fallback to: ${fallbackProvider.name}`);
-
-        try {
-          for await (const chunk of fallbackProvider.streamChat(messages, systemPrompt)) {
-            if (chunk.type === "message_start") {
-              yield { ...chunk, providerUsed: fallbackProvider.name };
-            } else {
-              yield chunk;
-            }
-          }
-          return;
-        } catch (fallbackError) {
-          this.logger.error(`Streaming fallback also failed: ${fallbackError.message}`);
-          yield {
-            type: "error",
-            error: AI_UNAVAILABLE_MESSAGE,
-          };
-          return;
-        }
-      }
-
-      yield { type: "error", error: aiUnavailableMessage(errorMessage) };
+    if (!hasError) {
+      this.recordUsage(provider.name, capturedUsage, usageLog, nowMillis() - startedAt);
+      return;
     }
+
+    this.logger.error(`Streaming failed with ${provider.name}: ${errorMessage}`);
+
+    const fallbackProvider = await this.fallbackProvider(provider.name);
+    if (fallbackProvider) {
+      this.logger.log(`Attempting streaming fallback to: ${fallbackProvider.name}`);
+
+      try {
+        let fallbackUsage: AiUsage | undefined;
+        for await (const chunk of fallbackProvider.streamChat(messages, systemPrompt)) {
+          if (chunk.type === "message_stop" && chunk.metadata?.usage) {
+            fallbackUsage = this.usageFromChunk(chunk.metadata.usage);
+          }
+          if (chunk.type === "message_start") {
+            yield { ...chunk, providerUsed: fallbackProvider.name };
+          } else {
+            yield chunk;
+          }
+        }
+        this.recordUsage(fallbackProvider.name, fallbackUsage, usageLog, nowMillis() - startedAt);
+        return;
+      } catch (fallbackError) {
+        this.logger.error(`Streaming fallback also failed: ${fallbackError.message}`);
+        yield {
+          type: "error",
+          error: AI_UNAVAILABLE_MESSAGE,
+        };
+        return;
+      }
+    }
+
+    yield { type: "error", error: aiUnavailableMessage(errorMessage) };
   }
 
   private async selectProviderWithFallback(

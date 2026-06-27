@@ -155,7 +155,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
         },
       }),
       limits: {
-        fileSize: 100 * 1024 * 1024, // 100 MB for tender documents
+        fileSize: Number(process.env.NIX_MAX_UPLOAD_BYTES) || 40 * 1024 * 1024,
       },
     }),
     forwardRef(() => SecureDocumentsModule),

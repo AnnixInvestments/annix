@@ -13,6 +13,8 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { Response } from "express";
+import { AiQuotaService } from "../../ai-usage/ai-quota.service";
+import { AiApp } from "../../ai-usage/entities/ai-usage-log.entity";
 import { AnyUserAuthGuard, AuthenticatedUser } from "../../auth/guards/any-user-auth.guard";
 import {
   CreateItemsFromChatDto,
@@ -28,20 +30,44 @@ import { NixValidationService } from "../services/nix-validation.service";
 const GENERIC_ASSISTANT_ERROR =
   "The assistant is temporarily unavailable. Please try again shortly.";
 const RATE_LIMIT_ERROR = "Too many requests — please wait a moment and try again.";
+const TOO_MANY_STREAMS_ERROR =
+  "Too many active chat sessions — please finish one before starting another.";
+const MAX_CONCURRENT_STREAMS_PER_USER = Number(process.env.NIX_MAX_CONCURRENT_STREAMS) || 3;
 
 @Controller("nix/chat")
 @UseGuards(AnyUserAuthGuard)
 export class NixChatController {
   private readonly logger = new Logger(NixChatController.name);
 
+  private readonly activeStreamsByUser = new Map<number, number>();
+
   constructor(
     private readonly chatService: NixChatService,
     private readonly validationService: NixValidationService,
     private readonly chatItemService: NixChatItemService,
+    private readonly aiQuotaService: AiQuotaService,
   ) {}
 
   private owner(req: { authUser: AuthenticatedUser }): NixSessionOwner {
     return { userId: req.authUser.userId, appScope: req.authUser.type };
+  }
+
+  private acquireStreamSlot(userId: number): boolean {
+    const current = this.activeStreamsByUser.get(userId) ?? 0;
+    if (current >= MAX_CONCURRENT_STREAMS_PER_USER) {
+      return false;
+    }
+    this.activeStreamsByUser.set(userId, current + 1);
+    return true;
+  }
+
+  private releaseStreamSlot(userId: number): void {
+    const current = this.activeStreamsByUser.get(userId) ?? 0;
+    if (current <= 1) {
+      this.activeStreamsByUser.delete(userId);
+    } else {
+      this.activeStreamsByUser.set(userId, current - 1);
+    }
   }
 
   @Post("session")
@@ -126,12 +152,17 @@ export class NixChatController {
     @Res() res: Response,
     @Request() req,
   ) {
+    const owner = this.owner(req);
     const dto: SendMessageDto = {
       sessionId,
-      owner: this.owner(req),
+      owner,
       message: body.message,
       context: body.context,
     };
+
+    if (!this.acquireStreamSlot(owner.userId)) {
+      throw new HttpException({ error: TOO_MANY_STREAMS_ERROR }, HttpStatus.TOO_MANY_REQUESTS);
+    }
 
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
@@ -139,6 +170,12 @@ export class NixChatController {
     res.setHeader("X-Accel-Buffering", "no");
 
     try {
+      await this.aiQuotaService.assertWithinQuota({
+        app: AiApp.NIX,
+        userId: owner.userId,
+        quotaScope: "user",
+      });
+
       for await (const chunk of this.chatService.streamMessage(dto)) {
         res.write(`data: ${JSON.stringify(chunk)}\n\n`);
       }
@@ -148,6 +185,8 @@ export class NixChatController {
       this.logger.error(`Stream failed for session ${sessionId}: ${error.message}`);
       res.write(`data: ${JSON.stringify({ type: "error", error: GENERIC_ASSISTANT_ERROR })}\n\n`);
       res.end();
+    } finally {
+      this.releaseStreamSlot(owner.userId);
     }
   }
 

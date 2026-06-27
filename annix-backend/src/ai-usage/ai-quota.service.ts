@@ -37,6 +37,7 @@ const COUNTERS_COLLECTION = "ai_quota_counters";
 export class AiQuotaService {
   private readonly logger = new Logger(AiQuotaService.name);
   private readonly dailyReadCache = new Map<string, { tokens: number; expiresAtMillis: number }>();
+  private readonly warnedDailyBudget = new Set<string>();
 
   constructor(@InjectConnection() private readonly connection: Connection) {}
 
@@ -69,10 +70,33 @@ export class AiQuotaService {
       return;
     }
     const resolved = this.resolve(context, config);
-    void this.incrementDailyTokens(resolved.key, tokens).catch((error: unknown) => {
-      const message = error instanceof Error ? error.message : String(error);
-      this.logger.warn(`AI quota debit failed (count under-reports until next call): ${message}`);
-    });
+    void this.incrementDailyTokens(resolved.key, tokens)
+      .then(() => this.warnIfApproachingDailyBudget(resolved))
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn(`AI quota debit failed (count under-reports until next call): ${message}`);
+      });
+  }
+
+  private async warnIfApproachingDailyBudget(resolved: ResolvedQuota): Promise<void> {
+    const budget = resolved.limits.dailyTokenBudget;
+    if (budget <= 0) {
+      return;
+    }
+    const dailyId = this.dailyId(resolved.key);
+    if (this.warnedDailyBudget.has(dailyId)) {
+      return;
+    }
+    const spent = await this.dailyTokensSpent(resolved.key);
+    if (spent >= budget * 0.8) {
+      if (this.warnedDailyBudget.size > MAX_DAILY_CACHE_ENTRIES) {
+        this.warnedDailyBudget.clear();
+      }
+      this.warnedDailyBudget.add(dailyId);
+      this.logger.warn(
+        `AI token spend for ${resolved.key} reached ${spent}/${budget} tokens (>=80% of the daily budget).`,
+      );
+    }
   }
 
   private resolve(context: AiQuotaContext, config: AiQuotaConfig): ResolvedQuota {

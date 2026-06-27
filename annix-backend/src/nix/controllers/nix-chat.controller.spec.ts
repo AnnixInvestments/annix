@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { Response } from "express";
+import { AiQuotaService } from "../../ai-usage/ai-quota.service";
 import { AnyUserAuthGuard } from "../../auth/guards/any-user-auth.guard";
 import { NixChatMessage } from "../entities/nix-chat-message.entity";
 import { NixChatSession } from "../entities/nix-chat-session.entity";
@@ -72,6 +73,7 @@ describe("NixChatController", () => {
         { provide: NixChatService, useValue: mockChatService },
         { provide: NixValidationService, useValue: mockValidationService },
         { provide: NixChatItemService, useValue: mockChatItemService },
+        { provide: AiQuotaService, useValue: { assertWithinQuota: jest.fn() } },
       ],
     })
       .overrideGuard(AnyUserAuthGuard)

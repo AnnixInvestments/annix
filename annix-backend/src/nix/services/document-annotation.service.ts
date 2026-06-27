@@ -5,6 +5,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import sharp from "sharp";
 import { createWorker } from "tesseract.js";
 import { renderPdfToPng } from "../../lib/pdf/ghostscript";
+import { capPdfPages, defaultVisionInputLimits } from "../../lib/pdf/vision-input-guard";
 import {
   PdfPageImageDto,
   PdfPagesResponseDto,
@@ -31,7 +32,14 @@ export class DocumentAnnotationService {
     try {
       this.logger.log("Converting PDF to images for annotation view using Ghostscript");
 
-      await fs.writeFile(inputPath, buffer);
+      const maxPages = defaultVisionInputLimits().maxPages;
+      const cappedBuffer = await capPdfPages(buffer, maxPages).catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn(`Could not page-cap PDF before rasterisation, using original: ${message}`);
+        return buffer;
+      });
+
+      await fs.writeFile(inputPath, cappedBuffer);
 
       const dpi = Math.round(150 * scale);
 
@@ -53,7 +61,8 @@ export class DocumentAnnotationService {
           const numA = parseInt(a.match(/page-(\d+)\.png/)?.[1] || "0", 10);
           const numB = parseInt(b.match(/page-(\d+)\.png/)?.[1] || "0", 10);
           return numA - numB;
-        });
+        })
+        .slice(0, maxPages);
 
       if (pngFiles.length === 0) {
         this.logger.warn("PDF conversion returned no pages");

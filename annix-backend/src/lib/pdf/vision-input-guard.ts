@@ -27,8 +27,8 @@ export class VisionInputTooLargeError extends Error {
   }
 }
 
-async function capPdfPages(buffer: Buffer, maxPages: number): Promise<Buffer> {
-  const source = await PDFDocument.load(buffer);
+export async function capPdfPages(buffer: Buffer, maxPages: number): Promise<Buffer> {
+  const source = await PDFDocument.load(buffer, { ignoreEncryption: true });
   const totalPages = source.getPageCount();
   if (totalPages <= maxPages) {
     return buffer;
