@@ -171,6 +171,7 @@ import {
   AuRubberPartyType,
   auRubberDocumentPath,
 } from "./lib/au-rubber-document-paths";
+import type { MeetingProviderName } from "./meetings/meeting-provider.interface";
 import { RubberAppProfileRepository } from "./repositories/rubber-app-profile.repository";
 import {
   type MonthlyAccountDataDto,
@@ -179,6 +180,7 @@ import {
 } from "./rubber-accounting.service";
 import { RubberAuCocService } from "./rubber-au-coc.service";
 import { RubberAuCocReadinessService } from "./rubber-au-coc-readiness.service";
+import { type BoardMeetingDto, RubberBoardMeetingService } from "./rubber-board-meeting.service";
 import { RubberBrandingService, ScrapedBrandingCandidates } from "./rubber-branding.service";
 import { RubberCocService } from "./rubber-coc.service";
 import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
@@ -281,6 +283,7 @@ export class RubberLiningController {
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
     private readonly rubberAccountingService: RubberAccountingService,
     private readonly rubberCompanyDirectorService: RubberCompanyDirectorService,
+    private readonly rubberBoardMeetingService: RubberBoardMeetingService,
     private readonly rubberStatementReconciliationService: RubberStatementReconciliationService,
     private readonly rubberRollIssuanceService: RubberRollIssuanceService,
     private readonly rubberOrderConfirmationService: RubberOrderConfirmationService,
@@ -4543,6 +4546,74 @@ Formula: totalPrice = totalKg × salePricePerKg
   async deleteAccountingDirector(@Param("id") id: string): Promise<void> {
     const deleted = await this.rubberCompanyDirectorService.deleteDirector(Number(id));
     if (!deleted) throw new NotFoundException("Director not found");
+  }
+
+  // ---- Board Meetings (import recorded meetings → AI minutes → agendas) ----
+
+  @Get("portal/accounting/board-meetings/providers")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
+  @ApiOperation({ summary: "List configured meeting-import providers" })
+  async boardMeetingProviders(): Promise<{ providers: MeetingProviderName[] }> {
+    return { providers: this.rubberBoardMeetingService.configuredProviders() };
+  }
+
+  @Get("portal/accounting/board-meetings/providers/:provider/available")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
+  @ApiOperation({ summary: "List meetings available to import from a provider" })
+  async boardMeetingAvailable(@Param("provider") provider: string) {
+    return this.rubberBoardMeetingService.availableMeetings(provider as MeetingProviderName);
+  }
+
+  @Get("portal/accounting/board-meetings")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
+  @ApiOperation({ summary: "List imported board meetings" })
+  async boardMeetings(): Promise<BoardMeetingDto[]> {
+    return this.rubberBoardMeetingService.listMeetings();
+  }
+
+  @Get("portal/accounting/board-meetings/:id")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
+  @ApiOperation({ summary: "Get a board meeting with its minutes" })
+  async boardMeeting(@Param("id") id: string): Promise<BoardMeetingDto> {
+    const meeting = await this.rubberBoardMeetingService.getMeeting(Number(id));
+    if (!meeting) throw new NotFoundException("Board meeting not found");
+    return meeting;
+  }
+
+  @Post("portal/accounting/board-meetings/import")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
+  @ApiOperation({ summary: "Import a recorded meeting from a provider" })
+  async importBoardMeeting(
+    @Body() body: { provider: MeetingProviderName; externalId?: string; url?: string },
+    @Req() req: AdminRequest,
+  ): Promise<BoardMeetingDto> {
+    return this.rubberBoardMeetingService.importMeeting(
+      body.provider,
+      { externalId: body.externalId, url: body.url },
+      req.user?.email ?? null,
+    );
+  }
+
+  @Post("portal/accounting/board-meetings/:id/generate-minutes")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
+  @ApiOperation({ summary: "Generate AI board minutes for a meeting" })
+  async generateBoardMeetingMinutes(@Param("id") id: string): Promise<BoardMeetingDto> {
+    return this.rubberBoardMeetingService.generateMinutes(Number(id));
+  }
+
+  @Post("portal/accounting/board-meetings/generate-agenda")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
+  @ApiOperation({ summary: "Draft the next meeting's agenda from past minutes" })
+  async generateBoardMeetingAgenda() {
+    return this.rubberBoardMeetingService.generateAgenda();
+  }
+
+  @Delete("portal/accounting/board-meetings/:id")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
+  @ApiOperation({ summary: "Delete an imported board meeting" })
+  async deleteBoardMeeting(@Param("id") id: string): Promise<void> {
+    const deleted = await this.rubberBoardMeetingService.deleteMeeting(Number(id));
+    if (!deleted) throw new NotFoundException("Board meeting not found");
   }
 
   @Get("portal/accounting/payable")

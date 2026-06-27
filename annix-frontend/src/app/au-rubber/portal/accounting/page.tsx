@@ -156,6 +156,15 @@ export default function AccountingDashboardPage() {
                   Generated reports & sign-offs
                 </p>
               </Link>
+              <Link
+                href="/au-rubber/portal/accounting/board-meetings"
+                className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
+              >
+                <h3 className="font-medium text-gray-900 dark:text-gray-100">Board Meetings</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Import recordings → AI minutes & agendas
+                </p>
+              </Link>
             </div>
 
             {recentAccounts.length > 0 && (

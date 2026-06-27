@@ -33,6 +33,8 @@ import { CompoundDataSheetsService } from "./compound-data-sheets.service";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
 import { AuRubberFeatureGuard } from "./guards/au-rubber-feature.guard";
 import { LinkedInFeedService } from "./linkedin-feed.service";
+import { FathomProvider } from "./meetings/fathom.provider";
+import { MeetingProviderRegistry } from "./meetings/meeting-provider.registry";
 import { PublicAuIndustriesController } from "./public-au-industries.controller";
 import { BlogPostRepository } from "./repositories/blog-post.repository";
 import { MongoBlogPostRepository } from "./repositories/blog-post.repository.mongo";
@@ -52,6 +54,8 @@ import { RubberAuCocRepository } from "./repositories/rubber-au-coc.repository";
 import { MongoRubberAuCocRepository } from "./repositories/rubber-au-coc.repository.mongo";
 import { RubberAuCocItemRepository } from "./repositories/rubber-au-coc-item.repository";
 import { MongoRubberAuCocItemRepository } from "./repositories/rubber-au-coc-item.repository.mongo";
+import { RubberBoardMeetingRepository } from "./repositories/rubber-board-meeting.repository";
+import { MongoRubberBoardMeetingRepository } from "./repositories/rubber-board-meeting.repository.mongo";
 import { RubberChemicalCompatibilityRepository } from "./repositories/rubber-chemical-compatibility.repository";
 import { MongoRubberChemicalCompatibilityRepository } from "./repositories/rubber-chemical-compatibility.repository.mongo";
 import { RubberCocBatchCorrectionRepository } from "./repositories/rubber-coc-batch-correction.repository";
@@ -141,6 +145,8 @@ import { RubberAccountingPdfService } from "./rubber-accounting-pdf.service";
 import { RubberAdminController } from "./rubber-admin.controller";
 import { RubberAuCocService } from "./rubber-au-coc.service";
 import { RubberAuCocReadinessService } from "./rubber-au-coc-readiness.service";
+import { RubberBoardMeetingService } from "./rubber-board-meeting.service";
+import { RubberBoardMeetingAiService } from "./rubber-board-meeting-ai.service";
 import { RubberBrandingService } from "./rubber-branding.service";
 import { RubberCocService } from "./rubber-coc.service";
 import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
@@ -181,6 +187,7 @@ import { RubberAppProfileSchema } from "./schemas/rubber-app-profile.schema";
 import { RubberApplicationRatingSchema } from "./schemas/rubber-application-rating.schema";
 import { RubberAuCocSchema } from "./schemas/rubber-au-coc.schema";
 import { RubberAuCocItemSchema } from "./schemas/rubber-au-coc-item.schema";
+import { RubberBoardMeetingSchema } from "./schemas/rubber-board-meeting.schema";
 import { RubberChemicalCompatibilitySchema } from "./schemas/rubber-chemical-compatibility.schema";
 import { RubberCocBatchCorrectionSchema } from "./schemas/rubber-coc-batch-correction.schema";
 import { RubberCompanySchema } from "./schemas/rubber-company.schema";
@@ -259,6 +266,7 @@ import { WebsitePagesService } from "./website-pages.service";
       { name: "RubberAppProfile", schema: RubberAppProfileSchema },
       { name: "RubberAuCoc", schema: RubberAuCocSchema },
       { name: "RubberAuCocItem", schema: RubberAuCocItemSchema },
+      { name: "RubberBoardMeeting", schema: RubberBoardMeetingSchema },
       { name: "RubberChemicalCompatibility", schema: RubberChemicalCompatibilitySchema },
       { name: "RubberCocBatchCorrection", schema: RubberCocBatchCorrectionSchema },
       { name: "RubberCompany", schema: RubberCompanySchema },
@@ -386,10 +394,15 @@ import { WebsitePagesService } from "./website-pages.service";
     PdfSlicerService,
     RubberExtractionOrchestratorService,
     RubberCompanyDirectorService,
+    RubberBoardMeetingService,
+    RubberBoardMeetingAiService,
+    FathomProvider,
+    MeetingProviderRegistry,
     RubberAccountingPdfService,
     RubberAccountingService,
     RubberStatementReconciliationService,
     AuRubberCapabilities,
+    repositoryProvider(RubberBoardMeetingRepository, MongoRubberBoardMeetingRepository),
     repositoryProvider(BlogPostRepository, MongoBlogPostRepository),
     repositoryProvider(ChemicalSupplierDocumentRepository, MongoChemicalSupplierDocumentRepository),
     repositoryProvider(CompoundDataSheetRepository, MongoCompoundDataSheetRepository),
@@ -500,6 +513,7 @@ import { WebsitePagesService } from "./website-pages.service";
     RubberCostService,
     RubberAccountingService,
     RubberCompanyDirectorService,
+    RubberBoardMeetingService,
     RubberStatementReconciliationService,
     RubberRollStockRepository,
   ],

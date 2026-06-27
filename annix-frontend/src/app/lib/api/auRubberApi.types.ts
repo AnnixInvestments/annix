@@ -1495,3 +1495,59 @@ export interface SageContactMappingStatus {
     unmapped: number;
   };
 }
+
+// ---- Board Meetings ----
+
+export interface BoardMeetingActionItemDto {
+  description: string;
+  owner: string | null;
+  dueDate: string | null;
+}
+
+export interface BoardMeetingMinutesDto {
+  attendees: string[];
+  apologies: string[];
+  agendaItems: string[];
+  decisions: string[];
+  actionItems: BoardMeetingActionItemDto[];
+  mattersArising: string[];
+  risksAndCompliance: string[];
+  financialHighlights: string[];
+  nextSteps: string[];
+  generatedAt: string;
+}
+
+export interface BoardMeetingDto {
+  id: number;
+  title: string;
+  meetingDate: string | null;
+  provider: string;
+  externalId: string | null;
+  recordingUrl: string | null;
+  attendees: string[];
+  providerSummary: string | null;
+  hasTranscript: boolean;
+  minutes: BoardMeetingMinutesDto | null;
+  minutesStatus: "NONE" | "GENERATED" | "FAILED";
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MeetingListingDto {
+  externalId: string;
+  provider: string;
+  title: string;
+  meetingDate: string | null;
+  recordingUrl: string | null;
+  hasTranscript: boolean;
+}
+
+export interface GeneratedAgendaDto {
+  title: string;
+  standingItems: string[];
+  carriedForwardActions: string[];
+  unresolvedMatters: string[];
+  suggestedItems: string[];
+  generatedAt: string;
+}

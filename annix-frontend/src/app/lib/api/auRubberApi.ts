@@ -25,6 +25,7 @@ import type {
   AuRubberRoleDto,
   AuRubberUserAccessDto,
   AuRubberUserProfile,
+  BoardMeetingDto,
   ChemicalDocExtractedData,
   ChemicalSupplierDocumentDto,
   CocProcessingStatus,
@@ -46,6 +47,7 @@ import type {
   DeliveryNoteStatus,
   DeliveryNoteType,
   ExtractedDeliveryNoteData,
+  GeneratedAgendaDto,
   ImportCompoundOpeningStockResultDto,
   ImportCompoundOpeningStockRowDto,
   ImportOpeningStockResultDto,
@@ -56,6 +58,7 @@ import type {
   InboundEmailConfigUpdate,
   JcLineItemDto,
   JcSearchResultDto,
+  MeetingListingDto,
   PaginatedResult,
   PdfPageImage,
   PoTemplateDto,
@@ -2464,6 +2467,49 @@ class AuRubberApiClient {
 
   deleteAccountingDirector = createEndpoint<[id: number], void>(apiClient, "DELETE", {
     path: (id) => `/rubber-lining/portal/accounting/directors/${id}`,
+  });
+
+  // ---- Board Meetings ----
+
+  boardMeetingProviders = createEndpoint<[], { providers: string[] }>(apiClient, "GET", {
+    path: "/rubber-lining/portal/accounting/board-meetings/providers",
+  });
+
+  boardMeetingAvailable = createEndpoint<[provider: string], MeetingListingDto[]>(
+    apiClient,
+    "GET",
+    {
+      path: (provider) =>
+        `/rubber-lining/portal/accounting/board-meetings/providers/${provider}/available`,
+    },
+  );
+
+  boardMeetings = createEndpoint<[], BoardMeetingDto[]>(apiClient, "GET", {
+    path: "/rubber-lining/portal/accounting/board-meetings",
+  });
+
+  boardMeeting = createEndpoint<[id: number], BoardMeetingDto>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/portal/accounting/board-meetings/${id}`,
+  });
+
+  importBoardMeeting = createEndpoint<
+    [data: { provider: string; externalId?: string; url?: string }],
+    BoardMeetingDto
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/accounting/board-meetings/import",
+    body: (data) => data,
+  });
+
+  generateBoardMeetingMinutes = createEndpoint<[id: number], BoardMeetingDto>(apiClient, "POST", {
+    path: (id) => `/rubber-lining/portal/accounting/board-meetings/${id}/generate-minutes`,
+  });
+
+  generateBoardMeetingAgenda = createEndpoint<[], GeneratedAgendaDto>(apiClient, "POST", {
+    path: "/rubber-lining/portal/accounting/board-meetings/generate-agenda",
+  });
+
+  deleteBoardMeeting = createEndpoint<[id: number], void>(apiClient, "DELETE", {
+    path: (id) => `/rubber-lining/portal/accounting/board-meetings/${id}`,
   });
 
   async accountingPayable(
