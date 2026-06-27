@@ -100,6 +100,9 @@ function PortalContent({ children }: { children: React.ReactNode }) {
         ? `${pathname}?${searchParams.toString()}`
         : pathname;
       const returnUrl = encodeURIComponent(currentUrl);
+      // Session has expired so the user/profile are already cleared — we can't
+      // know the account type here. Stay type-less and let the login page resolve
+      // it (a seeker in this shared layout must not be forced to ?type=company).
       router.push(`/annix/orbit/login?returnUrl=${returnUrl}`);
     }
   }, [isLoading, isAuthenticated, router, pathname, searchParams]);
@@ -117,8 +120,11 @@ function PortalContent({ children }: { children: React.ReactNode }) {
   }
 
   const handleLogout = async () => {
+    // At logout the user is still known, so send the correct account type for a
+    // friction-free re-login (this shared layout serves seekers and companies).
+    const logoutType = isIndividual ? "individual" : "company";
     await logout();
-    router.push("/annix/orbit/login");
+    router.push(`/annix/orbit/login?type=${logoutType}`);
   };
 
   const userName = user?.name;

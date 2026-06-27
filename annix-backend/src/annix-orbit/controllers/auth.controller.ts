@@ -81,6 +81,9 @@ export class AnnixOrbitAuthController {
 
   @Post("login")
   @Throttle({ default: { limit: 5, ttl: 60000 } })
+  // May return 409 { code: "ACCOUNT_SELECTION_REQUIRED", availableAccountTypes }
+  // when one email+password matches multiple Orbit module accounts; the client
+  // re-submits with an `accountType` from availableAccountTypes.
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.password, dto.accountType);
   }
@@ -93,13 +96,13 @@ export class AnnixOrbitAuthController {
   @Post("resend-verification")
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   async resendVerification(@Body() dto: ResendVerificationDto) {
-    return this.authService.resendVerification(dto.email);
+    return this.authService.resendVerification(dto.email, dto.accountType);
   }
 
   @Post("forgot-password")
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
-    return this.authService.forgotPassword(dto.email);
+    return this.authService.forgotPassword(dto.email, dto.accountType);
   }
 
   @Post("reset-password")

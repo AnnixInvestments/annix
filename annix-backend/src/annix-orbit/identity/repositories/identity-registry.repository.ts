@@ -11,6 +11,9 @@ export abstract class IdentityRegistryRepository extends CrudRepository<Identity
 
   abstract findByUserId(userId: number): Promise<IdentityRegistryEntry | null>;
 
+  /** Removes the routing entry for a userId (used when an identity is deleted). */
+  abstract deleteByUserId(userId: number): Promise<void>;
+
   /**
    * Returns every entry for an email. `emailLower` is NOT unique here: one person
    * can hold separate identities (and userIds) across apps/modules.

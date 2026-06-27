@@ -123,6 +123,8 @@ function makeService(
     noop as AnnixOrbitEeConsentTextVersionRepository,
     noop as AnnixOrbitTeamInviteRepository,
     noop as OrbitEarlyAccessSignupRepository,
+    noop,
+    noop,
   );
   return { service, profileRepo, appRepo, userAppAccessRepo };
 }

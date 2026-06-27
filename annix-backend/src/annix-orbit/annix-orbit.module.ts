@@ -26,9 +26,6 @@ import {
 import { AppSchema } from "../rbac/schemas/app.schema";
 import { AppRoleSchema } from "../rbac/schemas/app-role.schema";
 import { UserAppAccessSchema } from "../rbac/schemas/user-app-access.schema";
-import { RfqRepository } from "../rfq/rfq.repository";
-import { MongoRfqRepository } from "../rfq/rfq.repository.mongo";
-import { RfqSchema } from "../rfq/schemas/rfq.schema";
 import { StorageModule } from "../storage/storage.module";
 import { UserSchema } from "../user/schemas/user.schema";
 import { UserRepository } from "../user/user.repository";
@@ -110,6 +107,10 @@ import { SettingsController } from "./controllers/settings.controller";
 import { WorkProfileController } from "./controllers/work-profile.controller";
 import { AnnixOrbitAuthGuard } from "./guards/annix-orbit-auth.guard";
 import { AnnixOrbitRoleGuard } from "./guards/annix-orbit-role.guard";
+import { OrbitIdentityModule } from "./identity/orbit-identity.module";
+import { OrbitIdentityResolver } from "./identity/orbit-identity-resolver";
+import { OrbitIdentityWriter } from "./identity/orbit-identity-writer";
+import { MongoOrbitIdentityWriter } from "./identity/orbit-identity-writer.mongo";
 import { AnnixOrbitAuditEventRepository } from "./repositories/annix-orbit-audit-event.repository";
 import { MongoAnnixOrbitAuditEventRepository } from "./repositories/annix-orbit-audit-event.repository.mongo";
 import { AnnixOrbitCandidateEeAttributesRepository } from "./repositories/annix-orbit-candidate-ee-attributes.repository";
@@ -549,7 +550,6 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       { name: "App", schema: AppSchema },
       { name: "AppRole", schema: AppRoleSchema },
       { name: "UserAppAccess", schema: UserAppAccessSchema },
-      { name: "Rfq", schema: RfqSchema },
       { name: "WhatsAppConversation", schema: WhatsAppConversationSchema },
       { name: "WhatsAppMessage", schema: WhatsAppMessageSchema },
     ]),
@@ -576,6 +576,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     FeatureFlagsModule,
     LicensingModule,
     WhatsAppModule,
+    OrbitIdentityModule,
   ],
   controllers: [
     AnnixOrbitAuthController,
@@ -645,6 +646,8 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     AnnixOrbitAuthGuard,
     AnnixOrbitRoleGuard,
     AnnixOrbitAuthService,
+    OrbitIdentityResolver,
+    { provide: OrbitIdentityWriter, useClass: MongoOrbitIdentityWriter },
     AdminOrbitUserService,
     CvAuditService,
     JobPostingService,
@@ -835,7 +838,6 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     repositoryProvider(AppRepository, MongoAppRepository),
     repositoryProvider(AppRoleRepository, MongoAppRoleRepository),
     repositoryProvider(UserAppAccessRepository, MongoUserAppAccessRepository),
-    repositoryProvider(RfqRepository, MongoRfqRepository),
     repositoryProvider(WhatsAppConversationRepository, MongoWhatsAppConversationRepository),
     repositoryProvider(WhatsAppMessageRepository, MongoWhatsAppMessageRepository),
   ],

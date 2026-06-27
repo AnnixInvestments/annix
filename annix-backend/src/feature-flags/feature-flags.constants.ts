@@ -79,6 +79,8 @@ export const FEATURE_FLAGS = {
   ANNIX_ORBIT_EE_COMPLIANCE_ENABLED: "ANNIX_ORBIT_EE_COMPLIANCE_ENABLED",
   ANNIX_ORBIT_NIX_CV_BUILDER: "ANNIX_ORBIT_NIX_CV_BUILDER",
   ANNIX_ORBIT_SEEKER_ASSISTANT: "ANNIX_ORBIT_SEEKER_ASSISTANT",
+  ORBIT_IDENTITY_DUAL_WRITE: "ORBIT_IDENTITY_DUAL_WRITE",
+  ORBIT_IDENTITY_READ: "ORBIT_IDENTITY_READ",
 } as const;
 
 export type FeatureFlagKey = (typeof FEATURE_FLAGS)[keyof typeof FEATURE_FLAGS];
@@ -172,6 +174,10 @@ export const FEATURE_FLAG_DESCRIPTIONS: Record<FeatureFlagKey, string> = {
     "Annix Orbit — paid 'Get Nix to build my CV' feature: Nix generates a rewritten, improved CV for individual job seekers with a downloadable PDF.",
   ANNIX_ORBIT_SEEKER_ASSISTANT:
     "Annix Orbit — in-app Nix helper for job seekers: a scoped chat that answers questions about the Seeker area and guides the user around the screen (highlights the next step). On by default; toggle off to hide the 'Ask Nix' widget.",
+  ORBIT_IDENTITY_DUAL_WRITE:
+    "Annix Orbit identity split (ADR-0001 M3) — mirror identity writes into the per-module orbit_*_identities stores + identity_registry, AFTER the authoritative user write. Default OFF; off = no new-collection writes (today's behaviour).",
+  ORBIT_IDENTITY_READ:
+    "Annix Orbit identity split (ADR-0001 M3) — read login candidates from the per-module identity stores (with fallback to user). Requires ORBIT_IDENTITY_DUAL_WRITE; off = legacy user reads (today's behaviour). Default OFF.",
 };
 
 export const FEATURE_FLAG_DEFAULTS: Record<FeatureFlagKey, boolean> = {
@@ -255,6 +261,8 @@ export const FEATURE_FLAG_DEFAULTS: Record<FeatureFlagKey, boolean> = {
   ANNIX_ORBIT_EE_COMPLIANCE_ENABLED: false,
   ANNIX_ORBIT_NIX_CV_BUILDER: true,
   ANNIX_ORBIT_SEEKER_ASSISTANT: true,
+  ORBIT_IDENTITY_DUAL_WRITE: false,
+  ORBIT_IDENTITY_READ: false,
 };
 
 export const PUBLIC_FEATURE_FLAGS: ReadonlySet<FeatureFlagKey> = new Set<FeatureFlagKey>([
@@ -385,4 +393,6 @@ export const FEATURE_FLAG_CATEGORIES: Record<FeatureFlagKey, FeatureFlagCategory
   ANNIX_ORBIT_EE_COMPLIANCE_ENABLED: "addons",
   ANNIX_ORBIT_NIX_CV_BUILDER: "addons",
   ANNIX_ORBIT_SEEKER_ASSISTANT: "addons",
+  ORBIT_IDENTITY_DUAL_WRITE: "system",
+  ORBIT_IDENTITY_READ: "system",
 };

@@ -28,6 +28,10 @@ export class MongoIdentityRegistryRepository
     return this.findById(userId);
   }
 
+  async deleteByUserId(userId: number): Promise<void> {
+    await this.documents.findByIdAndDelete(userId).exec();
+  }
+
   async findByEmailLower(emailLower: string): Promise<IdentityRegistryEntry[]> {
     const documents = await this.documents.find({ emailLower }).lean().exec();
     return this.toDomainList(documents);

@@ -311,8 +311,11 @@ an ordinary domain aggregate.
   (`scripts/migrate-orbit-identities.ts`, dry-run default) + M2 verification gate
   + spec. Runs against no runner; not yet executed on real data. *(Done — in
   review.)*
-- [ ] **S3 — M3:** dual-read/dual-write in `resolveOrbitLoginUser` and per-app auth;
-  drop the module-agnostic fallback behind the new path.
+- [x] **S3 — M3:** dual-read/dual-write behind two off-by-default flags
+  (`ORBIT_IDENTITY_DUAL_WRITE`, `ORBIT_IDENTITY_READ`); password-first
+  disambiguation + 409 picker; module-aware forgot/resend; module-agnostic
+  fallback dropped on the READ-on path. Flags off = today's login behaviour.
+  *(Done — in review, not yet rolled out.)*
 - [ ] **S4 — M4:** cut writes over; module-aware `forgotPassword`/`resendVerification`.
 - [ ] **S5 — M5:** repoint notification prefs + SSO reconciliation; delete
   `cv_assistant_users` / `AnnixOrbitUser`.

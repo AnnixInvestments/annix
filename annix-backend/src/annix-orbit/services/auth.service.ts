@@ -40,6 +40,20 @@ import {
   isSeekerAgeGroup,
 } from "../entities/annix-orbit-profile.entity";
 import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
+import { OrbitAccountSelectionRequiredException } from "../identity/orbit-account-selection.exception";
+import {
+  OrbitIdentityResolver,
+  type OrbitLoginCandidate,
+} from "../identity/orbit-identity-resolver";
+import { OrbitIdentityWriter } from "../identity/orbit-identity-writer";
+import {
+  accountTypeForModule,
+  moduleForScope,
+  moduleForUserType,
+  ORBIT_MODULES,
+  type OrbitModule,
+  scopeForModule,
+} from "../identity/orbit-module";
 import { currentOrbitEnvironment } from "../orbit-environment";
 import { AnnixOrbitCompanyRepository } from "../repositories/annix-orbit-company.repository";
 import { AnnixOrbitEeConsentTextVersionRepository } from "../repositories/annix-orbit-ee-consent-text-version.repository";
@@ -182,7 +196,20 @@ export class AnnixOrbitAuthService {
     private readonly eeConsentTextVersionRepo: AnnixOrbitEeConsentTextVersionRepository,
     private readonly teamInviteRepo: AnnixOrbitTeamInviteRepository,
     private readonly earlyAccessRepo: OrbitEarlyAccessSignupRepository,
+    private readonly identityResolver: OrbitIdentityResolver,
+    private readonly identityWriter: OrbitIdentityWriter,
   ) {}
+
+  /**
+   * The Orbit modules a forgot/resend request targets: the one named by
+   * `accountType`, else ALL modules (module-aware fan-out, ADR-0001 #3). The
+   * new-store mirror inside the writer stays flag-gated; the `user`-store fan-out
+   * differs from today only for multi-account emails (strictly more correct).
+   */
+  private orbitModulesForRequest(accountType?: string | null): OrbitModule[] {
+    const requested = moduleForUserType(parseOrbitUserType(accountType));
+    return requested ? [requested] : [...ORBIT_MODULES];
+  }
 
   private isInviteExpired(expiresAt: string | null): boolean {
     if (!expiresAt) return false;
@@ -246,6 +273,8 @@ export class AnnixOrbitAuthService {
     } as Partial<AnnixOrbitProfile>);
 
     await this.bridgeToRbac(savedUser.id, "recruiter");
+
+    await this.identityWriter.createIdentity("recruiter", savedUser);
 
     invite.status = "accepted";
     await this.teamInviteRepo.save(invite);
@@ -398,6 +427,8 @@ export class AnnixOrbitAuthService {
 
     await this.bridgeToRbac(savedUser.id, "admin");
 
+    await this.identityWriter.createIdentity("company", savedUser);
+
     await this.emailService.sendAnnixOrbitVerificationEmail(email, verificationToken);
 
     return {
@@ -459,6 +490,8 @@ export class AnnixOrbitAuthService {
 
     await this.bridgeToRbac(savedUser.id, "admin");
 
+    await this.identityWriter.createIdentity("recruiter", savedUser);
+
     await this.emailService.sendAnnixOrbitVerificationEmail(email, verificationToken);
 
     return {
@@ -511,6 +544,8 @@ export class AnnixOrbitAuthService {
       ageGroup: ageGroup && isSeekerAgeGroup(ageGroup) ? ageGroup : null,
     } as Partial<AnnixOrbitProfile>);
 
+    await this.identityWriter.createIdentity("seeker", savedUser);
+
     await this.emailService.sendAnnixOrbitVerificationEmail(email, verificationToken);
 
     return {
@@ -559,6 +594,8 @@ export class AnnixOrbitAuthService {
     } as Partial<AnnixOrbitProfile>);
 
     await this.assignOrbitRbacRole(savedUser.id, "student");
+
+    await this.identityWriter.createIdentity("student", savedUser);
 
     await this.emailService.sendAnnixOrbitVerificationEmail(email, verificationToken);
 
@@ -654,6 +691,11 @@ export class AnnixOrbitAuthService {
       await this.assignOrbitRbacRole(savedUser.id, "student");
     }
 
+    const invitedModule = moduleForUserType(userType);
+    if (invitedModule) {
+      await this.identityWriter.createIdentity(invitedModule, savedUser);
+    }
+
     return {
       userId: savedUser.id,
       email: savedUser.email,
@@ -672,6 +714,17 @@ export class AnnixOrbitAuthService {
     user.resetPasswordToken = inviteToken;
     user.resetPasswordExpires = now().plus({ days: ADMIN_INVITE_EXPIRY_DAYS }).toJSDate();
     await this.userRepo.save(user);
+    const inviteModule = profile
+      ? moduleForUserType(profile.userType)
+      : moduleForScope(user.appScope);
+    if (inviteModule) {
+      await this.identityWriter.setResetToken(
+        user.id,
+        inviteModule,
+        inviteToken,
+        user.resetPasswordExpires,
+      );
+    }
     const label = profile ? ORBIT_USER_TYPE_LABELS[profile.userType] : "Annix Orbit";
     await this.emailService.sendAnnixOrbitAdminInviteEmail(user.email, inviteToken, label);
   }
@@ -713,6 +766,11 @@ export class AnnixOrbitAuthService {
     user.status = "active";
     await this.userRepo.save(user);
 
+    const verifiedModule = moduleForScope(user.appScope);
+    if (verifiedModule) {
+      await this.identityWriter.applyVerification(user.id, verifiedModule);
+    }
+
     const profile = await this.profileRepo.findByUserId(user.id);
     const role = await this.resolveRole(user.id, profile);
     const tokens = this.generateTokens(user, profile, role);
@@ -726,41 +784,64 @@ export class AnnixOrbitAuthService {
     };
   }
 
-  async resendVerification(email: string) {
-    const user = await this.userRepo.findOrbitUserByEmail(email);
-
-    if (!user) {
-      throw new NotFoundException("No account found with this email address.");
+  async resendVerification(email: string, accountType?: string | null) {
+    // Module-aware (ADR-0001 #3): act on every UNVERIFIED matching module account
+    // (or just the named one). Enumeration posture (middle ground): never reveal
+    // whether an account exists — generic response when nothing matches — but DO
+    // keep the helpful "already verified — please sign in" hint when an account
+    // exists and every match is already verified.
+    const modules = this.orbitModulesForRequest(accountType);
+    let foundAny = false;
+    let sentAny = false;
+    for (const module of modules) {
+      const user = await this.userRepo.findOneByEmailAndScope(email, scopeForModule(module));
+      if (!user) {
+        continue;
+      }
+      foundAny = true;
+      if (user.emailVerified) {
+        continue;
+      }
+      const verificationToken = uuidv4();
+      const verificationExpires = now().plus({ hours: VERIFICATION_EXPIRY_HOURS }).toJSDate();
+      user.emailVerificationToken = verificationToken;
+      user.emailVerificationExpires = verificationExpires;
+      await this.userRepo.save(user);
+      await this.emailService.sendAnnixOrbitVerificationEmail(email, verificationToken);
+      await this.identityWriter.setVerificationToken(
+        user.id,
+        module,
+        verificationToken,
+        verificationExpires,
+      );
+      sentAny = true;
     }
 
-    if (user.emailVerified) {
+    // Account(s) exist but every match is already verified — keep the hint.
+    if (foundAny && !sentAny) {
       throw new BadRequestException("Email is already verified. Please sign in.");
     }
 
-    const verificationToken = uuidv4();
-    const verificationExpires = now().plus({ hours: VERIFICATION_EXPIRY_HOURS }).toJSDate();
-
-    user.emailVerificationToken = verificationToken;
-    user.emailVerificationExpires = verificationExpires;
-    await this.userRepo.save(user);
-
-    await this.emailService.sendAnnixOrbitVerificationEmail(email, verificationToken);
-
+    // No account at all, or at least one email sent: generic, existence-hiding.
     return { message: "Verification email resent. Please check your inbox." };
   }
 
-  async forgotPassword(email: string) {
-    const user = await this.userRepo.findOrbitUserByEmail(email);
-
-    if (user?.emailVerified) {
+  async forgotPassword(email: string, accountType?: string | null) {
+    // Module-aware (ADR-0001 #3): act on every VERIFIED matching module account
+    // (or just the named one). Generic non-enumerating response regardless of count.
+    const modules = this.orbitModulesForRequest(accountType);
+    for (const module of modules) {
+      const user = await this.userRepo.findOneByEmailAndScope(email, scopeForModule(module));
+      if (!user?.emailVerified) {
+        continue;
+      }
       const resetToken = uuidv4();
       const resetExpires = now().plus({ hours: 1 }).toJSDate();
-
       user.resetPasswordToken = resetToken;
       user.resetPasswordExpires = resetExpires;
       await this.userRepo.save(user);
-
       await this.emailService.sendAnnixOrbitPasswordResetEmail(email, resetToken);
+      await this.identityWriter.setResetToken(user.id, module, resetToken, resetExpires);
     }
 
     return {
@@ -784,19 +865,47 @@ export class AnnixOrbitAuthService {
     }
     await this.userRepo.save(user);
 
+    const resetModule = moduleForScope(user.appScope);
+    if (resetModule) {
+      await this.identityWriter.applyPasswordReset(user.id, resetModule, newHash);
+      if (user.status === "active") {
+        await this.identityWriter.setStatus(user.id, resetModule, "active");
+      }
+    }
+
     return { message: "Password reset successfully. You can now sign in with your new password." };
   }
 
   async login(email: string, password: string, accountType?: string | null) {
-    const user = await this.resolveOrbitLoginUser(email, parseOrbitUserType(accountType));
-    if (!user) {
+    // Password-first disambiguation (ADR-0001 / S3). resolveLoginCandidates is
+    // module-isolated; with the identity flags off it returns today's single
+    // candidate (so this degenerates to today's behaviour and never 409s).
+    const requestedModule = moduleForUserType(parseOrbitUserType(accountType));
+    const candidates = await this.identityResolver.resolveLoginCandidates(email, requestedModule);
+    if (candidates.length === 0) {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    const valid = await this.passwordService.verify(password, user.passwordHash || "");
-    if (!valid) {
+    const matched: OrbitLoginCandidate[] = [];
+    for (const candidate of candidates) {
+      const ok = await this.passwordService.verify(password, candidate.user.passwordHash || "");
+      if (ok) {
+        matched.push(candidate);
+      }
+    }
+
+    if (matched.length === 0) {
       throw new UnauthorizedException("Invalid credentials");
     }
+    if (matched.length > 1) {
+      // Correct password for more than one module account → ask which one. No
+      // token, no lastLoginAt. Non-enumerating (only reachable with a real match).
+      throw new OrbitAccountSelectionRequiredException(
+        matched.map((candidate) => accountTypeForModule(candidate.module)),
+      );
+    }
+
+    const { module: loginModule, user } = matched[0];
 
     if (user.status === "deactivated") {
       throw new UnauthorizedException(
@@ -822,6 +931,7 @@ export class AnnixOrbitAuthService {
     }
     user.lastLoginAt = now().toJSDate();
     await this.userRepo.save(user);
+    await this.identityWriter.recordLogin(user.id, loginModule, user.lastLoginAt);
     const role = await this.resolveRole(user.id, profile);
     const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
     const tokens = this.generateTokens(user, profile, role);

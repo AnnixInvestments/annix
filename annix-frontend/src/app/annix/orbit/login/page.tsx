@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray, isString } from "es-toolkit/compat";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -8,6 +9,7 @@ import { BackToHubLink } from "@/app/annix/orbit/components/BackToHubLink";
 import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
 import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
+import { type ApiError, isApiError } from "@/app/lib/api/apiError";
 import { annixOrbitTokenStore } from "@/app/lib/api/portalTokenStores";
 import { useIsTestEnv } from "@/app/lib/hooks/useIsTestEnv";
 import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
@@ -27,11 +29,29 @@ const ORBIT_LOGIN_TYPES = new Set(["individual", "company", "recruiter", "studen
 const LAST_LOGIN_EMAIL_KEY = "annix-orbit-last-login-email";
 
 function orbitUserTypeLabel(userType: string): string {
-  if (userType === "individual") return "job seeker";
+  // The backend may label the job-seeker module as either "individual" or
+  // "seeker"; treat both the same way.
+  if (userType === "individual" || userType === "seeker") return "job seeker";
   if (userType === "company") return "company";
   if (userType === "recruiter") return "recruitment agency";
   if (userType === "student") return "student";
   return "account";
+}
+
+// The account-selection picker may surface "seeker" as a value; the rest of
+// the login flow (mismatch guard, post-login routing) keys off "individual".
+function normalizeOrbitAccountType(accountType: string): string {
+  return accountType === "seeker" ? "individual" : accountType;
+}
+
+// The 409 ACCOUNT_SELECTION_REQUIRED body carries the available account types
+// in the structured ApiError meta. Pull them out defensively.
+function readAvailableAccountTypes(error: ApiError): string[] {
+  const meta = error.meta;
+  if (!meta) return [];
+  const raw = meta.availableAccountTypes;
+  if (!isArray(raw)) return [];
+  return raw.filter((value): value is string => isString(value));
 }
 
 // When a specific sign-in type is selected (?type=…), reject accounts that
@@ -64,6 +84,9 @@ function AnnixOrbitLoginContent() {
   const [needsVerification, setNeedsVerification] = useState(false);
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [resendMessage, setResendMessage] = useState<string | null>(null);
+  // When one email maps to more than one Orbit account, the backend asks the
+  // user to pick which one to sign in to (HTTP 409 ACCOUNT_SELECTION_REQUIRED).
+  const [selectableAccountTypes, setSelectableAccountTypes] = useState<string[] | null>(null);
   const [phoneType, setPhoneType] = useState<"apple" | "android" | null>(null);
   const isJobSeeker = accountType === "individual";
   const isTestEnv = useIsTestEnv();
@@ -87,21 +110,21 @@ function AnnixOrbitLoginContent() {
     }
   }, [prefilledEmail]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const emailInput = emailRef.current;
-    const passwordInput = passwordRef.current;
-    const submitEmail = emailInput ? emailInput.value : email;
-    const submitPassword = passwordInput ? passwordInput.value : "";
+  const runLogin = async (
+    submitEmail: string,
+    submitPassword: string,
+    typeForLogin: string | null,
+  ) => {
     setError(null);
     setNeedsSignup(false);
     setNeedsVerification(false);
     setResendState("idle");
     setResendMessage(null);
+    setSelectableAccountTypes(null);
 
     try {
-      const profile = await login(submitEmail, submitPassword, rememberMe, accountType);
-      const mismatch = loginTypeMismatch(accountType, profile.userType);
+      const profile = await login(submitEmail, submitPassword, rememberMe, typeForLogin);
+      const mismatch = loginTypeMismatch(typeForLogin, profile.userType);
       if (mismatch) {
         await logout().catch(() => {});
         setError(mismatch);
@@ -122,6 +145,15 @@ function AnnixOrbitLoginContent() {
       }
       router.push(postLoginPath(profile.userType, returnUrl));
     } catch (err) {
+      // One email, several Orbit accounts: offer the account-type picker
+      // instead of an error so the user can choose which one to sign in to.
+      if (isApiError(err) && err.code === "ACCOUNT_SELECTION_REQUIRED") {
+        const availableTypes = readAvailableAccountTypes(err);
+        if (availableTypes.length > 0) {
+          setSelectableAccountTypes(availableTypes);
+          return;
+        }
+      }
       const message = err instanceof Error ? err.message : "Login failed";
       if (/no annix orbit account|please sign up/i.test(message)) {
         setNeedsSignup(true);
@@ -132,6 +164,23 @@ function AnnixOrbitLoginContent() {
         }
       }
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const emailInput = emailRef.current;
+    const passwordInput = passwordRef.current;
+    const submitEmail = emailInput ? emailInput.value : email;
+    const submitPassword = passwordInput ? passwordInput.value : "";
+    await runLogin(submitEmail, submitPassword, accountType);
+  };
+
+  const handleAccountTypeSelect = async (chosenType: string) => {
+    const emailInput = emailRef.current;
+    const passwordInput = passwordRef.current;
+    const submitEmail = emailInput ? emailInput.value : email;
+    const submitPassword = passwordInput ? passwordInput.value : "";
+    await runLogin(submitEmail, submitPassword, normalizeOrbitAccountType(chosenType));
   };
 
   const handleResendVerification = async () => {
@@ -208,7 +257,29 @@ function AnnixOrbitLoginContent() {
             method="post"
             action="#"
           >
-            {needsSignup ? (
+            {selectableAccountTypes && selectableAccountTypes.length > 0 ? (
+              <div className="bg-[var(--brand-navbar-50,#f0f0fc)] border border-[var(--brand-navbar-200,#c0c0eb)] rounded-lg px-4 py-4">
+                <p className="text-sm font-semibold text-gray-900">
+                  This email has more than one account
+                </p>
+                <p className="text-sm text-gray-600 mt-1">
+                  Choose which one you'd like to sign in to.
+                </p>
+                <div className="mt-3 space-y-2">
+                  {selectableAccountTypes.map((selectableType) => (
+                    <button
+                      key={selectableType}
+                      type="button"
+                      onClick={() => handleAccountTypeSelect(selectableType)}
+                      disabled={isLoading}
+                      className="inline-flex w-full items-center justify-center bg-[var(--brand-navbar,#323288)] text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-[var(--brand-navbar-active,#252560)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-navbar-50,#f0f0fc)] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Sign in as {orbitUserTypeLabel(selectableType)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : needsSignup ? (
               <div className="bg-[var(--brand-navbar-50,#f0f0fc)] border border-[var(--brand-navbar-200,#c0c0eb)] rounded-lg px-4 py-4">
                 <p className="text-sm font-semibold text-gray-900">
                   You don't have an account with us yet

@@ -7,6 +7,8 @@ import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interfac
 import type { User } from "../../user/entities/user.entity";
 import { UserRepository } from "../../user/user.repository";
 import { AnnixOrbitProfile, AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
+import { OrbitIdentityWriter } from "../identity/orbit-identity-writer";
+import { moduleForScope } from "../identity/orbit-module";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import { CandidateRepository } from "../repositories/candidate.repository";
 import { CandidateJobMatchRepository } from "../repositories/candidate-job-match.repository";
@@ -82,6 +84,7 @@ export class AdminOrbitUserService {
     private readonly auditService: AuditService,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
+    private readonly identityWriter: OrbitIdentityWriter,
   ) {}
 
   async list(params: {
@@ -302,6 +305,15 @@ export class AdminOrbitUserService {
     }
     await this.userRepo.save(user);
 
+    const updateModule = moduleForScope(user.appScope);
+    if (updateModule) {
+      await this.identityWriter.applyProfileChanges(userId, updateModule, {
+        firstName: changes.firstName !== undefined ? (user.firstName ?? null) : undefined,
+        lastName: changes.lastName !== undefined ? (user.lastName ?? null) : undefined,
+        status: changes.status ? changes.status : undefined,
+      });
+    }
+
     if (changes.tier !== undefined) {
       const profile = await this.profileRepo.findByUserId(userId);
       if (profile) {
@@ -325,6 +337,10 @@ export class AdminOrbitUserService {
     }
     user.status = "deactivated";
     await this.userRepo.save(user);
+    const deactivateModule = moduleForScope(user.appScope);
+    if (deactivateModule) {
+      await this.identityWriter.setStatus(userId, deactivateModule, "deactivated");
+    }
     await this.recordAudit(actor, userId, AuditAction.USER_DEACTIVATED, {});
     this.logger.log(`Orbit user ${userId} deactivated`);
   }
@@ -336,6 +352,10 @@ export class AdminOrbitUserService {
     }
     user.status = "active";
     await this.userRepo.save(user);
+    const reactivateModule = moduleForScope(user.appScope);
+    if (reactivateModule) {
+      await this.identityWriter.setStatus(userId, reactivateModule, "active");
+    }
     await this.recordAudit(actor, userId, AuditAction.USER_REACTIVATED, {});
     this.logger.log(`Orbit user ${userId} reactivated`);
   }
@@ -370,6 +390,10 @@ export class AdminOrbitUserService {
       await this.profileRepo.remove(profile);
     }
     await this.userRepo.deleteById(userId);
+    const removeModule = moduleForScope(user.appScope);
+    if (removeModule) {
+      await this.identityWriter.deleteIdentity(userId, removeModule);
+    }
     await this.recordAudit(actor, userId, AuditAction.DELETE, {
       email: user.email,
       erasedCandidates: candidateIds.length,

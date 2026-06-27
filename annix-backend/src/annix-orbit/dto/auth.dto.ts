@@ -162,6 +162,10 @@ export class LoginDto {
 export class ForgotPasswordDto {
   @IsEmail()
   email: string;
+
+  @IsOptional()
+  @IsString()
+  accountType?: string;
 }
 
 export class ResetPasswordDto {
@@ -177,4 +181,8 @@ export class ResetPasswordDto {
 export class ResendVerificationDto {
   @IsEmail()
   email: string;
+
+  @IsOptional()
+  @IsString()
+  accountType?: string;
 }
