@@ -1,6 +1,7 @@
 import { MODULE_METADATA } from "@nestjs/common/constants";
 import { AdminModule } from "../admin/admin.module";
 import { CompanyBrandingModule } from "../company-branding/company-branding.module";
+import { FeatureFlagsModule } from "../feature-flags/feature-flags.module";
 import { LicensingModule } from "../licensing";
 import { RbacModule } from "../rbac/rbac.module";
 import { SageExportModule } from "../sage-export/sage-export.module";
@@ -10,6 +11,9 @@ import { RubberLiningModule } from "./rubber-lining.module";
 jest.mock("../admin/admin.module", () => ({ AdminModule: class AdminModule {} }));
 jest.mock("../company-branding/company-branding.module", () => ({
   CompanyBrandingModule: class CompanyBrandingModule {},
+}));
+jest.mock("../feature-flags/feature-flags.module", () => ({
+  FeatureFlagsModule: class FeatureFlagsModule {},
 }));
 jest.mock("../licensing", () => ({ LicensingModule: class LicensingModule {} }));
 jest.mock("../rbac/rbac.module", () => ({ RbacModule: class RbacModule {} }));
@@ -55,6 +59,7 @@ describe("RubberLiningModule", () => {
 
     expect(imports).toContain(AdminModule);
     expect(imports).toContain(CompanyBrandingModule);
+    expect(imports).toContain(FeatureFlagsModule);
     expect(imports).toContain(LicensingModule);
     expect(imports).toContain(RbacModule);
     expect(imports).toContain(SageExportModule);

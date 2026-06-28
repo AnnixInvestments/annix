@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AdminModule } from "../admin/admin.module";
 import { CompanyBrandingModule } from "../company-branding/company-branding.module";
+import { FeatureFlagsModule } from "../feature-flags/feature-flags.module";
 import { LicensingModule } from "../licensing";
 import { RbacModule } from "../rbac/rbac.module";
 import { SageExportModule } from "../sage-export/sage-export.module";
@@ -21,6 +22,7 @@ import { WebsitePagesController } from "./website-pages.controller";
   imports: [
     AdminModule,
     CompanyBrandingModule,
+    FeatureFlagsModule,
     LicensingModule,
     RbacModule,
     SageExportModule,

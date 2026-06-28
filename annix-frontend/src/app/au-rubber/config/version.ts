@@ -6,4 +6,4 @@
  * - major (+1, minor and patch reset to 0): redesigns, breaking UX, architectural overhauls.
  * - When patch reaches 100, minor increments by 1 and patch resets to 0.
  */
-export const AU_RUBBER_VERSION = "2.35.6";
+export const AU_RUBBER_VERSION = "2.35.7";
