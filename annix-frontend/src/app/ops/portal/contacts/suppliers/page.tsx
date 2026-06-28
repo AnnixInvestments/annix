@@ -2,6 +2,7 @@
 
 import { SortHeader } from "@/app/components/shared/TableComponents";
 import { CellText, OpsTablePage, SageBadge } from "../../../components/OpsTablePage";
+import { useOpsModules } from "../../../context/OpsModuleContext";
 import { clientSort, useOpsTable } from "../../../hooks/useOpsTable";
 import { platformContactsUrl } from "../../../lib/api";
 
@@ -15,13 +16,16 @@ interface Contact {
   sageContactId: number | null;
 }
 
-const COMPANY_ID = 1;
+const SUPPLIER_PARAMS = { contactType: "SUPPLIER" };
 
 export default function SuppliersPage() {
+  const { companyId } = useOpsModules();
+  const endpoint = companyId === null ? null : platformContactsUrl(companyId);
+
   const table = useOpsTable<Contact>({
-    endpoint: platformContactsUrl(COMPANY_ID),
+    endpoint,
     defaultSort: { key: "name", direction: "asc" },
-    extraParams: { contactType: "SUPPLIER" },
+    extraParams: SUPPLIER_PARAMS,
   });
 
   const sorted = clientSort(table.items, table.sort);

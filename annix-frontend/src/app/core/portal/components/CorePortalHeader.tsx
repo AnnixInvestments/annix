@@ -1,13 +1,10 @@
 "use client";
 
 import { OpsHeader } from "@/app/ops/components/OpsHeader";
+import { CORE_VERSION } from "../../config/version";
 import { useCoreActiveApp } from "../CoreActiveAppContext";
+import { CORE_APP_META } from "../config/coreAppMeta";
 import type { CoreApp } from "../config/navAppMap";
-
-const APP_LABELS: Record<CoreApp, string> = {
-  "stock-control": "Stock Control",
-  "au-rubber": "AU Rubber",
-};
 
 /**
  * Thin wrapper over the read-only `OpsHeader`. Adds a "Switch app" affordance
@@ -24,7 +21,8 @@ export function CorePortalHeader(props: {
   const enabledApps = core.enabledApps;
   const canSwitch = enabledApps.length > 1;
 
-  const appLabel = APP_LABELS[props.activeApp];
+  const appMeta = CORE_APP_META[props.activeApp];
+  const appLabel = appMeta.label;
   const companyName = props.companyName;
   const headerCompanyName = companyName ?? appLabel;
 
@@ -36,11 +34,14 @@ export function CorePortalHeader(props: {
         onMenuToggle={props.onMenuToggle}
         onLogout={core.logout}
       />
+      <div className="border-t border-gray-100 px-4 py-1 text-xs text-gray-500">
+        {`Annix Core v${CORE_VERSION} • ${appLabel} v${appMeta.version}`}
+      </div>
       {canSwitch && (
         <div className="flex items-center gap-2 px-4 pb-2">
           {enabledApps.map((app) => {
             const isActive = app === props.activeApp;
-            const label = APP_LABELS[app];
+            const label = CORE_APP_META[app].label;
             return (
               <button
                 key={app}

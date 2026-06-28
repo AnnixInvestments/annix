@@ -141,8 +141,8 @@ class AuRubberApiClient {
     return auRubberTokenStore.authHeaders();
   }
 
-  setRememberMe(_remember: boolean) {
-    // PortalTokenStore tracks rememberMe via setTokens
+  setRememberMe(remember: boolean) {
+    auRubberTokenStore.setRememberMe(remember);
   }
 
   private setTokens(accessToken: string, refreshToken: string) {

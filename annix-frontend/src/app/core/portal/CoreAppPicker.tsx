@@ -1,56 +1,77 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { FormModal } from "@/app/components/modals/FormModal";
+import { CoreBrandHeader } from "../CoreBrandHeader";
+import { CORE_VERSION } from "../config/version";
 import { useCoreActiveApp } from "./CoreActiveAppContext";
-import type { CoreApp } from "./config/navAppMap";
-
-const APP_LABELS: Record<CoreApp, string> = {
-  "stock-control": "Stock Control",
-  "au-rubber": "AU Rubber",
-};
-
-const APP_DESCRIPTIONS: Record<CoreApp, string> = {
-  "stock-control": "Inventory, job cards, purchasing, quality and dispatch.",
-  "au-rubber": "Rubber-lining production, compounds, CoCs and orders.",
-};
+import { CORE_APP_META } from "./config/coreAppMeta";
 
 export function CoreAppPicker() {
   const core = useCoreActiveApp();
   const enabledApps = core.enabledApps;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 px-4 py-12">
-      <div className="w-full max-w-md text-center">
-        <h1 className="text-2xl font-semibold text-white">Choose an application</h1>
-        <p className="mt-2 text-sm text-blue-200">
-          You have access to more than one workspace. Pick one to continue.
+    <div className="flex min-h-screen items-center justify-center bg-[var(--brand-grad-from)] px-4 py-12">
+      <div className="text-center">
+        <CoreBrandHeader />
+        <p className="mt-4 text-xs font-medium uppercase tracking-[0.18em] text-white/65">
+          {`Annix Core v${CORE_VERSION}`}
         </p>
-
-        <div className="mt-8 space-y-3">
-          {enabledApps.map((app) => {
-            const label = APP_LABELS[app];
-            const description = APP_DESCRIPTIONS[app];
-            return (
-              <button
-                key={app}
-                type="button"
-                onClick={() => core.switchApp(app)}
-                className="flex w-full flex-col items-start rounded-lg bg-white px-5 py-4 text-left shadow-lg transition-transform hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-[#FF8A00] focus:ring-offset-2 focus:ring-offset-slate-900"
-              >
-                <span className="text-base font-semibold text-gray-900">{label}</span>
-                <span className="mt-1 text-sm text-gray-600">{description}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        <button
-          type="button"
-          onClick={core.logout}
-          className="mt-8 text-sm text-blue-200 hover:text-white"
-        >
-          Sign out
-        </button>
       </div>
+
+      {mounted ? (
+        <FormModal
+          isOpen={true}
+          onClose={() => null}
+          onSubmit={core.logout}
+          title="Choose an application"
+          disableClose={true}
+          hideFooter={true}
+          maxWidth="max-w-md"
+        >
+          <p className="text-sm leading-6 text-gray-600">
+            You have access to more than one workspace. Pick one to continue.
+          </p>
+          <div className="mt-5 space-y-3">
+            {enabledApps.map((app) => {
+              const appMeta = CORE_APP_META[app];
+              return (
+                <button
+                  key={app}
+                  type="button"
+                  onClick={() => core.switchApp(app)}
+                  autoFocus={app === enabledApps[0]}
+                  className="flex w-full flex-col items-start rounded-md border border-gray-200 bg-white px-4 py-3 text-left transition-colors hover:border-[var(--brand-accent)] hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[var(--brand-accent)] focus:ring-offset-2"
+                >
+                  <span className="flex w-full items-center justify-between gap-3">
+                    <span className="text-base font-semibold text-gray-900">{appMeta.label}</span>
+                    <span className="shrink-0 text-xs font-medium text-gray-500">
+                      {`v${appMeta.version}`}
+                    </span>
+                  </span>
+                  <span className="mt-1 text-sm leading-5 text-gray-600">
+                    {appMeta.description}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            onClick={core.logout}
+            className="mt-6 text-sm font-medium text-gray-500 hover:text-gray-700"
+          >
+            Sign out
+          </button>
+        </FormModal>
+      ) : null}
     </div>
   );
 }

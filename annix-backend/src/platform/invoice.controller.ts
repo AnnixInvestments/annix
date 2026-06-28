@@ -8,12 +8,16 @@ import {
   ParseIntPipe,
   Post,
   Query,
+  UseGuards,
 } from "@nestjs/common";
-import { ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
 import { InvoiceFilterDto } from "./dto/invoice.dto";
 import { InvoiceService } from "./invoice.service";
+import { PlatformCompanyAuthGuard } from "./platform-company-auth.guard";
 
 @ApiTags("Invoices (Unified)")
+@UseGuards(PlatformCompanyAuthGuard)
+@ApiBearerAuth()
 @Controller("platform/companies/:companyId/invoices")
 export class InvoiceController {
   constructor(private readonly invoiceService: InvoiceService) {}

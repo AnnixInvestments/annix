@@ -10,7 +10,9 @@ export function CoreBrandHeader() {
   const branding = brandingData ?? null;
   const variant = resolvedTheme === "light" ? "light" : "dark";
 
-  const hasLockup = branding ? brandHasAsset("logoLockup", branding, variant) : false;
+  const hasVariantLockup = branding ? brandHasAsset("logoLockup", branding, variant) : false;
+  const hasFallbackLockup = branding ? brandHasAsset("logoLockup", branding, "light") : false;
+  const hasLockup = hasVariantLockup || hasFallbackLockup;
   const lockupUrl =
     branding && hasLockup ? resolveBrandAssetUrl("logoLockup", branding, variant) : null;
 

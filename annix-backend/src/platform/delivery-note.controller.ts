@@ -10,16 +10,20 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from "@nestjs/common";
-import { ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
 import { DeliveryNoteService } from "./delivery-note.service";
 import {
   CreateDeliveryNoteDto,
   DeliveryNoteFilterDto,
   UpdateDeliveryNoteDto,
 } from "./dto/delivery-note.dto";
+import { PlatformCompanyAuthGuard } from "./platform-company-auth.guard";
 
 @ApiTags("Delivery Notes (Unified)")
+@UseGuards(PlatformCompanyAuthGuard)
+@ApiBearerAuth()
 @Controller("platform/companies/:companyId/delivery-notes")
 export class DeliveryNoteController {
   constructor(private readonly deliveryNoteService: DeliveryNoteService) {}

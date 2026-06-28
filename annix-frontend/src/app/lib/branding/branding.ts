@@ -181,6 +181,13 @@ export interface BrandingUploadResult {
  * not visually change anything until a custom asset is published.
  */
 export const BRAND_ASSET_DEFAULTS: Record<string, Partial<Record<BrandingAssetSlot, string>>> = {
+  "annix-core": {
+    logoIcon: "/branding/annix-core-card.png",
+    logoLockup: "/branding/annix-core-card.png",
+    favicon: "/branding/annix-core-card.png",
+    watermark: "/branding/annix-core-card.png",
+    loginCard: "/branding/annix-core-card.png",
+  },
   "annix-forge": {
     logoIcon: "/branding/annix-forge-icon.svg",
     logoLockup: "/branding/annix-forge-logo.svg",

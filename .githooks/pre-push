@@ -45,6 +45,12 @@ migration_routing_check() {
   fi
 }
 
+appscope_frozen_check() {
+  if [ -f "${ROOT_DIR}/scripts/check-appscope-frozen.ts" ]; then
+    node "${ROOT_DIR}/scripts/check-appscope-frozen.ts"
+  fi
+}
+
 appscope_isolation_check() {
   if [ -f "${ROOT_DIR}/scripts/check-appscope-isolation.ts" ]; then
     node "${ROOT_DIR}/scripts/check-appscope-isolation.ts"
@@ -112,6 +118,7 @@ timed_step "duplication check" duplication_check
 timed_step "git pull --rebase" pull_rebase
 timed_step "collection budget" collection_budget_check
 timed_step "migration routing" migration_routing_check
+timed_step "appscope frozen" appscope_frozen_check
 timed_step "appscope isolation" appscope_isolation_check
 timed_step "large frontend files" large_frontend_files_check
 

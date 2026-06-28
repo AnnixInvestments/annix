@@ -1,14 +1,13 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { AuRubberAuthProvider } from "@/app/context/AuRubberAuthContext";
-import { StockControlAuthProvider } from "@/app/context/StockControlAuthContext";
+import { BrandingProvider } from "@/app/lib/branding/BrandingProvider";
 
 export default function CoreLayout(props: { children: ReactNode }) {
   const { children } = props;
   return (
-    <StockControlAuthProvider>
-      <AuRubberAuthProvider>{children}</AuRubberAuthProvider>
-    </StockControlAuthProvider>
+    <BrandingProvider brand="annix-core" surface={false}>
+      {children}
+    </BrandingProvider>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { SortHeader } from "@/app/components/shared/TableComponents";
 import {
   CellText,
@@ -8,6 +8,7 @@ import {
   OpsTablePage,
   StatusBadge,
 } from "../../../components/OpsTablePage";
+import { useOpsModules } from "../../../context/OpsModuleContext";
 import { useOpsTable } from "../../../hooks/useOpsTable";
 
 interface Certificate {
@@ -36,18 +37,21 @@ const CATEGORY_LABELS: Record<string, string> = {
   CALIBRATION: "Calibration",
 };
 
-const COMPANY_ID = 1;
-
 export default function CertificatesPage() {
+  const { companyId } = useOpsModules();
   const [categoryFilter, setCategoryFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
-  const extraParams: Record<string, string> = {};
-  if (categoryFilter) extraParams.certificateCategory = categoryFilter;
-  if (statusFilter) extraParams.processingStatus = statusFilter;
+  const endpoint = companyId === null ? null : `/platform/companies/${companyId}/certificates`;
+  const extraParams = useMemo(() => {
+    const params: Record<string, string> = {};
+    if (categoryFilter) params.certificateCategory = categoryFilter;
+    if (statusFilter) params.processingStatus = statusFilter;
+    return params;
+  }, [categoryFilter, statusFilter]);
 
   const table = useOpsTable<Certificate>({
-    endpoint: `/platform/companies/${COMPANY_ID}/certificates`,
+    endpoint,
     defaultSort: { key: "createdAt", direction: "desc" },
     extraParams,
   });

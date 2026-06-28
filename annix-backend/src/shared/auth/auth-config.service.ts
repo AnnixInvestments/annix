@@ -42,6 +42,10 @@ export class AuthConfigService {
     return this.bypassEnabled("DISABLE_RATE_LIMITING");
   }
 
+  isCoreLoginModuleGateEnabled(): boolean {
+    return this.configService.get("CORE_LOGIN_MODULE_GATE") === "true";
+  }
+
   jwtSecret(): string {
     return this.configService.getOrThrow<string>("JWT_SECRET");
   }

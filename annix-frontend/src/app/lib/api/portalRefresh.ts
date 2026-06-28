@@ -24,6 +24,24 @@ interface PortalRefreshDescriptor {
 
 const PORTAL_REFRESH_DESCRIPTORS: ReadonlyArray<PortalRefreshDescriptor> = [
   {
+    prefix: "/core/portal/stock-control",
+    store: stockControlTokenStore,
+    refreshUrl: `${API_BASE_URL}/stock-control/auth/refresh`,
+    sendDeviceFingerprint: false,
+  },
+  {
+    prefix: "/core/portal/au-rubber",
+    store: auRubberTokenStore,
+    refreshUrl: `${API_BASE_URL}/admin/auth/refresh`,
+    sendDeviceFingerprint: false,
+  },
+  {
+    prefix: "/ops/portal",
+    store: auRubberTokenStore,
+    refreshUrl: `${API_BASE_URL}/admin/auth/refresh`,
+    sendDeviceFingerprint: false,
+  },
+  {
     prefix: "/stock-control",
     store: stockControlTokenStore,
     refreshUrl: `${API_BASE_URL}/stock-control/auth/refresh`,

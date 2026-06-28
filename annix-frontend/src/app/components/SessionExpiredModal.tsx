@@ -32,6 +32,24 @@ interface PortalRoute {
 
 const PORTAL_ROUTES: PortalRoute[] = [
   {
+    prefix: "/core/portal/stock-control",
+    login: "/core",
+    accessTokenKey: "stockControlAccessToken",
+    refreshTokenKey: "stockControlRefreshToken",
+  },
+  {
+    prefix: "/core/portal/au-rubber",
+    login: "/core",
+    accessTokenKey: "auRubberAccessToken",
+    refreshTokenKey: "auRubberRefreshToken",
+  },
+  {
+    prefix: "/ops/portal",
+    login: "/core",
+    accessTokenKey: "auRubberAccessToken",
+    refreshTokenKey: "auRubberRefreshToken",
+  },
+  {
     prefix: "/stock-control",
     login: "/stock-control/login",
     accessTokenKey: "stockControlAccessToken",
@@ -104,7 +122,7 @@ export default function SessionExpiredModal(props: SessionExpiredHandlerProps) {
       if (typeof window === "undefined") return;
       const portal = currentPortal();
       const loginPath = explicitLoginUrl ?? portal.login;
-      if (window.location.pathname.startsWith(loginPath)) return;
+      if (window.location.pathname === loginPath) return;
       localStorage.removeItem(portal.accessTokenKey);
       localStorage.removeItem(portal.refreshTokenKey);
       const here = `${window.location.pathname}${window.location.search}`;

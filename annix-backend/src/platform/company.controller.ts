@@ -1,9 +1,28 @@
-import { Controller, Get, Param, ParseIntPipe, Post, UseGuards } from "@nestjs/common";
+import {
+  Controller,
+  ForbiddenException,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { Request } from "express";
+import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { CompanyService } from "./company.service";
+import { PlatformCompanyAuthGuard } from "./platform-company-auth.guard";
+
+interface PlatformCompanyCaller {
+  companyId: number;
+}
+
+type PlatformCompanyRequest = Request & {
+  user?: PlatformCompanyCaller;
+};
 
 @ApiTags("Companies (Unified)")
 @Controller("platform/companies")
@@ -11,27 +30,30 @@ export class CompanyController {
   constructor(private readonly companyService: CompanyService) {}
 
   @Get(":companyId")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PlatformCompanyAuthGuard)
   @ApiBearerAuth()
-  // TODO(#395): scope to the caller's own company once the JWT carries companyId — currently authenticated-only.
   @ApiOperation({ summary: "Get company by ID" })
   @ApiParam({ name: "companyId", type: Number })
-  findOne(@Param("companyId", ParseIntPipe) companyId: number) {
+  findOne(@Param("companyId", ParseIntPipe) companyId: number, @Req() req: PlatformCompanyRequest) {
+    this.assertCanReadCompany(companyId, req.user);
     return this.companyService.findById(companyId);
   }
 
   @Get(":companyId/modules")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PlatformCompanyAuthGuard)
   @ApiBearerAuth()
-  // TODO(#395): scope to the caller's own company once the JWT carries companyId — currently authenticated-only.
   @ApiOperation({ summary: "Get active module codes for a company" })
   @ApiParam({ name: "companyId", type: Number })
-  activeModules(@Param("companyId", ParseIntPipe) companyId: number) {
+  activeModules(
+    @Param("companyId", ParseIntPipe) companyId: number,
+    @Req() req: PlatformCompanyRequest,
+  ) {
+    this.assertCanReadCompany(companyId, req.user);
     return this.companyService.activeModules(companyId);
   }
 
   @Post(":companyId/modules/:moduleCode/enable")
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(AdminAuthGuard, RolesGuard)
   @Roles("admin", "employee")
   @ApiBearerAuth()
   @ApiOperation({ summary: "Enable a module for a company" })
@@ -45,7 +67,7 @@ export class CompanyController {
   }
 
   @Post(":companyId/modules/:moduleCode/disable")
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(AdminAuthGuard, RolesGuard)
   @Roles("admin", "employee")
   @ApiBearerAuth()
   @ApiOperation({ summary: "Disable a module for a company" })
@@ -56,5 +78,13 @@ export class CompanyController {
     @Param("moduleCode") moduleCode: string,
   ) {
     return this.companyService.disableModule(companyId, moduleCode);
+  }
+
+  private assertCanReadCompany(companyId: number, caller?: PlatformCompanyCaller): void {
+    if (caller?.companyId === companyId) {
+      return;
+    }
+
+    throw new ForbiddenException("You do not have access to this company.");
   }
 }

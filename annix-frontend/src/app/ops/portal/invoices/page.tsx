@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { SortHeader } from "@/app/components/shared/TableComponents";
 import { CellText, FilterSelect, OpsTablePage, StatusBadge } from "../../components/OpsTablePage";
+import { useOpsModules } from "../../context/OpsModuleContext";
 import { useOpsTable } from "../../hooks/useOpsTable";
 
 interface Invoice {
@@ -22,25 +23,28 @@ const STATUS_COLORS: Record<string, string> = {
   APPROVED: "bg-green-50 text-green-700",
 };
 
-const COMPANY_ID = 1;
-
 function formatCurrency(amount: number | null): string {
   if (amount === null) return "-";
   return `R ${Number(amount).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default function InvoicesPage() {
+  const { companyId } = useOpsModules();
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
 
-  const extraParams: Record<string, string> = {};
-  if (statusFilter) extraParams.status = statusFilter;
-  if (typeFilter) extraParams.invoiceType = typeFilter;
-  if (sourceFilter) extraParams.sourceModule = sourceFilter;
+  const endpoint = companyId === null ? null : `/platform/companies/${companyId}/invoices`;
+  const extraParams = useMemo(() => {
+    const params: Record<string, string> = {};
+    if (statusFilter) params.status = statusFilter;
+    if (typeFilter) params.invoiceType = typeFilter;
+    if (sourceFilter) params.sourceModule = sourceFilter;
+    return params;
+  }, [statusFilter, typeFilter, sourceFilter]);
 
   const table = useOpsTable<Invoice>({
-    endpoint: `/platform/companies/${COMPANY_ID}/invoices`,
+    endpoint,
     defaultSort: { key: "createdAt", direction: "desc" },
     extraParams,
   });

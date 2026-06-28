@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { SortHeader } from "@/app/components/shared/TableComponents";
 import {
   CellText,
@@ -9,6 +9,7 @@ import {
   SourceBadge,
   StatusBadge,
 } from "../../components/OpsTablePage";
+import { useOpsModules } from "../../context/OpsModuleContext";
 import { useOpsTable } from "../../hooks/useOpsTable";
 
 interface DeliveryNote {
@@ -30,18 +31,21 @@ const STATUS_COLORS: Record<string, string> = {
   STOCK_CREATED: "bg-teal-50 text-teal-700",
 };
 
-const COMPANY_ID = 1;
-
 export default function DeliveriesPage() {
+  const { companyId } = useOpsModules();
   const [statusFilter, setStatusFilter] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
 
-  const extraParams: Record<string, string> = {};
-  if (statusFilter) extraParams.status = statusFilter;
-  if (sourceFilter) extraParams.sourceModule = sourceFilter;
+  const endpoint = companyId === null ? null : `/platform/companies/${companyId}/delivery-notes`;
+  const extraParams = useMemo(() => {
+    const params: Record<string, string> = {};
+    if (statusFilter) params.status = statusFilter;
+    if (sourceFilter) params.sourceModule = sourceFilter;
+    return params;
+  }, [statusFilter, sourceFilter]);
 
   const table = useOpsTable<DeliveryNote>({
-    endpoint: `/platform/companies/${COMPANY_ID}/delivery-notes`,
+    endpoint,
     defaultSort: { key: "createdAt", direction: "desc" },
     extraParams,
   });

@@ -13,7 +13,7 @@ export interface PageResult<T> {
 }
 
 export interface UseOpsTableOptions {
-  endpoint: string;
+  endpoint: string | null;
   defaultSort: SortConfig;
   defaultLimit?: number;
   extraParams?: Record<string, string>;
@@ -47,6 +47,14 @@ export function useOpsTable<T>(options: UseOpsTableOptions): UseOpsTableResult<T
 
   const loadData = useCallback(async () => {
     void reloadTrigger;
+    const endpoint = options.endpoint;
+    if (!endpoint) {
+      setItems([]);
+      setTotal(0);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
       const params = new URLSearchParams({
@@ -65,7 +73,7 @@ export function useOpsTable<T>(options: UseOpsTableOptions): UseOpsTableResult<T
         }
       }
 
-      const result = await opsApiFetch<PageResult<T>>(`${options.endpoint}?${params.toString()}`);
+      const result = await opsApiFetch<PageResult<T>>(`${endpoint}?${params.toString()}`);
       setItems(result.data);
       setTotal(result.total);
     } catch {

@@ -8,12 +8,16 @@ import {
   ParseIntPipe,
   Post,
   Query,
+  UseGuards,
 } from "@nestjs/common";
-import { ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
 import { CertificateService } from "./certificate.service";
 import { CertificateFilterDto } from "./dto/certificate.dto";
+import { PlatformCompanyAuthGuard } from "./platform-company-auth.guard";
 
 @ApiTags("Certificates (Unified)")
+@UseGuards(PlatformCompanyAuthGuard)
+@ApiBearerAuth()
 @Controller("platform/companies/:companyId/certificates")
 export class CertificateController {
   constructor(private readonly certificateService: CertificateService) {}

@@ -117,11 +117,12 @@ export class ContactService {
   }
 
   async updateSageMapping(
+    companyId: number,
     id: number,
     sageContactId: number | null,
     sageContactType: string | null,
   ): Promise<Contact> {
-    const contact = await this.findById(id);
+    const contact = await this.findByCompanyAndId(companyId, id);
     contact.sageContactId = sageContactId;
     contact.sageContactType = sageContactType;
     return this.contactRepo.save(contact);

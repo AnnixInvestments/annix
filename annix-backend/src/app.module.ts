@@ -12,6 +12,7 @@ import { BendDimensionController } from "./bend-dimension/bend-dimension.control
 import { BendDimensionService } from "./bend-dimension/bend-dimension.service";
 import { BoqModule } from "./boq/boq.module";
 import { BrandingModule } from "./branding/branding.module";
+import { CoreModule } from "./core/core.module";
 import { CustomerModule } from "./customer/customer.module";
 import { DrawingsModule } from "./drawings/drawings.module";
 import { EmailModule } from "./email/email.module";
@@ -129,6 +130,7 @@ const GLOBAL_THROTTLER_STORAGE = Symbol("GLOBAL_THROTTLER_STORAGE");
     UserSyncModule,
 
     PlatformModule,
+    CoreModule,
     HeavyFeaturesModule,
 
     InsightsModule,

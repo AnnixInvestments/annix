@@ -10,12 +10,16 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from "@nestjs/common";
-import { ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
 import { ContactService } from "./contact.service";
 import { ContactFilterDto, CreateContactDto, UpdateContactDto } from "./dto/contact.dto";
+import { PlatformCompanyAuthGuard } from "./platform-company-auth.guard";
 
 @ApiTags("Contacts (Unified)")
+@UseGuards(PlatformCompanyAuthGuard)
+@ApiBearerAuth()
 @Controller("platform/companies/:companyId/contacts")
 export class ContactController {
   constructor(private readonly contactService: ContactService) {}
@@ -95,9 +99,15 @@ export class ContactController {
   @ApiParam({ name: "companyId", type: Number })
   @ApiParam({ name: "id", type: Number })
   updateSageMapping(
+    @Param("companyId", ParseIntPipe) companyId: number,
     @Param("id", ParseIntPipe) id: number,
     @Body() body: { sageContactId: number | null; sageContactType: string | null },
   ) {
-    return this.contactService.updateSageMapping(id, body.sageContactId, body.sageContactType);
+    return this.contactService.updateSageMapping(
+      companyId,
+      id,
+      body.sageContactId,
+      body.sageContactType,
+    );
   }
 }

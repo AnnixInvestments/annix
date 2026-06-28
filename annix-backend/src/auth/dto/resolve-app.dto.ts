@@ -14,4 +14,6 @@ export type ResolvedApp = "stock-control" | "au-rubber";
 
 export class ResolveAppResponseDto {
   app: ResolvedApp;
+  enabledApps?: ResolvedApp[];
+  companyId?: number | null;
 }

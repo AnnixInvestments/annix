@@ -1,4 +1,6 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { RubberCompanyRepository } from "../rubber-lining/repositories/rubber-company.repository";
+import { StockControlCompanyRepository } from "../stock-control/repositories/stock-control-company.repository";
 import { CompanyRepository } from "./company.repository";
 import { CompanyModuleSubscriptionRepository } from "./company-module-subscription.repository";
 import { Company, CompanyType } from "./entities/company.entity";
@@ -29,6 +31,9 @@ export const MODULE_CODES = {
   RFQ: "rfq",
 } as const;
 
+export type CoreModuleApp = "stock-control" | "au-rubber";
+export type CoreAppAccessState = "enabled" | "disabled" | "unknown";
+
 @Injectable()
 export class CompanyService {
   private readonly logger = new Logger(CompanyService.name);
@@ -36,6 +41,8 @@ export class CompanyService {
   constructor(
     private readonly companyRepo: CompanyRepository,
     private readonly subscriptionRepo: CompanyModuleSubscriptionRepository,
+    private readonly stockControlCompanyRepo: StockControlCompanyRepository,
+    private readonly rubberCompanyRepo: RubberCompanyRepository,
   ) {}
 
   async findById(id: number): Promise<Company> {
@@ -65,6 +72,29 @@ export class CompanyService {
   async activeModules(companyId: number): Promise<string[]> {
     const subscriptions = await this.subscriptionRepo.findActiveByCompany(companyId);
     return subscriptions.map((sub) => sub.moduleCode);
+  }
+
+  async enabledApps(companyId: number): Promise<CoreModuleApp[]> {
+    const [stockControlCompany, rubberCompany] = await Promise.all([
+      this.stockControlCompanyRepo.findById(companyId),
+      this.rubberCompanyRepo.findById(companyId),
+    ]);
+
+    return [
+      { app: MODULE_CODES.STOCK_CONTROL, enabled: stockControlCompany !== null },
+      { app: MODULE_CODES.AU_RUBBER, enabled: rubberCompany !== null },
+    ]
+      .filter(({ enabled }) => enabled)
+      .map(({ app }) => app);
+  }
+
+  async coreAppAccessState(companyId: number, app: CoreModuleApp): Promise<CoreAppAccessState> {
+    const subscription = await this.subscriptionRepo.findByCompanyAndModule(companyId, app);
+    if (!subscription) {
+      return "unknown";
+    }
+
+    return subscription.disabledAt === null ? "enabled" : "disabled";
   }
 
   async hasModule(companyId: number, moduleCode: string): Promise<boolean> {

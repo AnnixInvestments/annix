@@ -7,12 +7,14 @@ import type { ModuleCode } from "../config/modules";
 
 interface OpsModuleContextValue {
   activeModules: string[];
+  companyId: number | null;
   isLoaded: boolean;
   hasModule: (code: ModuleCode) => boolean;
 }
 
 const OpsModuleContext = createContext<OpsModuleContextValue>({
   activeModules: [],
+  companyId: null,
   isLoaded: false,
   hasModule: () => false,
 });
@@ -67,9 +69,12 @@ export function OpsModuleProvider(props: OpsModuleProviderProps) {
 
   const hasModule = (code: ModuleCode): boolean => activeModules.includes(code);
 
-  return (
-    <OpsModuleContext.Provider value={{ activeModules, isLoaded, hasModule }}>
-      {props.children}
-    </OpsModuleContext.Provider>
-  );
+  const value: OpsModuleContextValue = {
+    activeModules,
+    companyId: props.companyId,
+    isLoaded,
+    hasModule,
+  };
+
+  return <OpsModuleContext.Provider value={value}>{props.children}</OpsModuleContext.Provider>;
 }

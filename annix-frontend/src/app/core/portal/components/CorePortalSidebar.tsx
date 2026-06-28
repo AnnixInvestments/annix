@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useTheme } from "@/app/components/ThemeProvider";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { useFeatureFlagEnabled } from "@/app/lib/query/hooks";
+import { brandHasAsset, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
+import { useBranding, useFeatureFlagEnabled } from "@/app/lib/query/hooks";
 import { type OpsNavItem, visibleNavGroups, visibleNavItems } from "@/app/ops/config/navItems";
 import {
   ALL_NAV_ITEMS,
@@ -14,7 +16,9 @@ import {
 } from "@/app/stock-control/config/navItems";
 import { useStockControlRbac } from "@/app/stock-control/context/StockControlRbacContext";
 import { useViewAs } from "@/app/stock-control/context/ViewAsContext";
+import { CORE_VERSION } from "../../config/version";
 import { useCoreModules } from "../CorePortalModuleProvider";
+import { CORE_APP_META } from "../config/coreAppMeta";
 import { type CoreApp, navItemBelongsToApp } from "../config/navAppMap";
 
 const NIX_QUOTE_FLAG = "STOCK_MGMT_NIX_QUOTE_FROM_DOCUMENTS";
@@ -26,18 +30,24 @@ const SC_ADMIN_LINKS: { key: string; label: string; href: string }[] = [
   {
     key: "company-profile",
     label: "Company Profile",
-    href: "/core/portal/stock-control/company-profile",
+    href: "/stock-control/portal/company-profile",
   },
-  { key: "settings", label: "Settings", href: "/core/portal/stock-control/settings" },
+  { key: "settings", label: "Settings", href: "/stock-control/portal/settings" },
 ];
-
-const APP_DISPLAY_NAME: Record<CoreApp, string> = {
-  "stock-control": "Stock Control",
-  "au-rubber": "AU Rubber",
-};
 
 const OPS_PORTAL_PREFIX = "/ops/portal/";
 const SC_PORTAL_PREFIX = "/stock-control/portal/";
+
+const AU_LEGACY_ROUTE_BY_KEY: Readonly<Record<string, string>> = {
+  "compound-stock": "/au-rubber/portal/compound-stocks",
+  "roll-stock": "/au-rubber/portal/roll-stock",
+  production: "/au-rubber/portal/productions",
+  "supplier-cocs": "/au-rubber/portal/supplier-cocs",
+  "au-cocs": "/au-rubber/portal/au-cocs",
+  suppliers: "/au-rubber/portal/companies/suppliers",
+  customers: "/au-rubber/portal/companies/customers",
+  settings: "/au-rubber/portal/settings",
+};
 
 interface CoreNavItem {
   key: string;
@@ -51,13 +61,16 @@ interface CoreNavGroup {
   items: CoreNavItem[];
 }
 
-function rewriteToCore(href: string, prefix: string, activeApp: CoreApp): string {
+function rewriteToHybrid(href: string, prefix: string, activeApp: CoreApp): string {
   const startsWith = href.startsWith(prefix);
   if (!startsWith) {
-    return `/core/portal/${activeApp}`;
+    return href;
   }
   const rest = href.slice(prefix.length);
-  return `/core/portal/${activeApp}/${rest}`;
+  if (rest === "dashboard") {
+    return `/core/portal/${activeApp}/dashboard`;
+  }
+  return href;
 }
 
 interface CorePortalSidebarProps {
@@ -86,6 +99,32 @@ function SidebarShell(props: { children: React.ReactNode; isOpen: boolean; onClo
         {props.children}
       </aside>
     </>
+  );
+}
+
+function CoreSidebarBrand(props: { activeApp: CoreApp }) {
+  const { resolvedTheme } = useTheme();
+  const brandingData = useBranding("annix-core").data;
+  const branding = brandingData ?? null;
+  const variant = resolvedTheme === "light" ? "light" : "dark";
+  const hasVariantIcon = branding ? brandHasAsset("logoIcon", branding, variant) : false;
+  const hasFallbackIcon = branding ? brandHasAsset("logoIcon", branding, "light") : false;
+  const hasIcon = hasVariantIcon || hasFallbackIcon;
+  const logoUrl = branding && hasIcon ? resolveBrandAssetUrl("logoIcon", branding, variant) : null;
+  const appMeta = CORE_APP_META[props.activeApp];
+
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      {logoUrl ? (
+        <img src={logoUrl} alt="" className="h-9 w-9 shrink-0 rounded-md object-contain" />
+      ) : null}
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold text-gray-900">
+          {`Annix Core v${CORE_VERSION}`}
+        </p>
+        <p className="truncate text-xs text-gray-500">{`${appMeta.label} v${appMeta.version}`}</p>
+      </div>
+    </div>
   );
 }
 
@@ -234,7 +273,7 @@ function StockControlSidebarNav(props: { onNavigate: () => void }) {
   const toItem = (item: (typeof ALL_NAV_ITEMS)[number]): CoreNavItem => ({
     key: item.key,
     label: item.label,
-    href: rewriteToCore(item.href, SC_PORTAL_PREFIX, "stock-control"),
+    href: rewriteToHybrid(item.href, SC_PORTAL_PREFIX, "stock-control"),
   });
 
   const ungrouped = allowed.filter((item) => !item.group);
@@ -284,11 +323,14 @@ function AuRubberSidebarNav(props: {
   const items = permitted.filter((item) => navItemBelongsToApp(item.key, "au-rubber"));
   const opsGroups = visibleNavGroups(items);
 
-  const toItem = (item: OpsNavItem): CoreNavItem => ({
-    key: item.key,
-    label: item.label,
-    href: rewriteToCore(item.href, OPS_PORTAL_PREFIX, "au-rubber"),
-  });
+  const toItem = (item: OpsNavItem): CoreNavItem => {
+    const mapped = AU_LEGACY_ROUTE_BY_KEY[item.key];
+    return {
+      key: item.key,
+      label: item.label,
+      href: mapped ?? rewriteToHybrid(item.href, OPS_PORTAL_PREFIX, "au-rubber"),
+    };
+  };
 
   const groups: CoreNavGroup[] = opsGroups.map((group) => ({
     key: group.key,
@@ -300,16 +342,10 @@ function AuRubberSidebarNav(props: {
 }
 
 export function CorePortalSidebar(props: CorePortalSidebarProps) {
-  // TODO(#395 Phase 5): derive the wordmark/logo + accent colour per app from
-  // `useBranding(activeApp)` / brand CSS vars. For now the active-app display
-  // name provides identity and the accent stays neutral (no hardcoded per-app
-  // hex, per CLAUDE.md branding rules).
-  const wordmark = APP_DISPLAY_NAME[props.activeApp];
-
   return (
     <SidebarShell isOpen={props.isOpen} onClose={props.onClose}>
       <div className="flex h-14 items-center justify-between border-b border-gray-200 px-4">
-        <span className="text-lg font-semibold text-gray-900">{wordmark}</span>
+        <CoreSidebarBrand activeApp={props.activeApp} />
         <button
           type="button"
           onClick={props.onClose}

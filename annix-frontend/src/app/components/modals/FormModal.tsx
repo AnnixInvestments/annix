@@ -16,6 +16,7 @@ export interface FormModalProps {
   error?: string | null;
   maxWidth?: string;
   hideFooter?: boolean;
+  disableClose?: boolean;
   headerRight?: ReactNode;
   submitDataNixTarget?: string;
   children: ReactNode;
@@ -34,6 +35,8 @@ export function FormModal(props: FormModalProps) {
   const maxWidth = propsMaxWidth ? propsMaxWidth : "max-w-lg";
   const propsHideFooter = props.hideFooter;
   const hideFooter = propsHideFooter ? propsHideFooter : false;
+  const propsDisableClose = props.disableClose;
+  const disableClose = propsDisableClose ? propsDisableClose : false;
   const propsError = props.error;
   const error = propsError ? propsError : null;
 
@@ -50,13 +53,13 @@ export function FormModal(props: FormModalProps) {
   useEffect(() => {
     if (!isOpen) return;
     const handler = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !disableClose) {
         onClose();
       }
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, disableClose]);
 
   if (!isOpen) return null;
 
@@ -69,7 +72,7 @@ export function FormModal(props: FormModalProps) {
     >
       <div
         className="fixed inset-0 bg-black/10 backdrop-blur-md"
-        onClick={onClose}
+        onClick={disableClose ? undefined : onClose}
         aria-hidden="true"
       />
       <div
@@ -81,21 +84,23 @@ export function FormModal(props: FormModalProps) {
           </h2>
           <div className="flex items-center gap-2">
             {props.headerRight}
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-              aria-label="Close"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
+            {!disableClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Close"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
 

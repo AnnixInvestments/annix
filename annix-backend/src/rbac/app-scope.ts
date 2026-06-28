@@ -10,6 +10,10 @@
  * scope AND the backfill migration that stamps existing rows MUST agree on
  * them, so they are centralised here. Do NOT change an existing value: Orbit
  * (`orbit:*`) and Teacher Assistant (`teacher-assistant`) are already live.
+ *
+ * FROZEN VALUES: these strings are persisted in production user rows and are
+ * protected by scripts/check-appscope-frozen.ts. Add new keys when needed, but
+ * never rename or repurpose an existing value.
  */
 export const AppScope = {
   FORGE_CUSTOMER: "forge:customer",

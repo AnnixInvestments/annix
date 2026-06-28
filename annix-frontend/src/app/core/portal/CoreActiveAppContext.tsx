@@ -67,21 +67,15 @@ function persistedActiveApp(): CoreApp | null {
 }
 
 /**
- * INTERIM ENTITLEMENT DERIVATION (3e).
- *
- * The backend `/auth/resolve-app` response currently exposes only `{ app }`
- * and the backend is frozen for this phase, so we cannot read a server
- * `enabledApps` list yet. We derive entitlement from which portal token store
- * is locally authenticated (a no-network `isAuthenticated()` probe). A store
- * only holds a token because the user logged in / was provisioned for that app.
+ * The provider mounts only apps with a real local portal token. `/core` login
+ * uses the server `enabledApps` response to try hydrating secondary app tokens
+ * with the submitted credentials; this client-side check remains the final
+ * guard before mounting a provider.
  *
  * SECURITY: we look ONLY at the stock-control and au-rubber stores — never the
  * admin store. ANNIX_ADMIN scope presence is NOT AU entitlement; a plain admin
  * without AU provisioning has no auRubber token and therefore never resolves to
  * "au-rubber" here.
- *
- * TODO(#395): replace with the `enabledApps` field once `/auth/resolve-app`
- * (or a follow-up entitlement endpoint) exposes it server-side.
  */
 function deriveEnabledApps(): CoreApp[] {
   const apps: CoreApp[] = [];
