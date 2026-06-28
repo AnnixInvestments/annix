@@ -53,6 +53,7 @@ import {
   ORBIT_MODULES,
   type OrbitModule,
   scopeForModule,
+  userTypeForModule,
 } from "../identity/orbit-module";
 import { currentOrbitEnvironment } from "../orbit-environment";
 import { AnnixOrbitCompanyRepository } from "../repositories/annix-orbit-company.repository";
@@ -919,9 +920,20 @@ export class AnnixOrbitAuthService {
       );
     }
 
+    // #427: the SESSION type is the module the user authenticated as — never an
+    // incidentally-attached profile. A stray/cross-module/corrupt profile on this
+    // userId must NOT be able to flip a seeker login into a company-typed JWT.
+    const sessionUserType = userTypeForModule(loginModule);
+    const isEmployerLogin =
+      sessionUserType === AnnixOrbitUserType.COMPANY ||
+      sessionUserType === AnnixOrbitUserType.RECRUITER;
+
     let profile = await this.profileRepo.findByUserId(user.id);
-    profile = await this.ensureCompanyProfile(user, profile);
-    if (!profile) {
+    // The company self-heal applies ONLY to employer logins; a seeker/student
+    // login never auto-provisions or adopts a company profile.
+    if (isEmployerLogin) {
+      profile = await this.ensureCompanyProfile(user, profile);
+    } else if (!profile) {
       profile = await this.provisionInvitedSeekerProfile(user);
     }
     if (!profile) {
@@ -929,12 +941,18 @@ export class AnnixOrbitAuthService {
         "No Annix Orbit account is set up for this email. Please sign up to get started.",
       );
     }
+    if (profile.userType !== sessionUserType) {
+      this.logger.warn(
+        `Orbit login userType mismatch for user ${user.id}: stored profile=${profile.userType}, ` +
+          `authenticated module=${loginModule} (${sessionUserType}). Using the authenticated module.`,
+      );
+    }
     user.lastLoginAt = now().toJSDate();
     await this.userRepo.save(user);
     await this.identityWriter.recordLogin(loginModule, user);
-    const role = await this.resolveRole(user.id, profile);
+    const role = await this.resolveRole(user.id, profile, sessionUserType);
     const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
-    const tokens = this.generateTokens(user, profile, role);
+    const tokens = this.generateTokens(user, profile, role, sessionUserType);
 
     return {
       ...tokens,
@@ -943,7 +961,7 @@ export class AnnixOrbitAuthService {
         email: user.email,
         name: userName,
         role,
-        userType: profile.userType,
+        userType: sessionUserType,
       },
     };
   }
@@ -1033,13 +1051,20 @@ export class AnnixOrbitAuthService {
     return result;
   }
 
-  private async resolveRole(userId: number, profile?: AnnixOrbitProfile | null): Promise<string> {
+  private async resolveRole(
+    userId: number,
+    profile?: AnnixOrbitProfile | null,
+    userTypeOverride?: AnnixOrbitUserType,
+  ): Promise<string> {
     const resolvedProfile =
       profile === undefined ? await this.profileRepo.findByUserId(userId) : profile;
-    if (resolvedProfile?.userType === AnnixOrbitUserType.STUDENT) {
+    // #427: when the caller knows the authenticated module, trust it over the
+    // stored profile's type so the role can't diverge from the session type.
+    const effectiveType = userTypeOverride ?? resolvedProfile?.userType;
+    if (effectiveType === AnnixOrbitUserType.STUDENT) {
       return AnnixOrbitRole.STUDENT;
     }
-    if (resolvedProfile?.userType === AnnixOrbitUserType.INDIVIDUAL) {
+    if (effectiveType === AnnixOrbitUserType.INDIVIDUAL) {
       return AnnixOrbitRole.INDIVIDUAL;
     }
 
@@ -1117,9 +1142,23 @@ export class AnnixOrbitAuthService {
     return this.generateTokens(user, profile, role);
   }
 
-  private generateTokens(user: User, profile: AnnixOrbitProfile | null, role: string) {
+  private generateTokens(
+    user: User,
+    profile: AnnixOrbitProfile | null,
+    role: string,
+    sessionUserType?: AnnixOrbitUserType,
+  ) {
     const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
-    const userType = profile?.userType ?? this.fallbackUserType(user);
+    // #427: the session type wins when known (the authenticated module). The
+    // company/recruiter-only fields are derived from THIS type, so a non-employer
+    // session can never carry a companyId/recruiterRole — even if a stray company
+    // profile exists for the userId.
+    const userType = sessionUserType ?? profile?.userType ?? this.fallbackUserType(user);
+    const isEmployerType =
+      userType === AnnixOrbitUserType.COMPANY || userType === AnnixOrbitUserType.RECRUITER;
+    const companyId = isEmployerType ? (profile?.companyId ?? null) : null;
+    const recruiterRole =
+      userType === AnnixOrbitUserType.RECRUITER ? (profile?.recruiterRole ?? null) : null;
     const secret = this.jwtSecret();
 
     const accessToken = this.jwtService.sign(
@@ -1129,8 +1168,8 @@ export class AnnixOrbitAuthService {
         name: userName,
         role,
         userType,
-        companyId: profile?.companyId ?? null,
-        recruiterRole: profile?.recruiterRole ?? null,
+        companyId,
+        recruiterRole,
         type: "annix-orbit",
       },
       { secret, expiresIn: "8h" },
@@ -1140,7 +1179,7 @@ export class AnnixOrbitAuthService {
       {
         sub: user.id,
         userType,
-        companyId: profile?.companyId ?? null,
+        companyId,
         tokenType: "refresh",
         type: "annix-orbit",
       },
