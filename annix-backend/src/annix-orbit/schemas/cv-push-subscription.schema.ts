@@ -34,13 +34,6 @@ export class CvPushSubscription {
 
 export const CvPushSubscriptionSchema = SchemaFactory.createForClass(CvPushSubscription);
 
-CvPushSubscriptionSchema.virtual("user", {
-  ref: "AnnixOrbitUser",
-  localField: "userId",
-  foreignField: "_id",
-  justOne: true,
-});
-
 CvPushSubscriptionSchema.virtual("company", {
   ref: "AnnixOrbitCompany",
   localField: "companyId",

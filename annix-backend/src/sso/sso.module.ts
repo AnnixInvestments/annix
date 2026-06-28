@@ -3,10 +3,7 @@ import { MongooseModule } from "@nestjs/mongoose";
 import { AdminModule } from "../admin/admin.module";
 import { AnnixOrbitProfileRepository } from "../annix-orbit/repositories/annix-orbit-profile.repository";
 import { MongoAnnixOrbitProfileRepository } from "../annix-orbit/repositories/annix-orbit-profile.repository.mongo";
-import { AnnixOrbitUserRepository } from "../annix-orbit/repositories/annix-orbit-user.repository";
-import { MongoAnnixOrbitUserRepository } from "../annix-orbit/repositories/annix-orbit-user.repository.mongo";
 import { AnnixOrbitProfileSchema } from "../annix-orbit/schemas/annix-orbit-profile.schema";
-import { AnnixOrbitUserSchema } from "../annix-orbit/schemas/annix-orbit-user.schema";
 import { RepProfileRepository } from "../annix-rep/rep-profile/rep-profile.repository";
 import { MongoRepProfileRepository } from "../annix-rep/rep-profile/rep-profile.repository.mongo";
 import { RepProfileSchema } from "../annix-rep/rep-profile/schemas/rep-profile.schema";
@@ -59,10 +56,7 @@ import { SsoAdminController } from "./sso-admin.controller";
       { name: "StockControlUser", schema: StockControlUserSchema },
     ]),
     MongooseModule.forFeature(
-      [
-        { name: "AnnixOrbitProfile", schema: AnnixOrbitProfileSchema },
-        { name: "AnnixOrbitUser", schema: AnnixOrbitUserSchema },
-      ],
+      [{ name: "AnnixOrbitProfile", schema: AnnixOrbitProfileSchema }],
       ORBIT_CONNECTION,
     ),
     AdminModule,
@@ -81,7 +75,6 @@ import { SsoAdminController } from "./sso-admin.controller";
     repositoryProvider(RepProfileRepository, MongoRepProfileRepository),
     repositoryProvider(TeacherAssistantUserRepository, MongoTeacherAssistantUserRepository),
     repositoryProvider(StockControlUserRepository, MongoStockControlUserRepository),
-    repositoryProvider(AnnixOrbitUserRepository, MongoAnnixOrbitUserRepository),
   ],
   exports: [IdentityReconciliationService],
 })

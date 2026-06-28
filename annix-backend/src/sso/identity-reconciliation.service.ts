@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
 import { AnnixOrbitProfileRepository } from "../annix-orbit/repositories/annix-orbit-profile.repository";
-import { AnnixOrbitUserRepository } from "../annix-orbit/repositories/annix-orbit-user.repository";
 import { RepProfileRepository } from "../annix-rep/rep-profile/rep-profile.repository";
 import { AnnixSentinelProfileRepository } from "../annix-sentinel/companies/annix-sentinel-profile.repository";
 import { CustomerProfileRepository } from "../customer/customer-profile.repository";
@@ -45,7 +44,6 @@ export class IdentityReconciliationService {
     private readonly repProfileRepo: RepProfileRepository,
     private readonly teacherAssistantUserRepo: TeacherAssistantUserRepository,
     private readonly stockControlUserRepo: StockControlUserRepository,
-    private readonly annixOrbitUserRepo: AnnixOrbitUserRepository,
   ) {}
 
   async buildReport(): Promise<IdentityReconciliationReportDto> {
@@ -193,20 +191,17 @@ export class IdentityReconciliationService {
     coreUsersByEmail: Map<string, CoreUserRef>,
   ): Promise<UnbridgedLegacySectionDto> {
     const stockControlRows = await this.stockControlUserRepo.findAllOrderedById();
-    const annixOrbitRows = await this.annixOrbitUserRepo.findAllOrderedById();
 
     const stockControlTable = this.unbridgedTable(
       "stock_control_users",
       coreUsersByEmail,
       stockControlRows,
     );
-    const annixOrbitTable = this.unbridgedTable(
-      "cv_assistant_users",
-      coreUsersByEmail,
-      annixOrbitRows,
-    );
 
-    return { tables: [stockControlTable, annixOrbitTable] };
+    // NOTE: `cv_assistant_users` is intentionally NOT a source here (M5). The
+    // Orbit identity stores share the global `_id` space, so they are bridged by
+    // construction — listing them as "unbridged legacy" would be incorrect.
+    return { tables: [stockControlTable] };
   }
 
   private unbridgedTable(
@@ -302,11 +297,8 @@ export class IdentityReconciliationService {
       recordRole(scUser.email, "stock-control:legacy", scUser.role ?? null);
     });
 
-    const annixOrbitUsers = await this.annixOrbitUserRepo.findAll();
-    annixOrbitUsers.forEach((orbitUser) => {
-      recordRole(orbitUser.email, "annix-orbit:legacy", orbitUser.role ?? null);
-    });
-
+    // `annix-orbit:legacy` role source removed (M5) — the retired cv_assistant_users
+    // store. Orbit roles already surface via the RBAC access records above.
     return rolesByEmail;
   }
 }

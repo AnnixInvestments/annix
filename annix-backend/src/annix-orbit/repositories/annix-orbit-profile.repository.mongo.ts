@@ -7,6 +7,7 @@ import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository
 import { AnnixOrbitProfile, AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
 import {
   AnnixOrbitProfileRepository,
+  type NotificationPreferencesUpdate,
   type SeekerBillingUpdate,
 } from "./annix-orbit-profile.repository";
 
@@ -112,6 +113,38 @@ export class MongoAnnixOrbitProfileRepository
 
   async setPushEnabledForUser(userId: number, enabled: boolean): Promise<void> {
     await this.documents.updateMany({ userId }, { pushEnabled: enabled }).exec();
+  }
+
+  async setNotificationPreferences(
+    userId: number,
+    prefs: NotificationPreferencesUpdate,
+  ): Promise<void> {
+    const update: Record<string, unknown> = {};
+    let hasField = false;
+    if (prefs.matchAlertThreshold !== undefined) {
+      update.matchAlertThreshold = prefs.matchAlertThreshold;
+      hasField = true;
+    }
+    if (prefs.digestEnabled !== undefined) {
+      update.digestEnabled = prefs.digestEnabled;
+      hasField = true;
+    }
+    if (prefs.pushEnabled !== undefined) {
+      update.pushEnabled = prefs.pushEnabled;
+      hasField = true;
+    }
+    if (!hasField) {
+      return;
+    }
+    await this.documents.updateMany({ userId }, update).exec();
+  }
+
+  async findSeekersWithUser(): Promise<AnnixOrbitProfile[]> {
+    const docs = await this.documents
+      .find({ userType: { $in: [AnnixOrbitUserType.INDIVIDUAL, AnnixOrbitUserType.STUDENT] } })
+      .lean()
+      .exec();
+    return this.toDomainList(await this.withUser(docs));
   }
 
   async setSelectedTier(userId: number, tier: string): Promise<void> {

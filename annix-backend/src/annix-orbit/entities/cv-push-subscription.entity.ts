@@ -1,10 +1,7 @@
 import { AnnixOrbitCompany } from "./annix-orbit-company.entity";
-import { AnnixOrbitUser } from "./annix-orbit-user.entity";
 
 export class CvPushSubscription {
   id: number;
-
-  user: AnnixOrbitUser;
 
   userId: number;
 

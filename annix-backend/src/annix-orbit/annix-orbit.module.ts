@@ -154,8 +154,6 @@ import { AnnixOrbitTaskRepository } from "./repositories/annix-orbit-task.reposi
 import { MongoAnnixOrbitTaskRepository } from "./repositories/annix-orbit-task.repository.mongo";
 import { AnnixOrbitTeamInviteRepository } from "./repositories/annix-orbit-team-invite.repository";
 import { MongoAnnixOrbitTeamInviteRepository } from "./repositories/annix-orbit-team-invite.repository.mongo";
-import { AnnixOrbitUserRepository } from "./repositories/annix-orbit-user.repository";
-import { MongoAnnixOrbitUserRepository } from "./repositories/annix-orbit-user.repository.mongo";
 import { CandidateRepository } from "./repositories/candidate.repository";
 import { MongoCandidateRepository } from "./repositories/candidate.repository.mongo";
 import { CandidateJobMatchRepository } from "./repositories/candidate-job-match.repository";
@@ -261,7 +259,6 @@ import { AnnixOrbitTalentCredentialSchema } from "./schemas/annix-orbit-talent-c
 import { AnnixOrbitTalentPoolSchema } from "./schemas/annix-orbit-talent-pool.schema";
 import { AnnixOrbitTaskSchema } from "./schemas/annix-orbit-task.schema";
 import { AnnixOrbitTeamInviteSchema } from "./schemas/annix-orbit-team-invite.schema";
-import { AnnixOrbitUserSchema } from "./schemas/annix-orbit-user.schema";
 import { CandidateSchema } from "./schemas/candidate.schema";
 import { CandidateJobMatchSchema } from "./schemas/candidate-job-match.schema";
 import { CandidateReferenceSchema } from "./schemas/candidate-reference.schema";
@@ -408,7 +405,6 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
         { name: "ExternalJobEmbedding", schema: ExternalJobEmbeddingSchema },
         { name: "CandidateJobMatch", schema: CandidateJobMatchSchema },
         { name: "CvPushSubscription", schema: CvPushSubscriptionSchema },
-        { name: "AnnixOrbitUser", schema: AnnixOrbitUserSchema },
         {
           name: "AnnixOrbitIndividualDocument",
           schema: AnnixOrbitIndividualDocumentSchema,
@@ -501,7 +497,6 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       { name: "AnnixOrbitTeamInvite", schema: AnnixOrbitTeamInviteSchema },
       { name: "JobMarketSource", schema: JobMarketSourceSchema },
       { name: "CvPushSubscription", schema: CvPushSubscriptionSchema },
-      { name: "AnnixOrbitUser", schema: AnnixOrbitUserSchema },
       {
         name: "AnnixOrbitIndividualDocument",
         schema: AnnixOrbitIndividualDocumentSchema,
@@ -792,7 +787,6 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     repositoryProvider(JobMarketSourceRepository, MongoJobMarketSourceRepository),
     repositoryProvider(JobPostingPortalPostingRepository, MongoJobPostingPortalPostingRepository),
     repositoryProvider(AnnixOrbitProfileRepository, MongoAnnixOrbitProfileRepository),
-    repositoryProvider(AnnixOrbitUserRepository, MongoAnnixOrbitUserRepository),
     repositoryProvider(AnnixOrbitCompanyRepository, MongoAnnixOrbitCompanyRepository),
     repositoryProvider(
       AnnixOrbitIndividualDocumentRepository,

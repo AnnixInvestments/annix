@@ -7,7 +7,6 @@ import { WebPushChannel, WebPushSendResult } from "../../notifications/channels/
 import { NotificationDispatcherService } from "../../notifications/notification-dispatcher.service";
 import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
-import { AnnixOrbitUserRepository } from "../repositories/annix-orbit-user.repository";
 import { CandidateRepository } from "../repositories/candidate.repository";
 import { CandidateJobMatchRepository } from "../repositories/candidate-job-match.repository";
 import { CvPushSubscriptionRepository } from "../repositories/cv-push-subscription.repository";
@@ -21,6 +20,23 @@ interface PushPayload {
   data?: { url?: string };
 }
 
+// Endpoint defaults (GET /notifications/preferences) — preserve the historical
+// notification-preferences contract.
+const PREF_DEFAULT_MATCH_ALERT_THRESHOLD = 80;
+const PREF_DEFAULT_DIGEST_ENABLED = true;
+const PREF_DEFAULT_PUSH_ENABLED = false;
+
+// Seeker job-alert threshold when a candidate's email has no Orbit seeker profile.
+// Pinned at 60 (the long-standing default) so repointing prefs to the profile
+// does NOT silently change who gets alerted.
+const SEEKER_ALERT_THRESHOLD_DEFAULT = 60;
+
+export interface NotificationPreferences {
+  matchAlertThreshold: number;
+  digestEnabled: boolean;
+  pushEnabled: boolean;
+}
+
 @Injectable()
 export class CvNotificationService {
   private readonly logger = new Logger(CvNotificationService.name);
@@ -32,7 +48,6 @@ export class CvNotificationService {
     private readonly candidateRepo: CandidateRepository,
     private readonly jobPostingRepo: JobPostingRepository,
     private readonly externalJobRepo: ExternalJobRepository,
-    private readonly cvUserRepo: AnnixOrbitUserRepository,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
     private readonly dispatcher: NotificationDispatcherService,
@@ -41,6 +56,48 @@ export class CvNotificationService {
 
   vapidPublicKey(): string | null {
     return this.webPushChannel.vapidPublicKey();
+  }
+
+  /**
+   * Notification preferences live on the Orbit profile (`cv_assistant_profiles`).
+   * A null profile yields the historical defaults (preserving the exact contract).
+   */
+  async getPreferences(userId: number): Promise<NotificationPreferences> {
+    const profile = await this.profileRepo.findByUserId(userId);
+    return {
+      matchAlertThreshold: profile?.matchAlertThreshold ?? PREF_DEFAULT_MATCH_ALERT_THRESHOLD,
+      digestEnabled: profile?.digestEnabled ?? PREF_DEFAULT_DIGEST_ENABLED,
+      pushEnabled: profile?.pushEnabled ?? PREF_DEFAULT_PUSH_ENABLED,
+    };
+  }
+
+  async updatePreferences(
+    userId: number,
+    body: { matchAlertThreshold?: number; digestEnabled?: boolean; pushEnabled?: boolean },
+  ): Promise<void> {
+    const profile = await this.profileRepo.findByUserId(userId);
+    if (!profile) {
+      // No profile to write to — log and no-op rather than 500.
+      this.logger.warn(
+        `Notification preferences update skipped — no Orbit profile for user ${userId}`,
+      );
+      return;
+    }
+    const updates: {
+      matchAlertThreshold?: number;
+      digestEnabled?: boolean;
+      pushEnabled?: boolean;
+    } = {};
+    if (body.matchAlertThreshold != null) {
+      updates.matchAlertThreshold = Math.max(0, Math.min(100, body.matchAlertThreshold));
+    }
+    if (body.digestEnabled != null) {
+      updates.digestEnabled = body.digestEnabled;
+    }
+    if (body.pushEnabled != null) {
+      updates.pushEnabled = body.pushEnabled;
+    }
+    await this.profileRepo.setNotificationPreferences(userId, updates);
   }
 
   async subscribe(
@@ -240,8 +297,14 @@ export class CvNotificationService {
 
     const optedInCandidates = await this.candidateRepo.jobAlertCandidates();
 
-    const seekerUsers = await this.cvUserRepo.findAll();
-    const userByEmail = new Map(seekerUsers.map((u) => [u.email.toLowerCase(), u] as const));
+    // Seeker notification prefs live on the Orbit profile; key them by the core
+    // user's email so a candidate CV is matched to its owning seeker (if any).
+    const seekerProfiles = await this.profileRepo.findSeekersWithUser();
+    const profileByEmail = new Map(
+      seekerProfiles
+        .filter((profile) => profile.user?.email)
+        .map((profile) => [profile.user.email.toLowerCase(), profile] as const),
+    );
 
     const results = await Promise.all(
       optedInCandidates
@@ -250,12 +313,14 @@ export class CvNotificationService {
           const candidateEmail = candidate.email;
           if (!candidateEmail) return 0;
 
-          const seekerUser = userByEmail.get(candidateEmail.toLowerCase()) ?? null;
-          if (seekerUser && !seekerUser.digestEnabled) {
+          const seekerProfile = profileByEmail.get(candidateEmail.toLowerCase()) ?? null;
+          if (seekerProfile && !seekerProfile.digestEnabled) {
             return 0;
           }
 
-          const thresholdPct = seekerUser ? seekerUser.matchAlertThreshold : 60;
+          const thresholdPct = seekerProfile
+            ? seekerProfile.matchAlertThreshold
+            : SEEKER_ALERT_THRESHOLD_DEFAULT;
           const thresholdFraction = Math.max(0, Math.min(100, thresholdPct)) / 100;
 
           const recentMatches = await this.matchRepo.recentMatchesForCandidate(

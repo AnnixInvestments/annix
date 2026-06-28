@@ -4,12 +4,21 @@ import type { AnnixOrbitProfile } from "../entities/annix-orbit-profile.entity";
 import { MongoAnnixOrbitProfileRepository } from "./annix-orbit-profile.repository.mongo";
 
 function makeRepo() {
-  const captured: { update: Record<string, unknown> | null } = { update: null };
+  const captured: {
+    update: Record<string, unknown> | null;
+    updateManyFilter: Record<string, unknown> | null;
+    updateManyUpdate: Record<string, unknown> | null;
+  } = { update: null, updateManyFilter: null, updateManyUpdate: null };
 
   const lean = () => ({ exec: () => Promise.resolve(captured.update) });
   const findByIdAndUpdate = jest.fn((_id: unknown, update: Record<string, unknown>) => {
     captured.update = update;
     return { lean };
+  });
+  const updateMany = jest.fn((filter: Record<string, unknown>, update: Record<string, unknown>) => {
+    captured.updateManyFilter = filter;
+    captured.updateManyUpdate = update;
+    return { exec: () => Promise.resolve(undefined) };
   });
 
   const schema = {
@@ -21,13 +30,14 @@ function makeRepo() {
   const model = {
     schema,
     findByIdAndUpdate,
+    updateMany,
   } as unknown as Model<AnnixOrbitProfile>;
 
   const userModel = {} as unknown as Model<{ _id: number }>;
   const companyModel = {} as unknown as Model<{ _id: number }>;
 
   const repo = new MongoAnnixOrbitProfileRepository(model, userModel, companyModel);
-  return { repo, captured, findByIdAndUpdate };
+  return { repo, captured, findByIdAndUpdate, updateMany };
 }
 
 describe("MongoAnnixOrbitProfileRepository.save", () => {
@@ -74,5 +84,33 @@ describe("MongoAnnixOrbitProfileRepository.save", () => {
     expect(updateKeys).not.toContain("billingStatus");
     expect(updateKeys).not.toContain("paidUntil");
     expect(updateKeys).not.toContain("subscription");
+  });
+});
+
+describe("MongoAnnixOrbitProfileRepository.setNotificationPreferences", () => {
+  it("updates only the provided pref keys, scoped to the userId", async () => {
+    const { repo, captured, updateMany } = makeRepo();
+
+    await repo.setNotificationPreferences(42, { matchAlertThreshold: 65, digestEnabled: false });
+
+    expect(updateMany).toHaveBeenCalledTimes(1);
+    expect(captured.updateManyFilter).toEqual({ userId: 42 });
+    expect(captured.updateManyUpdate).toEqual({ matchAlertThreshold: 65, digestEnabled: false });
+  });
+
+  it("ignores undefined keys (partial update)", async () => {
+    const { repo, captured } = makeRepo();
+
+    await repo.setNotificationPreferences(42, { pushEnabled: true });
+
+    expect(captured.updateManyUpdate).toEqual({ pushEnabled: true });
+  });
+
+  it("is a no-op when no preference fields are supplied", async () => {
+    const { repo, updateMany } = makeRepo();
+
+    await repo.setNotificationPreferences(42, {});
+
+    expect(updateMany).not.toHaveBeenCalled();
   });
 });
