@@ -1,34 +1,27 @@
 "use client";
 
-import { isArray, isNumber } from "es-toolkit/compat";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
+import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { extractErrorMessage } from "@/app/lib/api/apiError";
-import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { API_BASE_URL } from "@/lib/api-config";
 import { CoreBrandHeader } from "./CoreBrandHeader";
+import { isCorePortalEnabled } from "./portal/config/corePortalFlag";
 
 type ResolvedApp = "stock-control" | "au-rubber";
 
 const REMEMBERED_EMAIL_KEY = "coreRememberedEmail";
 const REMEMBER_ME_KEY = "coreRememberMe";
-const CORE_ACTIVE_APP_STORAGE_KEY = "coreActiveApp";
 
 const DASHBOARD_BY_APP: Record<ResolvedApp, string> = {
-  "stock-control": "/core/portal/stock-control/dashboard",
-  "au-rubber": "/core/portal/au-rubber/dashboard",
+  "stock-control": "/stock-control/portal/dashboard",
+  "au-rubber": "/au-rubber/portal/dashboard",
 };
 
-interface ResolveAppResponse {
-  app: ResolvedApp;
-  enabledApps?: ResolvedApp[];
-  companyId?: number | null;
-}
-
-function safeInternalReturnUrl(raw: string | null): string | null {
+function safeReturnUrl(raw: string | null): string | null {
   if (!raw) return null;
   if (!raw.startsWith("/")) return null;
   if (raw.startsWith("//")) return null;
@@ -50,53 +43,11 @@ function safeInternalReturnUrl(raw: string | null): string | null {
     if (parsed.origin !== origin) return null;
     if (parsed.pathname.includes("..")) return null;
     if (decodeURIComponent(parsed.pathname).includes("..")) return null;
-    const allowed =
-      parsed.pathname.startsWith("/core/") ||
-      parsed.pathname.startsWith("/stock-control/portal/") ||
-      parsed.pathname.startsWith("/au-rubber/portal/") ||
-      parsed.pathname.startsWith("/ops/portal/");
-    if (!allowed) return null;
+    if (!parsed.pathname.startsWith("/core/")) return null;
   } catch {
     return null;
   }
   return raw;
-}
-
-function returnUrlForApp(raw: string | null, app: ResolvedApp): string | null {
-  const safe = safeInternalReturnUrl(raw);
-  if (!safe) return null;
-  const url = new URL(safe, window.location.origin);
-  const suffix = `${url.pathname}${url.search}${url.hash}`;
-  if (url.pathname.startsWith(`/core/portal/${app}/`)) return suffix;
-  if (url.pathname.startsWith("/core/")) return null;
-  if (app === "stock-control" && url.pathname.startsWith("/stock-control/portal/")) {
-    const rest = url.pathname.slice("/stock-control/portal/".length);
-    const hosted = rest === "dashboard";
-    const path = hosted ? `/core/portal/stock-control/${rest}` : url.pathname;
-    return `${path}${url.search}${url.hash}`;
-  }
-  if (app === "au-rubber" && url.pathname.startsWith("/au-rubber/portal/")) {
-    const rest = url.pathname.slice("/au-rubber/portal/".length);
-    const hosted = rest === "dashboard";
-    const path = hosted ? `/core/portal/au-rubber/${rest}` : url.pathname;
-    return `${path}${url.search}${url.hash}`;
-  }
-  if (app === "stock-control" && url.pathname.startsWith("/ops/portal/")) {
-    return suffix;
-  }
-  return null;
-}
-
-function enabledAppsForResolved(response: ResolveAppResponse): ResolvedApp[] {
-  const responseEnabledApps = response.enabledApps;
-  const enabledApps = responseEnabledApps ?? [];
-  return Array.from(new Set([...enabledApps, response.app]));
-}
-
-function clearCoreActiveApp() {
-  // eslint-disable-next-line no-restricted-syntax -- SSR guard
-  if (typeof window === "undefined") return;
-  localStorage.removeItem(CORE_ACTIVE_APP_STORAGE_KEY);
 }
 
 function describeLoginError(err: unknown): string {
@@ -113,25 +64,7 @@ function describeLoginError(err: unknown): string {
   return extractErrorMessage(err, "Something went wrong while signing in. Please try again.");
 }
 
-async function signInToResolvedApp(
-  app: ResolvedApp,
-  email: string,
-  password: string,
-  rememberMe: boolean,
-) {
-  if (app === "stock-control") {
-    stockControlApiClient.setRememberMe(rememberMe);
-    await stockControlApiClient.login({ email, password });
-  } else {
-    auRubberApiClient.setRememberMe(rememberMe);
-    await auRubberApiClient.login({ email, password });
-  }
-}
-
-async function resolveAppForCredentials(
-  email: string,
-  password: string,
-): Promise<ResolveAppResponse> {
+async function resolveAppForCredentials(email: string, password: string): Promise<ResolvedApp> {
   const response = await fetch(`${API_BASE_URL}/auth/resolve-app`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -148,13 +81,7 @@ async function resolveAppForCredentials(
   if (app !== "stock-control" && app !== "au-rubber") {
     throw new Error("Invalid credentials");
   }
-  const enabledAppsRaw = isArray(data.enabledApps) ? data.enabledApps : [];
-  const enabledApps = enabledAppsRaw.filter(
-    (item: unknown): item is ResolvedApp => item === "stock-control" || item === "au-rubber",
-  );
-  const companyIdRaw = data.companyId;
-  const companyId = isNumber(companyIdRaw) ? companyIdRaw : null;
-  return { app, enabledApps, companyId };
+  return app;
 }
 
 export function CoreLoginForm() {
@@ -162,6 +89,8 @@ export function CoreLoginForm() {
   const searchParams = useSearchParams();
   const returnUrlParam = searchParams.get("returnUrl");
   const sessionExpired = searchParams.get("expired") === "1";
+  const stockControl = useStockControlAuth();
+  const auRubber = useAuRubberAuth();
 
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
@@ -209,36 +138,22 @@ export function CoreLoginForm() {
     setError(null);
 
     try {
-      const resolved = await resolveAppForCredentials(submitEmail, submitPassword);
-      const app = resolved.app;
+      const app = await resolveAppForCredentials(submitEmail, submitPassword);
 
-      await signInToResolvedApp(app, submitEmail, submitPassword, rememberMe);
-
-      const enabledApps = enabledAppsForResolved(resolved);
-      const secondaryApps = enabledApps.filter((enabledApp) => enabledApp !== app);
-      await Promise.all(
-        secondaryApps.map(async (enabledApp) => {
-          try {
-            await signInToResolvedApp(enabledApp, submitEmail, submitPassword, rememberMe);
-          } catch (secondaryErr) {
-            const message =
-              secondaryErr instanceof Error ? secondaryErr.message : String(secondaryErr);
-            console.warn(`Core secondary sign-in skipped for ${enabledApp}: ${message}`);
-          }
-        }),
-      );
+      if (app === "stock-control") {
+        await stockControl.login(submitEmail, submitPassword, rememberMe);
+      } else {
+        await auRubber.login(submitEmail, submitPassword, rememberMe);
+      }
 
       persistRememberedEmail(submitEmail);
-      const safeReturn = returnUrlForApp(returnUrlParam, app);
-      const dashboard = DASHBOARD_BY_APP[app];
-      if (safeReturn) {
-        router.push(safeReturn);
-      } else if (enabledApps.length > 1) {
-        clearCoreActiveApp();
-        router.push("/core/portal");
-      } else {
-        router.push(dashboard);
-      }
+      const safeReturn = safeReturnUrl(returnUrlParam);
+      // #395 cutover: when the flag is ON, land in the unified shell; when OFF,
+      // land on the legacy per-app dashboard exactly as today. A valid returnUrl
+      // still wins in both cases.
+      const legacyDashboard = DASHBOARD_BY_APP[app];
+      const dashboard = isCorePortalEnabled() ? `/core/portal/${app}/dashboard` : legacyDashboard;
+      router.push(safeReturn ?? dashboard);
     } catch (err) {
       setError(describeLoginError(err));
     } finally {
@@ -248,18 +163,18 @@ export function CoreLoginForm() {
 
   if (!mounted) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--brand-grad-from)]">
-        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-[var(--brand-accent)]" />
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-[#FF8A00]" />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col justify-center bg-[var(--brand-grad-from)] py-12 sm:px-6 lg:px-8">
+    <div className="flex min-h-screen flex-col justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="text-center text-white">
           <CoreBrandHeader />
-          <p className="mt-3 text-lg text-white/80">Sign in to Stock Control or AU Rubber</p>
+          <p className="mt-3 text-lg text-blue-200">Sign in to Stock Control or AU Rubber</p>
         </div>
       </div>
 
@@ -286,7 +201,7 @@ export function CoreLoginForm() {
                 required
                 defaultValue=""
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--brand-accent)] focus:ring-[var(--brand-accent)]"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#FF8A00] focus:ring-[#FF8A00]"
                 placeholder="user@example.com"
               />
             </div>
@@ -304,7 +219,7 @@ export function CoreLoginForm() {
                   autoComplete="current-password"
                   required
                   defaultValue=""
-                  className="block w-full rounded-md border-gray-300 pr-10 shadow-sm focus:border-[var(--brand-accent)] focus:ring-[var(--brand-accent)]"
+                  className="block w-full rounded-md border-gray-300 pr-10 shadow-sm focus:border-[#FF8A00] focus:ring-[#FF8A00]"
                 />
                 <button
                   type="button"
@@ -346,7 +261,7 @@ export function CoreLoginForm() {
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-[var(--brand-accent)] focus:ring-[var(--brand-accent)]"
+                className="h-4 w-4 rounded border-gray-300 text-[#FF8A00] focus:ring-[#FF8A00]"
               />
               <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
                 Remember me
@@ -385,7 +300,7 @@ export function CoreLoginForm() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex w-full justify-center rounded-md border border-transparent bg-[var(--brand-accent)] px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[var(--brand-accent-dark)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-accent)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-400"
+              className="flex w-full justify-center rounded-md border border-transparent bg-[#FF8A00] px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#e67c00] focus:outline-none focus:ring-2 focus:ring-[#FF8A00] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-400"
             >
               {isSubmitting ? (
                 <>
@@ -402,7 +317,7 @@ export function CoreLoginForm() {
             <p className="text-sm text-gray-600">
               <Link
                 href="/stock-control/forgot-password"
-                className="font-medium text-[var(--brand-accent)] hover:text-[var(--brand-accent-dark)]"
+                className="font-medium text-[#FF8A00] hover:text-[#e67c00]"
               >
                 Forgot your password?
               </Link>
@@ -411,7 +326,7 @@ export function CoreLoginForm() {
               New to Stock Control?{" "}
               <Link
                 href="/stock-control/register"
-                className="font-medium text-[var(--brand-accent)] hover:text-[var(--brand-accent-dark)]"
+                className="font-medium text-[#FF8A00] hover:text-[#e67c00]"
               >
                 Create an account
               </Link>
@@ -423,7 +338,7 @@ export function CoreLoginForm() {
         </div>
 
         <div className="mt-6 text-center">
-          <a href="/" className="text-sm text-white/80 hover:text-white">
+          <a href="/" className="text-sm text-blue-200 hover:text-white">
             Back to Home
           </a>
         </div>

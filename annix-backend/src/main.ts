@@ -58,8 +58,15 @@ async function bootstrap() {
   app.enableCors({
     origin: corsOrigins,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "Accept", "x-device-fingerprint"],
-    exposedHeaders: ["Content-Disposition"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Accept",
+      "x-device-fingerprint",
+      "cf-turnstile-response",
+      "x-nix-turnstile-session",
+    ],
+    exposedHeaders: ["Content-Disposition", "x-nix-turnstile-session"],
     credentials: true,
   });
 

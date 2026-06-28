@@ -1,4 +1,4 @@
-import { isString } from "es-toolkit/compat";
+import { isObject, isString } from "es-toolkit/compat";
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import {
@@ -36,6 +36,15 @@ import type { ScheduleData } from "@/app/lib/store/rfqUiStore";
 import type { ItemIssue } from "@/app/lib/utils/itemDiagnostics";
 import { resolveSteelSpecId } from "@/app/lib/utils/rfq/resolveSteelSpecId";
 import { generateClientItemNumber } from "@/app/lib/utils/systemUtils";
+
+// Strips the high-entropy anonAccessToken (a capability credential) from a value
+// before it reaches a debug logger, so the token can't leak into logs.
+function redactNixTokens(value: unknown): unknown {
+  if (isObject(value) && "anonAccessToken" in value) {
+    return { ...(value as Record<string, unknown>), anonAccessToken: "[redacted]" };
+  }
+  return value;
+}
 
 export interface PendingDocument {
   file: File;
@@ -2104,7 +2113,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                 "nixProcessDocuments/extracting",
               );
 
-              log.debug("Nix extraction result:", result);
+              log.debug("Nix extraction result:", redactNixTokens(result));
               set(
                 { nixExtractionId: result.extractionId },
                 false,
@@ -2290,7 +2299,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
               true,
               scopeRef,
             );
-            log.debug("Clarification submitted:", result);
+            log.debug("Clarification submitted:", redactNixTokens(result));
           } catch (error) {
             const status = error instanceof NixRequestError ? error.status : 0;
             if (status === 429) {

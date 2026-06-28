@@ -81,6 +81,7 @@ import { DocumentAnnotationService } from "./services/document-annotation.servic
 import type { NixFeedbackPayload } from "./services/learning-feedback.util";
 import { NixAnonGeminiCeilingService } from "./services/nix-anon-gemini-ceiling.service";
 import { NixExtractionSessionService } from "./services/nix-extraction-session.service";
+import { NixTurnstileService } from "./services/nix-turnstile.service";
 import { QuotePdfService } from "./services/quote-pdf.service";
 import { QuoteToJobCardService } from "./services/quote-to-job-card.service";
 import {
@@ -98,7 +99,7 @@ const ANON_MAX_PAGES = 30;
 const ANON_VISION_MAX_PAGES = 5;
 const ANON_DOCUMENT_PAGES_MAX_SCALE = 1.5;
 const ANON_DOCUMENT_PAGES_MAX_BASE64_BYTES = 40 * 1024 * 1024;
-const ANON_MAX_REGION_DIMENSION = 20000;
+const ANON_MAX_REGION_DIMENSION = 5000;
 const ANON_VERIFY_MAX_FILES = 5;
 
 @ApiTags("Nix AI Assistant")
@@ -120,7 +121,41 @@ export class NixController {
     private readonly companyEmailService: CompanyEmailService,
     private readonly companyRepo: CompanyRepository,
     private readonly anonGeminiCeiling: NixAnonGeminiCeilingService,
+    private readonly turnstileService: NixTurnstileService,
   ) {}
+
+  /**
+   * Invisible-Turnstile proof-of-human gate for the FIRST cost-bearing anonymous
+   * action (defence in depth over the throttle + daily ceilings). NO-OP when
+   * TURNSTILE_SECRET_KEY is unset (ships dormant). Skipped for authenticated
+   * callers and for `exempt` flows (skipExtraction archival, magic-link /
+   * anon-draft uploads that already carry a server-validated scope token). On a
+   * fresh verification it sets the issued 30-min session token on the response so
+   * the client can present it on subsequent anonymous calls (no re-challenge).
+   */
+  private async enforceAnonTurnstile(
+    authUser: AuthenticatedUser | null,
+    req: Request,
+    res: Response,
+    exempt: boolean,
+  ): Promise<void> {
+    if (authUser != null || exempt) {
+      return;
+    }
+    const headers = (req as unknown as { headers: Record<string, string | string[] | undefined> })
+      .headers;
+    const turnstileToken = firstHeaderValue(headers["cf-turnstile-response"]);
+    const sessionToken = firstHeaderValue(headers["x-nix-turnstile-session"]);
+    const remoteIp = clientIpFromRequest(req as unknown as Record<string, unknown>);
+    const { issuedSession } = await this.turnstileService.assertHuman({
+      turnstileToken,
+      sessionToken,
+      remoteIp,
+    });
+    if (issuedSession) {
+      res.setHeader("x-nix-turnstile-session", issuedSession);
+    }
+  }
 
   /**
    * Enforces the global daily ceiling on anonymous Gemini-spending requests
@@ -136,6 +171,27 @@ export class NixController {
       return;
     }
     const allowed = await this.anonGeminiCeiling.tryConsume(count);
+    if (!allowed) {
+      throw new HttpException(
+        "Nix is handling a lot of requests right now — please sign in or try again later.",
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+  }
+
+  /**
+   * Enforces the global daily ceiling on anonymous LOCAL-CPU requests
+   * (Ghostscript rasterise + Tesseract OCR) — they spend no Gemini tokens but
+   * exhaust the shared Fly VM CPU under a botnet. Authenticated callers exempt.
+   */
+  private async enforceAnonCpuDailyCeiling(
+    authUser: AuthenticatedUser | null,
+    count: number = 1,
+  ): Promise<void> {
+    if (authUser != null) {
+      return;
+    }
+    const allowed = await this.anonGeminiCeiling.tryConsumeCpu(count);
     if (!allowed) {
       throw new HttpException(
         "Nix is handling a lot of requests right now — please sign in or try again later.",
@@ -193,6 +249,7 @@ export class NixController {
   })
   async uploadDocument(
     @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
     @UploadedFile() file: Express.Multer.File,
     @Body("userId") userId?: string,
     @Body("rfqId") rfqId?: string,
@@ -223,6 +280,13 @@ export class NixController {
     const skip = skipExtraction === "true" || skipExtraction === "1";
     const authUser = (req["authUser"] ?? null) as AuthenticatedUser | null;
     const allowVision = await this.enforceAnonymousUploadCaps(file, authUser, skip);
+    // Invisible Turnstile (dormant without keys) gates the FIRST cost-bearing
+    // anonymous extract. ONLY skipExtraction archival is exempt (it never reaches
+    // Gemini) — the exemption must NOT trust the client-supplied scopeKind, or an
+    // attacker could send scopeKind=anon-draft to bypass the captcha and still
+    // hit Gemini. The magic-link funnel is skipExtraction (covered by `skip`);
+    // the anon RFQ wizard's first extract is challenged by the invisible widget.
+    await this.enforceAnonTurnstile(authUser, req, res, skip);
     // Archive-only uploads never hit Gemini, so they don't count toward the
     // anonymous daily Gemini ceiling.
     if (!skip) {
@@ -1111,6 +1175,7 @@ export class NixController {
   async classifyRoleByContent(
     @UploadedFile() file: Express.Multer.File,
     @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<RoleClassification> {
     if (!file) {
       throw new BadRequestException("No file uploaded");
@@ -1139,6 +1204,7 @@ export class NixController {
         );
       }
     }
+    await this.enforceAnonTurnstile(authUser, req, res, false);
     await this.enforceAnonGeminiDailyCeiling(authUser);
 
     return this.roleClassifier.classify({
@@ -1203,6 +1269,7 @@ export class NixController {
   })
   async verifyRegistrationDocument(
     @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
     @UploadedFile() file: Express.Multer.File,
     @Body("documentType") documentType: string,
     @Body("expectedData") expectedDataJson: string,
@@ -1213,6 +1280,7 @@ export class NixController {
 
     const authUser = (req["authUser"] ?? null) as AuthenticatedUser | null;
     await this.enforceAnonymousUploadCaps(file, authUser, false);
+    await this.enforceAnonTurnstile(authUser, req, res, false);
     await this.enforceAnonGeminiDailyCeiling(authUser);
 
     if (!["vat", "registration", "bee"].includes(documentType)) {
@@ -1271,6 +1339,7 @@ export class NixController {
   })
   async verifyRegistrationBatch(
     @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
     @UploadedFiles() files: Express.Multer.File[],
     @Body("documentTypes") documentTypesJson: string,
     @Body("expectedData") expectedDataJson: string,
@@ -1289,6 +1358,7 @@ export class NixController {
     for (const file of files) {
       await this.enforceAnonymousUploadCaps(file, authUser, false);
     }
+    await this.enforceAnonTurnstile(authUser, req, res, false);
     // Each file in the batch is a separate Gemini verification — count them all.
     await this.enforceAnonGeminiDailyCeiling(authUser, files.length);
 
@@ -1692,6 +1762,9 @@ export class NixController {
     // Anonymous: reject oversized / wrong-type / >30-page PDFs BEFORE the
     // Ghostscript rasterize (CPU/OOM DoS guard); authenticated callers exempt.
     await this.enforceAnonymousUploadCaps(file, authUser, false);
+    // Global daily anonymous local-CPU ceiling (Ghostscript rasterise) —
+    // botnet backstop beyond the per-IP throttle.
+    await this.enforceAnonCpuDailyCeiling(authUser);
 
     const buffer = fs.readFileSync(file.path);
     const rawScale = body.scale ? parseFloat(body.scale) : 1.5;
@@ -1758,6 +1831,8 @@ export class NixController {
     if (!authUser) {
       this.assertAnonymousRegionRequest(file, buffer, coordinates);
     }
+    // Global daily anonymous local-CPU ceiling (Ghostscript + Tesseract OCR).
+    await this.enforceAnonCpuDailyCeiling(authUser);
 
     return this.documentAnnotationService.extractFromRegion(buffer, coordinates, body.fieldName);
   }
@@ -1909,4 +1984,11 @@ function parseDocumentRole(input?: string): DocumentRole | undefined {
   if (!input) return undefined;
   const allowed = Object.values(DocumentRole) as string[];
   return allowed.includes(input) ? (input as DocumentRole) : undefined;
+}
+
+function firstHeaderValue(value: string | string[] | undefined): string | null {
+  if (Array.isArray(value)) {
+    return value[0] ?? null;
+  }
+  return value ?? null;
 }

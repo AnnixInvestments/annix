@@ -1,3 +1,4 @@
+import { isObject } from "es-toolkit/compat";
 import { NextRequest, NextResponse } from "next/server";
 import { log } from "@/app/lib/logger";
 import { ipv4LocalhostUrl } from "@/lib/api-config";
@@ -66,6 +67,16 @@ export async function POST(request: NextRequest) {
     const forwardHeaders: Record<string, string> = incomingAuth
       ? { authorization: incomingAuth }
       : {};
+    // Forward the invisible-Turnstile proof-of-human headers (dormant without
+    // keys): the fresh challenge token and any existing session token.
+    const turnstileToken = request.headers.get("cf-turnstile-response");
+    if (turnstileToken) {
+      forwardHeaders["cf-turnstile-response"] = turnstileToken;
+    }
+    const turnstileSession = request.headers.get("x-nix-turnstile-session");
+    if (turnstileSession) {
+      forwardHeaders["x-nix-turnstile-session"] = turnstileSession;
+    }
 
     log.info("[API Route] Forwarding to backend:", `${BACKEND_URL}/nix/upload`);
     const response = await fetch(`${BACKEND_URL}/nix/upload`, {
@@ -76,13 +87,26 @@ export async function POST(request: NextRequest) {
 
     log.info("[API Route] Backend response status:", response.status);
     const data = await response.json();
-    log.debug("[API Route] Backend response data:", JSON.stringify(data).substring(0, 200));
+    // Redact the high-entropy anonAccessToken before logging — it's a
+    // capability credential and must never land in logs even at debug level.
+    const loggable =
+      isObject(data) && "anonAccessToken" in data
+        ? { ...data, anonAccessToken: "[redacted]" }
+        : data;
+    log.debug("[API Route] Backend response data:", JSON.stringify(loggable).substring(0, 200));
+
+    // Surface the issued Turnstile session token back to the browser so it can
+    // present it on subsequent anonymous calls (no re-challenge).
+    const issuedSession = response.headers.get("x-nix-turnstile-session");
+    const responseInit = issuedSession
+      ? { headers: { "x-nix-turnstile-session": issuedSession } }
+      : undefined;
 
     if (!response.ok) {
-      return NextResponse.json(data, { status: response.status });
+      return NextResponse.json(data, { status: response.status, ...(responseInit ?? {}) });
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(data, responseInit);
   } catch (error) {
     log.error("[API Route] Nix upload error:", error);
     const errorMessage = error instanceof Error ? error.message : "Upload failed";

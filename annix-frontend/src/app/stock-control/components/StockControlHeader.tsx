@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { isCorePortalEnabled } from "@/app/core/portal/config/corePortalFlag";
 import { useFeatureFlagEnabled } from "@/app/lib/query/hooks";
 import {
   ALL_NAV_ITEMS,
@@ -338,6 +339,23 @@ export function StockControlHeader() {
             </button>
             <SyncStatus />
             <OfflineIndicator />
+            {isCorePortalEnabled() && (
+              <Link
+                href="/core/portal"
+                className="flex items-center gap-2 rounded-lg px-2 py-2 text-white transition-colors hover:bg-white hover:bg-opacity-10"
+                title="Back to workspace"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+                  />
+                </svg>
+                <span className="hidden text-sm font-medium sm:inline">Back to workspace</span>
+              </Link>
+            )}
             <ThemeToggle
               className="p-2 text-white hover:bg-white hover:bg-opacity-10 rounded-lg transition-colors"
               iconClassName="w-5 h-5 text-white"

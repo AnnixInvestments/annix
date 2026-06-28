@@ -113,6 +113,7 @@ import { NixChatService } from "./services/nix-chat.service";
 import { NixChatItemService } from "./services/nix-chat-item.service";
 import { NixExtractionSessionService } from "./services/nix-extraction-session.service";
 import { NixItemParserService } from "./services/nix-item-parser.service";
+import { NixTurnstileService } from "./services/nix-turnstile.service";
 import { NixValidationService } from "./services/nix-validation.service";
 import { PdfExtractorService } from "./services/pdf-extractor.service";
 import { QuotePdfService } from "./services/quote-pdf.service";
@@ -196,6 +197,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
     ProductDataSheetsService,
     NixService,
     NixAnonGeminiCeilingService,
+    NixTurnstileService,
     NixExtractionSessionService,
     NixChatService,
     NixChatItemService,

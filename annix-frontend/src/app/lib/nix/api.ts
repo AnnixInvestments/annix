@@ -5,6 +5,7 @@ import { sessionExpiredEvent } from "@/app/components/SessionExpiredModal";
 import { anyPortalAuthHeaders } from "@/app/lib/api/portalTokenStores";
 import { log } from "@/app/lib/logger";
 import { browserBaseUrl } from "@/lib/api-config";
+import { captureNixTurnstileSession, nixTurnstileRequestHeaders } from "./turnstile";
 
 /**
  * Resolves the Authorization header for Nix API calls by delegating to
@@ -15,6 +16,21 @@ import { browserBaseUrl } from "@/lib/api-config";
  */
 function resolveNixAuthHeaders(): Record<string, string> {
   return anyPortalAuthHeaders();
+}
+
+/**
+ * Invisible-Turnstile proof-of-human headers for an ANONYMOUS cost-bearing
+ * request only. Authenticated callers (a portal token present) are never
+ * challenged — a server-validated token is stronger proof-of-human than a
+ * captcha — and the whole thing is a NO-OP when Turnstile is disabled.
+ */
+async function anonTurnstileHeaders(
+  authHeaders: Record<string, string>,
+): Promise<Record<string, string>> {
+  if ("Authorization" in authHeaders) {
+    return {};
+  }
+  return nixTurnstileRequestHeaders();
 }
 
 /**
@@ -477,11 +493,14 @@ export const nixApi = {
     const uploadUrl = "/api/nix/upload";
     log.debug("[Nix] Uploading via API route:", uploadUrl, "File:", file.name, "Size:", file.size);
 
+    const authHeaders = resolveNixAuthHeaders();
+    const turnstileHeaders = await anonTurnstileHeaders(authHeaders);
     const response = await fetch(uploadUrl, {
       method: "POST",
-      headers: resolveNixAuthHeaders(),
+      headers: { ...authHeaders, ...turnstileHeaders },
       body: formData,
     });
+    captureNixTurnstileSession(response);
 
     if (!response.ok) {
       if (response.status === 429) {
@@ -523,11 +542,14 @@ export const nixApi = {
     const baseUrl = browserBaseUrl();
     const formData = new FormData();
     formData.append("file", file, file.name);
+    const authHeaders = resolveNixAuthHeaders();
+    const turnstileHeaders = await anonTurnstileHeaders(authHeaders);
     const response = await fetch(`${baseUrl}/nix/classify-role/content`, {
       method: "POST",
-      headers: resolveNixAuthHeaders(),
+      headers: { ...authHeaders, ...turnstileHeaders },
       body: formData,
     });
+    captureNixTurnstileSession(response);
     if (!response.ok) await failNixResponse(response, "classify document role");
     return response.json();
   },
@@ -754,11 +776,14 @@ export const nixApi = {
 
     log.debug("[Nix] Verifying registration document:", file.name, documentType);
 
+    const authHeaders = resolveNixAuthHeaders();
+    const turnstileHeaders = await anonTurnstileHeaders(authHeaders);
     const response = await fetch(`${baseUrl}/nix/verify-registration-document`, {
       method: "POST",
-      headers: resolveNixAuthHeaders(),
+      headers: { ...authHeaders, ...turnstileHeaders },
       body: formData,
     });
+    captureNixTurnstileSession(response);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -801,11 +826,14 @@ export const nixApi = {
 
     log.debug("[Nix] Verifying registration batch:", files.length, "documents");
 
+    const authHeaders = resolveNixAuthHeaders();
+    const turnstileHeaders = await anonTurnstileHeaders(authHeaders);
     const response = await fetch(`${baseUrl}/nix/verify-registration-batch`, {
       method: "POST",
-      headers: resolveNixAuthHeaders(),
+      headers: { ...authHeaders, ...turnstileHeaders },
       body: formData,
     });
+    captureNixTurnstileSession(response);
 
     if (!response.ok) {
       const errorText = await response.text();

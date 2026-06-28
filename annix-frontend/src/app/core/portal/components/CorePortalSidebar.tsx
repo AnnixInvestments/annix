@@ -3,11 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { useTheme } from "@/app/components/ThemeProvider";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { brandHasAsset, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
-import { useBranding, useFeatureFlagEnabled } from "@/app/lib/query/hooks";
+import { useFeatureFlagEnabled } from "@/app/lib/query/hooks";
 import { type OpsNavItem, visibleNavGroups, visibleNavItems } from "@/app/ops/config/navItems";
 import {
   ALL_NAV_ITEMS,
@@ -16,9 +14,8 @@ import {
 } from "@/app/stock-control/config/navItems";
 import { useStockControlRbac } from "@/app/stock-control/context/StockControlRbacContext";
 import { useViewAs } from "@/app/stock-control/context/ViewAsContext";
-import { CORE_VERSION } from "../../config/version";
 import { useCoreModules } from "../CorePortalModuleProvider";
-import { CORE_APP_META } from "../config/coreAppMeta";
+import { isCorePortalEnabled, isCorePortalHostedSuffix } from "../config/corePortalFlag";
 import { type CoreApp, navItemBelongsToApp } from "../config/navAppMap";
 
 const NIX_QUOTE_FLAG = "STOCK_MGMT_NIX_QUOTE_FROM_DOCUMENTS";
@@ -26,28 +23,20 @@ const NIX_QUOTE_FLAG = "STOCK_MGMT_NIX_QUOTE_FROM_DOCUMENTS";
 // Admin-only destinations the real SC portal surfaces in the header user-menu
 // (StockControlHeader.tsx) rather than the main nav. Hosted here so SC admins
 // in the unified shell aren't stranded without a Settings / Company Profile path.
-const SC_ADMIN_LINKS: { key: string; label: string; href: string }[] = [
-  {
-    key: "company-profile",
-    label: "Company Profile",
-    href: "/stock-control/portal/company-profile",
-  },
-  { key: "settings", label: "Settings", href: "/stock-control/portal/settings" },
+// Defined by legacy SC suffix and resolved through resolveNavHref so they obey
+// the hybrid hosted/legacy routing like every other nav entry.
+const SC_ADMIN_LINK_DEFS: { key: string; label: string; suffix: string }[] = [
+  { key: "company-profile", label: "Company Profile", suffix: "company-profile" },
+  { key: "settings", label: "Settings", suffix: "settings" },
 ];
+
+const APP_DISPLAY_NAME: Record<CoreApp, string> = {
+  "stock-control": "Stock Control",
+  "au-rubber": "AU Rubber",
+};
 
 const OPS_PORTAL_PREFIX = "/ops/portal/";
 const SC_PORTAL_PREFIX = "/stock-control/portal/";
-
-const AU_LEGACY_ROUTE_BY_KEY: Readonly<Record<string, string>> = {
-  "compound-stock": "/au-rubber/portal/compound-stocks",
-  "roll-stock": "/au-rubber/portal/roll-stock",
-  production: "/au-rubber/portal/productions",
-  "supplier-cocs": "/au-rubber/portal/supplier-cocs",
-  "au-cocs": "/au-rubber/portal/au-cocs",
-  suppliers: "/au-rubber/portal/companies/suppliers",
-  customers: "/au-rubber/portal/companies/customers",
-  settings: "/au-rubber/portal/settings",
-};
 
 interface CoreNavItem {
   key: string;
@@ -61,16 +50,30 @@ interface CoreNavGroup {
   items: CoreNavItem[];
 }
 
-function rewriteToHybrid(href: string, prefix: string, activeApp: CoreApp): string {
+/**
+ * Resolve a legacy app nav href into the link the shell should render.
+ *
+ * - Cutover OFF → always in-shell `/core/portal/<app>/<rest>` (today's exact
+ *   behaviour; OFF users never reach the shell anyway).
+ * - Cutover ON → hosted suffixes (currently just `dashboard`) link in-shell;
+ *   everything else links to the EXISTING legacy `/<app>/portal/<rest>` page
+ *   (the hybrid — auth carries via the shared per-app token store).
+ */
+function resolveNavHref(href: string, prefix: string, activeApp: CoreApp): string {
   const startsWith = href.startsWith(prefix);
   if (!startsWith) {
-    return href;
+    return `/core/portal/${activeApp}`;
   }
   const rest = href.slice(prefix.length);
-  if (rest === "dashboard") {
-    return `/core/portal/${activeApp}/dashboard`;
+  const suffixBase = rest.split("?")[0];
+  const corePath = `/core/portal/${activeApp}/${rest}`;
+  if (!isCorePortalEnabled()) {
+    return corePath;
   }
-  return href;
+  if (isCorePortalHostedSuffix(suffixBase)) {
+    return corePath;
+  }
+  return `/${activeApp}/portal/${rest}`;
 }
 
 interface CorePortalSidebarProps {
@@ -99,32 +102,6 @@ function SidebarShell(props: { children: React.ReactNode; isOpen: boolean; onClo
         {props.children}
       </aside>
     </>
-  );
-}
-
-function CoreSidebarBrand(props: { activeApp: CoreApp }) {
-  const { resolvedTheme } = useTheme();
-  const brandingData = useBranding("annix-core").data;
-  const branding = brandingData ?? null;
-  const variant = resolvedTheme === "light" ? "light" : "dark";
-  const hasVariantIcon = branding ? brandHasAsset("logoIcon", branding, variant) : false;
-  const hasFallbackIcon = branding ? brandHasAsset("logoIcon", branding, "light") : false;
-  const hasIcon = hasVariantIcon || hasFallbackIcon;
-  const logoUrl = branding && hasIcon ? resolveBrandAssetUrl("logoIcon", branding, variant) : null;
-  const appMeta = CORE_APP_META[props.activeApp];
-
-  return (
-    <div className="flex min-w-0 items-center gap-3">
-      {logoUrl ? (
-        <img src={logoUrl} alt="" className="h-9 w-9 shrink-0 rounded-md object-contain" />
-      ) : null}
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-gray-900">
-          {`Annix Core v${CORE_VERSION}`}
-        </p>
-        <p className="truncate text-xs text-gray-500">{`${appMeta.label} v${appMeta.version}`}</p>
-      </div>
-    </div>
   );
 }
 
@@ -206,18 +183,42 @@ function SidebarNavList(props: { groups: CoreNavGroup[]; onNavigate: () => void 
               <div className="space-y-0.5 px-2">
                 {group.items.map((item) => {
                   const active = isActive(item.href);
+                  // A legacy (eject-to-classic) target is one resolveNavHref sent
+                  // OUTSIDE the shell. With the flag OFF every href is in-shell,
+                  // so this is naturally empty until the cutover is ON.
+                  const opensClassic = !item.href.startsWith("/core/portal/");
                   return (
                     <Link
                       key={item.key}
                       href={item.href}
                       onClick={props.onNavigate}
+                      title={opensClassic ? "Opens classic view" : undefined}
                       className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${
                         active
                           ? "bg-gray-100 font-semibold text-gray-900"
                           : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                       }`}
                     >
-                      <span>{item.label}</span>
+                      <span className="flex-1">{item.label}</span>
+                      {opensClassic && (
+                        <span className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-gray-400">
+                          Classic
+                          <svg
+                            className="h-3 w-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M14 5h5m0 0v5m0-5L10 14M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2"
+                            />
+                          </svg>
+                        </span>
+                      )}
                     </Link>
                   );
                 })}
@@ -273,7 +274,7 @@ function StockControlSidebarNav(props: { onNavigate: () => void }) {
   const toItem = (item: (typeof ALL_NAV_ITEMS)[number]): CoreNavItem => ({
     key: item.key,
     label: item.label,
-    href: rewriteToHybrid(item.href, SC_PORTAL_PREFIX, "stock-control"),
+    href: resolveNavHref(item.href, SC_PORTAL_PREFIX, "stock-control"),
   });
 
   const ungrouped = allowed.filter((item) => !item.group);
@@ -285,8 +286,13 @@ function StockControlSidebarNav(props: { onNavigate: () => void }) {
     return { key: groupName, label: groupName, items: groupItems };
   }).filter((group) => group.items.length > 0);
 
+  const adminItems: CoreNavItem[] = SC_ADMIN_LINK_DEFS.map((def) => ({
+    key: def.key,
+    label: def.label,
+    href: resolveNavHref(`${SC_PORTAL_PREFIX}${def.suffix}`, SC_PORTAL_PREFIX, "stock-control"),
+  }));
   const adminGroup: CoreNavGroup | null = isAdminRole
-    ? { key: "administration", label: "Administration", items: SC_ADMIN_LINKS }
+    ? { key: "administration", label: "Administration", items: adminItems }
     : null;
 
   const leadingGroup: CoreNavGroup | null =
@@ -323,14 +329,11 @@ function AuRubberSidebarNav(props: {
   const items = permitted.filter((item) => navItemBelongsToApp(item.key, "au-rubber"));
   const opsGroups = visibleNavGroups(items);
 
-  const toItem = (item: OpsNavItem): CoreNavItem => {
-    const mapped = AU_LEGACY_ROUTE_BY_KEY[item.key];
-    return {
-      key: item.key,
-      label: item.label,
-      href: mapped ?? rewriteToHybrid(item.href, OPS_PORTAL_PREFIX, "au-rubber"),
-    };
-  };
+  const toItem = (item: OpsNavItem): CoreNavItem => ({
+    key: item.key,
+    label: item.label,
+    href: resolveNavHref(item.href, OPS_PORTAL_PREFIX, "au-rubber"),
+  });
 
   const groups: CoreNavGroup[] = opsGroups.map((group) => ({
     key: group.key,
@@ -342,10 +345,16 @@ function AuRubberSidebarNav(props: {
 }
 
 export function CorePortalSidebar(props: CorePortalSidebarProps) {
+  // TODO(#395 Phase 5): derive the wordmark/logo + accent colour per app from
+  // `useBranding(activeApp)` / brand CSS vars. For now the active-app display
+  // name provides identity and the accent stays neutral (no hardcoded per-app
+  // hex, per CLAUDE.md branding rules).
+  const wordmark = APP_DISPLAY_NAME[props.activeApp];
+
   return (
     <SidebarShell isOpen={props.isOpen} onClose={props.onClose}>
       <div className="flex h-14 items-center justify-between border-b border-gray-200 px-4">
-        <CoreSidebarBrand activeApp={props.activeApp} />
+        <span className="text-lg font-semibold text-gray-900">{wordmark}</span>
         <button
           type="button"
           onClick={props.onClose}
