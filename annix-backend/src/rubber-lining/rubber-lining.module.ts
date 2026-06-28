@@ -1,5 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AdminModule } from "../admin/admin.module";
+import { LicensingModule } from "../licensing";
+import { RbacModule } from "../rbac/rbac.module";
 import { BlogPostsController } from "./blog-posts.controller";
 import { ChemicalSupplierDocumentController } from "./chemical-supplier-document.controller";
 import { CompoundDataSheetsController } from "./compound-data-sheets.controller";
@@ -13,7 +15,7 @@ import { TestimonialsController } from "./testimonials.controller";
 import { WebsitePagesController } from "./website-pages.controller";
 
 @Module({
-  imports: [AdminModule, RubberLiningCoreModule],
+  imports: [AdminModule, LicensingModule, RbacModule, RubberLiningCoreModule],
   controllers: [
     RubberLiningController,
     RubberReferenceDataController,

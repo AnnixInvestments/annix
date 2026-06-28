@@ -1,8 +1,12 @@
 import { MODULE_METADATA } from "@nestjs/common/constants";
 import { AdminModule } from "../admin/admin.module";
+import { LicensingModule } from "../licensing";
+import { RbacModule } from "../rbac/rbac.module";
 import { RubberLiningModule } from "./rubber-lining.module";
 
 jest.mock("../admin/admin.module", () => ({ AdminModule: class AdminModule {} }));
+jest.mock("../licensing", () => ({ LicensingModule: class LicensingModule {} }));
+jest.mock("../rbac/rbac.module", () => ({ RbacModule: class RbacModule {} }));
 jest.mock("./blog-posts.controller", () => ({ BlogPostsController: class BlogPostsController {} }));
 jest.mock("./chemical-supplier-document.controller", () => ({
   ChemicalSupplierDocumentController: class ChemicalSupplierDocumentController {},
@@ -36,9 +40,11 @@ jest.mock("./website-pages.controller", () => ({
 }));
 
 describe("RubberLiningModule", () => {
-  it("imports admin auth providers for guarded rubber controllers", () => {
+  it("imports guard dependency modules for guarded rubber controllers", () => {
     const imports = Reflect.getMetadata(MODULE_METADATA.IMPORTS, RubberLiningModule) as unknown[];
 
     expect(imports).toContain(AdminModule);
+    expect(imports).toContain(LicensingModule);
+    expect(imports).toContain(RbacModule);
   });
 });
