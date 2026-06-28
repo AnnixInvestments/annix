@@ -13,10 +13,18 @@ export interface TankComponentBreakdown {
   lined: boolean;
 }
 
+export interface LiningThicknessBreakdown {
+  thicknessMm: number;
+  m2: number;
+}
+
 export interface TankM2Result {
   externalM2: number;
   internalM2: number;
   components: TankComponentBreakdown[];
+  // Lined internal area grouped by rubber thickness (e.g. 6mm → 1.03, 10mm →
+  // 7.41), so a line item with mixed thicknesses can show each separately.
+  liningByThickness: LiningThicknessBreakdown[];
   // Component count whose geometry was usable; surfaced so callers can flag low
   // confidence when the extraction left components dimensionless.
   usableComponents: number;
@@ -194,6 +202,7 @@ export class M2CalculationService {
   calculateTankM2(components: TankComponent[] | null): TankM2Result {
     const list = components ?? [];
     const breakdown: TankComponentBreakdown[] = [];
+    const thicknessAreaMm2 = new Map<number, number>();
     let externalM2 = 0;
     let internalM2 = 0;
     let usableComponents = 0;
@@ -217,6 +226,8 @@ export class M2CalculationService {
       externalM2 += areaM2;
       if (lined) {
         internalM2 += areaM2;
+        const thicknessMm = Number(component.liningThicknessMm);
+        thicknessAreaMm2.set(thicknessMm, (thicknessAreaMm2.get(thicknessMm) ?? 0) + areaMm2 * qty);
       }
       breakdown.push({
         mark: component.mark,
@@ -227,10 +238,18 @@ export class M2CalculationService {
       });
     });
 
+    const liningByThickness = [...thicknessAreaMm2.entries()]
+      .map(([thicknessMm, areaMm2]) => ({
+        thicknessMm,
+        m2: Math.round((areaMm2 / 1_000_000) * 100) / 100,
+      }))
+      .sort((a, b) => a.thicknessMm - b.thicknessMm);
+
     return {
       externalM2: Math.round(externalM2 * 10000) / 10000,
       internalM2: Math.round(internalM2 * 10000) / 10000,
       components: breakdown,
+      liningByThickness,
       usableComponents,
     };
   }

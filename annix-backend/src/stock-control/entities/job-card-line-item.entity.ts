@@ -70,6 +70,10 @@ export class JobCardLineItem {
   // Internal / rubber-lining surface area (bore + flange faces). Drives rubber quoting.
   liningM2: number | null;
 
+  // Lining m² split by rubber thickness (e.g. 6mm → 1.03, 10mm → 7.41) when one
+  // item carries more than one thickness. Sums to liningM2. Null for non-tank rows.
+  liningByThickness: Array<{ thicknessMm: number; m2: number }> | null;
+
   // Developed flat plate take-off for a fabricated tank/chute line, from the
   // shared Nix plateBom. Drives the rubber cutting-diagram nesting; null for
   // non-tank rows. (Legacy Postgres path — jsonb; Mongo stores it embedded.)

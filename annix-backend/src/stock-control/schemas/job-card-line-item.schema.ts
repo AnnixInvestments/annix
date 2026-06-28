@@ -38,6 +38,12 @@ export class JobCardLineItem {
   @Prop({ type: Number, required: false })
   liningM2: number;
 
+  // Lining m² split by rubber thickness (e.g. 6mm → 1.03, 10mm → 7.41) for an
+  // item carrying more than one thickness. Embedded sub-document; sums to
+  // liningM2. Null for non-tank rows.
+  @Prop({ type: [{ thicknessMm: Number, m2: Number }], required: false })
+  liningByThickness: Array<{ thicknessMm: number; m2: number }>;
+
   // Developed flat plate take-off for a fabricated tank/chute line, sourced
   // from the shared Nix plateBom. Embedded sub-document (not a collection).
   // Drives the polymer rubber cutting-diagram nesting; null for non-tank rows.

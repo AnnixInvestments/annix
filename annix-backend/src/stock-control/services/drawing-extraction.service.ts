@@ -1544,6 +1544,12 @@ export class DrawingExtractionService {
     if (coatingAreaM2 > 0) {
       match.m2 = round2(coatingAreaM2);
     }
+    const liningByThickness = this.m2CalculationService.calculateTankM2(
+      tankData.components,
+    ).liningByThickness;
+    if (liningByThickness.length > 0) {
+      match.liningByThickness = liningByThickness;
+    }
     if (tankData.plateParts.length > 0) {
       match.plateBom = tankData.plateParts;
     }
@@ -1714,6 +1720,9 @@ export class DrawingExtractionService {
                     itemCode: tankData.drawingReference || null,
                     quantity: 1,
                     liningM2: round2(tankData.liningAreaM2),
+                    liningByThickness: this.m2CalculationService.calculateTankM2(
+                      tankData.components,
+                    ).liningByThickness,
                     sortOrder: maxSortOrder + 1,
                   },
                 ]

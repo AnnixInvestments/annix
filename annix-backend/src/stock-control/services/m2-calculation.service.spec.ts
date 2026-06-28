@@ -1061,8 +1061,40 @@ describe("M2CalculationService", () => {
         externalM2: 0,
         internalM2: 0,
         components: [],
+        liningByThickness: [],
         usableComponents: 0,
       });
+    });
+
+    it("groups lined area by rubber thickness (6mm vs 10mm) and sorts ascending", () => {
+      const result = service.calculateTankM2([
+        tc("SHELL", "shell", { type: "cylinder", innerDiameterMm: 1000, heightMm: 1000 }, 6),
+        tc(
+          "CONE",
+          "cone",
+          {
+            type: "cone",
+            largeDiameterMm: 1000,
+            smallDiameterMm: 450,
+            slantHeightMm: 800,
+            sweepAngleDegrees: null,
+          },
+          10,
+        ),
+        tc(
+          "RING",
+          "ring",
+          { type: "annular_ring", outerDiameterMm: 1100, innerDiameterMm: 1000 },
+          null,
+        ),
+      ]);
+      const shell = Math.PI * 1.0 * 1.0;
+      const cone = Math.PI * ((1.0 + 0.45) / 2) * 0.8;
+      expect(result.liningByThickness).toHaveLength(2);
+      expect(result.liningByThickness[0].thicknessMm).toBe(6);
+      expect(result.liningByThickness[0].m2).toBeCloseTo(shell, 1);
+      expect(result.liningByThickness[1].thicknessMm).toBe(10);
+      expect(result.liningByThickness[1].m2).toBeCloseTo(cone, 1);
     });
 
     it("ignores a component with a non-finite dimension so it cannot corrupt the m² sum", () => {

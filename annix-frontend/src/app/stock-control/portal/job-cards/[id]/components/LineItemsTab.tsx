@@ -12,6 +12,20 @@ import { isValidLineItem } from "../lib/helpers";
 
 const RE_EXTRACT_FALLBACK_MS = 60000;
 
+function renderThicknessBreakdown(
+  breakdown: Array<{ thicknessMm: number; m2: number }> | null | undefined,
+): React.ReactNode {
+  const entries = breakdown ?? [];
+  if (entries.length === 0) {
+    return null;
+  }
+  const label =
+    entries.length === 1
+      ? `${entries[0].thicknessMm}mm`
+      : entries.map((entry) => `${entry.thicknessMm}mm: ${entry.m2.toFixed(2)}`).join(" · ");
+  return <div className="text-[11px] font-normal text-gray-500">{label}</div>;
+}
+
 function workTypeFromNotes(notes: string | null | undefined): string {
   if (!notes) return "—";
   const upper = notes.toUpperCase();
@@ -407,6 +421,7 @@ export function LineItemsTab(props: LineItemsTabProps) {
                     {showLiningColumn && (
                       <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-medium text-[var(--sc-primary-hover,#252560)]">
                         {li.liningM2 ? Number(li.liningM2).toFixed(2) : "-"}
+                        {renderThicknessBreakdown(li.liningByThickness)}
                       </td>
                     )}
                     {showPaintColumn && (
@@ -489,6 +504,7 @@ export function LineItemsTab(props: LineItemsTabProps) {
                     {showLiningColumn && li.liningM2 ? (
                       <span className="text-[var(--sc-primary-hover,#252560)]">
                         Lining {Number(li.liningM2).toFixed(2)} m²
+                        {renderThicknessBreakdown(li.liningByThickness)}
                       </span>
                     ) : null}
                     {showPaintColumn && li.m2 ? (

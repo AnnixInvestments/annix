@@ -917,6 +917,9 @@ export interface JobCardLineItem {
   jtNo: string | null;
   m2: number | null;
   liningM2: number | null;
+  // Lining m² split by rubber thickness (e.g. 6mm → 1.03, 10mm → 7.41) when a
+  // line carries more than one thickness. Sums to liningM2. Null for non-tank rows.
+  liningByThickness?: Array<{ thicknessMm: number; m2: number }> | null;
   // Developed flat plate take-off for a fabricated-tank line (from the Nix
   // plateBom) — drives the rubber cutting-diagram nesting. Null for non-tank rows.
   plateBom?: JobCardLineItemPlatePart[] | null;
