@@ -25,12 +25,18 @@ export type OrbitIdentityWriteOp =
  *   - Mirror writes run ONLY when ORBIT_IDENTITY_DUAL_WRITE is on (else no-op).
  *   - They are called by the auth service ALWAYS AFTER the authoritative `user`
  *     write has succeeded.
- *   - Every write is an upsert keyed on the global `_id` (identity `_id` == user
- *     `_id`), so replays are idempotent.
  *   - Best-effort: a mirror failure NEVER throws to the caller (the user write is
  *     authoritative and already committed); it logs + enqueues a reconcile job.
  * Identity rows hold ONLY auth/identity fields — never whatsapp / notification
  * preferences — so notification prefs are deliberately outside this surface.
+ *
+ * M4 write discipline (so removing the read-fallback can't strand anyone):
+ *   - `createIdentity` and `recordLogin` write a COMPLETE row + `identity_registry`
+ *     (recordLogin is self-healing — it rebuilds a full row on every login).
+ *   - The mutation mirrors (`applyVerification`, `setVerificationToken`,
+ *     `setResetToken`, `applyPasswordReset`, `setStatus`, and the non-email branch
+ *     of `applyProfileChanges`) are UPDATE-ONLY: they never insert a partial row;
+ *     an update on an absent row enqueues a reconcile job instead.
  */
 export abstract class OrbitIdentityWriter {
   abstract createIdentity(module: OrbitModule, user: User): Promise<void>;
@@ -52,7 +58,7 @@ export abstract class OrbitIdentityWriter {
     module: OrbitModule,
     passwordHash: string,
   ): Promise<void>;
-  abstract recordLogin(userId: number, module: OrbitModule, at: Date): Promise<void>;
+  abstract recordLogin(module: OrbitModule, user: User): Promise<void>;
   abstract applyProfileChanges(
     userId: number,
     module: OrbitModule,

@@ -931,7 +931,7 @@ export class AnnixOrbitAuthService {
     }
     user.lastLoginAt = now().toJSDate();
     await this.userRepo.save(user);
-    await this.identityWriter.recordLogin(user.id, loginModule, user.lastLoginAt);
+    await this.identityWriter.recordLogin(loginModule, user);
     const role = await this.resolveRole(user.id, profile);
     const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
     const tokens = this.generateTokens(user, profile, role);

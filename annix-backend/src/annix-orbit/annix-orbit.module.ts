@@ -108,6 +108,7 @@ import { WorkProfileController } from "./controllers/work-profile.controller";
 import { AnnixOrbitAuthGuard } from "./guards/annix-orbit-auth.guard";
 import { AnnixOrbitRoleGuard } from "./guards/annix-orbit-role.guard";
 import { OrbitIdentityModule } from "./identity/orbit-identity.module";
+import { OrbitIdentityReconciler } from "./identity/orbit-identity-reconciler.service";
 import { OrbitIdentityResolver } from "./identity/orbit-identity-resolver";
 import { OrbitIdentityWriter } from "./identity/orbit-identity-writer";
 import { MongoOrbitIdentityWriter } from "./identity/orbit-identity-writer.mongo";
@@ -647,6 +648,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     AnnixOrbitRoleGuard,
     AnnixOrbitAuthService,
     OrbitIdentityResolver,
+    OrbitIdentityReconciler,
     { provide: OrbitIdentityWriter, useClass: MongoOrbitIdentityWriter },
     AdminOrbitUserService,
     CvAuditService,

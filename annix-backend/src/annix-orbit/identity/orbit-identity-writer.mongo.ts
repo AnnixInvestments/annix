@@ -12,7 +12,7 @@ import {
   type OrbitIdentityWriteOp,
   OrbitIdentityWriter,
 } from "./orbit-identity-writer";
-import type { OrbitModule } from "./orbit-module";
+import { collectionForModule, type OrbitModule } from "./orbit-module";
 import { IdentityRegistryRepository } from "./repositories/identity-registry.repository";
 import { OrbitCompanyIdentityRepository } from "./repositories/orbit-company-identity.repository";
 import type { OrbitIdentityRepository } from "./repositories/orbit-identity.repository";
@@ -64,8 +64,43 @@ export class MongoOrbitIdentityWriter extends OrbitIdentityWriter {
 
   private saveIdentity(module: OrbitModule, patch: IdentityPatch): Promise<OrbitIdentity> {
     // MongoCrudRepository.save upserts by `_id` and $sets only the provided
-    // fields — partial-safe and idempotent (identity `_id` == user `_id`).
+    // fields. Used ONLY for COMPLETE rows (createIdentity / recordLogin), so it
+    // can never produce a partial row.
     return this.repoFor(module).save(patch as unknown as OrbitIdentity);
+  }
+
+  /**
+   * F2 — UPDATE-ONLY mutation: $set on an EXISTING row, never insert (upsert:false).
+   * Returns true if a row matched; false if the row is absent (caller must NOT
+   * insert a partial — it enqueues a reconcile instead).
+   */
+  private async updateOnly(
+    module: OrbitModule,
+    userId: number,
+    set: Record<string, unknown>,
+  ): Promise<boolean> {
+    const db = this.orbitConnection.db;
+    if (!db) {
+      throw new Error("Orbit connection is not ready for identity update");
+    }
+    const result = await db
+      .collection(collectionForModule(module))
+      .updateOne({ _id: userId } as never, { $set: set } as never, { upsert: false });
+    return (result.matchedCount ?? 0) > 0;
+  }
+
+  private async mirrorUpdate(
+    op: OrbitIdentityWriteOp,
+    userId: number,
+    module: OrbitModule,
+    set: Record<string, unknown>,
+  ): Promise<void> {
+    await this.mirror(op, userId, module, async () => {
+      const matched = await this.updateOnly(module, userId, set);
+      if (!matched) {
+        await this.enqueueReconcile(op, userId, module, "update on absent identity row");
+      }
+    });
   }
 
   private identityFromUser(module: OrbitModule, user: User): IdentityPatch {
@@ -145,15 +180,12 @@ export class MongoOrbitIdentityWriter extends OrbitIdentityWriter {
 
   async applyVerification(userId: number, module: OrbitModule): Promise<void> {
     if (!(await this.enabled())) return;
-    await this.mirror("applyVerification", userId, module, () =>
-      this.saveIdentity(module, {
-        id: userId,
-        emailVerified: true,
-        emailVerificationToken: null,
-        emailVerificationExpires: null,
-        status: "active",
-      }).then(() => undefined),
-    );
+    await this.mirrorUpdate("applyVerification", userId, module, {
+      emailVerified: true,
+      emailVerificationToken: null,
+      emailVerificationExpires: null,
+      status: "active",
+    });
   }
 
   async setVerificationToken(
@@ -163,13 +195,10 @@ export class MongoOrbitIdentityWriter extends OrbitIdentityWriter {
     expires: Date | null,
   ): Promise<void> {
     if (!(await this.enabled())) return;
-    await this.mirror("setVerificationToken", userId, module, () =>
-      this.saveIdentity(module, {
-        id: userId,
-        emailVerificationToken: token,
-        emailVerificationExpires: expires,
-      }).then(() => undefined),
-    );
+    await this.mirrorUpdate("setVerificationToken", userId, module, {
+      emailVerificationToken: token,
+      emailVerificationExpires: expires,
+    });
   }
 
   async setResetToken(
@@ -179,13 +208,10 @@ export class MongoOrbitIdentityWriter extends OrbitIdentityWriter {
     expires: Date | null,
   ): Promise<void> {
     if (!(await this.enabled())) return;
-    await this.mirror("setResetToken", userId, module, () =>
-      this.saveIdentity(module, {
-        id: userId,
-        resetPasswordToken: token,
-        resetPasswordExpires: expires,
-      }).then(() => undefined),
-    );
+    await this.mirrorUpdate("setResetToken", userId, module, {
+      resetPasswordToken: token,
+      resetPasswordExpires: expires,
+    });
   }
 
   async applyPasswordReset(
@@ -194,21 +220,25 @@ export class MongoOrbitIdentityWriter extends OrbitIdentityWriter {
     passwordHash: string,
   ): Promise<void> {
     if (!(await this.enabled())) return;
-    await this.mirror("applyPasswordReset", userId, module, () =>
-      this.saveIdentity(module, {
-        id: userId,
-        passwordHash,
-        resetPasswordToken: null,
-        resetPasswordExpires: null,
-      }).then(() => undefined),
-    );
+    await this.mirrorUpdate("applyPasswordReset", userId, module, {
+      passwordHash,
+      resetPasswordToken: null,
+      resetPasswordExpires: null,
+    });
   }
 
-  async recordLogin(userId: number, module: OrbitModule, at: Date): Promise<void> {
+  /**
+   * F1 — self-healing: rebuilds a COMPLETE identity row + `identity_registry` on
+   * every login (the user object carries the freshly-set lastLoginAt). This is
+   * what makes removing the read-fallback safe — any partial/missing row self-
+   * repairs on the owner's next successful login.
+   */
+  async recordLogin(module: OrbitModule, user: User): Promise<void> {
     if (!(await this.enabled())) return;
-    await this.mirror("recordLogin", userId, module, () =>
-      this.saveIdentity(module, { id: userId, lastLoginAt: at }).then(() => undefined),
-    );
+    await this.mirror("recordLogin", user.id, module, async () => {
+      await this.saveIdentity(module, this.identityFromUser(module, user));
+      await this.registry.upsert(user.id, REGISTRY_APP, module, emailLowerOf(user.email));
+    });
   }
 
   async applyProfileChanges(
@@ -217,18 +247,42 @@ export class MongoOrbitIdentityWriter extends OrbitIdentityWriter {
     changes: OrbitIdentityProfileChanges,
   ): Promise<void> {
     if (!(await this.enabled())) return;
-    const patch: IdentityPatch = { id: userId };
-    if (changes.firstName !== undefined) patch.firstName = changes.firstName;
-    if (changes.lastName !== undefined) patch.lastName = changes.lastName;
-    if (changes.status !== undefined && changes.status !== null) patch.status = changes.status;
+    const set: Record<string, unknown> = {};
+    let hasFields = false;
+    if (changes.firstName !== undefined) {
+      set.firstName = changes.firstName;
+      hasFields = true;
+    }
+    if (changes.lastName !== undefined) {
+      set.lastName = changes.lastName;
+      hasFields = true;
+    }
+    if (changes.status !== undefined && changes.status !== null) {
+      set.status = changes.status;
+      hasFields = true;
+    }
     let newEmailLower: string | null = null;
     if (changes.email !== undefined && changes.email !== null) {
-      patch.email = changes.email;
+      set.email = changes.email;
       newEmailLower = emailLowerOf(changes.email);
-      patch.emailLower = newEmailLower;
+      set.emailLower = newEmailLower;
+      hasFields = true;
+    }
+    if (!hasFields) {
+      return;
     }
     await this.mirror("applyProfileChanges", userId, module, async () => {
-      await this.saveIdentity(module, patch);
+      const matched = await this.updateOnly(module, userId, set);
+      if (!matched) {
+        await this.enqueueReconcile(
+          "applyProfileChanges",
+          userId,
+          module,
+          "update on absent identity row",
+        );
+        return;
+      }
+      // The email-change branch keeps the registry in lockstep with the new email.
       if (newEmailLower) {
         await this.registry.upsert(userId, REGISTRY_APP, module, newEmailLower);
       }
@@ -237,9 +291,7 @@ export class MongoOrbitIdentityWriter extends OrbitIdentityWriter {
 
   async setStatus(userId: number, module: OrbitModule, status: string): Promise<void> {
     if (!(await this.enabled())) return;
-    await this.mirror("setStatus", userId, module, () =>
-      this.saveIdentity(module, { id: userId, status }).then(() => undefined),
-    );
+    await this.mirrorUpdate("setStatus", userId, module, { status });
   }
 
   async deleteIdentity(userId: number, module: OrbitModule): Promise<void> {

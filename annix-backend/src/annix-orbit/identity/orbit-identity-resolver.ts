@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { FEATURE_FLAGS } from "../../feature-flags/feature-flags.constants";
 import { FeatureFlagsService } from "../../feature-flags/feature-flags.service";
+import { maskEmail } from "../../lib/pii-log";
 import type { User } from "../../user/entities/user.entity";
 import { UserRepository } from "../../user/user.repository";
 import type { OrbitIdentity } from "./entities/orbit-identity.entity";
@@ -30,9 +31,13 @@ function emailLowerOf(email: string): string {
  * single-row `findOrbitUserByEmail` fallback — i.e. at most ONE candidate, so the
  * multi-account 409 is impossible and flags-off login is byte-for-byte today.
  *
- * Only when READ is on (the migrated, module-isolated state) does it read the
- * per-module stores with NO cross-module fallback — structurally removing the
- * #389 bleed — and enable multi-candidate disambiguation.
+ * When READ is on (M4: the per-module stores are AUTHORITATIVE for login reads),
+ * it reads ONLY the per-module stores — NO per-module fallback to core `user`.
+ * A missing module row resolves to no candidate (→ "Invalid credentials",
+ * non-enumerating). This is safe because M4 ships with writer hardening (F1–F3)
+ * that guarantees no migrated identity can be partial or registry-less. The one
+ * remaining net is the no-module, ZERO-presence case (below), which only trips
+ * for a genuinely-unmigrated email and is surfaced via `orbit.identity.registry_miss`.
  *
  * GUARD: READ on while DUAL_WRITE off is forbidden (reading new stores while not
  * keeping them current); it logs CRITICAL and forces the legacy read path.
@@ -41,7 +46,6 @@ function emailLowerOf(email: string): string {
 export class OrbitIdentityResolver {
   private readonly logger = new Logger(OrbitIdentityResolver.name);
   private readonly repoByModule: Record<OrbitModule, OrbitIdentityRepository<OrbitIdentity>>;
-  private readonly readFallbackCounts = new Map<OrbitModule, number>();
 
   constructor(
     private readonly userRepo: UserRepository,
@@ -58,16 +62,6 @@ export class OrbitIdentityResolver {
       recruiter: recruiterRepo as unknown as OrbitIdentityRepository<OrbitIdentity>,
       student: studentRepo as unknown as OrbitIdentityRepository<OrbitIdentity>,
     };
-  }
-
-  /** Module-tagged count of identity-store reads that fell back to core `user`. */
-  getReadFallbackCount(module: OrbitModule): number {
-    return this.readFallbackCounts.get(module) ?? 0;
-  }
-
-  private incrementReadFallback(module: OrbitModule): void {
-    this.readFallbackCounts.set(module, this.getReadFallbackCount(module) + 1);
-    this.logger.warn(`orbit.identity.read_fallback module=${module}`);
   }
 
   private async effectiveReadEnabled(): Promise<boolean> {
@@ -109,24 +103,23 @@ export class OrbitIdentityResolver {
     return resolvedModule ? [{ module: resolvedModule, user: fallback }] : [];
   }
 
-  /** Module-isolated read of the per-module store, with fallback to core `user`. */
+  /**
+   * Module-isolated read of the per-module store. AUTHORITATIVE (M4): no fallback
+   * to core `user`. If the module has no row for this email → null. The only
+   * `user` touch is PK hydration (`findById` by the identity's own `_id`), which
+   * is canonical-user loading, NOT a discovery fallback — it never reads another
+   * scope and never widens the candidate set.
+   */
   private async readIdentity(
     module: OrbitModule,
     email: string,
   ): Promise<OrbitLoginCandidate | null> {
     const identity = await this.repoByModule[module].findByEmailLower(emailLowerOf(email));
-    if (identity) {
-      // Hydrate the canonical user (id parity) so downstream login logic is
-      // unchanged; the identity store served as the module-isolated discovery.
-      const user = await this.userRepo.findById(identity.id as number);
-      if (user) {
-        return { module, user };
-      }
+    if (!identity) {
+      return null;
     }
-    // ADR M3 dual-read fallback to core `user` by scope.
-    this.incrementReadFallback(module);
-    const fallback = await this.userRepo.findOneByEmailAndScope(email, scopeForModule(module));
-    return fallback ? { module, user: fallback } : null;
+    const user = await this.userRepo.findById(identity.id as number);
+    return user ? { module, user } : null;
   }
 
   async resolveLoginCandidates(
@@ -163,8 +156,12 @@ export class OrbitIdentityResolver {
     }
 
     if (candidates.length === 0) {
-      // Registry not yet populated for this email — fall back to the legacy
-      // single-row discovery so a mid-migration user is never locked out.
+      // ZERO-presence net: the email has no identity row AND no registry entry.
+      // Post-M4 this should only happen for a genuinely-unmigrated email; surface
+      // it for reconciliation, then fall back to the legacy single-row discovery
+      // so such a user is never hard-locked-out. (Does NOT fire for a migrated
+      // email that simply lacks the requested module — that path returns null.)
+      this.logger.warn(`orbit.identity.registry_miss email=${maskEmail(email)}`);
       return this.legacyCandidates(email, null);
     }
 

@@ -120,4 +120,25 @@ describe("OrbitIdentityResolver", () => {
     const candidates = await ctx.resolver.resolveLoginCandidates("u@x.com", "company");
     expect(candidates).toHaveLength(0);
   });
+
+  it("READ on, module specified but no row → [] and NEVER queries user by scope (M4: no fallback)", async () => {
+    const ctx = build({ [READ]: true, [DUAL_WRITE]: true });
+    ctx.company.findByEmailLower.mockResolvedValue(null);
+
+    const candidates = await ctx.resolver.resolveLoginCandidates("u@x.com", "company");
+
+    expect(candidates).toHaveLength(0);
+    expect(ctx.userRepo.findOneByEmailAndScope).not.toHaveBeenCalled();
+  });
+
+  it("READ on, no module, registry empty → ZERO-presence net returns the legacy single candidate", async () => {
+    const ctx = build({ [READ]: true, [DUAL_WRITE]: true });
+    ctx.registry.findByEmailLower.mockResolvedValue([]);
+    ctx.userRepo.findOrbitUserByEmail.mockResolvedValue(userRow(7, "orbit:student"));
+
+    const candidates = await ctx.resolver.resolveLoginCandidates("u@x.com", null);
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0].module).toBe("student");
+  });
 });
