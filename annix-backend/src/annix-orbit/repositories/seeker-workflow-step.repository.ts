@@ -7,4 +7,5 @@ export abstract class SeekerWorkflowStepRepository extends CrudRepository<Seeker
     stepKey: string,
   ): Promise<SeekerWorkflowStep | null>;
   abstract listByParticipant(participantId: string): Promise<SeekerWorkflowStep[]>;
+  abstract countCompletedByStepKey(): Promise<Map<string, number>>;
 }

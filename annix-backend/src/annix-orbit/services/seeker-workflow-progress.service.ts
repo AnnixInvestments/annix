@@ -1,8 +1,9 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { now } from "../../lib/datetime";
+import { fromJSDate, now, nowMillis } from "../../lib/datetime";
 import { UserRepository } from "../../user/user.repository";
 import { AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
 import { SeekerTestParticipant } from "../entities/seeker-test-participant.entity";
+import { SeekerTestPhase } from "../entities/seeker-test-phase.entity";
 import { SeekerWorkflowProgress } from "../entities/seeker-workflow-progress.entity";
 import { SEEKER_EVENT_TO_STEP, SEEKER_WORKFLOW_STEPS } from "../lib/seeker-testing.constants";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
@@ -33,6 +34,9 @@ function isDuplicateKeyError(error: unknown): boolean {
 export class SeekerWorkflowProgressService {
   private readonly logger = new Logger(SeekerWorkflowProgressService.name);
   private reconcileInFlight: Promise<{ participants: number; events: number }> | null = null;
+  private lastReconcileAt: number | null = null;
+  private static readonly RECONCILE_TTL_MS = 600_000;
+  private static readonly DEFAULT_EVENT_WINDOW_DAYS = 180;
 
   constructor(
     private readonly events: SeekerTestEventRepository,
@@ -83,13 +87,13 @@ export class SeekerWorkflowProgressService {
     return derived;
   }
 
-  private async activePhaseId(): Promise<string | null> {
+  private async activePhase(): Promise<SeekerTestPhase | null> {
     const active = await this.phases.findByStatus("active");
     if (active.length > 0) {
-      return String(active[0].id);
+      return active[0];
     }
     const all = await this.phases.listNewestFirst();
-    return all.length > 0 ? String(all[0].id) : null;
+    return all.length > 0 ? all[0] : null;
   }
 
   async reconcile(): Promise<{ participants: number; events: number }> {
@@ -97,18 +101,41 @@ export class SeekerWorkflowProgressService {
       return this.reconcileInFlight;
     }
     this.reconcileInFlight = this.runReconcile().finally(() => {
+      // Stamp on both success and failure so a persistently-failing reconcile
+      // backs off for a full TTL instead of re-triggering on every request.
+      this.lastReconcileAt = nowMillis();
       this.reconcileInFlight = null;
     });
     return this.reconcileInFlight;
   }
 
-  private async runReconcile(): Promise<{ participants: number; events: number }> {
-    const since = now().minus({ years: 5 }).toJSDate();
-    const allEvents = await this.events.eventsSince(since);
-    const phaseId = await this.activePhaseId();
-    if (!phaseId) {
-      return { participants: 0, events: allEvents.length };
+  // Read endpoints call this instead of awaiting reconcile: it refreshes the
+  // precomputed progress/step tables in the background at most once per TTL, so
+  // the dashboard reads return immediately from current data (stale-while-
+  // revalidate) rather than paying the full reconcile cost on every request.
+  reconcileIfStale(): void {
+    const last = this.lastReconcileAt;
+    const fresh =
+      last != null && nowMillis() - last < SeekerWorkflowProgressService.RECONCILE_TTL_MS;
+    if (fresh || this.reconcileInFlight) {
+      return;
     }
+    void this.reconcile().catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Background seeker reconcile failed: ${message}`);
+    });
+  }
+
+  private async runReconcile(): Promise<{ participants: number; events: number }> {
+    const activePhase = await this.activePhase();
+    if (!activePhase) {
+      return { participants: 0, events: 0 };
+    }
+    const phaseId = String(activePhase.id);
+    const since = activePhase.startDate
+      ? fromJSDate(activePhase.startDate).minus({ days: 7 }).toJSDate()
+      : now().minus({ days: SeekerWorkflowProgressService.DEFAULT_EVENT_WINDOW_DAYS }).toJSDate();
+    const allEvents = await this.events.eventsSince(since);
 
     const byCandidate = allEvents.reduce<Map<number, typeof allEvents>>((acc, event) => {
       if (typeof event.candidateId !== "number") {
@@ -270,21 +297,12 @@ export class SeekerWorkflowProgressService {
     }
   }
 
-  async stepCounts(): Promise<Map<string, number>> {
-    const all = await this.progress.listAll();
-    const counts = new Map<string, number>();
-    await all.reduce(async (prev, progress) => {
-      await prev;
-      const steps = await this.steps.listByParticipant(progress.participantId);
-      steps
-        .filter((step) => step.completed)
-        .forEach((step) => counts.set(step.stepKey, (counts.get(step.stepKey) ?? 0) + 1));
-    }, Promise.resolve());
-    return counts;
+  stepCounts(): Promise<Map<string, number>> {
+    return this.steps.countCompletedByStepKey();
   }
 
-  async funnel(): Promise<FunnelRow[]> {
-    const counts = await this.stepCounts();
+  async funnel(precomputed?: Map<string, number>): Promise<FunnelRow[]> {
+    const counts = precomputed ?? (await this.stepCounts());
     const total = counts.get("registered_account") ?? 0;
     return SEEKER_WORKFLOW_STEPS.map((stepKey) => {
       const count = counts.get(stepKey) ?? 0;
@@ -308,14 +326,7 @@ export class SeekerWorkflowProgressService {
     }));
   }
 
-  async avgTimeToFirstValueSeconds(): Promise<number | null> {
-    const all = await this.progress.listAll();
-    const values = all
-      .map((p) => p.timeToFirstValueSeconds)
-      .filter((v): v is number => typeof v === "number");
-    if (values.length === 0) {
-      return null;
-    }
-    return Math.round(values.reduce((sum, v) => sum + v, 0) / values.length);
+  avgTimeToFirstValueSeconds(): Promise<number | null> {
+    return this.progress.avgTimeToFirstValueSeconds();
   }
 }

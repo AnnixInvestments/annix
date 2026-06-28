@@ -54,9 +54,10 @@ export class SeekerTelemetryService {
 
   async errorRatePct(sinceDays = 30): Promise<{ total: number; failed: number; ratePct: number }> {
     const since = now().minus({ days: sinceDays }).toJSDate();
-    const all = await this.events.eventsSince(since);
-    const total = all.length;
-    const failed = all.filter((event) => event.ok === false).length;
+    const [total, failed] = await Promise.all([
+      this.events.countSince(since),
+      this.events.countFailedSince(since),
+    ]);
     const ratePct = total === 0 ? 0 : Math.round((failed / total) * 1000) / 10;
     return { total, failed, ratePct };
   }

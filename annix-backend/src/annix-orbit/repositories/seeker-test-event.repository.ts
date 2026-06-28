@@ -5,4 +5,6 @@ export abstract class SeekerTestEventRepository extends CrudRepository<SeekerTes
   abstract recentFailures(limit: number): Promise<SeekerTestEvent[]>;
   abstract eventsSince(since: Date): Promise<SeekerTestEvent[]>;
   abstract countByEventNameSince(eventName: string, since: Date): Promise<number>;
+  abstract countSince(since: Date): Promise<number>;
+  abstract countFailedSince(since: Date): Promise<number>;
 }

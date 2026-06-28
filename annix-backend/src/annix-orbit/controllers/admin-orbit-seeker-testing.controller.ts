@@ -102,8 +102,9 @@ export class AdminOrbitSeekerTestingController {
   @Get("overview")
   @Roles("admin")
   async overview() {
-    const readiness = await this.readiness.compute();
-    const funnel = await this.progress.funnel();
+    const counts = await this.progress.stepCounts();
+    const readiness = await this.readiness.compute({ counts });
+    const funnel = await this.progress.funnel(counts);
     return { readiness, funnel };
   }
 

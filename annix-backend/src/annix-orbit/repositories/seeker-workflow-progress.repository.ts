@@ -4,4 +4,5 @@ import { SeekerWorkflowProgress } from "../entities/seeker-workflow-progress.ent
 export abstract class SeekerWorkflowProgressRepository extends CrudRepository<SeekerWorkflowProgress> {
   abstract findByParticipant(participantId: string): Promise<SeekerWorkflowProgress | null>;
   abstract listAll(): Promise<SeekerWorkflowProgress[]>;
+  abstract avgTimeToFirstValueSeconds(): Promise<number | null>;
 }

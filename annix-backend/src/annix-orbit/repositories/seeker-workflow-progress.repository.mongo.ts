@@ -26,4 +26,14 @@ export class MongoSeekerWorkflowProgressRepository
     const docs = await this.documents.find().sort({ createdAt: -1 }).lean().exec();
     return this.toDomainList(docs);
   }
+
+  async avgTimeToFirstValueSeconds(): Promise<number | null> {
+    const rows = await this.documents
+      .aggregate<{ avg: number }>([
+        { $match: { timeToFirstValueSeconds: { $ne: null } } },
+        { $group: { _id: null, avg: { $avg: "$timeToFirstValueSeconds" } } },
+      ])
+      .exec();
+    return rows.length > 0 ? Math.round(rows[0].avg) : null;
+  }
 }

@@ -29,4 +29,14 @@ export class MongoSeekerWorkflowStepRepository
     const docs = await this.documents.find({ participantId }).sort({ createdAt: -1 }).lean().exec();
     return this.toDomainList(docs);
   }
+
+  async countCompletedByStepKey(): Promise<Map<string, number>> {
+    const rows = await this.documents
+      .aggregate<{ _id: string; count: number }>([
+        { $match: { completed: true } },
+        { $group: { _id: "$stepKey", count: { $sum: 1 } } },
+      ])
+      .exec();
+    return new Map(rows.map((row) => [row._id, row.count]));
+  }
 }

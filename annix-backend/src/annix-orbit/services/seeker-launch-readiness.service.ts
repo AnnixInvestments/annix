@@ -43,9 +43,16 @@ export class SeekerLaunchReadinessService {
     private readonly snapshots: SeekerLaunchReadinessSnapshotRepository,
   ) {}
 
-  async compute(): Promise<ReadinessResult> {
-    await this.progress.reconcile();
-    const counts = await this.progress.stepCounts();
+  async compute(options?: {
+    counts?: Map<string, number>;
+    syncReconcile?: boolean;
+  }): Promise<ReadinessResult> {
+    if (options?.syncReconcile) {
+      await this.progress.reconcile();
+    } else {
+      this.progress.reconcileIfStale();
+    }
+    const counts = options?.counts ?? (await this.progress.stepCounts());
     const cvUploads = counts.get("uploaded_cv") ?? 0;
     const completedProfiles = counts.get("completed_profile") ?? 0;
     const successfulAnalyses = counts.get("ai_cv_analysis") ?? 0;
@@ -119,7 +126,7 @@ export class SeekerLaunchReadinessService {
   }
 
   async snapshot(): Promise<SeekerLaunchReadinessSnapshot> {
-    const result = await this.compute();
+    const result = await this.compute({ syncReconcile: true });
     const snapshotDate = now().toFormat("yyyy-MM-dd");
     const existing = await this.snapshots.findByDate(snapshotDate);
     if (existing) {

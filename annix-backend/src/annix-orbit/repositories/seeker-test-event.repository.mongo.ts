@@ -36,4 +36,12 @@ export class MongoSeekerTestEventRepository
   async countByEventNameSince(eventName: string, since: Date): Promise<number> {
     return this.documents.countDocuments({ eventName, ts: { $gte: since } }).exec();
   }
+
+  async countSince(since: Date): Promise<number> {
+    return this.documents.countDocuments({ ts: { $gte: since } }).exec();
+  }
+
+  async countFailedSince(since: Date): Promise<number> {
+    return this.documents.countDocuments({ ts: { $gte: since }, ok: false }).exec();
+  }
 }
