@@ -1,9 +1,12 @@
 import { CanActivate, ExecutionContext, Injectable } from "@nestjs/common";
+import { ModuleRef } from "@nestjs/core";
 import { RbacService } from "../../rbac/rbac.service";
 
 @Injectable()
 export class AuRubberAccessGuard implements CanActivate {
-  constructor(private readonly rbacService: RbacService) {}
+  private rbacService: RbacService | null = null;
+
+  constructor(private readonly moduleRef: ModuleRef) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const request = ctx.switchToHttp().getRequest();
@@ -13,7 +16,7 @@ export class AuRubberAccessGuard implements CanActivate {
       return false;
     }
 
-    const accessDetails = await this.rbacService.userAccessDetails(user.id, "au-rubber");
+    const accessDetails = await this.rbac().userAccessDetails(user.id, "au-rubber");
 
     const userRoles = user.roles || [];
     if (userRoles.includes("admin") || userRoles.includes("employee")) {
@@ -30,5 +33,15 @@ export class AuRubberAccessGuard implements CanActivate {
     request.auRubberRole = accessDetails.roleCode;
 
     return true;
+  }
+
+  private rbac(): RbacService {
+    if (this.rbacService) {
+      return this.rbacService;
+    }
+
+    const service = this.moduleRef.get(RbacService, { strict: false });
+    this.rbacService = service;
+    return service;
   }
 }
