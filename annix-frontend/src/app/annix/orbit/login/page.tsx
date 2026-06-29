@@ -297,6 +297,14 @@ function AnnixOrbitLoginContent() {
             ) : error ? (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
                 <p>{error}</p>
+                {error.includes("This account is registered as") && (
+                  <Link
+                    href={registerHref}
+                    className="mt-3 inline-flex w-full items-center justify-center bg-[var(--brand-navbar,#323288)] text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-[var(--brand-navbar-active,#252560)] transition-colors"
+                  >
+                    Register for this module
+                  </Link>
+                )}
                 {needsVerification && (
                   <div className="mt-3">
                     <button

@@ -1121,7 +1121,13 @@ export class AnnixOrbitAuthService {
         userId,
         appId: app.id,
       });
-      if (existing) return;
+      if (existing) {
+        if (existing.roleId !== rbacRole.id) {
+          existing.roleId = rbacRole.id;
+          await this.userAppAccessRepo.save(existing);
+        }
+        return;
+      }
 
       await this.userAppAccessRepo.create({
         userId,

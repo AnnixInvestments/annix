@@ -142,6 +142,7 @@ describe("NixChatService", () => {
         conversationHistory: [],
         userPreferences: { learningEnabled: true },
         sessionContext: {},
+        lastInteractionAt: expect.any(Date),
       });
     });
 

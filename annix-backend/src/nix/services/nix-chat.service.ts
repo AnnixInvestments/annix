@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
+import { now } from "../../lib/datetime";
 import { sanitizePromptHint } from "../../lib/prompt-hint-sanitizer";
 import { AiChatService } from "../ai-providers/ai-chat.service";
 import { ChatMessage } from "../ai-providers/claude-chat.provider";
@@ -97,6 +98,7 @@ export class NixChatService {
       conversationHistory: [],
       userPreferences: { learningEnabled: true },
       sessionContext: {},
+      lastInteractionAt: now().toJSDate(),
     });
   }
 

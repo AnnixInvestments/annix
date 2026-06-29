@@ -4,6 +4,7 @@ import { allIndustryLabels } from "@annix/product-data/portals/annix-rep-industr
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { PasskeyManagementSection } from "@/app/components/PasskeyManagementSection";
+import { useToast } from "@/app/components/Toast";
 import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
 import { annixOrbitTokenStore } from "@/app/lib/api/portalTokenStores";
 import {
@@ -21,6 +22,7 @@ import {
 } from "@/app/lib/query/hooks";
 
 export default function SettingsPage() {
+  const { showToast } = useToast();
   const { data: settings, isLoading: settingsLoading } = useOrbitSettings();
   const { data: popiaStats } = useOrbitPopiaStats();
   const { data: notifPrefs } = useOrbitNotificationPreferences();
@@ -128,7 +130,11 @@ export default function SettingsPage() {
       {
         onSuccess: () => {
           setCompanySaved(true);
+          showToast("Company information saved.", "success");
           setTimeout(() => setCompanySaved(false), 3000);
+        },
+        onError: () => {
+          showToast("Could not save company information. Please try again.", "error");
         },
       },
     );

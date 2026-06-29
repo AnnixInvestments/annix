@@ -25,18 +25,36 @@ interface ServiceWorkerState {
 }
 
 const DISMISS_KEY = "orbit-pwa-dismissed";
+const INSTALLED_KEY = "orbit-pwa-installed";
 
-// Public early-access landing pages must not register the service worker or
-// offer install — early-access registrants should not be able to install the
-// app until they're granted access.
-const PWA_SUPPRESSED_PREFIXES = ["/annix/orbit/seeker/register-interest"];
+const PWA_APP_PREFIXES = [
+  "/annix/orbit/portal",
+  "/annix/orbit/seeker",
+  "/annix/orbit/recruiter",
+  "/annix/orbit/student",
+];
+
+const PWA_PUBLIC_PREFIXES = [
+  "/annix/orbit/login",
+  "/annix/orbit/register",
+  "/annix/orbit/forgot-password",
+  "/annix/orbit/reset-password",
+  "/annix/orbit/verify-email",
+  "/annix/orbit/accept-invite",
+  "/annix/orbit/seeker/register-interest",
+];
+
+function canOfferOrbitInstall(pathname: string | null): boolean {
+  if (!pathname) return false;
+  if (pathname === "/annix/orbit") return false;
+  if (PWA_PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return false;
+  return PWA_APP_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
 
 export function OrbitPwaProvider(props: { children: React.ReactNode }) {
   const { children } = props;
   const pathname = usePathname();
-  const pwaSuppressed = pathname
-    ? PWA_SUPPRESSED_PREFIXES.some((prefix) => pathname.startsWith(prefix))
-    : false;
+  const pwaSuppressed = !canOfferOrbitInstall(pathname);
   const [swState, setSwState] = useState<ServiceWorkerState>({
     isUpdateAvailable: false,
     registration: null,
@@ -54,6 +72,8 @@ export function OrbitPwaProvider(props: { children: React.ReactNode }) {
     }
 
     if (pwaSuppressed) {
+      setShowInstallPrompt(false);
+      setInstallPrompt(null);
       return;
     }
 
@@ -71,10 +91,20 @@ export function OrbitPwaProvider(props: { children: React.ReactNode }) {
     const standaloneMatch = window.matchMedia("(display-mode: standalone)").matches;
     const navigatorStandalone = (window.navigator as Navigator & { standalone?: boolean })
       .standalone;
-    const isInStandaloneMode = standaloneMatch || navigatorStandalone === true;
+    const androidAppReferrer = document.referrer.startsWith("android-app://");
+    const installedMarker = localStorage.getItem(INSTALLED_KEY);
+    const isInStandaloneMode =
+      standaloneMatch ||
+      navigatorStandalone === true ||
+      androidAppReferrer ||
+      Boolean(installedMarker);
 
     setIsIos(isIosDevice);
     setIsStandalone(isInStandaloneMode);
+
+    if (isInStandaloneMode) {
+      localStorage.setItem(INSTALLED_KEY, "true");
+    }
 
     let updateInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -133,26 +163,27 @@ export function OrbitPwaProvider(props: { children: React.ReactNode }) {
     }
 
     const dismissed = localStorage.getItem(DISMISS_KEY);
-    if (dismissed) {
+    const isDismissedRecently = (() => {
+      if (!dismissed) {
+        return false;
+      }
       const dismissedAt = parseInt(dismissed, 10);
       const daysSinceDismissed = (nowMillis() - dismissedAt) / (1000 * 60 * 60 * 24);
-      if (daysSinceDismissed < 7) {
-        return () => {
-          if (updateInterval) clearInterval(updateInterval);
-          navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
-        };
-      }
-    }
+      return daysSinceDismissed < 7;
+    })();
 
     const handleBeforeInstallPrompt = (e: BeforeInstallPromptEvent) => {
       e.preventDefault();
+      if (localStorage.getItem(INSTALLED_KEY) || isDismissedRecently) {
+        return;
+      }
       setInstallPrompt(e);
       setShowInstallPrompt(true);
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 
-    if (isIosDevice) {
+    if (isIosDevice && !localStorage.getItem(INSTALLED_KEY) && !isDismissedRecently) {
       setTimeout(() => setShowInstallPrompt(true), 3000);
     }
 
@@ -162,6 +193,20 @@ export function OrbitPwaProvider(props: { children: React.ReactNode }) {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
     };
   }, [pwaSuppressed]);
+
+  useEffect(() => {
+    const handleAppInstalled = () => {
+      setShowInstallPrompt(false);
+      setInstallPrompt(null);
+      localStorage.setItem(INSTALLED_KEY, "true");
+    };
+
+    window.addEventListener("appinstalled", handleAppInstalled);
+
+    return () => {
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, []);
 
   const handleUpdate = () => {
     if (swState.registration?.waiting) {
@@ -180,6 +225,7 @@ export function OrbitPwaProvider(props: { children: React.ReactNode }) {
     const choice = await installPrompt.userChoice;
     if (choice.outcome === "accepted") {
       setShowInstallPrompt(false);
+      localStorage.setItem(INSTALLED_KEY, "true");
     }
     setInstallPrompt(null);
   };
