@@ -26,6 +26,7 @@ const LABEL_OVERRIDES: Record<string, string> = {
   "education-ingestion": "Education Ingestion",
   "education-catalog": "Education Catalog",
   "job-market": "Job Market",
+  "job-posting": "Job Posting",
   "credential-types": "Credential Types",
   "delist-reports": "Delist Reports",
   "dismiss-reasons": "Dismiss Reasons",

@@ -1,7 +1,9 @@
 "use client";
 
-import { AppAdminHub, type AppHubCard } from "@/app/components/admin/AppAdminHub";
-import { useAdminOrbitDelistReportCount } from "@/app/lib/query/hooks";
+import { isNumber } from "es-toolkit/compat";
+import Link from "next/link";
+import { brandingFallback, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
+import { useAdminOrbitDelistReportCount, useBranding } from "@/app/lib/query/hooks";
 
 function JobMarketIcon() {
   return (
@@ -11,6 +13,19 @@ function JobMarketIcon() {
         strokeLinejoin="round"
         strokeWidth={1.5}
         d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+      />
+    </svg>
+  );
+}
+
+function JobPostingIcon() {
+  return (
+    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5A3.375 3.375 0 0010.125 2.25H8.25m3.75 9h3.75m-3.75 3h3.75m-3.75 3h1.5m-6.75-3h.008v.008H6.75v-.008zm0 3h.008v.008H6.75v-.008zm0-6h.008v.008H6.75v-.008zM10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
       />
     </svg>
   );
@@ -126,32 +141,6 @@ function BrandingIcon() {
   );
 }
 
-function AiCostIcon() {
-  return (
-    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-      />
-    </svg>
-  );
-}
-
-function BillingIcon() {
-  return (
-    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="M2.25 8.25h19.5M4.5 6h15A2.25 2.25 0 0121.75 8.25v7.5A2.25 2.25 0 0119.5 18h-15a2.25 2.25 0 01-2.25-2.25v-7.5A2.25 2.25 0 014.5 6zm2.25 8.25h3"
-      />
-    </svg>
-  );
-}
-
 function UsersIcon() {
   return (
     <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -165,198 +154,364 @@ function UsersIcon() {
   );
 }
 
-const orbitAdminCards: AppHubCard[] = [
-  {
-    href: "/admin/portal/orbit/users",
-    title: "Users",
-    description:
-      "Invite, configure and remove Orbit accounts — seekers, recruiters, employers and students.",
-    icon: <UsersIcon />,
-    color: "bg-violet-100 text-violet-600",
-    hoverColor: "hover:border-violet-400 group-hover:bg-violet-600 group-hover:text-white",
-  },
-  {
-    href: "/admin/portal/orbit/job-market",
-    title: "Job Market",
-    description: "Manage job-board ingestion sources that populate Browse Jobs for every seeker.",
-    icon: <JobMarketIcon />,
-    color: "bg-violet-100 text-violet-600",
-    hoverColor: "hover:border-violet-400 group-hover:bg-violet-600 group-hover:text-white",
-  },
-  {
-    href: "/admin/portal/orbit/seekers",
-    title: "Seekers",
-    description:
-      "Browse and search every job seeker on the platform — CV status, tier and activity.",
-    icon: <SeekersIcon />,
-    color: "bg-cyan-100 text-cyan-600",
-    hoverColor: "hover:border-cyan-400 group-hover:bg-cyan-600 group-hover:text-white",
-  },
-  {
-    href: "/admin/portal/orbit/seeker-tiers",
-    title: "Seeker Tiers",
-    description: "Look up a seeker and override the match-score tier that gates what they can see.",
-    icon: <SeekerTiersIcon />,
-    color: "bg-indigo-100 text-indigo-600",
-    hoverColor: "hover:border-indigo-400 group-hover:bg-indigo-600 group-hover:text-white",
-  },
-  {
-    href: "/admin/portal/orbit/billing",
-    title: "Billing",
-    description: "Switch payments on or off for Seekers, Companies, Recruiters and Students.",
-    icon: <BillingIcon />,
-    color: "bg-emerald-100 text-emerald-600",
-    hoverColor: "hover:border-emerald-400 group-hover:bg-emerald-600 group-hover:text-white",
-  },
-  {
-    href: "/admin/portal/orbit/ee-targets",
-    title: "EE Sectoral Targets",
-    description:
-      "Capture the B-BBEE sector targets the company Employment Equity report measures against.",
-    icon: <EeTargetsIcon />,
-    color: "bg-rose-100 text-rose-600",
-    hoverColor: "hover:border-rose-400 group-hover:bg-rose-600 group-hover:text-white",
-  },
-  {
-    href: "/admin/portal/orbit/education-catalog",
-    title: "Education Catalog",
-    description:
-      "Owner-verified institutions, faculties, programmes and scholarships that FuturePath matches against.",
-    icon: <CatalogIcon />,
-    color: "bg-amber-100 text-amber-600",
-    hoverColor: "hover:border-amber-400 group-hover:bg-amber-600 group-hover:text-white",
-  },
-  {
-    href: "/admin/portal/education-ingestion",
-    title: "FuturePath Admissions",
-    description:
-      "Review AI-scraped university entry requirements and approve or correct marks before they go live to students.",
-    icon: <AdmissionsIcon />,
-    color: "bg-emerald-100 text-emerald-600",
-    hoverColor: "hover:border-emerald-400 group-hover:bg-emerald-600 group-hover:text-white",
-  },
-  {
-    href: "/admin/portal/orbit/credential-types",
-    title: "Credentials",
-    description: "Manage the deployment credentials seekers can track — add, edit and reorder.",
-    icon: <CredentialsIcon />,
-    color: "bg-teal-100 text-teal-600",
-    hoverColor: "hover:border-teal-400 group-hover:bg-teal-600 group-hover:text-white",
-  },
-  {
-    href: "/admin/portal/orbit/dismiss-reasons",
-    title: "Dismiss reasons",
-    description:
-      "Manage the 'Not for me' reasons seekers pick on a job — add, edit, reorder and set mute actions.",
-    icon: <CredentialsIcon />,
-    color: "bg-rose-100 text-rose-600",
-    hoverColor: "hover:border-rose-400 group-hover:bg-rose-600 group-hover:text-white",
-  },
-  {
-    href: "/admin/portal/orbit/identity-reviews",
-    title: "Identity reviews",
-    description:
-      "Seeker ID checks Nix wasn't sure about — compare the document, registration and CV names, then approve or confirm the mismatch.",
-    icon: <CredentialsIcon />,
-    color: "bg-violet-100 text-violet-600",
-    hoverColor: "hover:border-violet-400 group-hover:bg-violet-600 group-hover:text-white",
-  },
-  {
-    href: "/admin/portal/orbit/delist-reports",
-    title: "Delist reports",
-    description:
-      "Seeker-reported jobs that may have been taken down on the source site — review and confirm to remove for everyone.",
-    icon: <DelistReportsIcon />,
-    color: "bg-orange-100 text-orange-600",
-    hoverColor: "hover:border-orange-400 group-hover:bg-orange-600 group-hover:text-white",
-  },
-  {
-    href: "/admin/portal/orbit/early-access",
-    title: "Early Access",
-    description:
-      "Pre-launch waiting list — deduplicated registrants, sources, campaigns, referrals and CSV export.",
-    icon: (
-      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={1.5}
-          d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"
-        />
-      </svg>
-    ),
-    color: "bg-orange-100 text-orange-600",
-    hoverColor: "hover:border-orange-400 group-hover:bg-orange-600 group-hover:text-white",
-  },
-  {
-    href: "/admin/portal/orbit/seeker-testing",
-    title: "Seeker Testing",
-    description:
-      "Beta testing & launch readiness — errors/latency from real users, workflow funnel, KPIs, bug tracker and the go-live checklist.",
-    icon: (
-      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={1.5}
-          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-        />
-      </svg>
-    ),
-    color: "bg-orange-100 text-orange-600",
-    hoverColor: "hover:border-orange-400 group-hover:bg-orange-600 group-hover:text-white",
-  },
-  {
-    href: "/admin/portal/scheduled-jobs?app=orbit",
-    title: "Scheduled Jobs",
-    description: "Orbit background cron jobs — ingestion, alerts, POPIA purges. Pause and retune.",
-    icon: (
-      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={1.5}
-          d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
-        />
-      </svg>
-    ),
-    color: "bg-slate-100 text-slate-600",
-    hoverColor: "hover:border-slate-400 group-hover:bg-slate-600 group-hover:text-white",
-  },
-  {
-    href: "/admin/portal/orbit/ai-cost",
-    title: "AI Cost",
-    description:
-      "Gemini spend by feature + model over time — see exactly where the daily AI cost goes (ref #390).",
-    icon: <AiCostIcon />,
-    color: "bg-lime-100 text-lime-600",
-    hoverColor: "hover:border-lime-400 group-hover:bg-lime-600 group-hover:text-white",
-  },
-  {
-    href: "/admin/portal/branding/annix-orbit",
-    title: "Branding",
-    description: "Orbit brand — logo, colours, tagline and watermark.",
-    icon: <BrandingIcon />,
-    color: "bg-sky-100 text-sky-600",
-    hoverColor: "hover:border-sky-400 group-hover:bg-sky-600 group-hover:text-white",
-  },
-];
+interface OrbitAdminLink {
+  href: string;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  badge?: number | null;
+}
+
+interface OrbitModuleCard {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  accentClass: string;
+  links: OrbitAdminLink[];
+}
+
+const usersLink: OrbitAdminLink = {
+  href: "/admin/portal/orbit/users",
+  title: "Users",
+  description: "Invite, configure and remove Orbit accounts.",
+  icon: <UsersIcon />,
+};
+
+function ChevronIcon() {
+  return (
+    <svg
+      className="h-4 w-4 text-gray-400 transition-transform group-hover:translate-x-0.5 group-hover:text-gray-600"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+    </svg>
+  );
+}
+
+function EarlyAccessIcon() {
+  return (
+    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"
+      />
+    </svg>
+  );
+}
+
+function TestingIcon() {
+  return (
+    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    </svg>
+  );
+}
+
+function ScheduledJobsIcon() {
+  return (
+    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    </svg>
+  );
+}
+
+function AiCostIcon() {
+  return (
+    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M12 6v12m-3-2.25h4.5a2.25 2.25 0 000-4.5h-3a2.25 2.25 0 010-4.5H15M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    </svg>
+  );
+}
+
+function HubLogo() {
+  const brandingQuery = useBranding("annix-orbit");
+  const brandingData = brandingQuery.data;
+  const branding = brandingData || brandingFallback("annix-orbit");
+  const logoIcon = resolveBrandAssetUrl("logoIcon", branding);
+  return (
+    <div
+      className="h-12 w-12 flex-shrink-0 rounded-xl bg-contain bg-center bg-no-repeat"
+      style={{ backgroundImage: `url('${logoIcon}')` }}
+    />
+  );
+}
+
+function OrbitModuleCardView(props: { module: OrbitModuleCard }) {
+  const module = props.module;
+
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-md">
+      <div className="flex items-start gap-4">
+        <div
+          className={`flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl ${module.accentClass}`}
+        >
+          {module.icon}
+        </div>
+        <div className="min-w-0">
+          <h2 className="text-xl font-bold text-gray-900">{module.title}</h2>
+          <p className="mt-1 text-sm text-gray-600">{module.description}</p>
+        </div>
+      </div>
+
+      <div className="mt-5 divide-y divide-gray-100">
+        {module.links.map((link) => (
+          <OrbitAdminLinkRow key={`${module.title}-${link.href}-${link.title}`} link={link} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function OrbitAdminLinkRow(props: { link: OrbitAdminLink }) {
+  const link = props.link;
+  const badge = link.badge;
+  const showBadge = isNumber(badge) && badge > 0;
+
+  return (
+    <Link
+      href={link.href}
+      className="group flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-600 [&_svg]:h-5 [&_svg]:w-5">
+          {link.icon}
+        </div>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-gray-900">{link.title}</h3>
+            {showBadge ? (
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-xs font-bold text-white">
+                {badge}
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-0.5 text-sm text-gray-500">{link.description}</p>
+        </div>
+      </div>
+      <ChevronIcon />
+    </Link>
+  );
+}
+
+function SharedToolCard(props: {
+  href: string;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  accentClass: string;
+}) {
+  return (
+    <Link href={props.href} className="group">
+      <article className="h-full rounded-xl border-2 border-transparent bg-white p-5 shadow-md transition-all duration-300 hover:border-gray-300 hover:shadow-lg">
+        <div className="flex items-start gap-4">
+          <div
+            className={`flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl ${props.accentClass}`}
+          >
+            {props.icon}
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg font-bold text-gray-900">{props.title}</h2>
+            <p className="mt-1 text-sm text-gray-600">{props.description}</p>
+          </div>
+          <ChevronIcon />
+        </div>
+      </article>
+    </Link>
+  );
+}
 
 export default function OrbitAdminHubPage() {
   const delistCountQuery = useAdminOrbitDelistReportCount();
   const delistCountData = delistCountQuery.data;
   const delistCount = delistCountData ? delistCountData.count : 0;
 
-  const cards = orbitAdminCards.map((card) =>
-    card.href === "/admin/portal/orbit/delist-reports" ? { ...card, badge: delistCount } : card,
-  );
+  const modules: OrbitModuleCard[] = [
+    {
+      title: "Student",
+      description: "FuturePath setup, education catalog and admissions content for students.",
+      icon: <CatalogIcon />,
+      accentClass: "bg-amber-100 text-amber-600",
+      links: [
+        {
+          href: "/admin/portal/orbit/education-catalog",
+          title: "Education Catalog",
+          description:
+            "Owner-verified institutions, faculties, programmes and scholarships that FuturePath matches against.",
+          icon: <CatalogIcon />,
+        },
+        {
+          href: "/admin/portal/education-ingestion",
+          title: "FuturePath Admissions",
+          description:
+            "Review AI-scraped university entry requirements before they go live to students.",
+          icon: <AdmissionsIcon />,
+        },
+      ],
+    },
+    {
+      title: "Seeker",
+      description: "Everything that shapes the seeker experience, job feed and beta readiness.",
+      icon: <SeekersIcon />,
+      accentClass: "bg-cyan-100 text-cyan-600",
+      links: [
+        {
+          href: "/admin/portal/orbit/job-market",
+          title: "Job Market",
+          description: "Manage job-board ingestion sources that populate Browse Jobs.",
+          icon: <JobMarketIcon />,
+        },
+        {
+          href: "/admin/portal/orbit/seekers",
+          title: "Seekers",
+          description: "Browse and search seekers by CV status, tier and activity.",
+          icon: <SeekersIcon />,
+        },
+        {
+          href: "/admin/portal/orbit/seeker-tiers",
+          title: "Seeker Tiers",
+          description: "Override the match-score tier that gates what a seeker can see.",
+          icon: <SeekerTiersIcon />,
+        },
+        {
+          href: "/admin/portal/orbit/credential-types",
+          title: "Credentials",
+          description: "Manage deployment credentials seekers can track.",
+          icon: <CredentialsIcon />,
+        },
+        {
+          href: "/admin/portal/orbit/dismiss-reasons",
+          title: "Dismiss reasons",
+          description: "Manage the 'Not for me' reasons seekers pick on a job.",
+          icon: <CredentialsIcon />,
+        },
+        {
+          href: "/admin/portal/orbit/identity-reviews",
+          title: "Identity reviews",
+          description: "Review seeker ID checks Nix was not sure about.",
+          icon: <CredentialsIcon />,
+        },
+        {
+          href: "/admin/portal/orbit/delist-reports",
+          title: "Delist reports",
+          description: "Review seeker-reported jobs that may have been taken down.",
+          icon: <DelistReportsIcon />,
+          badge: delistCount,
+        },
+        {
+          href: "/admin/portal/orbit/early-access",
+          title: "Early Access",
+          description: "Pre-launch waiting list, sources, campaigns and CSV export.",
+          icon: <EarlyAccessIcon />,
+        },
+        {
+          href: "/admin/portal/orbit/seeker-testing",
+          title: "Seeker Testing",
+          description: "Beta testing, launch readiness, bug tracker and go-live checklist.",
+          icon: <TestingIcon />,
+        },
+      ],
+    },
+    {
+      title: "Recruiter",
+      description: "Recruiter access and shared account administration.",
+      icon: <UsersIcon />,
+      accentClass: "bg-violet-100 text-violet-600",
+      links: [usersLink],
+    },
+    {
+      title: "Company",
+      description: "Employer/company configuration, job distribution and compliance targets.",
+      icon: <JobPostingIcon />,
+      accentClass: "bg-emerald-100 text-emerald-600",
+      links: [
+        usersLink,
+        {
+          href: "/admin/portal/orbit/job-posting",
+          title: "Job Posting",
+          description:
+            "Review the free channels Orbit Company should wire up first for job distribution.",
+          icon: <JobPostingIcon />,
+        },
+        {
+          href: "/admin/portal/orbit/ee-targets",
+          title: "EE Sectoral Targets",
+          description:
+            "Capture the B-BBEE sector targets the Employment Equity report measures against.",
+          icon: <EeTargetsIcon />,
+        },
+      ],
+    },
+  ];
 
   return (
-    <AppAdminHub
-      appKey="annix-orbit"
-      title="Annix Orbit — Admin Hub"
-      subtitle="Choose an area to manage — job market, seekers, tiers, EE targets, education catalog, FuturePath admissions, credentials, delist reports, and branding."
-      cards={cards}
-    />
+    <div className="space-y-8">
+      <div className="flex items-center gap-4 rounded-xl bg-gradient-to-r from-[#323288] to-[#4a4da3] p-6 text-white">
+        <HubLogo />
+        <div>
+          <h1 className="mb-1 text-2xl font-bold">Annix Orbit — Admin Hub</h1>
+          <p className="text-blue-100">
+            Choose a module to manage Orbit setup, testing and operational controls.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        {modules.map((module) => (
+          <OrbitModuleCardView key={module.title} module={module} />
+        ))}
+      </div>
+
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-lg font-bold text-white">Shared Orbit Tools</h2>
+          <p className="mt-1 text-sm text-blue-100">
+            Global controls that stay outside a single Orbit module.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <SharedToolCard
+            href="/admin/portal/branding/annix-orbit"
+            title="Branding"
+            description="Orbit brand, logo, colours, tagline and watermark."
+            icon={<BrandingIcon />}
+            accentClass="bg-sky-100 text-sky-600"
+          />
+          <SharedToolCard
+            href="/admin/portal/scheduled-jobs?app=orbit"
+            title="Scheduled Jobs"
+            description="Orbit background cron jobs, ingestion, alerts and POPIA purges."
+            icon={<ScheduledJobsIcon />}
+            accentClass="bg-slate-100 text-slate-600"
+          />
+          <SharedToolCard
+            href="/admin/portal/orbit/ai-cost"
+            title="AI Cost"
+            description="Gemini spend by feature and model over time."
+            icon={<AiCostIcon />}
+            accentClass="bg-lime-100 text-lime-600"
+          />
+        </div>
+      </section>
+    </div>
   );
 }
