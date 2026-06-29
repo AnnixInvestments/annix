@@ -164,7 +164,7 @@ if [ -n "$STAGED_TS_FILES" ]; then
     echo "Biome check passed."
 fi
 
-# 2. Backend spec dependency check — if a service OR controller constructor
+# 2. Backend spec dependency check — if a service, controller OR module
 #    changed, verify its spec file can still resolve all providers. Uses
 #    import-graph grep to find spec files since naming is not always
 #    ${basename}.spec.ts (e.g. rfq.controller.ts is tested by
@@ -179,17 +179,18 @@ fi
 #    provider regardless of how the spec names its tests.
 STAGED_BACKEND_SERVICES=$(echo "$STAGED_TS_FILES" | grep -E '^annix-backend/src/.*\.service\.ts$' | grep -v '\.spec\.ts$' || true)
 STAGED_BACKEND_CONTROLLERS=$(echo "$STAGED_TS_FILES" | grep -E '^annix-backend/src/.*\.controller\.ts$' | grep -v '\.spec\.ts$' || true)
+STAGED_BACKEND_MODULES=$(echo "$STAGED_TS_FILES" | grep -E '^annix-backend/src/.*\.module\.ts$' | grep -v '\.spec\.ts$' || true)
 
-if [ -n "$STAGED_BACKEND_SERVICES" ] || [ -n "$STAGED_BACKEND_CONTROLLERS" ]; then
+if [ -n "$STAGED_BACKEND_SERVICES" ] || [ -n "$STAGED_BACKEND_CONTROLLERS" ] || [ -n "$STAGED_BACKEND_MODULES" ]; then
     echo ""
-    echo "Checking backend spec dependencies for changed services and controllers..."
+    echo "Checking backend spec dependencies for changed services, controllers and modules..."
     SPEC_FAIL=0
     SPECS_TO_RUN=""
 
     # Build a deduplicated list of spec files to run. For each changed source
     # file, collect (a) the same-name spec if it exists, and (b) any spec file
     # in the same directory that imports the source file by its basename.
-    for src_file in $STAGED_BACKEND_SERVICES $STAGED_BACKEND_CONTROLLERS; do
+    for src_file in $STAGED_BACKEND_SERVICES $STAGED_BACKEND_CONTROLLERS $STAGED_BACKEND_MODULES; do
         src_dir=$(dirname "$src_file")
         src_base=$(basename "$src_file" .ts)
 
