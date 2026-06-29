@@ -2922,6 +2922,122 @@ class AuRubberApiClient {
   async uploadDataSheetPdf(file: File): Promise<{ url: string }> {
     return this.requestWithFiles("/rubber-lining/data-sheets/upload-pdf", [file], {}, "file");
   }
+
+  /* ───── Affiliate & Commission ───── */
+
+  affiliateCommissionSalesReps = createEndpoint<[], unknown[]>(apiClient, "GET", {
+    path: "/rubber-lining/portal/affiliate-commission/sales-reps",
+  });
+
+  affiliateCommissionCreateSalesRep = createEndpoint<[dto: unknown], unknown>(apiClient, "POST", {
+    path: "/rubber-lining/portal/affiliate-commission/sales-reps",
+    body: (dto) => dto,
+  });
+
+  affiliateCommissionUpdateSalesRep = createEndpoint<[id: number, dto: unknown], unknown>(
+    apiClient,
+    "PATCH",
+    {
+      path: (id) => `/rubber-lining/portal/affiliate-commission/sales-reps/${id}`,
+      body: (_id, dto) => dto,
+    },
+  );
+
+  affiliateCommissionDeleteSalesRep = createEndpoint<[id: number], { deleted: boolean }>(
+    apiClient,
+    "DELETE",
+    {
+      path: (id) => `/rubber-lining/portal/affiliate-commission/sales-reps/${id}`,
+    },
+  );
+
+  affiliateCommissionAffiliates = createEndpoint<[], unknown[]>(apiClient, "GET", {
+    path: "/rubber-lining/portal/affiliate-commission/affiliates",
+  });
+
+  affiliateCommissionCreateAffiliate = createEndpoint<[dto: unknown], unknown>(apiClient, "POST", {
+    path: "/rubber-lining/portal/affiliate-commission/affiliates",
+    body: (dto) => dto,
+  });
+
+  affiliateCommissionUpdateAffiliate = createEndpoint<[id: number, dto: unknown], unknown>(
+    apiClient,
+    "PATCH",
+    {
+      path: (id) => `/rubber-lining/portal/affiliate-commission/affiliates/${id}`,
+      body: (_id, dto) => dto,
+    },
+  );
+
+  affiliateCommissionDeleteAffiliate = createEndpoint<[id: number], { deleted: boolean }>(
+    apiClient,
+    "DELETE",
+    {
+      path: (id) => `/rubber-lining/portal/affiliate-commission/affiliates/${id}`,
+    },
+  );
+
+  affiliateCommissionUploadPriceList = async (
+    affiliateId: number,
+    file: File,
+  ): Promise<unknown> => {
+    return this.requestWithFiles(
+      "/rubber-lining/portal/affiliate-commission/price-lists/upload",
+      [file],
+      { affiliateId },
+      "file",
+    );
+  };
+
+  affiliateCommissionPriceLists = createEndpoint<[affiliateId: number], unknown[]>(
+    apiClient,
+    "GET",
+    {
+      path: (id) => `/rubber-lining/portal/affiliate-commission/price-lists/${id}`,
+    },
+  );
+
+  affiliateCommissionLatestPriceList = createEndpoint<[affiliateId: number], unknown[]>(
+    apiClient,
+    "GET",
+    {
+      path: (id) => `/rubber-lining/portal/affiliate-commission/price-lists/${id}/latest`,
+    },
+  );
+
+  affiliateCommissionPriceListItems = createEndpoint<
+    [affiliateId: number, priceListId: number],
+    unknown[]
+  >(apiClient, "GET", {
+    path: (affiliateId, priceListId) =>
+      `/rubber-lining/portal/affiliate-commission/price-lists/${affiliateId}/items/${priceListId}`,
+  });
+
+  affiliateCommissionPayouts = createEndpoint<[status?: string], unknown[]>(apiClient, "GET", {
+    path: (status) =>
+      `/rubber-lining/portal/affiliate-commission/payouts${status ? `?status=${status}` : ""}`,
+  });
+
+  affiliateCommissionCreatePayout = createEndpoint<[dto: unknown], unknown>(apiClient, "POST", {
+    path: "/rubber-lining/portal/affiliate-commission/payouts",
+    body: (dto) => dto,
+  });
+
+  affiliateCommissionUpdatePayoutStatus = createEndpoint<
+    [id: number, dto: { status: string; paidBy?: string; notes?: string }],
+    unknown
+  >(apiClient, "PATCH", {
+    path: (id) => `/rubber-lining/portal/affiliate-commission/payouts/${id}/status`,
+    body: (_id, dto) => dto,
+  });
+
+  affiliateCommissionReleaseFromRecon = createEndpoint<
+    [bankReconId: number, payoutIds: number[], paidBy: string],
+    { released: number }
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/affiliate-commission/payouts/release-from-recon",
+    body: (bankReconId, payoutIds, paidBy) => ({ bankReconId, payoutIds, paidBy }),
+  });
 }
 
 export interface WebsitePageDto {

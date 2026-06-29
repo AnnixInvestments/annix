@@ -11,6 +11,7 @@ export const AU_RUBBER_FEATURES = {
   DOC_AI_FULL: "DOC_AI_FULL",
   COC_COMPLIANCE: "COC_COMPLIANCE",
   ACCOUNTING_RECON: "ACCOUNTING_RECON",
+  AFFILIATE_COMMISSION: "AFFILIATE_COMMISSION",
   SAGE_EXPORT: "SAGE_EXPORT",
   WEBSITE_CMS: "WEBSITE_CMS",
   WHITE_LABEL_RBAC: "WHITE_LABEL_RBAC",
@@ -102,11 +103,19 @@ export const AU_RUBBER_LICENSING: ModuleLicensingDefinition = {
       displayOrder: 7,
     },
     {
+      key: AU_RUBBER_FEATURES.AFFILIATE_COMMISSION,
+      label: "Affiliate & Commission",
+      description:
+        "Sales rep commission tracking, affiliate management, price-list uploads, commission payout on paid invoices.",
+      category: "Finance",
+      displayOrder: 8,
+    },
+    {
       key: AU_RUBBER_FEATURES.SAGE_EXPORT,
       label: "Sage export",
       description: "Export CoCs/invoices to Sage accounting via the adapter.",
       category: "Finance",
-      displayOrder: 8,
+      displayOrder: 9,
     },
     {
       key: AU_RUBBER_FEATURES.WEBSITE_CMS,
@@ -203,6 +212,7 @@ export const AU_RUBBER_LICENSING: ModuleLicensingDefinition = {
       AU_RUBBER_FEATURES.DOC_AI_FULL,
       AU_RUBBER_FEATURES.COC_COMPLIANCE,
       AU_RUBBER_FEATURES.ACCOUNTING_RECON,
+      AU_RUBBER_FEATURES.AFFILIATE_COMMISSION,
       AU_RUBBER_FEATURES.SAGE_EXPORT,
       AU_RUBBER_FEATURES.WEBSITE_CMS,
       AU_RUBBER_FEATURES.WHITE_LABEL_RBAC,
