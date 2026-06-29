@@ -44,6 +44,7 @@ const DEFAULT_WIDTH = 340;
 const DEFAULT_HEIGHT = 420;
 const GEOMETRY_KEY = "feedback-widget-geometry";
 const MIN_SCREENSHOT_BYTES = 500;
+const SCREENSHOT_TIMEOUT_MS = 2500;
 
 interface Attachment {
   file: File;
@@ -435,23 +436,9 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
         },
       };
 
-      // WebKit (iOS Safari, every iOS in-app WebView and the installed PWA) drops
-      // images and inlined styles on the first one or two html-to-image passes,
-      // returning a blank or near-empty blob — the reason the auto-screenshot was
-      // failing on the phone app. Re-rendering warms the cloned document so the
-      // final pass is complete. Harmless single pass everywhere else.
-      const ua = window.navigator.userAgent;
-      const isWebKit =
-        /\b(iPad|iPhone|iPod)\b/.test(ua) || (ua.includes("Safari") && !ua.includes("Chrome"));
-      const warmupPasses = isWebKit ? [0, 1, 2] : [0];
-      const renderWithWarmup = warmupPasses.reduce<Promise<Blob | null>>(
-        (prev) => prev.then(() => toBlob(contentRoot, renderOptions)),
-        Promise.resolve(null),
-      );
-
       const fullPageBlob = await Promise.race([
-        renderWithWarmup,
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), isWebKit ? 15000 : 8000)),
+        toBlob(contentRoot, renderOptions),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), SCREENSHOT_TIMEOUT_MS)),
       ]);
 
       if (!fullPageBlob || fullPageBlob.size <= MIN_SCREENSHOT_BYTES) {
@@ -525,23 +512,6 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
     }
   }, []);
 
-  useEffect(() => {
-    if (isExpanded && !showSuccess) {
-      const timeoutId = setTimeout(async () => {
-        const file = await captureScreenshot();
-        if (file) {
-          const preview = URL.createObjectURL(file);
-          setAttachments((prev) => {
-            const withoutOldScreenshot = prev.filter((a) => !a.isAutoScreenshot);
-            return [{ file, preview, isAutoScreenshot: true }, ...withoutOldScreenshot];
-          });
-        }
-      }, 300);
-      return () => clearTimeout(timeoutId);
-    }
-    return undefined;
-  }, [isExpanded, showSuccess, captureScreenshot]);
-
   const handleSubmit = async () => {
     if (isSubmitDisabled(content, isSubmitting, isListening)) {
       return;
@@ -554,9 +524,10 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
       const freshScreenshot = await captureScreenshot();
 
       const userAttachments = attachments.filter((a) => !a.isAutoScreenshot);
+      const manualAttachmentLimit = freshScreenshot ? MAX_ATTACHMENTS - 1 : MAX_ATTACHMENTS;
       const userFiles = [
         ...(freshScreenshot ? [freshScreenshot] : []),
-        ...userAttachments.map((a) => a.file),
+        ...userAttachments.slice(0, manualAttachmentLimit).map((a) => a.file),
       ];
       const captureUrl = isUndefined(globalThis.window) ? pathname : window.location.href;
       const viewportWidth = isUndefined(globalThis.window) ? undefined : window.innerWidth;
@@ -995,7 +966,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
 
             <div className="flex items-center gap-1 mt-1">
               <span className="text-[10px] text-gray-400 dark:text-gray-500 italic">
-                A screenshot of the page is attached automatically
+                A screenshot is attached on send when your device can capture it quickly
               </span>
             </div>
 

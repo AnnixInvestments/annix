@@ -29,6 +29,10 @@ export {
   useUpdateSlaConfig,
 } from "./admin/useAdminMessaging";
 export {
+  useAdminOrbitBillingSettings,
+  useAdminSetOrbitBillingModuleEnabled,
+} from "./admin/useAdminOrbitBillingSettings";
+export {
   useAdminCreateOrbitCredentialType,
   useAdminDeleteOrbitCredentialType,
   useAdminOrbitCredentialTypes,

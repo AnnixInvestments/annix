@@ -139,6 +139,19 @@ function AiCostIcon() {
   );
 }
 
+function BillingIcon() {
+  return (
+    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M2.25 8.25h19.5M4.5 6h15A2.25 2.25 0 0121.75 8.25v7.5A2.25 2.25 0 0119.5 18h-15a2.25 2.25 0 01-2.25-2.25v-7.5A2.25 2.25 0 014.5 6zm2.25 8.25h3"
+      />
+    </svg>
+  );
+}
+
 function UsersIcon() {
   return (
     <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -186,6 +199,14 @@ const orbitAdminCards: AppHubCard[] = [
     icon: <SeekerTiersIcon />,
     color: "bg-indigo-100 text-indigo-600",
     hoverColor: "hover:border-indigo-400 group-hover:bg-indigo-600 group-hover:text-white",
+  },
+  {
+    href: "/admin/portal/orbit/billing",
+    title: "Billing",
+    description: "Switch payments on or off for Seekers, Companies, Recruiters and Students.",
+    icon: <BillingIcon />,
+    color: "bg-emerald-100 text-emerald-600",
+    hoverColor: "hover:border-emerald-400 group-hover:bg-emerald-600 group-hover:text-white",
   },
   {
     href: "/admin/portal/orbit/ee-targets",

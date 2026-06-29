@@ -44,6 +44,7 @@ import { AnnixOrbitStudentLicensingRegistrar } from "./annix-orbit-student-licen
 import { AnnixOrbitCapabilities } from "./capabilities/annix-orbit.capabilities";
 import { PaystackConfigService } from "./config/paystack.config";
 import { AdminEeTargetsController } from "./controllers/admin-ee-targets.controller";
+import { AdminOrbitBillingSettingsController } from "./controllers/admin-orbit-billing-settings.controller";
 import { AdminOrbitCredentialTypesController } from "./controllers/admin-orbit-credential-types.controller";
 import { AdminOrbitDelistReportsController } from "./controllers/admin-orbit-delist-reports.controller";
 import { AdminOrbitDismissReasonsController } from "./controllers/admin-orbit-dismiss-reasons.controller";
@@ -360,6 +361,7 @@ import { MarketInsightsService } from "./services/market-insights.service";
 import { NixCvPdfService } from "./services/nix-cv-pdf.service";
 import { NixJobAssistService } from "./services/nix-job-assist.service";
 import { NixSeekerAssistService } from "./services/nix-seeker-assist.service";
+import { OrbitBillingSettingsService } from "./services/orbit-billing-settings.service";
 import { OrbitCredentialTypeService } from "./services/orbit-credential-type.service";
 import { OrbitDismissReasonService } from "./services/orbit-dismiss-reason.service";
 import { OrbitEarlyAccessService } from "./services/orbit-early-access.service";
@@ -614,6 +616,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     PublicEeDisclosureController,
     ComplianceController,
     AdminEeTargetsController,
+    AdminOrbitBillingSettingsController,
     AdminOrbitJobMarketController,
     AdminOrbitSeekerController,
     AdminOrbitUsersController,
@@ -716,6 +719,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     AnnixOrbitLicensingRegistrar,
     AnnixOrbitRecruiterLicensingRegistrar,
     AnnixOrbitStudentLicensingRegistrar,
+    OrbitBillingSettingsService,
     SeekerJobFeedService,
     SeekerApplicationsService,
     SeekerCalendarService,

@@ -14,7 +14,6 @@ import { now } from "../../lib/datetime";
 import { decryptField, encryptField, fieldEncryptionEnabled } from "../../lib/field-encryption";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { UserRepository } from "../../user/user.repository";
-import { isAnnixOrbitBillingEnforced } from "../annix-orbit-billing.config";
 import { isAcceptedDocumentMime, isImageMime } from "../config/individual-documents.config";
 import {
   EeConsentSource,
@@ -52,6 +51,7 @@ import { CvExtractionService } from "./cv-extraction.service";
 import { EmbeddingService } from "./embedding.service";
 import { GeocodeService } from "./geocode.service";
 import { NixSeekerAssistService } from "./nix-seeker-assist.service";
+import { OrbitBillingSettingsService } from "./orbit-billing-settings.service";
 import { type EeAttributesView, PopiaService } from "./popia.service";
 import { SeekerTelemetryService } from "./seeker-telemetry.service";
 
@@ -191,6 +191,7 @@ export class IndividualProfileService {
     private readonly pendingTierRepo: PendingSeekerTierRepository,
     private readonly billingEventRepo: SeekerBillingEventRepository,
     private readonly usageCounterRepo: SeekerUsageCounterRepository,
+    private readonly billingSettings: OrbitBillingSettingsService,
   ) {}
 
   private async canReprocessCandidate(candidateId: number): Promise<boolean> {
@@ -436,7 +437,7 @@ export class IndividualProfileService {
       billingStatus:
         profile && isOrbitBillingStatus(profile.billingStatus) ? profile.billingStatus : null,
       paidUntil: profile?.paidUntil ?? null,
-      enforced: isAnnixOrbitBillingEnforced(),
+      enforced: await this.billingSettings.enabled("seeker"),
       nowMillis: now().toMillis(),
     });
   }

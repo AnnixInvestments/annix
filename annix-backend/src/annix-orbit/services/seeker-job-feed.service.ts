@@ -25,7 +25,6 @@ import {
   WhatsAppConsentSenderService,
 } from "../../whatsapp/services/whatsapp-consent-sender.service";
 import { normalizeWaId } from "../../whatsapp/wa-id";
-import { isAnnixOrbitBillingEnforced } from "../annix-orbit-billing.config";
 import { isAnnixOrbitWhatsAppQuotaGateEnabled } from "../annix-orbit-quota-gate.config";
 import { IndividualDocumentKind } from "../entities/annix-orbit-individual-document.entity";
 import { AnnixOrbitProfile } from "../entities/annix-orbit-profile.entity";
@@ -67,6 +66,7 @@ import { CvAuditService } from "./cv-audit.service";
 import { CvNotificationService } from "./cv-notification.service";
 import { EmbeddingService } from "./embedding.service";
 import { JobMarketCountriesService } from "./job-market-countries.service";
+import { OrbitBillingSettingsService } from "./orbit-billing-settings.service";
 import { SeekerTelemetryService } from "./seeker-telemetry.service";
 
 const HELP_FIND_JOB_OPERATION = "help-find-job";
@@ -368,6 +368,7 @@ export class SeekerJobFeedService {
     private readonly waMessageRepo: WhatsAppMessageRepository,
     private readonly cvAuditService: CvAuditService,
     private readonly whatsappConsentSender: WhatsAppConsentSenderService,
+    private readonly billingSettings: OrbitBillingSettingsService,
   ) {}
 
   // Union of the seeker's candidates' target countries; defaults to South Africa.
@@ -691,6 +692,7 @@ export class SeekerJobFeedService {
     const liveTrial = candidates.find(
       (c) => c.trialTier != null && c.trialEndsAt != null && c.trialEndsAt.getTime() > nowMillis(),
     );
+    const billingEnabled = await this.billingSettings.enabled("seeker");
     return resolveEntitledTier({
       requestedTier,
       trialTier: liveTrial?.trialTier ?? null,
@@ -699,7 +701,7 @@ export class SeekerJobFeedService {
       billingStatus:
         profile && isOrbitBillingStatus(profile.billingStatus) ? profile.billingStatus : null,
       paidUntil: profile?.paidUntil ?? null,
-      enforced: isAnnixOrbitBillingEnforced(),
+      enforced: billingEnabled,
       nowMillis: nowMillis(),
     });
   }
@@ -777,10 +779,9 @@ export class SeekerJobFeedService {
     return this.entitlementsForSeeker(email);
   }
 
-  // Facet options for the filter dropdowns: only the provinces, cities, categories
-  // and sources that actually have a match in the seeker's set. Each facet is
-  // computed with every OTHER active filter applied but not its own, so a chosen
-  // value never collapses its own dropdown and empty options never appear.
+  // Facet options for the filter dropdowns. Provinces, categories and sources
+  // come from the seeker's matched set; cities expand to the curated province
+  // town list once a province is selected, then include any extra matched towns.
   async recommendedFacetsForSeeker(
     email: string | null,
     options: { filters?: RecommendedJobFilters | null } = {},
@@ -829,10 +830,10 @@ export class SeekerJobFeedService {
     // Union of each selected province's curated city order, then any remaining
     // matched cities alphabetically.
     const orderedCities = [...new Set(selectedProvinces.flatMap((p) => citiesForProvince(p)))];
-    const cities = [
-      ...orderedCities.filter((c) => cityValues.has(c)),
-      ...[...cityValues].filter((c) => !orderedCities.includes(c)).sort(),
-    ];
+    const cities =
+      selectedProvinces.length > 0
+        ? [...orderedCities, ...[...cityValues].filter((c) => !orderedCities.includes(c)).sort()]
+        : [];
 
     const categoryValues = distinctPassing(
       rows,

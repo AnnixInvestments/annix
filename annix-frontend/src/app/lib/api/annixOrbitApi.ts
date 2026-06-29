@@ -1825,6 +1825,7 @@ export interface SeekerSubscriptionView {
 export interface SeekerBillingStatusView {
   tier: string;
   billingStatus: SeekerBillingStatus;
+  enforced: boolean;
   paidUntil: string | null;
   subscription: SeekerSubscriptionView | null;
 }

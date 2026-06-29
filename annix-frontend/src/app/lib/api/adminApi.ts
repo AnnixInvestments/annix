@@ -1242,6 +1242,20 @@ class AdminApiClient {
     return this.request("/admin/annix-orbit/job-market/retention-cap");
   }
 
+  async orbitBillingSettings(): Promise<OrbitBillingSettings> {
+    return this.request("/admin/annix-orbit/billing-settings");
+  }
+
+  async setOrbitBillingModuleEnabled(
+    module: OrbitBillingModule,
+    enabled: boolean,
+  ): Promise<OrbitBillingSettings> {
+    return this.request(`/admin/annix-orbit/billing-settings/${module}`, {
+      method: "PUT",
+      body: JSON.stringify({ enabled }),
+    });
+  }
+
   async platformLimits(): Promise<PlatformLimitsResponse> {
     return this.request("/admin/platform-limits");
   }
@@ -1980,6 +1994,19 @@ export interface OrbitClusterUsage {
   freeMb: number;
   percentUsed: number;
   databases: Array<{ name: string; logicalMb: number }>;
+}
+
+export type OrbitBillingModule = "seeker" | "company" | "recruiter" | "student";
+
+export interface OrbitBillingModuleSetting {
+  module: OrbitBillingModule;
+  enabled: boolean;
+  envDefault: boolean;
+  persisted: boolean;
+}
+
+export interface OrbitBillingSettings {
+  modules: OrbitBillingModuleSetting[];
 }
 
 export type PlatformLimitStatus = "ok" | "warn" | "critical" | "info";

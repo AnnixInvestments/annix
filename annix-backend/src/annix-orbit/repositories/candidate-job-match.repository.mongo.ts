@@ -25,6 +25,7 @@ function escapeRegex(value: string): string {
 function buildLiveJobFilter(filters: RecommendedMatchCountFilters | null): Record<string, unknown> {
   const query: Record<string, unknown> = {
     delisted: { $ne: true },
+    delistReview: { $ne: "pending" },
     $or: [{ expiresAt: null }, { expiresAt: { $gt: now().toJSDate() } }],
   };
   const and: Array<Record<string, unknown>> = [];
@@ -311,6 +312,7 @@ export class MongoCandidateJobMatchRepository
               {
                 $match: {
                   delisted: { $ne: true },
+                  delistReview: { $ne: "pending" },
                   $or: [{ expiresAt: null }, { expiresAt: { $gt: now().toJSDate() } }],
                 },
               },

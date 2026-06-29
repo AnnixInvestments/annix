@@ -255,7 +255,10 @@ export class MongoExternalJobRepository
   ): Promise<{ jobs: ExternalJob[]; total: number }> {
     const page = Math.max(options.page ?? 1, 1);
     const limit = Math.min(Math.max(options.limit ?? 20, 1), 100);
-    const filter: Record<string, unknown> = { delisted: { $ne: true } };
+    const filter: Record<string, unknown> = {
+      delisted: { $ne: true },
+      delistReview: { $ne: "pending" },
+    };
     if (options.country) filter.country = options.country;
     if (options.category) filter.category = options.category;
     if (options.search) {
@@ -415,7 +418,11 @@ export class MongoExternalJobRepository
   }
 
   async coldStartJobs(locationTokens: string[], limit: number): Promise<ExternalJob[]> {
-    const filter: Record<string, unknown> = { country: "za", delisted: { $ne: true } };
+    const filter: Record<string, unknown> = {
+      country: "za",
+      delisted: { $ne: true },
+      delistReview: { $ne: "pending" },
+    };
     if (locationTokens.length > 0) {
       filter.$or = locationTokens.map((token) => ({
         locationRaw: { $regex: escapeRegex(token), $options: "i" },
@@ -432,7 +439,7 @@ export class MongoExternalJobRepository
 
   async coldStartFallbackJobs(limit: number): Promise<ExternalJob[]> {
     const docs = await this.documents
-      .find({ country: "za", delisted: { $ne: true } })
+      .find({ country: "za", delisted: { $ne: true }, delistReview: { $ne: "pending" } })
       .sort({ postedAt: -1 })
       .limit(limit)
       .lean()

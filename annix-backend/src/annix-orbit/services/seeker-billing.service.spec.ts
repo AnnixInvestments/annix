@@ -4,6 +4,7 @@ import type { PaystackConfigService } from "../config/paystack.config";
 import type { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import type { OrbitTierCapabilityRepository } from "../repositories/orbit-tier-capability.repository";
 import type { SeekerBillingEventRepository } from "../repositories/seeker-billing-event.repository";
+import type { OrbitBillingSettingsService } from "./orbit-billing-settings.service";
 import type { PaystackApiService } from "./paystack-api.service";
 import { SeekerBillingService } from "./seeker-billing.service";
 
@@ -34,6 +35,9 @@ function makeService() {
     secretKey: jest.fn().mockReturnValue("sk_test"),
     callbackUrl: jest.fn().mockReturnValue(null),
   } as unknown as jest.Mocked<PaystackConfigService>;
+  const billingSettings = {
+    enabled: jest.fn().mockResolvedValue(true),
+  } as unknown as jest.Mocked<OrbitBillingSettingsService>;
 
   const service = new SeekerBillingService(
     profileRepo,
@@ -42,6 +46,7 @@ function makeService() {
     billingEventRepo,
     paystackApi,
     paystackConfig,
+    billingSettings,
   );
   return {
     service,
@@ -51,6 +56,7 @@ function makeService() {
     billingEventRepo,
     paystackApi,
     paystackConfig,
+    billingSettings,
   };
 }
 
@@ -67,6 +73,15 @@ function profile(overrides: Record<string, unknown> = {}) {
 }
 
 describe("SeekerBillingService.startCheckout", () => {
+  it("rejects checkout while seeker billing is disabled", async () => {
+    const { service, billingSettings } = makeService();
+    billingSettings.enabled.mockResolvedValue(false);
+
+    await expect(service.startCheckout(USER_ID, "medium")).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+  });
+
   it("rejects the free soft tier", async () => {
     const { service } = makeService();
     await expect(service.startCheckout(USER_ID, "soft")).rejects.toBeInstanceOf(
@@ -113,6 +128,18 @@ describe("SeekerBillingService.startCheckout", () => {
       }),
     );
     expect(result).toEqual({ authorizationUrl: "https://paystack/redirect", reference: "ref_1" });
+  });
+});
+
+describe("SeekerBillingService.status", () => {
+  it("exposes whether billing is currently enforced", async () => {
+    const { service, profileRepo, billingSettings } = makeService();
+    billingSettings.enabled.mockResolvedValue(true);
+    profileRepo.findByUserId.mockResolvedValue(profile());
+
+    await expect(service.status(USER_ID)).resolves.toEqual(
+      expect.objectContaining({ enforced: true }),
+    );
   });
 });
 

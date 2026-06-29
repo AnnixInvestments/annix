@@ -2,11 +2,11 @@ import { DEFAULT_MATCH_TIER, isMatchTier } from "@annix/product-data/sa-market";
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { now } from "../../lib/datetime";
 import { UserRepository } from "../../user/user.repository";
-import { isAnnixOrbitBillingEnforced } from "../annix-orbit-billing.config";
 import { isOrbitBillingStatus, resolveEntitledTier } from "../lib/seeker-entitlement";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import { CandidateRepository } from "../repositories/candidate.repository";
 import { OrbitTierCapabilityRepository } from "../repositories/orbit-tier-capability.repository";
+import { OrbitBillingSettingsService } from "./orbit-billing-settings.service";
 
 export interface ReminderPreferencesView {
   phone: string | null;
@@ -36,6 +36,7 @@ export class SeekerReminderPreferencesService {
     private readonly userRepo: UserRepository,
     private readonly candidateRepo: CandidateRepository,
     private readonly tierCapabilityRepo: OrbitTierCapabilityRepository,
+    private readonly billingSettings: OrbitBillingSettingsService,
   ) {}
 
   async get(userId: number): Promise<ReminderPreferencesView> {
@@ -95,7 +96,7 @@ export class SeekerReminderPreferencesService {
       billingStatus:
         profile && isOrbitBillingStatus(profile.billingStatus) ? profile.billingStatus : null,
       paidUntil: profile?.paidUntil ?? null,
-      enforced: isAnnixOrbitBillingEnforced(),
+      enforced: await this.billingSettings.enabled("seeker"),
       nowMillis: now().toMillis(),
     });
     const capability = await this.tierCapabilityRepo.findByTier(tier);

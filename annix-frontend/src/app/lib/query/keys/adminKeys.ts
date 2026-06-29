@@ -110,6 +110,9 @@ export const adminKeys = {
     retentionCap: () => [...adminKeys.orbitJobMarket.all, "retentionCap"] as const,
     enabledCountries: () => [...adminKeys.orbitJobMarket.all, "enabledCountries"] as const,
   },
+  orbitBillingSettings: {
+    all: ["admin", "orbitBillingSettings"] as const,
+  },
   orbitEarlyAccess: {
     all: ["admin", "orbitEarlyAccess"] as const,
     stats: () => [...adminKeys.orbitEarlyAccess.all, "stats"] as const,

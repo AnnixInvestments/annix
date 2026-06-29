@@ -91,6 +91,7 @@ function makeService(wiring: Wiring) {
     tierCapabilityRepo,
     usageCounterRepo,
     whatsappConsentSender,
+    billingSettings: { enabled: jest.fn().mockResolvedValue(false) },
     logger: { log: jest.fn(), warn: jest.fn() },
     lastRematchByCandidate: new Map<number, number>(),
   });

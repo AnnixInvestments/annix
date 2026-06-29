@@ -60,6 +60,7 @@ function SeekerPlansContent() {
   const billingQuery = useOrbitSeekerBillingStatus();
   const billing = billingQuery.data;
   const billingStatus = billing ? billing.billingStatus : "none";
+  const billingEnforced = billing ? billing.enforced : false;
   const paidUntil = billing ? billing.paidUntil : null;
   const subscription = billing ? billing.subscription : null;
   const hasActiveSubscription =
@@ -178,7 +179,7 @@ function SeekerPlansContent() {
   };
 
   const handleSelectPlan = (tier: string) => {
-    if (isPayableTier(tier)) {
+    if (billingEnforced && isPayableTier(tier)) {
       handleStartCheckout(tier);
       return;
     }
@@ -227,6 +228,9 @@ function SeekerPlansContent() {
         <p className="mt-2 text-sm text-white/70">
           Choose how far you want to go. Start free on Explorer, or upgrade any time for sharper
           matching, more Nix Job Finds and the full toolkit.
+          {billingEnforced
+            ? ""
+            : " It's free while Annix Orbit is in testing — billing comes later."}
           {inOnboarding
             ? " This wraps up account setup — next, we'll help you build your profile."
             : ""}

@@ -8,7 +8,6 @@ import {
   NotificationDispatcherService,
 } from "../../notifications/notification-dispatcher.service";
 import { UserRepository } from "../../user/user.repository";
-import { isAnnixOrbitBillingEnforced } from "../annix-orbit-billing.config";
 import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
 import { SeekerInterviewEvent } from "../entities/seeker-interview-event.entity";
 import { isOrbitBillingStatus, resolveEntitledTier } from "../lib/seeker-entitlement";
@@ -17,6 +16,7 @@ import { CandidateRepository } from "../repositories/candidate.repository";
 import { OrbitTierCapabilityRepository } from "../repositories/orbit-tier-capability.repository";
 import { SeekerInterviewEventRepository } from "../repositories/seeker-interview-event.repository";
 import { SeekerInterviewReminderRepository } from "../repositories/seeker-interview-reminder.repository";
+import { OrbitBillingSettingsService } from "./orbit-billing-settings.service";
 
 type ReminderOffset = "24h" | "1h";
 
@@ -39,6 +39,7 @@ export class InterviewReminderService {
     private readonly tierCapabilityRepo: OrbitTierCapabilityRepository,
     private readonly dispatcher: NotificationDispatcherService,
     private readonly configService: ConfigService,
+    private readonly billingSettings: OrbitBillingSettingsService,
   ) {}
 
   @Cron("*/30 * * * *", { name: "annix-orbit:interview-reminders" })
@@ -125,7 +126,7 @@ export class InterviewReminderService {
       entitledTier: profile.entitledTier ?? null,
       billingStatus: isOrbitBillingStatus(profile.billingStatus) ? profile.billingStatus : null,
       paidUntil: profile.paidUntil ?? null,
-      enforced: isAnnixOrbitBillingEnforced(),
+      enforced: await this.billingSettings.enabled("seeker"),
       nowMillis: now().toMillis(),
     });
     const tierCapability = await this.tierCapabilityRepo.findByTier(tier);

@@ -109,7 +109,8 @@ function buildQuery(getRows: () => Doc[], single = false) {
     return single ? (projected[0] ?? null) : projected;
   };
   const builder: Record<string, unknown> = {
-    select(proj: Record<string, number>) {
+    select(proj: Record<string, number> | string) {
+      if (typeof proj === "string") return builder;
       projection = proj;
       return builder;
     },
@@ -119,6 +120,10 @@ function buildQuery(getRows: () => Doc[], single = false) {
     },
     limit(n: number) {
       rows = rows.slice(0, n);
+      return builder;
+    },
+    skip(n: number) {
+      rows = rows.slice(n);
       return builder;
     },
     lean() {
@@ -223,7 +228,10 @@ class FakeCollection {
   countDocuments(filter: Doc = {}) {
     const count = () => this.rows.filter((r) => matchesFilter(r, filter)).length;
     const pending = Promise.resolve().then(count);
-    return Object.assign(pending, { exec: async () => count() });
+    return Object.assign(pending, {
+      exec: async () => count(),
+      session: () => ({ exec: async () => count() }),
+    });
   }
 
   deleteMany(filter: Doc) {
@@ -361,6 +369,32 @@ describe("MongoExternalJobRepository — embedding source-of-truth (C1/H-1)", ()
 
     expect(filtered).toEqual(unfiltered);
     expect(filtered).toEqual([1, 2]);
+  });
+});
+
+describe("MongoExternalJobRepository — seeker public listings", () => {
+  it("quarantines pending delist reports from the public job list", async () => {
+    const { repo, jobs } = buildHarness();
+    jobs.seed([
+      seedJob(jobs, { _id: 1, title: "Live role", postedAt: fromISO("2026-06-03").toJSDate() }),
+      seedJob(jobs, {
+        _id: 2,
+        title: "Reported role",
+        delistReview: "pending",
+        postedAt: fromISO("2026-06-02").toJSDate(),
+      }),
+      seedJob(jobs, {
+        _id: 3,
+        title: "Confirmed delisted role",
+        delisted: true,
+        postedAt: fromISO("2026-06-01").toJSDate(),
+      }),
+    ]);
+
+    const result = await repo.publicExternalJobs({ limit: 10 });
+
+    expect(result.jobs.map((job) => job.id)).toEqual([1]);
+    expect(result.total).toBe(1);
   });
 });
 

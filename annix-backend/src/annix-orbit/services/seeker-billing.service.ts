@@ -18,6 +18,7 @@ import {
 } from "../repositories/annix-orbit-profile.repository";
 import { OrbitTierCapabilityRepository } from "../repositories/orbit-tier-capability.repository";
 import { SeekerBillingEventRepository } from "../repositories/seeker-billing-event.repository";
+import { OrbitBillingSettingsService } from "./orbit-billing-settings.service";
 import { PaystackApiService } from "./paystack-api.service";
 
 const PAYABLE_TIERS = ["medium", "hard"] as const;
@@ -38,6 +39,7 @@ export interface SeekerSubscriptionView {
 export interface SeekerBillingStatusView {
   tier: string;
   billingStatus: OrbitBillingStatus;
+  enforced: boolean;
   paidUntil: Date | null;
   subscription: SeekerSubscriptionView | null;
 }
@@ -103,9 +105,13 @@ export class SeekerBillingService {
     private readonly billingEventRepo: SeekerBillingEventRepository,
     private readonly paystackApi: PaystackApiService,
     private readonly paystackConfig: PaystackConfigService,
+    private readonly billingSettings: OrbitBillingSettingsService,
   ) {}
 
   async startCheckout(userId: number, tier: string): Promise<SeekerCheckoutResult> {
+    if (!(await this.billingSettings.enabled("seeker"))) {
+      throw new ServiceUnavailableException("Seeker billing is not enabled yet");
+    }
     if (!this.paystackConfig.isConfigured()) {
       throw new ServiceUnavailableException("Billing is not configured — please try again later");
     }
@@ -164,6 +170,7 @@ export class SeekerBillingService {
     return {
       tier: profile.entitledTier,
       billingStatus: isOrbitBillingStatus(profile.billingStatus) ? profile.billingStatus : "none",
+      enforced: await this.billingSettings.enabled("seeker"),
       paidUntil: profile.paidUntil,
       subscription,
     };
