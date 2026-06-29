@@ -46,7 +46,16 @@ export default function PriceListsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const [viewingItems, setViewingItems] = useState<PriceListItem[] | null>(null);
+
+  const [showNewAffiliate, setShowNewAffiliate] = useState(false);
+  const [newAffiliateForm, setNewAffiliateForm] = useState({
+    name: "",
+    contactName: "",
+    email: "",
+    commissionPercent: 0,
+  });
 
   const fetchAffiliates = async () => {
     try {
@@ -92,6 +101,24 @@ export default function PriceListsPage() {
     fetchPriceLists(affiliateId);
   };
 
+  const handleCreateAffiliate = async () => {
+    try {
+      await auRubberApiClient.affiliateCommissionCreateAffiliate({
+        name: newAffiliateForm.name,
+        contactName: newAffiliateForm.contactName,
+        email: newAffiliateForm.email,
+        commissionPercent: newAffiliateForm.commissionPercent || undefined,
+      });
+      showToast("Affiliate created", "success");
+      setShowNewAffiliate(false);
+      setNewAffiliateForm({ name: "", contactName: "", email: "", commissionPercent: 0 });
+      await fetchAffiliates();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to create affiliate";
+      alert({ message: msg, variant: "error" });
+    }
+  };
+
   const handleUpload = async () => {
     if (!selectedAffiliateId || !uploadFile) return;
     try {
@@ -120,7 +147,27 @@ export default function PriceListsPage() {
     }
   };
 
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const files = e.dataTransfer.files;
+    const firstFile = files?.[0];
+    const file = firstFile || null;
+    setUploadFile(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(true);
+  };
+
+  const handleDragLeave = () => setDragOver(false);
+
   const selectedAffiliate = affiliates.find((a) => a.id === selectedAffiliateId);
+  const naName = newAffiliateForm.name;
+  const naContact = newAffiliateForm.contactName;
+  const naEmail = newAffiliateForm.email;
+  const canCreateAffiliate = naName.length > 0 && naContact.length > 0 && naEmail.length > 0;
 
   return (
     <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/accounting"]}>
@@ -141,11 +188,11 @@ export default function PriceListsPage() {
           Affiliate Price Lists
         </h1>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <select
             value={selectedAffiliateId || ""}
             onChange={(e) => handleAffiliateChange(parseInt(e.target.value, 10))}
-            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm min-w-[200px]"
           >
             <option value="">Select an affiliate...</option>
             {affiliates.map((a) => (
@@ -154,6 +201,14 @@ export default function PriceListsPage() {
               </option>
             ))}
           </select>
+
+          <button
+            type="button"
+            onClick={() => setShowNewAffiliate(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg hover:bg-yellow-100 dark:hover:bg-yellow-900/30 transition-colors"
+          >
+            + New Affiliate
+          </button>
 
           {selectedAffiliateId && (
             <button
@@ -235,6 +290,105 @@ export default function PriceListsPage() {
           ))}
       </div>
 
+      {showNewAffiliate &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+            <div
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={() => setShowNewAffiliate(false)}
+            />
+            <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  New Affiliate
+                </h2>
+                <button
+                  onClick={() => setShowNewAffiliate(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Company Name
+                  </label>
+                  <input
+                    type="text"
+                    value={newAffiliateForm.name}
+                    onChange={(e) =>
+                      setNewAffiliateForm({ ...newAffiliateForm, name: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Contact Name
+                  </label>
+                  <input
+                    type="text"
+                    value={newAffiliateForm.contactName}
+                    onChange={(e) =>
+                      setNewAffiliateForm({ ...newAffiliateForm, contactName: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={newAffiliateForm.email}
+                    onChange={(e) =>
+                      setNewAffiliateForm({ ...newAffiliateForm, email: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Commission %
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.1}
+                    value={newAffiliateForm.commissionPercent}
+                    onChange={(e) =>
+                      setNewAffiliateForm({
+                        ...newAffiliateForm,
+                        commissionPercent: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={() => setShowNewAffiliate(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateAffiliate}
+                  disabled={!canCreateAffiliate}
+                  className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-lg hover:bg-yellow-700 disabled:opacity-50 transition-colors"
+                >
+                  Create
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+
       {showUpload &&
         selectedAffiliateId &&
         createPortal(
@@ -256,20 +410,60 @@ export default function PriceListsPage() {
                 </button>
               </div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                Upload a PDF with the affiliate's minimum prices. The PDF should have columns for
-                product code, description, and price (e.g. "ITEM001 Widget R 150.00 each").
+                Upload a PDF with the affiliate&apos;s minimum prices. The PDF should have columns
+                for product code, description, and price (e.g. &quot;ITEM001 Widget R 150.00
+                each&quot;).
               </p>
-              <input
-                type="file"
-                accept=".pdf"
-                onChange={(e) => {
-                  const files = e.target.files;
-                  const firstFile = files?.[0];
-                  const file = firstFile || null;
-                  setUploadFile(file);
-                }}
-                className="w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100 dark:file:bg-yellow-900/20 dark:file:text-yellow-400"
-              />
+
+              <div
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
+                  dragOver
+                    ? "border-yellow-500 bg-yellow-50 dark:bg-yellow-900/10"
+                    : uploadFile
+                      ? "border-green-400 bg-green-50 dark:bg-green-900/10"
+                      : "border-gray-300 dark:border-gray-600 hover:border-yellow-400 dark:hover:border-yellow-600"
+                }`}
+              >
+                {uploadFile ? (
+                  <div className="space-y-2">
+                    <div className="text-green-600 dark:text-green-400 text-lg font-medium">
+                      {uploadFile.name}
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      {(uploadFile.size / 1024).toFixed(1)} KB
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setUploadFile(null)}
+                      className="text-xs text-red-500 hover:text-red-600 underline"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Upload className="h-8 w-8 mx-auto text-gray-400" />
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                      Drag & drop a PDF here, or click to browse
+                    </div>
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      onChange={(e) => {
+                        const files = e.target.files;
+                        const firstFile = files?.[0];
+                        const file = firstFile || null;
+                        setUploadFile(file);
+                      }}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                    />
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-end gap-3 mt-6">
                 <button
                   onClick={() => setShowUpload(false)}

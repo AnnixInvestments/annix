@@ -28,6 +28,9 @@ export class Affiliate {
   @Prop({ type: String, required: false })
   phone: string;
 
+  @Prop({ type: Number, required: false, default: 0 })
+  commissionPercent: number;
+
   @Prop({ type: String, required: true, default: "ACTIVE" })
   status: string;
 

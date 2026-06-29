@@ -919,10 +919,9 @@ export class SeekerJobFeedService {
       const dialCode = dialCodeForCountry(
         row.targetCountries && row.targetCountries.length > 0 ? row.targetCountries[0] : null,
       );
-      const e164 =
-        whatsapp && whatsapp.whatsappPhone
-          ? whatsapp.whatsappPhone
-          : normalizeWaId(profilePhone ?? cvPhone, dialCode);
+      const e164 = whatsapp?.whatsappPhone
+        ? whatsapp.whatsappPhone
+        : normalizeWaId(profilePhone ?? cvPhone, dialCode);
       return {
         id: row.id,
         userId: whatsapp ? whatsapp.userId : null,
@@ -1050,13 +1049,12 @@ export class SeekerJobFeedService {
         ? candidate.targetCountries[0]
         : null,
     );
-    const detailE164 =
-      seekerUser && seekerUser.whatsappPhone
-        ? seekerUser.whatsappPhone
-        : normalizeWaId(
-            (seekerProfile ? seekerProfile.phone : null) ?? (extracted ? extracted.phone : null),
-            detailDialCode,
-          );
+    const detailE164 = seekerUser?.whatsappPhone
+      ? seekerUser.whatsappPhone
+      : normalizeWaId(
+          (seekerProfile ? seekerProfile.phone : null) ?? (extracted ? extracted.phone : null),
+          detailDialCode,
+        );
 
     return {
       id: candidate.id,

@@ -326,6 +326,11 @@ const navSections: NavSection[] = [
         permission: PAGE_PERMISSIONS["/au-rubber/portal/accounting/reconciliation"],
       },
       {
+        href: "/au-rubber/portal/accounting/affiliate-commission",
+        label: "Affiliate Commission",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/accounting/affiliate-commission"],
+      },
+      {
         href: "/au-rubber/portal/accounting/directors",
         label: "Directors",
         permission: PAGE_PERMISSIONS["/au-rubber/portal/accounting/directors"],

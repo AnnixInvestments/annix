@@ -141,7 +141,7 @@ export class SocialSchedulerService {
         claimed.imageUrl,
       );
       const result = results[0];
-      claimed.status = result && result.ok ? "posted" : "failed";
+      claimed.status = result?.ok ? "posted" : "failed";
       claimed.resultMessage = result ? result.message : "No result returned.";
     } catch (error) {
       claimed.status = "failed";

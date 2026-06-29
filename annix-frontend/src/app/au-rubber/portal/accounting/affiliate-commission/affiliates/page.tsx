@@ -18,6 +18,7 @@ interface Affiliate {
   contactName: string;
   email: string;
   phone: string;
+  commissionPercent: number;
   status: string;
   notes: string;
 }
@@ -27,10 +28,18 @@ interface AffiliateForm {
   contactName: string;
   email: string;
   phone: string;
+  commissionPercent: number;
   notes: string;
 }
 
-const emptyForm: AffiliateForm = { name: "", contactName: "", email: "", phone: "", notes: "" };
+const emptyForm: AffiliateForm = {
+  name: "",
+  contactName: "",
+  email: "",
+  phone: "",
+  commissionPercent: 0,
+  notes: "",
+};
 
 export default function AffiliatesPage() {
   const { showToast } = useToast();
@@ -74,6 +83,7 @@ export default function AffiliatesPage() {
       contactName: a.contactName,
       email: a.email,
       phone: affPhone || "",
+      commissionPercent: a.commissionPercent,
       notes: affNotes || "",
     });
     setShowModal(true);
@@ -87,6 +97,7 @@ export default function AffiliatesPage() {
       contactName: form.contactName,
       email: form.email,
       phone: rawPhone || undefined,
+      commissionPercent: form.commissionPercent || undefined,
       notes: rawNotes || undefined,
     };
 
@@ -172,6 +183,7 @@ export default function AffiliatesPage() {
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Contact</th>
                   <th className="px-4 py-3">Email</th>
+                  <th className="px-4 py-3">Commission %</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Price List</th>
                   <th className="px-4 py-3 w-20 text-right" />
@@ -188,6 +200,9 @@ export default function AffiliatesPage() {
                     </td>
                     <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{a.contactName}</td>
                     <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{a.email}</td>
+                    <td className="px-4 py-3 font-mono text-gray-900 dark:text-gray-100">
+                      {a.commissionPercent}%
+                    </td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
@@ -296,6 +311,22 @@ export default function AffiliatesPage() {
                     type="text"
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Commission %
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.1}
+                    value={form.commissionPercent}
+                    onChange={(e) =>
+                      setForm({ ...form, commissionPercent: parseFloat(e.target.value) || 0 })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
                   />
                 </div>

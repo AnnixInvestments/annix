@@ -22,6 +22,7 @@ import { JobCardLineItemRepository } from "../stock-control/repositories/job-car
 import { MongoJobCardLineItemRepository } from "../stock-control/repositories/job-card-line-item.repository.mongo";
 import { JobCardSchema } from "../stock-control/schemas/job-card.schema";
 import { JobCardLineItemSchema } from "../stock-control/schemas/job-card-line-item.schema";
+import { StorageModule } from "../storage/storage.module";
 import { AffiliateCommissionController } from "./affiliate-commission.controller";
 import { AuRubberLicensingRegistrar } from "./au-rubber-licensing.registrar";
 import { BlogPostsController } from "./blog-posts.controller";
@@ -272,6 +273,7 @@ import { WebsitePagesService } from "./website-pages.service";
     RbacModule,
     SageExportModule,
     SharedModule,
+    StorageModule,
     CompanyBrandingModule,
     MongooseModule.forFeature([
       { name: "BlogPost", schema: BlogPostSchema },

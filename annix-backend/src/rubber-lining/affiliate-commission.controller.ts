@@ -121,6 +121,7 @@ export class AffiliateCommissionController {
       contactName: dto.contactName,
       email: dto.email,
       phone: dto.phone || "",
+      commissionPercent: dto.commissionPercent ?? 0,
       status: AffiliateStatus.ACTIVE,
       notes: dto.notes || "",
     });
@@ -139,6 +140,7 @@ export class AffiliateCommissionController {
     if (dto.contactName !== undefined) affiliate.contactName = dto.contactName;
     if (dto.email !== undefined) affiliate.email = dto.email;
     if (dto.phone !== undefined) affiliate.phone = dto.phone;
+    if (dto.commissionPercent !== undefined) affiliate.commissionPercent = dto.commissionPercent;
     if (dto.status !== undefined) affiliate.status = dto.status as AffiliateStatus;
     if (dto.notes !== undefined) affiliate.notes = dto.notes;
     return this.affiliateRepository.save(affiliate);

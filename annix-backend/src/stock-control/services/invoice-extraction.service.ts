@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
-import { fromISO, fromJSDate, now } from "../../lib/datetime";
+import { fromISO, now } from "../../lib/datetime";
 import { sanitizePromptHint } from "../../lib/prompt-hint-sanitizer";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";

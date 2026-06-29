@@ -15,6 +15,12 @@ export class CreateAffiliateDto {
   phone?: string;
 
   @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  commissionPercent?: number;
+
+  @IsOptional()
   @IsString()
   notes?: string;
 }
@@ -35,6 +41,12 @@ export class UpdateAffiliateDto {
   @IsOptional()
   @IsString()
   phone?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  commissionPercent?: number;
 
   @IsOptional()
   @IsString()

@@ -17,6 +17,8 @@ export class Affiliate {
 
   phone: string;
 
+  commissionPercent: number;
+
   status: AffiliateStatus;
 
   notes: string;

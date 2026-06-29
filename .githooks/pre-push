@@ -57,6 +57,12 @@ appscope_isolation_check() {
   fi
 }
 
+orbit_core_imports_check() {
+  if [ -f "${ROOT_DIR}/scripts/check-orbit-core-imports.ts" ]; then
+    node "${ROOT_DIR}/scripts/check-orbit-core-imports.ts"
+  fi
+}
+
 large_frontend_files_check() {
   if [ -f "${ROOT_DIR}/scripts/check-large-frontend-files.sh" ]; then
     bash "${ROOT_DIR}/scripts/check-large-frontend-files.sh"
@@ -120,6 +126,7 @@ timed_step "collection budget" collection_budget_check
 timed_step "migration routing" migration_routing_check
 timed_step "appscope frozen" appscope_frozen_check
 timed_step "appscope isolation" appscope_isolation_check
+timed_step "orbit core imports" orbit_core_imports_check
 timed_step "large frontend files" large_frontend_files_check
 
 # ──────────────────────────────────────────────────────────────────────────
