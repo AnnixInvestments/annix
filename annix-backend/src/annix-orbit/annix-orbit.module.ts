@@ -113,6 +113,7 @@ import { OrbitIdentityReconciler } from "./identity/orbit-identity-reconciler.se
 import { OrbitIdentityResolver } from "./identity/orbit-identity-resolver";
 import { OrbitIdentityWriter } from "./identity/orbit-identity-writer";
 import { MongoOrbitIdentityWriter } from "./identity/orbit-identity-writer.mongo";
+import { orbitTransactionRunnerProvider } from "./providers/orbit-transaction-runner.provider";
 import { AnnixOrbitAuditEventRepository } from "./repositories/annix-orbit-audit-event.repository";
 import { MongoAnnixOrbitAuditEventRepository } from "./repositories/annix-orbit-audit-event.repository.mongo";
 import { AnnixOrbitCandidateEeAttributesRepository } from "./repositories/annix-orbit-candidate-ee-attributes.repository";
@@ -648,6 +649,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     OrbitIdentityResolver,
     OrbitIdentityReconciler,
     { provide: OrbitIdentityWriter, useClass: MongoOrbitIdentityWriter },
+    orbitTransactionRunnerProvider,
     AdminOrbitUserService,
     CvAuditService,
     JobPostingService,
