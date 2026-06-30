@@ -19,6 +19,7 @@ import {
   TableLoadingState,
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
 import { type AnalyzeOrderFilesResult, auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type {
@@ -68,6 +69,7 @@ export default function AuRubberOrdersPage() {
   const { showToast } = useToast();
   const { alert, AlertDialog } = useAlert();
   const { showExtraction, hideExtraction } = useExtractionProgress();
+  const coreHref = useCoreAwareHref();
   const scrollSentinelRef = useScrollRestoration("au-rubber:orders");
 
   const [statusFilter, setStatusFilter] = useState<number | undefined>(undefined);
@@ -514,7 +516,7 @@ export default function AuRubberOrdersPage() {
                       <tr key={order.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <Link
-                            href={`/au-rubber/portal/orders/${order.id}`}
+                            href={coreHref(`/au-rubber/portal/orders/${order.id}`)}
                             className="text-sm font-medium text-yellow-600 hover:text-yellow-900"
                           >
                             {order.orderNumber}
@@ -541,7 +543,7 @@ export default function AuRubberOrdersPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
                           <Link
-                            href={`/au-rubber/portal/orders/${order.id}`}
+                            href={coreHref(`/au-rubber/portal/orders/${order.id}`)}
                             className="text-yellow-600 hover:text-yellow-900"
                           >
                             View
