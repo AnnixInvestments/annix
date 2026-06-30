@@ -954,7 +954,7 @@ export class RubberAuCocService {
           }
         }
 
-        if (sourceDeliveryNote && candidates.length === 0) {
+        if (sourceDeliveryNote) {
           const upstreamCocs = await this.supplierCocRepository.findUpstreamCocsByCdnRollTrace(
             sourceDeliveryNote.id,
           );
@@ -966,7 +966,7 @@ export class RubberAuCocService {
           }
         }
 
-        if (sourceDeliveryNote && candidates.length === 0) {
+        if (sourceDeliveryNote) {
           const cdnItems = await this.deliveryNoteItemRepository.findManyWhere({
             deliveryNoteId: sourceDeliveryNote.id,
           });
@@ -997,7 +997,13 @@ export class RubberAuCocService {
               return out;
             };
             const matched = allScocsForMatch.filter((sc) => {
-              const rolls = expandRollNumbers(sc.cocNumber || "");
+              const rolls = new Set([
+                ...expandRollNumbers(sc.cocNumber || ""),
+                ...expandRollNumbers(sc.ticketNumber || sc.extractedData?.ticketNumber || ""),
+                ...(sc.extractedData?.rollNumbers || [])
+                  .map((rn) => (rn || "").trim())
+                  .filter((rn) => rn.length > 0),
+              ]);
               return cdnRollNums.some((rn) => rolls.has(rn));
             });
             if (matched.length > 0) {
@@ -1189,7 +1195,12 @@ export class RubberAuCocService {
       const linkedCompounderIds = supplierCoc.extractedData?.linkedCompounderCocIds || [];
       const compounderCoc: RubberSupplierCoc | null = await (async () => {
         if (linkedCompounderIds.length > 0) {
-          const linked = await this.supplierCocRepository.findById(linkedCompounderIds[0]);
+          const linkedCocs = await Promise.all(
+            linkedCompounderIds.map((id) => this.supplierCocRepository.findById(id)),
+          );
+          const linked = linkedCocs.find(
+            (c) => c && this.compoundsCompatible(c.compoundCode, resolvedCompoundCode),
+          );
           if (linked) {
             this.logger.log(
               `Found linked compounder CoC ${linked.id} for calenderer ${supplierCoc.id}`,
@@ -1409,7 +1420,12 @@ export class RubberAuCocService {
   ): Promise<RubberSupplierCoc | null> {
     const linkedIds = candidate.extractedData?.linkedCompounderCocIds || [];
     if (linkedIds.length > 0) {
-      const linked = await this.supplierCocRepository.findById(linkedIds[0]);
+      const linkedCocs = await Promise.all(
+        linkedIds.map((id) => this.supplierCocRepository.findById(id)),
+      );
+      const linked = linkedCocs.find(
+        (c) => c && this.compoundsCompatible(c.compoundCode, candidate.compoundCode),
+      );
       if (linked) return linked;
     }
 

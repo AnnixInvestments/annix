@@ -13,8 +13,8 @@ export class AffiliatePriceList {
   @Prop({ type: Number })
   _id: number;
 
-  @Prop({ type: Number, required: true })
-  affiliateId: number;
+  @Prop({ type: Number, required: false, default: null })
+  affiliateId: number | null;
 
   @Prop({ type: String, required: true })
   originalFilename: string;

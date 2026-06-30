@@ -3,12 +3,14 @@ import {
   Controller,
   Delete,
   Get,
+  Inject,
   Logger,
   Param,
   Patch,
   Post,
   Query,
   Req,
+  Res,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -17,6 +19,7 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
 import { now } from "../lib/datetime";
+import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import {
   CreateAffiliateDto,
   CreateCommissionPayoutDto,
@@ -24,7 +27,6 @@ import {
   UpdateAffiliateDto,
   UpdatePayoutStatusDto,
   UpdateSalesRepDto,
-  UploadPriceListDto,
 } from "./dto/affiliate-commission.dto";
 import { Affiliate, AffiliateStatus } from "./entities/affiliate.entity";
 import { CommissionPayout, PayoutStatus } from "./entities/commission-payout.entity";
@@ -48,6 +50,7 @@ export class AffiliateCommissionController {
     private readonly priceListRepository: AffiliatePriceListRepository,
     private readonly payoutRepository: CommissionPayoutRepository,
     private readonly priceListService: AffiliatePriceListService,
+    @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
   private companyId(req: any): number {
@@ -161,42 +164,49 @@ export class AffiliateCommissionController {
   @Post("price-lists/upload")
   @UseInterceptors(FileInterceptor("file"))
   @ApiConsumes("multipart/form-data")
-  @ApiOperation({ summary: "Upload an affiliate price list PDF" })
-  async uploadPriceList(
-    @Req() req: any,
-    @Body() dto: UploadPriceListDto,
-    @UploadedFile() file: Express.Multer.File,
-  ) {
-    const result = await this.priceListService.uploadPriceList(
-      dto.affiliateId,
-      file,
-      req.user?.email || "unknown",
-    );
+  @ApiOperation({ summary: "Upload a base price list PDF" })
+  async uploadPriceList(@Req() req: any, @UploadedFile() file: Express.Multer.File) {
+    const result = await this.priceListService.uploadPriceList(file, req.user?.email || "unknown");
     return {
       id: result.id,
-      affiliateId: result.affiliateId,
       originalFilename: result.originalFilename,
       status: result.status,
       itemCount: result.itemCount,
     };
   }
 
-  @Get("price-lists/:affiliateId")
-  @ApiOperation({ summary: "List price lists for an affiliate" })
-  async listPriceLists(@Param("affiliateId") affiliateId: number) {
-    return this.priceListRepository.findByAffiliateId(Number(affiliateId));
+  @Get("price-lists")
+  @ApiOperation({ summary: "List all base price lists" })
+  async listPriceLists() {
+    return this.priceListRepository.findAll();
   }
 
-  @Get("price-lists/:affiliateId/latest")
-  @ApiOperation({ summary: "Get latest processed price list items for affiliate" })
-  async getLatestPriceListItems(@Param("affiliateId") affiliateId: number) {
-    return this.priceListService.getLatestPriceListItems(Number(affiliateId));
+  @Get("price-lists/latest/download")
+  @ApiOperation({ summary: "Download the latest processed base price list PDF" })
+  async downloadLatestPriceList(@Res() res: any) {
+    const latest = await this.priceListService.getLatestPriceList();
+    if (!latest) {
+      return res.status(404).json({ message: "No processed price list found" });
+    }
+    const buffer = await this.storageService.download(latest.storagePath);
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${latest.originalFilename}"`,
+      "Content-Length": buffer.length,
+    });
+    res.end(buffer);
   }
 
-  @Get("price-lists/:affiliateId/items/:priceListId")
+  @Get("price-lists/latest/items")
+  @ApiOperation({ summary: "Get items from the latest processed base price list" })
+  async getLatestPriceListItems() {
+    return this.priceListService.getLatestPriceListItems();
+  }
+
+  @Get("price-lists/:id/items")
   @ApiOperation({ summary: "Get items for a specific price list" })
-  async getPriceListItems(@Param("priceListId") priceListId: number) {
-    return this.priceListService.getPriceListItems(Number(priceListId));
+  async getPriceListItems(@Param("id") id: number) {
+    return this.priceListService.getPriceListItems(Number(id));
   }
 
   /* ───── Commission Payouts ───── */

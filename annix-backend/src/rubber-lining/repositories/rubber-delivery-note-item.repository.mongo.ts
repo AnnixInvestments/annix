@@ -27,7 +27,7 @@ export class MongoRubberDeliveryNoteItemRepository
   }
 
   saveMany(entities: RubberDeliveryNoteItem[]): Promise<RubberDeliveryNoteItem[]> {
-    return Promise.all(entities.map((entity) => this.create(entity)));
+    return Promise.all(entities.map((entity) => this.save(entity)));
   }
 
   async removeMany(entities: RubberDeliveryNoteItem[]): Promise<void> {

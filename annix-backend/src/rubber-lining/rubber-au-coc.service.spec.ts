@@ -5,6 +5,7 @@ import { EmailService } from "../email/email.service";
 import { STORAGE_SERVICE } from "../storage/storage.interface";
 import { AuCocReadinessStatus, AuCocStatus, RubberAuCoc } from "./entities/rubber-au-coc.entity";
 import { RubberAuCocItem } from "./entities/rubber-au-coc-item.entity";
+import { SupplierCocType } from "./entities/rubber-supplier-coc.entity";
 import { RubberAuCocRepository } from "./repositories/rubber-au-coc.repository";
 import { RubberAuCocItemRepository } from "./repositories/rubber-au-coc-item.repository";
 import { RubberCompanyRepository } from "./repositories/rubber-company.repository";
@@ -60,6 +61,8 @@ describe("RubberAuCocService", () => {
     findReplacementRefsByCocIds: jest.fn(() => Promise.resolve([])),
     findOneByCocTypeAndOrderNumberLatest: jest.fn(),
     findWithOrderNumberOrderedByIdDesc: jest.fn(() => Promise.resolve([])),
+    findUpstreamCocsByCdnRollTrace: jest.fn(() => Promise.resolve([])),
+    findActiveWithCocNumberOrderedByIdDesc: jest.fn(() => Promise.resolve([])),
   });
 
   const auCocRepo = mockRepo();
@@ -266,6 +269,111 @@ describe("RubberAuCocService", () => {
       await populate(coc());
 
       expect(auCocRepo.updateById).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("generationReadiness — recovers from stale direct supplier CoC links", () => {
+    it("uses a roll-number matched CoC when the delivery note is linked to an incompatible CoC", async () => {
+      const badLinkedCoc = {
+        id: 259,
+        cocType: SupplierCocType.CALENDARER,
+        cocNumber: "177-40648",
+        orderNumber: "177",
+        compoundCode: "RSCA40",
+        extractedData: {
+          batches: [{ batchNumber: "228", shoreA: 40 }],
+          rollNumbers: ["40648"],
+        },
+      };
+      const correctRollMatchedCoc = {
+        id: 255,
+        cocType: SupplierCocType.CALENDARER,
+        cocNumber: "213-42934-42941",
+        orderNumber: "213",
+        compoundCode: "BSCA38",
+        extractedData: {
+          batches: [{ batchNumber: "19", shoreA: 38 }],
+          rollNumbers: ["42934", "42935", "42936", "42937", "42938", "42939", "42940", "42941"],
+          linkedCompounderCocIds: [206, 169],
+        },
+      };
+      const incompatibleCompounder = {
+        id: 206,
+        cocType: SupplierCocType.COMPOUNDER,
+        cocNumber: "B17-28",
+        compoundCode: "AUC50BBSC",
+      };
+      const compatibleCompounder = {
+        id: 169,
+        cocType: SupplierCocType.COMPOUNDER,
+        cocNumber: "B19-36",
+        compoundCode: "AUA38BSC",
+      };
+
+      auCocRepo.findById.mockResolvedValue({
+        id: 84,
+        cocNumber: "AU-COC-0059",
+        sourceDeliveryNoteId: 312,
+        poNumber: "PL8043/PO6897",
+        extractedRollData: [
+          { rollNumber: "42938", thicknessMm: 6, widthMm: 800, lengthM: 12.5 },
+          { rollNumber: "42939", thicknessMm: 6, widthMm: 800, lengthM: 12.5 },
+        ],
+      });
+      auCocItemRepo.findByAuCocIdWithRolls.mockResolvedValue([]);
+      deliveryNoteRepo.findById.mockResolvedValue({
+        id: 312,
+        supplierCompanyId: 4,
+        customerReference: "PL8043/PO6897",
+        linkedCoc: badLinkedCoc,
+      });
+      deliveryNoteRepo.findSiblingLinkedDeliveryNote.mockResolvedValue(null);
+      deliveryNoteItemRepo.findManyWhere.mockResolvedValue([
+        {
+          deliveryNoteId: 312,
+          rollNumber: "42938",
+          compoundType: "BSCA38",
+          thicknessMm: 6,
+          widthMm: 800,
+          lengthM: 12.5,
+        },
+        {
+          deliveryNoteId: 312,
+          rollNumber: "42939",
+          compoundType: "BSCA38",
+          thicknessMm: 6,
+          widthMm: 800,
+          lengthM: 12.5,
+        },
+      ]);
+      supplierCocRepo.findActiveWithCocNumberOrderedByIdDesc.mockResolvedValue([
+        badLinkedCoc,
+        correctRollMatchedCoc,
+      ] as never);
+      supplierCocRepo.findByIds.mockResolvedValue([]);
+      supplierCocRepo.findById.mockImplementation((id: number) =>
+        Promise.resolve(
+          id === 206 ? incompatibleCompounder : id === 169 ? compatibleCompounder : null,
+        ),
+      );
+      supplierCocRepo.findOneByCocTypeAndOrderNumberLatest.mockResolvedValue(null);
+      (compoundBatchRepo.countBySupplierCocId as jest.Mock).mockImplementation((id: number) =>
+        Promise.resolve(id === 255 || id === 169 ? 1 : 0),
+      );
+      (compoundBatchRepo.findBySupplierCocIdOrdered as jest.Mock).mockImplementation((id: number) =>
+        Promise.resolve(
+          id === 169 ? [{ batchNumber: "19", shoreAHardness: 38, specificGravity: 1.04 }] : [],
+        ),
+      );
+
+      const result = await service.generationReadiness(84);
+
+      expect(result.ready).toBe(true);
+      expect(result.sourceIncomplete).toBe(false);
+      expect(result.resolvedSupplierCocId).toBe(255);
+      expect(result.resolvedCompounderCocId).toBe(169);
+      expect(result.compoundCode).toBe("BSCA38");
+      expect(result.batchCount).toBe(1);
     });
   });
 });

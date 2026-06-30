@@ -7,7 +7,7 @@ export enum PriceListStatus {
 export class AffiliatePriceList {
   id: number;
 
-  affiliateId: number;
+  affiliateId: number | null;
 
   originalFilename: string;
 

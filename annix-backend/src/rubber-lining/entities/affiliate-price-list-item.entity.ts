@@ -7,6 +7,16 @@ export class AffiliatePriceListItem {
 
   productDescription: string;
 
+  elongation: string;
+
+  sg: number;
+
+  mpa: string;
+
+  colour: string;
+
+  cureType: string;
+
   minPrice: number;
 
   unit: string;

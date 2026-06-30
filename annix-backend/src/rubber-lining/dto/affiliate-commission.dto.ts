@@ -158,8 +158,9 @@ export class UpdatePayoutStatusDto {
 }
 
 export class UploadPriceListDto {
+  @IsOptional()
   @IsNumber()
-  affiliateId: number;
+  affiliateId?: number;
 }
 
 export class AffiliateResponseDto {
@@ -227,6 +228,11 @@ export class AffiliatePriceListItemResponseDto {
   priceListId: number;
   productCode: string;
   productDescription: string;
+  elongation: string;
+  sg: number;
+  mpa: string;
+  colour: string;
+  cureType: string;
   minPrice: number;
   unit: string;
 }

@@ -11,9 +11,18 @@ import { AffiliatePriceListItemRepository } from "../repositories/affiliate-pric
 interface ParsedLineItem {
   productCode: string;
   productDescription: string;
+  elongation: string;
+  sg: number;
+  mpa: string;
+  colour: string;
+  cureType: string;
   minPrice: number;
   unit: string;
 }
+
+const COLOUR_WORDS = /^(Black|White|Red|Yellow|Blue|Green|Pink|Orange|Purple|Grey|Gray|Brown)/i;
+
+const CURE_STR = "(?:Steam Cured|Pre(?:-|\\s)?Cured)";
 
 @Injectable()
 export class AffiliatePriceListService {
@@ -27,12 +36,12 @@ export class AffiliatePriceListService {
   ) {}
 
   async uploadPriceList(
-    affiliateId: number,
     file: Express.Multer.File,
     uploadedBy: string,
+    affiliateId?: number,
   ): Promise<AffiliatePriceList> {
     const timestamp = now().toFormat("yyyyMMdd-HHmmss");
-    const period = `affiliate-${affiliateId}`;
+    const period = affiliateId ? `affiliate-${affiliateId}` : "base";
 
     const uploadResult = await uploadDocument(
       this.storageService,
@@ -46,7 +55,7 @@ export class AffiliatePriceListService {
     );
 
     const priceList = this.priceListRepository.build({
-      affiliateId,
+      affiliateId: affiliateId ?? null,
       originalFilename: file.originalname,
       storagePath: uploadResult.path,
       status: PriceListStatus.PENDING,
@@ -66,6 +75,11 @@ export class AffiliatePriceListService {
           priceListId: saved.id,
           productCode: item.productCode,
           productDescription: item.productDescription,
+          elongation: item.elongation,
+          sg: item.sg,
+          mpa: item.mpa,
+          colour: item.colour,
+          cureType: item.cureType,
           minPrice: item.minPrice,
           unit: item.unit,
         });
@@ -89,8 +103,8 @@ export class AffiliatePriceListService {
     return this.priceListItemRepository.findByPriceListId(priceListId);
   }
 
-  async getLatestPriceListItems(affiliateId: number): Promise<AffiliatePriceListItem[]> {
-    const lists = await this.priceListRepository.findByAffiliateId(affiliateId);
+  async getLatestPriceListItems(): Promise<AffiliatePriceListItem[]> {
+    const lists = await this.priceListRepository.findAll();
     const processed = lists.filter((l) => l.status === PriceListStatus.PROCESSED);
     if (processed.length === 0) return [];
 
@@ -98,42 +112,184 @@ export class AffiliatePriceListService {
     return this.priceListItemRepository.findByPriceListId(latest.id);
   }
 
+  async getLatestPriceList(): Promise<AffiliatePriceList | null> {
+    const lists = await this.priceListRepository.findAll();
+    const processed = lists.filter((l) => l.status === PriceListStatus.PROCESSED);
+    if (processed.length === 0) return null;
+    return processed.reduce((a, b) => (a.uploadedAt > b.uploadedAt ? a : b));
+  }
+
+  /* ───── PDF parser ───── */
+
   private async parsePriceListPdf(buffer: Buffer): Promise<ParsedLineItem[]> {
     const text = await extractTextFromPdf(buffer);
 
-    const lines = text
+    this.logger.debug(`Raw PDF text:\n${text}`);
+
+    const rawLines = text
       .split("\n")
       .map((l) => l.trim())
       .filter((l) => l.length > 0);
 
+    this.logger.debug(`PDF lines (${rawLines.length}):\n${rawLines.join("\n")}`);
+
+    // ── Step 1: merge multi-line items and detect section cureType ──
+    const mergedLines: string[] = [];
+    let sectionCure = "";
+
+    for (const line of rawLines) {
+      // Section headers like "Steam Cured Natural Rubbers (Gold Plastic)"
+      if (/steam cured|pre.?cured/i.test(line) && !/^[A-Z]{2}-/.test(line) && line.length < 80) {
+        sectionCure = /pre.?cured/i.test(line) ? "pre-cured" : "uncured";
+        continue;
+      }
+
+      // Skip column header lines
+      if (this.isTableHeader(line)) continue;
+
+      // Standalone price line — append to previous item
+      if (/^R\s*[\d,]+\.?\d*\s*$/.test(line) && mergedLines.length > 0) {
+        mergedLines[mergedLines.length - 1] += line;
+        continue;
+      }
+
+      // Continuation line (starts with digit or non-code text)
+      if (!/^[A-Z]{2}-/.test(line) && mergedLines.length > 0) {
+        mergedLines[mergedLines.length - 1] += line;
+        continue;
+      }
+
+      // Product line (starts with code like SG-A, SC-C)
+      if (/^[A-Z]{2}-/.test(line)) {
+        mergedLines.push(line);
+      }
+    }
+
+    this.logger.debug(`Merged into ${mergedLines.length} lines`);
+
+    // ── Step 2: parse each merged row right-to-left ──
     const items: ParsedLineItem[] = [];
-    const linePattern = /^(\S+)\s+(.+?)\s+R\s*([\d,]+\.?\d*)\s*(.+)?$/i;
-
-    for (const line of lines) {
-      const match = line.match(linePattern);
-      if (match) {
-        items.push({
-          productCode: match[1],
-          productDescription: match[2].trim(),
-          minPrice: parseFloat(match[3].replace(/,/g, "")),
-          unit: (match[4] || "each").trim().toLowerCase(),
-        });
-      }
+    for (const line of mergedLines) {
+      const item = this.parseRow(line, sectionCure);
+      if (item) items.push(item);
     }
 
-    if (items.length === 0) {
-      const fallbackPattern = /^(\S[\S ]*\S)\s+R\s*([\d,]+\.?\d*)/gm;
-      let fallbackMatch: RegExpExecArray | null;
-      while ((fallbackMatch = fallbackPattern.exec(text)) !== null) {
-        items.push({
-          productCode: `ITEM-${items.length + 1}`,
-          productDescription: fallbackMatch[1].trim(),
-          minPrice: parseFloat(fallbackMatch[2].replace(/,/g, "")),
-          unit: "each",
-        });
-      }
-    }
-
+    this.logger.log(`Parsed ${items.length} items from price list PDF`);
     return items;
+  }
+
+  private parseRow(line: string, sectionCure: string): ParsedLineItem | null {
+    let r = line;
+
+    // ── 1. Price — last "R..." on the line ──
+    const priceIdx = r.toLowerCase().lastIndexOf("r");
+    if (priceIdx < 1) return null;
+    const afterR = r.slice(priceIdx + 1).trim();
+    const priceNum = afterR.match(/^([\d,]+\.?\d*)/);
+    if (!priceNum) return null;
+    const price = parseFloat(priceNum[1].replace(/,/g, ""));
+    if (Number.isNaN(price) || price <= 0) return null;
+    r = r.slice(0, priceIdx).trim();
+
+    // ── 2. SG — decimal number at end ──
+    const sgMatch = r.match(/([\d.]+)\s*$/);
+    let sg = 0;
+    if (sgMatch) {
+      const s = parseFloat(sgMatch[1]);
+      if (!Number.isNaN(s)) {
+        sg = s;
+        r = r.slice(0, r.length - sgMatch[1].length);
+      }
+    }
+
+    // ── 3. Elongation — "X% min" or bare "X%" at end ──
+    let elongation = "";
+    const elMatch = r.match(/(\d+%\s*min)\s*$/i);
+    if (elMatch) {
+      elongation = elMatch[1].trim();
+      r = r.slice(0, r.length - elMatch[1].length);
+    } else {
+      const elMatch2 = r.match(/(\d+%)\s*$/);
+      if (elMatch2) {
+        elongation = elMatch2[1].trim();
+        r = r.slice(0, r.length - elMatch2[1].length);
+      }
+    }
+
+    // ── 4. Grade / MPa — "XxxNN MPA min" at end ──
+    let mpa = "";
+    const gradeMatch = r.match(/([A-Z][a-z]*)(\d+)\s+MPA\s+min\s*$/);
+    if (gradeMatch) {
+      mpa = gradeMatch[2];
+      r = r.slice(0, r.length - gradeMatch[0].length);
+    }
+
+    // ── 5. Parse product info at left: code + cure + colour + hardness + type ──
+
+    // Code (e.g. SG-A38P, SC-C60CB, SC-C5-EPDM) — lazy match until "Steam" or "Pre"
+    const codeMatch = r.match(/^([A-Z]{2}-[A-Z0-9-]+?)(?=Steam|Pre)/i);
+    const code = codeMatch ? codeMatch[1] : "";
+    if (codeMatch) r = r.slice(code.length);
+
+    // Cure type (e.g. "Steam Cured", "Pre Cured")
+    let cureType = sectionCure;
+    const cureMatch = r.match(new RegExp(`^${CURE_STR}`, "i"));
+    if (cureMatch) {
+      cureType = /pre/i.test(cureMatch[0]) ? "pre-cured" : "uncured";
+      r = r.slice(cureMatch[0].length);
+    }
+
+    // Colour
+    const colourMatch = r.match(COLOUR_WORDS);
+    const colour = colourMatch ? colourMatch[1] : "";
+    if (colourMatch) r = r.slice(colour.length);
+
+    // Hardness — next 1-2 digits
+    const hardMatch = r.match(/^(\d{1,2})/);
+    const hardness = hardMatch ? hardMatch[1] : "";
+    if (hardMatch) r = r.slice(hardMatch[1].length);
+
+    // Everything remaining is the product type / compound name
+    const type = r.trim().replace(/\/+$/, "");
+
+    const productName = `${code} ${type}`.trim();
+
+    return {
+      productCode: code || this.extractCode(productName, 0),
+      productDescription: type || productName,
+      elongation: elongation.replace(/\s*min$/i, "").trim(),
+      sg,
+      mpa,
+      colour,
+      cureType: cureType || "",
+      minPrice: price,
+      unit: "kg",
+    };
+  }
+
+  private isTableHeader(line: string): boolean {
+    return (
+      /^(code|item|product|description|price|rate|qty|page|date|prepared|terms|unit|no\.|compound)/i.test(
+        line,
+      ) ||
+      /^[\d\s.,\-–—/:|]+$/.test(line) ||
+      line.length < 5
+    );
+  }
+
+  private extractCode(description: string, fallbackIndex: number): string {
+    const first = description.split(/\s+/)[0];
+    if (
+      first &&
+      /[A-Za-z]/.test(first) &&
+      /\d/.test(first) &&
+      first.length >= 2 &&
+      first.length <= 20
+    ) {
+      return first.replace(/[^A-Za-z0-9\-_./]/g, "");
+    }
+    const codeWord = description.match(/\b([A-Za-z]+[\d][A-Za-z0-9\-_./]{1,18})\b/);
+    if (codeWord) return codeWord[1];
+    return `ITEM-${fallbackIndex + 1}`;
   }
 }

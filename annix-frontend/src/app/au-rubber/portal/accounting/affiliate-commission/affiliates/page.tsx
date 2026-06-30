@@ -1,7 +1,6 @@
 "use client";
 
 import { Pencil, Plus, Trash2, X } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
@@ -92,12 +91,13 @@ export default function AffiliatesPage() {
   const handleSave = async () => {
     const rawPhone = form.phone;
     const rawNotes = form.notes;
+    const rawCommissionPercent = form.commissionPercent;
     const dto = {
       name: form.name,
       contactName: form.contactName,
       email: form.email,
       phone: rawPhone || undefined,
-      commissionPercent: form.commissionPercent || undefined,
+      commissionPercent: rawCommissionPercent || undefined,
       notes: rawNotes || undefined,
     };
 
@@ -185,7 +185,6 @@ export default function AffiliatesPage() {
                   <th className="px-4 py-3">Email</th>
                   <th className="px-4 py-3">Commission %</th>
                   <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Price List</th>
                   <th className="px-4 py-3 w-20 text-right" />
                 </tr>
               </thead>
@@ -213,14 +212,6 @@ export default function AffiliatesPage() {
                       >
                         {a.status}
                       </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/au-rubber/portal/accounting/affiliate-commission/price-lists?affiliateId=${a.id}`}
-                        className="text-yellow-600 hover:text-yellow-700 text-xs font-medium"
-                      >
-                        View price lists
-                      </Link>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-1">

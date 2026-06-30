@@ -22,6 +22,21 @@ export class AffiliatePriceListItem {
   @Prop({ type: String, required: false })
   productDescription: string;
 
+  @Prop({ type: String, required: false })
+  elongation: string;
+
+  @Prop({ type: Number, required: false })
+  sg: number;
+
+  @Prop({ type: String, required: false })
+  mpa: string;
+
+  @Prop({ type: String, required: false })
+  colour: string;
+
+  @Prop({ type: String, required: false })
+  cureType: string;
+
   @Prop({ type: Number, required: true })
   minPrice: number;
 

@@ -2977,41 +2977,37 @@ class AuRubberApiClient {
     },
   );
 
-  affiliateCommissionUploadPriceList = async (
-    affiliateId: number,
-    file: File,
-  ): Promise<unknown> => {
+  affiliateCommissionUploadPriceList = async (file: File): Promise<unknown> => {
     return this.requestWithFiles(
       "/rubber-lining/portal/affiliate-commission/price-lists/upload",
       [file],
-      { affiliateId },
+      {},
       "file",
     );
   };
 
-  affiliateCommissionPriceLists = createEndpoint<[affiliateId: number], unknown[]>(
-    apiClient,
-    "GET",
-    {
-      path: (id) => `/rubber-lining/portal/affiliate-commission/price-lists/${id}`,
-    },
-  );
-
-  affiliateCommissionLatestPriceList = createEndpoint<[affiliateId: number], unknown[]>(
-    apiClient,
-    "GET",
-    {
-      path: (id) => `/rubber-lining/portal/affiliate-commission/price-lists/${id}/latest`,
-    },
-  );
-
-  affiliateCommissionPriceListItems = createEndpoint<
-    [affiliateId: number, priceListId: number],
-    unknown[]
-  >(apiClient, "GET", {
-    path: (affiliateId, priceListId) =>
-      `/rubber-lining/portal/affiliate-commission/price-lists/${affiliateId}/items/${priceListId}`,
+  affiliateCommissionPriceLists = createEndpoint<[], unknown[]>(apiClient, "GET", {
+    path: "/rubber-lining/portal/affiliate-commission/price-lists",
   });
+
+  affiliateCommissionLatestPriceListItems = createEndpoint<[], unknown[]>(apiClient, "GET", {
+    path: "/rubber-lining/portal/affiliate-commission/price-lists/latest/items",
+  });
+
+  affiliateCommissionPriceListItems = createEndpoint<[priceListId: number], unknown[]>(
+    apiClient,
+    "GET",
+    {
+      path: (priceListId) =>
+        `/rubber-lining/portal/affiliate-commission/price-lists/${priceListId}/items`,
+    },
+  );
+
+  async affiliateCommissionDownloadLatestPriceList(): Promise<Blob> {
+    return this.requestBlob(
+      "/rubber-lining/portal/affiliate-commission/price-lists/latest/download",
+    );
+  }
 
   affiliateCommissionPayouts = createEndpoint<[status?: string], unknown[]>(apiClient, "GET", {
     path: (status) =>
