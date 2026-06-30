@@ -6,6 +6,7 @@ import { useExtractionProgress } from "@/app/components/ExtractionProgressModal"
 import { FileImportModal } from "@/app/components/modals/FileImportModal";
 import { useToast } from "@/app/components/Toast";
 import { DateInput } from "@/app/components/ui/DateInput";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import type { AnalyzedDeliveryNoteResult, DeliveryNote } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
@@ -22,6 +23,7 @@ interface InvoiceUploadModalProps {
 export default function InvoiceUploadModal(props: InvoiceUploadModalProps) {
   const { deliveryNotes, onClose, onSuccess } = props;
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const { showExtraction, hideExtraction } = useExtractionProgress();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -168,7 +170,7 @@ export default function InvoiceUploadModal(props: InvoiceUploadModalProps) {
         updatedInvoice.extractionStatus === "needs_clarification" ||
         updatedInvoice.extractionStatus === "awaiting_approval"
       ) {
-        router.push(`/stock-control/portal/invoices/${updatedInvoice.id}`);
+        router.push(coreHref(`/stock-control/portal/invoices/${updatedInvoice.id}`));
       } else {
         onSuccess();
       }

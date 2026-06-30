@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { memo } from "react";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import type { StockControlLocation, StockItem } from "@/app/lib/api/stockControlApi";
 import { fromISO } from "@/app/lib/datetime";
 import { InlineCategoryEdit } from "./inventory/InlineCategoryEdit";
@@ -231,6 +232,7 @@ function ItemCard(props: {
     canEditPrices,
     thumbnailSize,
   } = props;
+  const coreHref = useCoreAwareHref();
   const status = stockLevelStatus(item);
   const colors = stockLevelColor(status);
   const thumb = thumbnailClasses(thumbnailSize);
@@ -265,7 +267,7 @@ function ItemCard(props: {
           <div className="flex-shrink-0">{thumbnailElement}</div>
           <div className="flex-1 min-w-0 flex items-center gap-1.5">
             <Link
-              href={`/stock-control/portal/inventory/${item.id}`}
+              href={coreHref(`/stock-control/portal/inventory/${item.id}`)}
               className="text-xs font-semibold text-gray-900 hover:text-[var(--sc-primary-hover,#252560)] truncate"
             >
               {item.name}
@@ -294,7 +296,7 @@ function ItemCard(props: {
         <div className="p-4">
           <div className="flex items-center gap-2">
             <Link
-              href={`/stock-control/portal/inventory/${item.id}`}
+              href={coreHref(`/stock-control/portal/inventory/${item.id}`)}
               className="text-sm font-semibold text-gray-900 hover:text-[var(--sc-primary-hover,#252560)] truncate"
             >
               {item.name}
@@ -320,7 +322,7 @@ function ItemCard(props: {
           )}
           <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-100">
             <Link
-              href={`/stock-control/portal/inventory/${item.id}`}
+              href={coreHref(`/stock-control/portal/inventory/${item.id}`)}
               className="text-xs text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] font-medium"
             >
               View
@@ -358,7 +360,7 @@ function ItemCard(props: {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <Link
-              href={`/stock-control/portal/inventory/${item.id}`}
+              href={coreHref(`/stock-control/portal/inventory/${item.id}`)}
               className="text-sm font-semibold text-gray-900 hover:text-[var(--sc-primary-hover,#252560)] truncate"
             >
               {item.name}
@@ -386,7 +388,7 @@ function ItemCard(props: {
       </div>
       <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-100">
         <Link
-          href={`/stock-control/portal/inventory/${item.id}`}
+          href={coreHref(`/stock-control/portal/inventory/${item.id}`)}
           className="text-xs text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] font-medium"
         >
           View

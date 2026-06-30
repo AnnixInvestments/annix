@@ -5,6 +5,7 @@ import { keys } from "es-toolkit/compat";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import type {
   AsteriskAllocation,
   CpoCalloffRecord,
@@ -130,6 +131,7 @@ function draftFromItem(item: CustomerPurchaseOrderItem): ItemEditDraft {
 export default function CpoDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const id = Number(params.id);
 
   const queryClient = useQueryClient();
@@ -257,7 +259,7 @@ export default function CpoDetailPage() {
             });
             setSageImportResult(importResult);
             setSageConfirming(false);
-            router.push("/stock-control/portal/job-cards");
+            router.push(coreHref("/stock-control/portal/job-cards"));
           }
         }
       } catch (err) {
@@ -286,7 +288,7 @@ export default function CpoDetailPage() {
         setSageImportResult(importResult);
         setShowAllocationModal(false);
         setSageParseResult(null);
-        router.push("/stock-control/portal/job-cards");
+        router.push(coreHref("/stock-control/portal/job-cards"));
       } catch (err) {
         setSageError(err instanceof Error ? err.message : "Failed to create job cards");
         setShowAllocationModal(false);
@@ -486,7 +488,7 @@ export default function CpoDetailPage() {
           <div className="text-red-500 text-lg font-semibold mb-2">Error</div>
           <p className="text-gray-600">{error || "CPO not found"}</p>
           <Link
-            href="/stock-control/portal/purchase-orders"
+            href={coreHref("/stock-control/portal/purchase-orders")}
             className="mt-4 inline-block px-4 py-2 bg-[var(--sc-primary,#323288)] text-white rounded-md hover:bg-[var(--sc-primary-hover,#252560)]"
           >
             Back to Purchase Orders
@@ -558,7 +560,7 @@ export default function CpoDetailPage() {
         <div>
           <div className="flex items-center space-x-2 text-sm text-gray-500 mb-1">
             <Link
-              href="/stock-control/portal/purchase-orders"
+              href={coreHref("/stock-control/portal/purchase-orders")}
               className="hover:text-[var(--sc-primary,#323288)]"
             >
               Purchase Orders
@@ -972,7 +974,7 @@ export default function CpoDetailPage() {
                         <td className="px-4 py-2 whitespace-nowrap">
                           {row.jobCard ? (
                             <Link
-                              href={`/stock-control/portal/job-cards/${row.jobCard.id}`}
+                              href={coreHref(`/stock-control/portal/job-cards/${row.jobCard.id}`)}
                               className="font-medium text-[var(--sc-primary-hover,#252560)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                             >
                               {row.jobCard.jobNumber}
@@ -1045,7 +1047,7 @@ export default function CpoDetailPage() {
                               className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
                             >
                               <Link
-                                href={`/stock-control/portal/job-cards/${d.jobCardId}`}
+                                href={coreHref(`/stock-control/portal/job-cards/${d.jobCardId}`)}
                                 className="text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                               >
                                 {deliveryLabel}
@@ -1738,7 +1740,7 @@ export default function CpoDetailPage() {
                       {sageImportResult.createdJobCards.map((jc) => (
                         <li key={jc.id}>
                           <Link
-                            href={`/stock-control/portal/job-cards/${jc.id}`}
+                            href={coreHref(`/stock-control/portal/job-cards/${jc.id}`)}
                             className="text-green-800 underline hover:text-green-900"
                           >
                             {jc.jtNumber}
@@ -1760,7 +1762,7 @@ export default function CpoDetailPage() {
                       {sageImportResult.mergedJobCards.map((jc) => (
                         <li key={jc.id}>
                           <Link
-                            href={`/stock-control/portal/job-cards/${jc.id}`}
+                            href={coreHref(`/stock-control/portal/job-cards/${jc.id}`)}
                             className="text-green-800 underline hover:text-green-900"
                           >
                             {jc.jtNumber}

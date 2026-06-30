@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
-import { coreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { toastError } from "@/app/lib/api/apiError";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import type { SupplierInvoice } from "@/app/lib/api/stockControlApi";
@@ -60,6 +60,7 @@ const statusLabel = (invoice: SupplierInvoice): string => {
 
 export default function InvoicesPage() {
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const { alert, AlertDialog } = useAlert();
   const { effectiveRole } = useViewAs();
@@ -381,7 +382,7 @@ export default function InvoicesPage() {
             </button>
           )}
           <Link
-            href="/stock-control/portal/deliveries/scan"
+            href={coreHref("/stock-control/portal/deliveries/scan")}
             className="inline-flex items-center px-4 py-2 border border-[var(--sc-primary,#323288)] rounded-md shadow-sm text-sm font-medium text-[var(--sc-primary-hover,#252560)] bg-white hover:bg-[var(--sc-primary-50,#eeeef6)]"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -531,7 +532,7 @@ export default function InvoicesPage() {
                   key={invoice.id}
                   className="hover:bg-gray-50 cursor-pointer"
                   onClick={() =>
-                    router.push(coreAwareHref(`/stock-control/portal/invoices/${invoice.id}`))
+                    router.push(coreHref(`/stock-control/portal/invoices/${invoice.id}`))
                   }
                 >
                   <td className="px-3 sm:px-6 py-4 whitespace-nowrap">

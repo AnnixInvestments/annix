@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 
 interface CountBadgeProps {
   count: number;
@@ -27,6 +28,7 @@ const BADGE_STYLES: Record<string, string> = {
 
 export function CountBadge(props: CountBadgeProps) {
   const { count, label, href } = props;
+  const coreHref = useCoreAwareHref();
   const rawVariant = props.variant;
   const variant = rawVariant || "default";
   if (count === 0) {
@@ -40,7 +42,7 @@ export function CountBadge(props: CountBadgeProps) {
 
   return (
     <Link
-      href={href}
+      href={coreHref(href)}
       className={`flex items-center justify-between py-2 px-3 rounded-md transition-colors ${VARIANT_STYLES[variant]}`}
     >
       <span className="text-sm font-medium">{label}</span>

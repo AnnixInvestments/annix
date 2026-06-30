@@ -3,10 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import {
+  AU_NAV_ITEMS,
+  type AuNavItemDef,
+  auNavSections,
+  canAccessAuNavItem,
+} from "@/app/au-rubber/config/navItems";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { useFeatureFlagEnabled } from "@/app/lib/query/hooks";
-import { type OpsNavItem, visibleNavGroups, visibleNavItems } from "@/app/ops/config/navItems";
 import {
   ALL_NAV_ITEMS,
   isNavItemAllowedForRole,
@@ -14,9 +19,8 @@ import {
 } from "@/app/stock-control/config/navItems";
 import { useStockControlRbac } from "@/app/stock-control/context/StockControlRbacContext";
 import { useViewAs } from "@/app/stock-control/context/ViewAsContext";
-import { useCoreModules } from "../CorePortalModuleProvider";
 import { isCorePortalEnabled, isCorePortalHostedSuffix } from "../config/corePortalFlag";
-import { type CoreApp, navItemBelongsToApp } from "../config/navAppMap";
+import type { CoreApp } from "../config/navAppMap";
 
 const NIX_QUOTE_FLAG = "STOCK_MGMT_NIX_QUOTE_FROM_DOCUMENTS";
 
@@ -35,7 +39,7 @@ const APP_DISPLAY_NAME: Record<CoreApp, string> = {
   "au-rubber": "AU Rubber",
 };
 
-const OPS_PORTAL_PREFIX = "/ops/portal/";
+const AU_PORTAL_PREFIX = "/au-rubber/portal/";
 const SC_PORTAL_PREFIX = "/stock-control/portal/";
 
 interface CoreNavItem {
@@ -308,38 +312,48 @@ function StockControlSidebarNav(props: { onNavigate: () => void }) {
 }
 
 /**
- * AU Rubber nav uses the ops nav config filtered to AU surfaces, gated by the
- * REAL AU permissions + admin flag from `useAuRubberAuth` (passed in via the
- * chrome) and a static rubber module set.
+ * AU Rubber nav mirrors the REAL AU portal header (`AuHeader`): the SAME shared
+ * `AU_NAV_ITEMS` config (real `/au-rubber/portal/*` hrefs, grouped via
+ * `auNavSections`) gated by the SAME `canAccessAuNavItem` permission rule, fed
+ * the REAL AU permissions + admin flag from `useAuRubberAuth` (passed in via the
+ * chrome). Each href flows through `resolveNavHref`, so hosted suffixes render
+ * in-shell and everything else ejects to the correct legacy AU page.
  */
 function AuRubberSidebarNav(props: {
   permissions: string[];
   isAdmin: boolean;
   onNavigate: () => void;
 }) {
-  const modules = useCoreModules();
-  const activeModules = modules.activeModules;
   const auAuth = useAuRubberAuth();
 
   if (auAuth.isLoading) {
     return <NavSkeleton />;
   }
 
-  const permitted = visibleNavItems(activeModules, props.permissions, props.isAdmin);
-  const items = permitted.filter((item) => navItemBelongsToApp(item.key, "au-rubber"));
-  const opsGroups = visibleNavGroups(items);
+  const permissions = props.permissions;
+  const hasPermission = (permission: string): boolean => permissions.includes(permission);
+  const navAuth = { isAdmin: props.isAdmin, hasPermission };
+  const allowed = AU_NAV_ITEMS.filter((item) => canAccessAuNavItem(item, navAuth));
 
-  const toItem = (item: OpsNavItem): CoreNavItem => ({
+  const toItem = (item: AuNavItemDef): CoreNavItem => ({
     key: item.key,
     label: item.label,
-    href: resolveNavHref(item.href, OPS_PORTAL_PREFIX, "au-rubber"),
+    href: resolveNavHref(item.href, AU_PORTAL_PREFIX, "au-rubber"),
   });
 
-  const groups: CoreNavGroup[] = opsGroups.map((group) => ({
-    key: group.key,
-    label: group.key === "core" ? "" : group.label,
-    items: group.items.map(toItem),
+  const standaloneItems = allowed.filter((item) => !item.group).map(toItem);
+  const sectionGroups: CoreNavGroup[] = auNavSections(allowed).map((section) => ({
+    key: section.key,
+    label: section.label,
+    items: section.items.map(toItem),
   }));
+
+  const leadingGroup: CoreNavGroup | null =
+    standaloneItems.length > 0 ? { key: "overview", label: "", items: standaloneItems } : null;
+
+  const groups = [leadingGroup, ...sectionGroups].filter(
+    (group): group is CoreNavGroup => group !== null,
+  );
 
   return <SidebarNavList groups={groups} onNavigate={props.onNavigate} />;
 }

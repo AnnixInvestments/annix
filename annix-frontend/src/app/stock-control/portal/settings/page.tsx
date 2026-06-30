@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PasskeyManagementSection } from "@/app/components/PasskeyManagementSection";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { stockControlTokenStore } from "@/app/lib/api/portalTokenStores";
 import type { StockControlLocation } from "@/app/lib/api/stockControlApi";
 import {
@@ -21,6 +22,7 @@ import { WorkflowPreviewSection } from "./WorkflowPreviewSection";
 
 export default function StockControlSettingsPage() {
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const { user, profile } = useStockControlAuth();
 
   const isAdmin = user?.role === "admin";
@@ -31,7 +33,7 @@ export default function StockControlSettingsPage() {
 
   useEffect(() => {
     if (!isAdmin) {
-      router.push("/stock-control/portal/dashboard");
+      router.push(coreHref("/stock-control/portal/dashboard"));
     }
   }, [isAdmin, router]);
 

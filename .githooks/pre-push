@@ -69,6 +69,12 @@ large_frontend_files_check() {
   fi
 }
 
+core_portal_links_check() {
+  if [ -f "${ROOT_DIR}/scripts/check-core-portal-links.ts" ]; then
+    node "${ROOT_DIR}/scripts/check-core-portal-links.ts"
+  fi
+}
+
 biome_check() {
   if ! pnpm biome check .; then
     echo ""
@@ -128,6 +134,7 @@ timed_step "appscope frozen" appscope_frozen_check
 timed_step "appscope isolation" appscope_isolation_check
 timed_step "orbit core imports" orbit_core_imports_check
 timed_step "large frontend files" large_frontend_files_check
+timed_step "core portal links" core_portal_links_check
 
 # ──────────────────────────────────────────────────────────────────────────
 # Path-based scoping: only run test/build for workspaces actually touched

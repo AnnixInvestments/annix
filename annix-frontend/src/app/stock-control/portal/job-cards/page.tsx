@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ConfirmModal } from "@/app/components/modals/ConfirmModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { coreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import type { JobCard } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
@@ -152,6 +152,7 @@ function SortableHeader({
 
 export default function JobCardsPage() {
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const { user } = useStockControlAuth();
   const isAdmin = user?.role === "admin";
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -269,7 +270,7 @@ export default function JobCardsPage() {
 
   const navigateWithFile = (file: File) => {
     setPendingImportFile(file);
-    router.push("/stock-control/portal/job-cards/import");
+    router.push(coreHref("/stock-control/portal/job-cards/import"));
   };
 
   const handleImportDrop = (e: React.DragEvent) => {
@@ -772,12 +773,12 @@ export default function JobCardsPage() {
                     key={job.id}
                     className="hover:bg-gray-50 cursor-pointer"
                     onClick={() =>
-                      router.push(coreAwareHref(`/stock-control/portal/job-cards/${job.id}`))
+                      router.push(coreHref(`/stock-control/portal/job-cards/${job.id}`))
                     }
                   >
                     <td className="px-3 py-3 whitespace-nowrap">
                       <Link
-                        href={coreAwareHref(`/stock-control/portal/job-cards/${job.id}`)}
+                        href={coreHref(`/stock-control/portal/job-cards/${job.id}`)}
                         className="text-sm font-medium text-[var(--sc-primary-hover,#252560)] hover:text-[var(--sc-primary-active,#1c1c48)] truncate block"
                       >
                         {job.jobNumber}

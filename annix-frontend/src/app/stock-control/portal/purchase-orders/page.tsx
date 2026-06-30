@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ConfirmModal } from "@/app/components/modals/ConfirmModal";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import type { CustomerPurchaseOrder } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { useCpos, useDeleteCpo } from "@/app/lib/query/hooks";
@@ -20,6 +21,7 @@ function fulfillmentPercent(cpo: CustomerPurchaseOrder): number {
 
 export default function PurchaseOrdersPage() {
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const [activeTab, setActiveTab] = useState<string>("all");
   const [confirmDelete, setConfirmDelete] = useState<{ id: number; cpoNumber: string } | null>(
     null,
@@ -43,7 +45,7 @@ export default function PurchaseOrdersPage() {
     const file = e.dataTransfer.files[0];
     if (file) {
       setPendingCpoImportFile(file);
-      router.push("/stock-control/portal/purchase-orders/import");
+      router.push(coreHref("/stock-control/portal/purchase-orders/import"));
     }
   };
 
@@ -51,7 +53,7 @@ export default function PurchaseOrdersPage() {
     const file = e.target.files?.[0];
     if (file) {
       setPendingCpoImportFile(file);
-      router.push("/stock-control/portal/purchase-orders/import");
+      router.push(coreHref("/stock-control/portal/purchase-orders/import"));
     }
   };
 
@@ -110,7 +112,7 @@ export default function PurchaseOrdersPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <Link
-            href="/stock-control/portal/purchase-orders/reports"
+            href={coreHref("/stock-control/portal/purchase-orders/reports")}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -255,7 +257,9 @@ export default function PurchaseOrdersPage() {
                     <tr
                       key={cpo.id}
                       className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => router.push(`/stock-control/portal/purchase-orders/${cpo.id}`)}
+                      onClick={() =>
+                        router.push(coreHref(`/stock-control/portal/purchase-orders/${cpo.id}`))
+                      }
                     >
                       <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                         <span className="text-[var(--sc-primary,#323288)] font-medium">

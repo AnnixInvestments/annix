@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useEffect, useLayoutEffect, useState } from "react";
 import { FeedbackWidget } from "@/app/components/FeedbackWidget";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { isCorePortalEnabled } from "@/app/core/portal/config/corePortalFlag";
 import { NixAppProvider, NixAssistant } from "@/app/lib/nix";
 import { ChatPanel } from "../components/ChatPanel";
 import { HubBreadcrumb } from "../components/HubBreadcrumb";
@@ -193,6 +195,28 @@ function PortalContent({ children }: { children: React.ReactNode }) {
                 <div className="print:hidden">
                   <StockControlHeader />
                 </div>
+                {isCorePortalEnabled() && (
+                  <Link
+                    href="/core/portal/stock-control/dashboard"
+                    className="flex items-center justify-center gap-1.5 bg-[var(--sc-primary,#323288)] px-4 py-1.5 text-xs font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] print:hidden"
+                  >
+                    <svg
+                      className="h-3.5 w-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                      />
+                    </svg>
+                    Return to workspace
+                  </Link>
+                )}
                 <PageAccessGuard>
                   <MainContent>{children}</MainContent>
                 </PageAccessGuard>

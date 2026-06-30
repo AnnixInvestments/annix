@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 
 interface QuickLinksSectionProps {
   navItemVisible: (navKey: string) => boolean;
@@ -88,28 +89,29 @@ const LINK_CLASS =
   "bg-white shadow-sm border border-gray-200 rounded-lg p-4 hover:ring-2 hover:ring-[var(--sc-primary,#323288)] transition-all text-center";
 
 export function QuickLinksSection({ navItemVisible }: QuickLinksSectionProps) {
+  const coreHref = useCoreAwareHref();
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
       {navItemVisible("inventory-stock") && (
-        <Link href="/stock-control/portal/inventory" className={LINK_CLASS}>
+        <Link href={coreHref("/stock-control/portal/inventory")} className={LINK_CLASS}>
           <InventoryIcon />
           <p className="text-sm font-medium text-gray-700">Inventory</p>
         </Link>
       )}
       {navItemVisible("staff") && (
-        <Link href="/stock-control/portal/staff/members" className={LINK_CLASS}>
+        <Link href={coreHref("/stock-control/portal/staff/members")} className={LINK_CLASS}>
           <StaffIcon />
           <p className="text-sm font-medium text-gray-700">Staff</p>
         </Link>
       )}
       {navItemVisible("reports") && (
-        <Link href="/stock-control/portal/reports" className={LINK_CLASS}>
+        <Link href={coreHref("/stock-control/portal/reports")} className={LINK_CLASS}>
           <ReportsIcon />
           <p className="text-sm font-medium text-gray-700">Reports</p>
         </Link>
       )}
       {navItemVisible("settings") && (
-        <Link href="/stock-control/portal/settings" className={LINK_CLASS}>
+        <Link href={coreHref("/stock-control/portal/settings")} className={LINK_CLASS}>
           <SettingsIcon />
           <p className="text-sm font-medium text-gray-700">Settings</p>
         </Link>

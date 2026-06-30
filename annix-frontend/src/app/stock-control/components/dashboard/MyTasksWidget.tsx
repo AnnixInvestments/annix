@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import type { JobCard, WorkflowNotification } from "@/app/lib/api/stockControlApi";
 import { formatDateTimeZA } from "@/app/lib/datetime";
 import { statusColorClasses } from "../../lib/statusColors";
@@ -18,6 +19,7 @@ function formatStatus(status: string): string {
 }
 
 export function MyTasksWidget({ pendingApprovals, notifications }: MyTasksWidgetProps) {
+  const coreHref = useCoreAwareHref();
   const unreadNotifications = notifications.filter((n) => n.readAt === null);
   const totalTasks = pendingApprovals.length + unreadNotifications.length;
 
@@ -43,7 +45,7 @@ export function MyTasksWidget({ pendingApprovals, notifications }: MyTasksWidget
               {pendingApprovals.slice(0, 5).map((jobCard) => (
                 <Link
                   key={jobCard.id}
-                  href={`/stock-control/portal/job-cards/${jobCard.id}`}
+                  href={coreHref(`/stock-control/portal/job-cards/${jobCard.id}`)}
                   className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50 transition-colors"
                 >
                   <div className="min-w-0 flex-1">
@@ -56,13 +58,12 @@ export function MyTasksWidget({ pendingApprovals, notifications }: MyTasksWidget
                     className={`ml-2 flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusColorClasses(jobCard.status)}`}
                   >
                     {formatStatus(jobCard.status)}
-                    const actionUrl = notification.actionUrl;
                   </span>
                 </Link>
               ))}
               {pendingApprovals.length > 5 && (
                 <Link
-                  href="/stock-control/portal/job-cards"
+                  href={coreHref("/stock-control/portal/job-cards")}
                   className="block text-center text-xs text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] py-1"
                 >
                   View all {pendingApprovals.length} pending approvals
@@ -82,7 +83,7 @@ export function MyTasksWidget({ pendingApprovals, notifications }: MyTasksWidget
                 return (
                   <Link
                     key={notification.id}
-                    href={actionUrl || "/stock-control/portal/notifications"}
+                    href={coreHref(actionUrl || "/stock-control/portal/notifications")}
                     className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50 transition-colors"
                   >
                     <div className="min-w-0 flex-1">
@@ -101,7 +102,7 @@ export function MyTasksWidget({ pendingApprovals, notifications }: MyTasksWidget
               })}
               {unreadNotifications.length > 5 && (
                 <Link
-                  href="/stock-control/portal/notifications"
+                  href={coreHref("/stock-control/portal/notifications")}
                   className="block text-center text-xs text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] py-1"
                 >
                   View all {unreadNotifications.length} notifications

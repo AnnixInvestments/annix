@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import type { DashboardStats } from "@/app/lib/api/stockControlApi";
 
 interface QuickStatsSectionProps {
@@ -10,12 +11,13 @@ interface QuickStatsSectionProps {
 
 export function QuickStatsSection(props: QuickStatsSectionProps) {
   const { stats, navItemVisible } = props;
+  const coreHref = useCoreAwareHref();
   const showStockValue = navItemVisible("inventory-stock-value");
 
   const cards = [
     <Link
       key="items"
-      href="/stock-control/portal/inventory"
+      href={coreHref("/stock-control/portal/inventory")}
       className="bg-white shadow-sm border border-gray-200 rounded-lg p-3 sm:p-4 hover:ring-2 hover:ring-[var(--sc-primary,#323288)] transition-all"
     >
       <p className="text-xs font-medium text-gray-500">Items</p>
@@ -36,7 +38,7 @@ export function QuickStatsSection(props: QuickStatsSectionProps) {
     ) : null,
     <Link
       key="active-jobs"
-      href="/stock-control/portal/job-cards"
+      href={coreHref("/stock-control/portal/job-cards")}
       className="bg-white shadow-sm border border-gray-200 rounded-lg p-3 sm:p-4 hover:ring-2 hover:ring-[var(--sc-primary,#323288)] transition-all"
     >
       <p className="text-xs font-medium text-gray-500">Active Jobs</p>

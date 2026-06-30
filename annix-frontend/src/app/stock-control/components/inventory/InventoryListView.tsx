@@ -1,7 +1,7 @@
 import { isObject } from "es-toolkit/compat";
 import Link from "next/link";
 import { useState } from "react";
-import { coreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import type { StockControlLocation, StockItem } from "@/app/lib/api/stockControlApi";
 import { formatZAR } from "../../lib/currency";
 import { PAGE_SIZE_OPTIONS, type PageSize } from "../../lib/useInventoryPageState";
@@ -414,6 +414,7 @@ function ListTableRow({
   onLocationChange,
   onCategoryChange,
 }: ListTableRowProps) {
+  const coreHref = useCoreAwareHref();
   const rowClassName = item.needsQrPrint
     ? "bg-red-50 hover:bg-red-100"
     : item.minStockLevel > 0 && item.quantity <= item.minStockLevel
@@ -439,7 +440,7 @@ function ListTableRow({
       <td className="px-3 lg:px-6 py-4">
         <div className="flex items-center space-x-2">
           <Link
-            href={coreAwareHref(`/stock-control/portal/inventory/${item.id}`)}
+            href={coreHref(`/stock-control/portal/inventory/${item.id}`)}
             className="text-sm font-medium text-[var(--sc-primary-hover,#252560)] hover:text-[var(--sc-primary-active,#1c1c48)] break-words"
           >
             {item.name}

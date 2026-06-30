@@ -8,7 +8,7 @@ import { createPortal } from "react-dom";
 import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { PdfPreviewModal } from "@/app/components/PdfPreviewModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { coreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import type {
   BackgroundStepStatus,
   JobCard,
@@ -67,6 +67,7 @@ import { isValidLineItem, statusBadgeColor } from "./lib/helpers";
 export default function JobCardDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const authContext = useStockControlAuth();
   const user = authContext.user;
   const profile = authContext.profile;
@@ -506,7 +507,7 @@ export default function JobCardDetailPage() {
         area="Job Cards"
         error={actionsError}
         reset={fetchData}
-        backHref={coreAwareHref("/stock-control/portal/job-cards")}
+        backHref={coreHref("/stock-control/portal/job-cards")}
         backLabel="Back to Job Cards"
         brandButtonClass="bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)]"
       />
@@ -520,7 +521,7 @@ export default function JobCardDetailPage() {
           <div className="text-gray-900 text-lg font-semibold mb-2">Job card not found</div>
           <p className="text-gray-600">We couldn't find that job card. It may have been removed.</p>
           <Link
-            href={coreAwareHref("/stock-control/portal/job-cards")}
+            href={coreHref("/stock-control/portal/job-cards")}
             className="mt-4 inline-block text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
           >
             Back to Job Cards
@@ -568,7 +569,7 @@ export default function JobCardDetailPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center space-x-4 min-w-0">
           <Link
-            href={coreAwareHref("/stock-control/portal/job-cards")}
+            href={coreHref("/stock-control/portal/job-cards")}
             className="text-gray-500 hover:text-gray-700 flex-shrink-0"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -610,7 +611,7 @@ export default function JobCardDetailPage() {
               </span>
               {jobCard.parentJobCardId ? (
                 <Link
-                  href={`/stock-control/portal/job-cards/${jobCard.parentJobCardId}`}
+                  href={coreHref(`/stock-control/portal/job-cards/${jobCard.parentJobCardId}`)}
                   className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-800 hover:bg-amber-200"
                 >
                   Parent JC
@@ -618,7 +619,7 @@ export default function JobCardDetailPage() {
               ) : null}
               {jobCard.cpoId ? (
                 <Link
-                  href={`/stock-control/portal/purchase-orders/${jobCard.cpoId}`}
+                  href={coreHref(`/stock-control/portal/purchase-orders/${jobCard.cpoId}`)}
                   className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-purple-100 text-purple-800 hover:bg-purple-200"
                 >
                   CPO Linked
@@ -755,9 +756,7 @@ export default function JobCardDetailPage() {
             return (
               <button
                 type="button"
-                onClick={() =>
-                  router.push(coreAwareHref(`/stock-control/portal/job-cards/${next.id}`))
-                }
+                onClick={() => router.push(coreHref(`/stock-control/portal/job-cards/${next.id}`))}
                 title={`Go to ${next.label} — your next job card with an action`}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-md shadow-sm text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
@@ -1036,7 +1035,7 @@ export default function JobCardDetailPage() {
                       return (
                         <Link
                           key={djc.id}
-                          href={`/stock-control/portal/job-cards/${djc.id}`}
+                          href={coreHref(`/stock-control/portal/job-cards/${djc.id}`)}
                           className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50"
                         >
                           <div>

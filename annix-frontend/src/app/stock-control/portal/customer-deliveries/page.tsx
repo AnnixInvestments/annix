@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { extractErrorMessage } from "@/app/lib/api/apiError";
 import type { AnalyzedDeliveryNoteData, DeliveryNote } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
@@ -24,6 +25,7 @@ function itemsCount(delivery: DeliveryNote): { count: number; isExtracted: boole
 }
 
 export default function CustomerDeliveriesPage() {
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const { showError } = useErrorModal();
   const { data: deliveries = [], isLoading, error } = useCustomerDeliveries();
@@ -225,7 +227,7 @@ export default function CustomerDeliveriesPage() {
                 Close
               </button>
               <Link
-                href="/stock-control/portal/deliveries"
+                href={coreHref("/stock-control/portal/deliveries")}
                 className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] rounded-md hover:bg-[var(--sc-primary-hover,#252560)] transition-colors"
               >
                 Go to Supplier Delivery Notes
@@ -242,7 +244,7 @@ export default function CustomerDeliveriesPage() {
         </div>
         <div className="flex gap-3">
           <Link
-            href="/stock-control/portal/deliveries/scan"
+            href={coreHref("/stock-control/portal/deliveries/scan")}
             className="inline-flex items-center px-4 py-2 border border-[var(--sc-primary,#323288)] rounded-md shadow-sm text-sm font-medium text-[var(--sc-primary-hover,#252560)] bg-white hover:bg-[var(--sc-primary-50,#eeeef6)]"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -326,7 +328,7 @@ export default function CustomerDeliveriesPage() {
                 <tr key={delivery.id} className="hover:bg-gray-50 cursor-pointer">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <Link
-                      href={`/stock-control/portal/deliveries/${delivery.id}`}
+                      href={coreHref(`/stock-control/portal/deliveries/${delivery.id}`)}
                       className="text-sm font-medium text-[var(--sc-primary-hover,#252560)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                     >
                       {delivery.deliveryNumber}

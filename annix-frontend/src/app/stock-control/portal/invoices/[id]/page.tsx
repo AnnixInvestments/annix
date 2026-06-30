@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { coreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import type { InvoiceClarification, PriceChangeSummary } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
@@ -63,6 +63,7 @@ const MATCH_STATUS_COLORS: Record<string, string> = {
 export default function InvoiceDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const { user } = useStockControlAuth();
   const { effectiveRole } = useViewAs();
   const { confirm, ConfirmDialog } = useConfirm();
@@ -322,7 +323,7 @@ export default function InvoiceDetailPage() {
             {error ? "Something went wrong — please try again." : "Invoice not found"}
           </p>
           <Link
-            href={coreAwareHref("/stock-control/portal/invoices")}
+            href={coreHref("/stock-control/portal/invoices")}
             className="mt-4 inline-block text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
           >
             Back to Invoices
@@ -386,7 +387,7 @@ export default function InvoiceDetailPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Link
-            href={coreAwareHref("/stock-control/portal/invoices")}
+            href={coreHref("/stock-control/portal/invoices")}
             className="text-gray-500 hover:text-gray-700"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -480,7 +481,9 @@ export default function InvoiceDetailPage() {
                   {invoice.deliveryNoteId ? (
                     <div className="space-y-1">
                       <Link
-                        href={`/stock-control/portal/deliveries/${invoice.deliveryNoteId}`}
+                        href={coreHref(
+                          `/stock-control/portal/deliveries/${invoice.deliveryNoteId}`,
+                        )}
                         className="text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                       >
                         {(() => {
@@ -493,7 +496,7 @@ export default function InvoiceDetailPage() {
                       {secondaryLinkedDns.map((dn) => (
                         <div key={dn.id}>
                           <Link
-                            href={`/stock-control/portal/deliveries/${dn.id}`}
+                            href={coreHref(`/stock-control/portal/deliveries/${dn.id}`)}
                             className="text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                           >
                             {dn.deliveryNumber}
@@ -849,7 +852,7 @@ export default function InvoiceDetailPage() {
                 delivery note below or create a new one from the Deliveries page.
               </p>
               <a
-                href="/stock-control/portal/deliveries"
+                href={coreHref("/stock-control/portal/deliveries")}
                 className="inline-flex items-center mb-3 rounded-md bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700"
               >
                 + Create Delivery Note

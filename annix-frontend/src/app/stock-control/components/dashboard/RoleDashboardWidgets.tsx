@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import type {
   AccountsDashboard,
   AdminDashboard,
@@ -21,6 +22,7 @@ function MetricCard({
   colorClass: string;
   alertThreshold?: number;
 }) {
+  const coreHref = useCoreAwareHref();
   const valueColor =
     alertThreshold !== null && alertThreshold !== undefined && value >= alertThreshold
       ? "text-red-600"
@@ -37,7 +39,7 @@ function MetricCard({
   if (href) {
     return (
       <Link
-        href={href}
+        href={coreHref(href)}
         className="hover:ring-2 hover:ring-[var(--sc-primary,#323288)] rounded-lg transition-all"
       >
         {content}
@@ -119,6 +121,7 @@ interface AccountsWidgetProps {
 }
 
 export function AccountsWidget({ data }: AccountsWidgetProps) {
+  const coreHref = useCoreAwareHref();
   const pipelineSteps = [
     { label: "Extraction", value: data.pendingExtraction, colorClass: "bg-gray-400" },
     { label: "Processing", value: data.processing, colorClass: "bg-blue-400" },
@@ -139,7 +142,7 @@ export function AccountsWidget({ data }: AccountsWidgetProps) {
     >
       <div className="space-y-4">
         <Link
-          href="/stock-control/portal/invoices"
+          href={coreHref("/stock-control/portal/invoices")}
           className="block hover:opacity-80 transition-opacity"
         >
           <div className="flex items-center gap-1">
@@ -171,6 +174,7 @@ interface ManagerWidgetProps {
 }
 
 export function ManagerWidget({ data }: ManagerWidgetProps) {
+  const coreHref = useCoreAwareHref();
   return (
     <WidgetContainer
       title="Manager Overview"
@@ -207,7 +211,7 @@ export function ManagerWidget({ data }: ManagerWidgetProps) {
       </div>
       {data.reorderAlerts > 0 && (
         <Link
-          href="/stock-control/portal/inventory"
+          href={coreHref("/stock-control/portal/inventory")}
           className="mt-4 block bg-amber-50 border border-amber-200 rounded-lg p-3 hover:bg-amber-100 transition-colors"
         >
           <div className="flex items-center gap-2">
