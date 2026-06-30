@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 
 export interface BreadcrumbItem {
   label: string;
@@ -13,12 +14,13 @@ interface BreadcrumbProps {
 
 export function Breadcrumb(props: BreadcrumbProps) {
   const { items } = props;
+  const coreHref = useCoreAwareHref();
   return (
     <nav className="flex mb-4" aria-label="Breadcrumb">
       <ol className="inline-flex items-center space-x-1 md:space-x-2">
         <li className="inline-flex items-center">
           <Link
-            href="/au-rubber/portal/dashboard"
+            href={coreHref("/au-rubber/portal/dashboard")}
             className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-yellow-600"
           >
             <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -39,7 +41,7 @@ export function Breadcrumb(props: BreadcrumbProps) {
               </svg>
               {item.href ? (
                 <Link
-                  href={item.href}
+                  href={coreHref(item.href)}
                   className="ml-1 text-sm font-medium text-gray-500 hover:text-yellow-600 md:ml-2"
                 >
                   {item.label}

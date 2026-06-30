@@ -13,6 +13,7 @@ import {
   TableLoadingState,
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
 import { toastError } from "@/app/lib/api/apiError";
 import {
@@ -47,6 +48,7 @@ const statusColor = (status: RubberProductionStatus) => {
 };
 
 export default function ProductionsPage() {
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const scrollSentinelRef = useScrollRestoration("au-rubber:productions");
   const [productions, setProductions] = useState<RubberProductionDto[]>([]);
@@ -177,7 +179,7 @@ export default function ProductionsPage() {
           <p className="mt-1 text-sm text-gray-600">Manage rubber sheet production</p>
         </div>
         <Link
-          href="/au-rubber/portal/productions/new"
+          href={coreHref("/au-rubber/portal/productions/new")}
           className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700"
         >
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

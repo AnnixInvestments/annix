@@ -74,7 +74,7 @@ function resolveNavHref(href: string, prefix: string, activeApp: CoreApp): strin
   if (!isCorePortalEnabled()) {
     return corePath;
   }
-  if (isCorePortalHostedSuffix(suffixBase)) {
+  if (isCorePortalHostedSuffix(activeApp, suffixBase)) {
     return corePath;
   }
   return `/${activeApp}/portal/${rest}`;

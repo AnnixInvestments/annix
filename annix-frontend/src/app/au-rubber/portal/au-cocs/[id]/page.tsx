@@ -10,6 +10,7 @@ import { useExtractionProgress } from "@/app/components/ExtractionProgressModal"
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { toastError } from "@/app/lib/api/apiError";
 import {
   type AuCocStatus,
@@ -21,6 +22,7 @@ import { formatDateTimeZA } from "@/app/lib/datetime";
 export default function AuCocDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const { showExtraction, hideExtraction } = useExtractionProgress();
   const [coc, setCoc] = useState<RubberAuCocDto | null>(null);
@@ -559,7 +561,9 @@ export default function AuCocDetailPage() {
               <div className="text-xs font-medium text-gray-500 uppercase">Calenderer CoC</div>
               {coc.readinessDetails.calendererCocId ? (
                 <Link
-                  href={`/au-rubber/portal/supplier-cocs/${coc.readinessDetails.calendererCocId}`}
+                  href={coreHref(
+                    `/au-rubber/portal/supplier-cocs/${coc.readinessDetails.calendererCocId}`,
+                  )}
                   className="mt-1 text-sm text-yellow-600 hover:text-yellow-800 font-medium"
                 >
                   CoC #{coc.readinessDetails.calendererCocId}
@@ -579,7 +583,9 @@ export default function AuCocDetailPage() {
               <div className="text-xs font-medium text-gray-500 uppercase">Compounder CoC</div>
               {coc.readinessDetails.compounderCocId ? (
                 <Link
-                  href={`/au-rubber/portal/supplier-cocs/${coc.readinessDetails.compounderCocId}`}
+                  href={coreHref(
+                    `/au-rubber/portal/supplier-cocs/${coc.readinessDetails.compounderCocId}`,
+                  )}
                   className="mt-1 text-sm text-yellow-600 hover:text-yellow-800 font-medium"
                 >
                   CoC #{coc.readinessDetails.compounderCocId}
@@ -766,7 +772,7 @@ export default function AuCocDetailPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Link
-                        href={`/au-rubber/portal/roll-stock/${item.rollStockId}`}
+                        href={coreHref(`/au-rubber/portal/roll-stock/${item.rollStockId}`)}
                         className="text-yellow-600 hover:text-yellow-800"
                       >
                         View Roll

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type { RubberProductDto } from "@/app/lib/api/rubberPortalApi";
 
@@ -29,6 +30,7 @@ function PropertyBadge({ label, color }: { label: string; color: string }) {
 export default function AuRubberProductDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const productId = Number(params.id);
 
   const [product, setProduct] = useState<RubberProductDto | null>(null);
@@ -84,7 +86,10 @@ export default function AuRubberProductDetailPage() {
           <p className="text-gray-400 mb-4">
             The product you are looking for does not exist or has been deleted.
           </p>
-          <Link href="/au-rubber/portal/products" className="text-yellow-600 hover:text-yellow-800">
+          <Link
+            href={coreHref("/au-rubber/portal/products")}
+            className="text-yellow-600 hover:text-yellow-800"
+          >
             Back to Products
           </Link>
         </div>
@@ -117,13 +122,13 @@ export default function AuRubberProductDetailPage() {
         </div>
         <div className="flex items-center space-x-3">
           <button
-            onClick={() => router.push("/au-rubber/portal/products")}
+            onClick={() => router.push(coreHref("/au-rubber/portal/products"))}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
           >
             Back
           </button>
           <Link
-            href={`/au-rubber/portal/products/${product.id}/edit`}
+            href={coreHref(`/au-rubber/portal/products/${product.id}/edit`)}
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

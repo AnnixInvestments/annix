@@ -7,6 +7,7 @@ import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { TableLoadingState } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { DateInput } from "@/app/components/ui/DateInput";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { toastError } from "@/app/lib/api/apiError";
 import {
   auRubberApiClient,
@@ -93,6 +94,7 @@ function CompoundCard(props: {
   onInvoiceClick: (invoice: RubberTaxInvoiceDto) => void;
 }) {
   const { section, isExpanded, onToggle, onInvoiceClick } = props;
+  const coreHref = useCoreAwareHref();
   const { stock } = section;
   const rawStockCompoundName = stock.compoundName;
   const actualSOH = section.totalReceived - section.totalDispatched;
@@ -177,7 +179,7 @@ function CompoundCard(props: {
               <span>| Reorder: {formatKg(stock.reorderPointKg)}</span>
             </div>
             <Link
-              href={`/au-rubber/portal/compound-stocks/${stock.id}`}
+              href={coreHref(`/au-rubber/portal/compound-stocks/${stock.id}`)}
               className="text-sm text-yellow-600 hover:text-yellow-800 font-medium"
             >
               Manage Stock
@@ -267,6 +269,7 @@ function CommittedSection(props: {
   totalCommitted: number;
 }) {
   const { committedOrders, totalCommitted } = props;
+  const coreHref = useCoreAwareHref();
 
   return (
     <div>
@@ -292,7 +295,7 @@ function CommittedSection(props: {
             return (
               <Link
                 key={`${co.orderId}-${idx}`}
-                href={`/au-rubber/portal/orders/${co.orderId}`}
+                href={coreHref(`/au-rubber/portal/orders/${co.orderId}`)}
                 className="block p-2 rounded border border-gray-100 bg-amber-50 text-sm hover:bg-amber-100 transition-colors"
               >
                 <div className="flex items-center justify-between">
@@ -327,6 +330,7 @@ function DispatchedSection(props: {
   totalDispatched: number;
   onStiClick: (invoice: RubberTaxInvoiceDto) => void;
 }) {
+  const coreHref = useCoreAwareHref();
   const {
     movements,
     deliveryNotes,
@@ -375,7 +379,7 @@ function DispatchedSection(props: {
                 ? actualRollWeight
                 : refMovements.reduce((sum, m) => sum + m.quantityKg, 0);
             const date = rawCreatedAtSplitAt0 || "";
-            const returnUrl = encodeURIComponent("/au-rubber/portal/compound-stocks");
+            const returnUrl = encodeURIComponent(coreHref("/au-rubber/portal/compound-stocks"));
 
             return (
               <div
@@ -454,7 +458,7 @@ function DispatchedSection(props: {
                 </div>
                 {dn && (
                   <Link
-                    href={`/au-rubber/portal/delivery-notes/${dn.id}?returnUrl=${encodeURIComponent("/au-rubber/portal/compound-stocks")}`}
+                    href={`/au-rubber/portal/delivery-notes/${dn.id}?returnUrl=${encodeURIComponent(coreHref("/au-rubber/portal/compound-stocks"))}`}
                     className="text-xs text-yellow-600 hover:underline"
                   >
                     DN: {rawDnDeliveryNoteNumber || `#${dn.id}`} - {rawDnSupplierCompanyName || ""}
@@ -495,6 +499,7 @@ function DispatchedSection(props: {
 }
 
 export default function CompoundStocksPage() {
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const { alert, AlertDialog } = useAlert();
   const scrollSentinelRef = useScrollRestoration("au-rubber:compound-stocks");
@@ -1091,7 +1096,7 @@ export default function CompoundStocksPage() {
                 <div className="flex items-center space-x-2 shrink-0">
                   {stiModal.invoice && (
                     <a
-                      href={`/au-rubber/portal/tax-invoices/${stiModal.invoice.id}?returnUrl=${encodeURIComponent("/au-rubber/portal/compound-stocks")}`}
+                      href={`/au-rubber/portal/tax-invoices/${stiModal.invoice.id}?returnUrl=${encodeURIComponent(coreHref("/au-rubber/portal/compound-stocks"))}`}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 rounded-md transition-colors"

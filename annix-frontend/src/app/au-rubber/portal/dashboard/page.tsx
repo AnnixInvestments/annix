@@ -11,6 +11,7 @@ import { useState } from "react";
 import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { toastError } from "@/app/lib/api/apiError";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import { metricsApi } from "@/app/lib/api/metricsApi";
@@ -34,6 +35,7 @@ const ORDERS_PER_PAGE = 5;
 const AU_COC_GENERATE_FALLBACK_MS = 30000;
 
 export default function AuRubberDashboard() {
+  const coreHref = useCoreAwareHref();
   const ordersQuery = useAuRubberOrders();
   const companiesQuery = useAuRubberCompanies();
   const productsQuery = useAuRubberProducts();
@@ -167,7 +169,7 @@ export default function AuRubberDashboard() {
             </p>
           </div>
           <Link
-            href="/au-rubber/portal/orders"
+            href={coreHref("/au-rubber/portal/orders")}
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -184,7 +186,7 @@ export default function AuRubberDashboard() {
 
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           <Link
-            href="/au-rubber/portal/orders"
+            href={coreHref("/au-rubber/portal/orders")}
             className="bg-white overflow-hidden shadow rounded-lg hover:ring-2 hover:ring-yellow-500 transition-all"
           >
             <div className="p-5">
@@ -217,7 +219,7 @@ export default function AuRubberDashboard() {
           </Link>
 
           <Link
-            href="/au-rubber/portal/companies"
+            href={coreHref("/au-rubber/portal/companies")}
             className="bg-white overflow-hidden shadow rounded-lg hover:ring-2 hover:ring-green-500 transition-all"
           >
             <div className="p-5">
@@ -250,7 +252,7 @@ export default function AuRubberDashboard() {
           </Link>
 
           <Link
-            href="/au-rubber/portal/products"
+            href={coreHref("/au-rubber/portal/products")}
             className="bg-white overflow-hidden shadow rounded-lg hover:ring-2 hover:ring-purple-500 transition-all"
           >
             <div className="p-5">
@@ -283,7 +285,7 @@ export default function AuRubberDashboard() {
           </Link>
 
           <Link
-            href="/au-rubber/portal/codings"
+            href={coreHref("/au-rubber/portal/codings")}
             className="bg-white overflow-hidden shadow rounded-lg hover:ring-2 hover:ring-orange-500 transition-all"
           >
             <div className="p-5">
@@ -316,7 +318,7 @@ export default function AuRubberDashboard() {
           </Link>
 
           <Link
-            href="/au-rubber/portal/pricing-tiers"
+            href={coreHref("/au-rubber/portal/pricing-tiers")}
             className="bg-white overflow-hidden shadow rounded-lg hover:ring-2 hover:ring-yellow-500 transition-all"
           >
             <div className="p-5">
@@ -361,7 +363,7 @@ export default function AuRubberDashboard() {
                   .map((s) => (
                     <Link
                       key={s.status}
-                      href={`/au-rubber/portal/orders?status=${s.status}`}
+                      href={coreHref(`/au-rubber/portal/orders?status=${s.status}`)}
                       className={`px-3 py-2 rounded-lg ${statusColor(s.status)} hover:opacity-80 transition-opacity`}
                     >
                       <span className="font-semibold">{s.count}</span>
@@ -438,7 +440,7 @@ export default function AuRubberDashboard() {
                     <tr key={order.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <Link
-                          href={`/au-rubber/portal/orders/${order.id}`}
+                          href={coreHref(`/au-rubber/portal/orders/${order.id}`)}
                           className="text-blue-600 hover:text-blue-800"
                         >
                           {order.orderNumber}
@@ -469,7 +471,7 @@ export default function AuRubberDashboard() {
           {orders.length > 0 && (
             <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
               <Link
-                href="/au-rubber/portal/orders"
+                href={coreHref("/au-rubber/portal/orders")}
                 className="text-sm text-blue-600 hover:text-blue-800"
               >
                 View all orders &rarr;
@@ -524,7 +526,7 @@ export default function AuRubberDashboard() {
                 </p>
               </div>
               <Link
-                href="/au-rubber/portal/au-cocs"
+                href={coreHref("/au-rubber/portal/au-cocs")}
                 className="text-sm text-blue-600 hover:text-blue-800"
               >
                 View all &rarr;
@@ -539,7 +541,7 @@ export default function AuRubberDashboard() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-3">
                           <Link
-                            href={`/au-rubber/portal/au-cocs/${coc.id}`}
+                            href={coreHref(`/au-rubber/portal/au-cocs/${coc.id}`)}
                             className="text-sm font-medium text-blue-600 hover:text-blue-800 truncate"
                           >
                             {coc.cocNumber}

@@ -12,6 +12,7 @@ import {
   TableLoadingState,
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type { RubberProductDto } from "@/app/lib/api/rubberPortalApi";
@@ -92,6 +93,7 @@ const exportProductsToCSV = (products: RubberProductDto[]) => {
 };
 
 export default function AuRubberProductsPage() {
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const { alert, AlertDialog } = useAlert();
   const scrollSentinelRef = useScrollRestoration("au-rubber:products");
@@ -538,7 +540,7 @@ export default function AuRubberProductsPage() {
                         </td>
                         <td className="px-6 py-4">
                           <Link
-                            href={`/au-rubber/portal/products/${product.id}/edit`}
+                            href={coreHref(`/au-rubber/portal/products/${product.id}/edit`)}
                             className="text-sm font-medium text-yellow-600 hover:text-yellow-900"
                           >
                             {rawProductTitle2 || "Untitled"}
@@ -593,7 +595,7 @@ export default function AuRubberProductsPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
                           <Link
-                            href={`/au-rubber/portal/products/${product.id}/edit`}
+                            href={coreHref(`/au-rubber/portal/products/${product.id}/edit`)}
                             className="text-yellow-600 hover:text-yellow-900"
                           >
                             Edit

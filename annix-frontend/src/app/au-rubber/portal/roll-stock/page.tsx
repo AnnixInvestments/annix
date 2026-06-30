@@ -14,6 +14,7 @@ import {
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { DateInput } from "@/app/components/ui/DateInput";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
 import { toastError } from "@/app/lib/api/apiError";
 import {
@@ -41,6 +42,7 @@ type SortColumn =
   | "createdAt";
 
 export default function RollStockPage() {
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const { alert, AlertDialog } = useAlert();
   const scrollSentinelRef = useScrollRestoration("au-rubber:roll-stock");
@@ -398,7 +400,7 @@ export default function RollStockPage() {
             Add Opening Stock
           </button>
           <Link
-            href="/au-rubber/portal/au-cocs/new"
+            href={coreHref("/au-rubber/portal/au-cocs/new")}
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -537,7 +539,7 @@ export default function RollStockPage() {
                   <tr key={roll.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Link
-                        href={`/au-rubber/portal/roll-stock/${roll.id}`}
+                        href={coreHref(`/au-rubber/portal/roll-stock/${roll.id}`)}
                         className="text-yellow-600 hover:text-yellow-800 font-medium"
                       >
                         {roll.rollNumber}
@@ -563,7 +565,7 @@ export default function RollStockPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                       <Link
-                        href={`/au-rubber/portal/roll-stock/${roll.id}`}
+                        href={coreHref(`/au-rubber/portal/roll-stock/${roll.id}`)}
                         className="text-yellow-600 hover:text-yellow-800"
                       >
                         View

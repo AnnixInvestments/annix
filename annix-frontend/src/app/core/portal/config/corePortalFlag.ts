@@ -1,3 +1,5 @@
+import type { CoreApp } from "./navAppMap";
+
 const ENV_FLAG = process.env.NEXT_PUBLIC_CORE_PORTAL_ENABLED;
 
 /**
@@ -21,21 +23,36 @@ export function isCorePortalEnabled(): boolean {
 }
 
 /**
- * Path suffixes physically hosted under `/core/portal/<app>/...` today. Anything
- * outside this set links to the legacy `/<app>/portal/<suffix>` page when the
- * cutover is ON. Grow this list as pages migrate into the shell.
+ * Path suffixes physically hosted under `/core/portal/<app>/...` today, KEYED BY
+ * APP. Anything outside an app's set links to that app's legacy
+ * `/<app>/portal/<suffix>` page when the cutover is ON. Keying by app prevents
+ * cross-app suffix collisions (e.g. AU `settings` vs SC `settings`). Grow each
+ * app's set as its pages migrate into the shell.
  */
-export const CORE_PORTAL_HOSTED_SUFFIXES: ReadonlySet<string> = new Set([
-  "dashboard",
-  "inventory",
-  "job-cards",
-  "customer-deliveries",
-  "invoices",
-  "purchase-orders",
-  "deliveries",
-  "settings",
-]);
+export const CORE_PORTAL_HOSTED_SUFFIXES_BY_APP: Record<CoreApp, ReadonlySet<string>> = {
+  "stock-control": new Set([
+    "dashboard",
+    "inventory",
+    "job-cards",
+    "customer-deliveries",
+    "invoices",
+    "purchase-orders",
+    "deliveries",
+    "settings",
+  ]),
+  "au-rubber": new Set([
+    "dashboard",
+    "products",
+    "compound-stocks",
+    "orders",
+    "au-cocs",
+    "supplier-cocs",
+    "roll-stock",
+    "productions",
+  ]),
+};
 
-export function isCorePortalHostedSuffix(suffix: string): boolean {
-  return CORE_PORTAL_HOSTED_SUFFIXES.has(suffix);
+export function isCorePortalHostedSuffix(app: CoreApp, suffix: string): boolean {
+  const hostedForApp = CORE_PORTAL_HOSTED_SUFFIXES_BY_APP[app];
+  return hostedForApp.has(suffix);
 }

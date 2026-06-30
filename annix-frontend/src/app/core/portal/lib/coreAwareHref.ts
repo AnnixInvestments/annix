@@ -1,20 +1,21 @@
 import { usePathname } from "next/navigation";
 import { useCallback } from "react";
 import { isCorePortalEnabled, isCorePortalHostedSuffix } from "../config/corePortalFlag";
+import type { CoreApp } from "../config/navAppMap";
 
-const PORTAL_PREFIX_TO_APP: ReadonlyArray<{ prefix: string; app: string }> = [
+const PORTAL_PREFIX_TO_APP: ReadonlyArray<{ prefix: string; app: CoreApp }> = [
   { prefix: "/stock-control/portal/", app: "stock-control" },
   { prefix: "/au-rubber/portal/", app: "au-rubber" },
 ];
 
-function rewriteForShell(href: string, app: string, prefix: string): string {
+function rewriteForShell(href: string, app: CoreApp, prefix: string): string {
   const rest = href.slice(prefix.length);
   const queryIndex = rest.search(/[?#]/);
   const suffixPath = queryIndex === -1 ? rest : rest.slice(0, queryIndex);
   const segments = suffixPath.split("/").filter((segment) => segment.length > 0);
   const firstSegment = segments[0];
   const base = firstSegment ?? "";
-  if (!isCorePortalHostedSuffix(base)) {
+  if (!isCorePortalHostedSuffix(app, base)) {
     return href;
   }
   // Only routes that actually exist in-shell: a hosted list route (1 segment)

@@ -20,6 +20,7 @@ import {
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
 import { toastError } from "@/app/lib/api/apiError";
 import {
@@ -58,6 +59,7 @@ const cleanCocReason = (reason: string): string => {
 
 export default function AuCocsPage() {
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const { showExtraction, hideExtraction } = useExtractionProgress();
   const { isAdmin } = useAuRubberAuth();
@@ -672,7 +674,7 @@ export default function AuCocsPage() {
             </>
           )}
           <Link
-            href="/au-rubber/portal/au-cocs/new"
+            href={coreHref("/au-rubber/portal/au-cocs/new")}
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -879,7 +881,7 @@ export default function AuCocsPage() {
                 return (
                   <tr
                     key={coc.id}
-                    onClick={() => router.push(`/au-rubber/portal/au-cocs/${coc.id}`)}
+                    onClick={() => router.push(coreHref(`/au-rubber/portal/au-cocs/${coc.id}`))}
                     className={`hover:bg-gray-50 cursor-pointer ${
                       isPicked ? "bg-purple-50/60" : ""
                     }`}
@@ -898,7 +900,7 @@ export default function AuCocsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Link
-                        href={`/au-rubber/portal/au-cocs/${coc.id}`}
+                        href={coreHref(`/au-rubber/portal/au-cocs/${coc.id}`)}
                         className="text-yellow-600 hover:text-yellow-800 font-medium"
                       >
                         {coc.cocNumber}
@@ -946,7 +948,7 @@ export default function AuCocsPage() {
                       onClick={(e) => e.stopPropagation()}
                     >
                       <Link
-                        href={`/au-rubber/portal/au-cocs/${coc.id}`}
+                        href={coreHref(`/au-rubber/portal/au-cocs/${coc.id}`)}
                         className="text-yellow-600 hover:text-yellow-800"
                       >
                         View

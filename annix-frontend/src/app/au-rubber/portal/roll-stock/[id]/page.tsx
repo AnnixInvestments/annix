@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { useToast } from "@/app/components/Toast";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { toastError } from "@/app/lib/api/apiError";
 import {
   auRubberApiClient,
@@ -19,6 +20,7 @@ import { formatDateTimeZA } from "@/app/lib/datetime";
 export default function RollStockDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const [traceability, setTraceability] = useState<RollTraceabilityDto | null>(null);
   const [companies, setCompanies] = useState<RubberCompanyDto[]>([]);
@@ -260,7 +262,7 @@ export default function RollStockDetailPage() {
                 <dt className="text-sm font-medium text-gray-500">CoC Number</dt>
                 <dd className="mt-1 text-sm">
                   <Link
-                    href={`/au-rubber/portal/au-cocs/${auCoc.id}`}
+                    href={coreHref(`/au-rubber/portal/au-cocs/${auCoc.id}`)}
                     className="text-yellow-600 hover:text-yellow-800"
                   >
                     {auCoc.cocNumber}
@@ -306,7 +308,7 @@ export default function RollStockDetailPage() {
                       {coc.cocTypeLabel} - {coc.supplierCompanyName}
                     </div>
                     <Link
-                      href={`/au-rubber/portal/supplier-cocs/${coc.id}`}
+                      href={coreHref(`/au-rubber/portal/supplier-cocs/${coc.id}`)}
                       className="text-sm text-yellow-600 hover:text-yellow-800"
                     >
                       View Details
@@ -356,7 +358,7 @@ export default function RollStockDetailPage() {
                   <div className="text-sm font-medium text-gray-900">AU CoC: {auCoc.cocNumber}</div>
                   <div className="text-sm text-gray-500">Issued to {auCoc.customerCompanyName}</div>
                   <Link
-                    href={`/au-rubber/portal/au-cocs/${auCoc.id}`}
+                    href={coreHref(`/au-rubber/portal/au-cocs/${auCoc.id}`)}
                     className="text-sm text-yellow-600 hover:text-yellow-800"
                   >
                     View Certificate

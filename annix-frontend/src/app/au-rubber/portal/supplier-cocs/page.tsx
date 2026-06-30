@@ -28,6 +28,7 @@ import {
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
 import { toastError } from "@/app/lib/api/apiError";
 import {
@@ -95,6 +96,7 @@ type SortColumn =
 
 export default function SupplierCocsPage() {
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const { alert, AlertDialog } = useAlert();
@@ -923,7 +925,9 @@ export default function SupplierCocsPage() {
                 return (
                   <li
                     key={pending.id}
-                    onClick={() => router.push(`/au-rubber/portal/supplier-cocs/${pending.id}`)}
+                    onClick={() =>
+                      router.push(coreHref(`/au-rubber/portal/supplier-cocs/${pending.id}`))
+                    }
                     className="bg-white border border-amber-200 rounded-md p-3 flex flex-wrap items-center gap-3 cursor-pointer hover:bg-amber-50/60"
                   >
                     <span
@@ -939,7 +943,7 @@ export default function SupplierCocsPage() {
                     </span>
                     <span className="text-sm font-mono text-gray-700">#{pending.id}</span>
                     <Link
-                      href={`/au-rubber/portal/supplier-cocs/${pending.id}`}
+                      href={coreHref(`/au-rubber/portal/supplier-cocs/${pending.id}`)}
                       className="text-sm font-medium text-yellow-700 hover:text-yellow-800 break-all"
                       onClick={(e) => e.stopPropagation()}
                     >
@@ -964,7 +968,7 @@ export default function SupplierCocsPage() {
                       onClick={(e) => e.stopPropagation()}
                     >
                       <Link
-                        href={`/au-rubber/portal/supplier-cocs/${pending.id}`}
+                        href={coreHref(`/au-rubber/portal/supplier-cocs/${pending.id}`)}
                         className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50"
                         title="Open detail page"
                       >
@@ -1299,7 +1303,9 @@ export default function SupplierCocsPage() {
                       return (
                         <tr
                           key={coc.id}
-                          onClick={() => router.push(`/au-rubber/portal/supplier-cocs/${coc.id}`)}
+                          onClick={() =>
+                            router.push(coreHref(`/au-rubber/portal/supplier-cocs/${coc.id}`))
+                          }
                           className={`hover:bg-gray-50 cursor-pointer ${isInactive ? "opacity-40" : ""}`}
                         >
                           {hasApprovable && (
@@ -1326,7 +1332,7 @@ export default function SupplierCocsPage() {
                           <td className="px-6 py-4 break-all">
                             <div className="flex flex-wrap items-center gap-2">
                               <Link
-                                href={`/au-rubber/portal/supplier-cocs/${coc.id}`}
+                                href={coreHref(`/au-rubber/portal/supplier-cocs/${coc.id}`)}
                                 className="text-yellow-600 hover:text-yellow-800 font-medium break-all"
                               >
                                 {rawCocCocNumber || `COC-${coc.id}`}
@@ -1410,7 +1416,7 @@ export default function SupplierCocsPage() {
                                 </button>
                               )}
                               <Link
-                                href={`/au-rubber/portal/supplier-cocs/${coc.id}`}
+                                href={coreHref(`/au-rubber/portal/supplier-cocs/${coc.id}`)}
                                 className="text-yellow-600 hover:text-yellow-800 inline-flex items-center"
                                 title="View CoC"
                               >

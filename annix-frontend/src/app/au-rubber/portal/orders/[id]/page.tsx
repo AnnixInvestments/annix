@@ -29,6 +29,7 @@ import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { CalloffInput } from "@/app/components/rubber/CalloffInput";
 import { useToast } from "@/app/components/Toast";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type {
   CallOff,
@@ -141,6 +142,7 @@ interface OriginalState {
 export default function AuRubberOrderDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const orderId = Number(params.id);
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
@@ -270,7 +272,7 @@ export default function AuRubberOrderDetailPage() {
           variant: "warning",
         });
         if (confirmed) {
-          router.push("/au-rubber/portal/orders");
+          router.push(coreHref("/au-rubber/portal/orders"));
         }
       }
     },
@@ -558,7 +560,10 @@ export default function AuRubberOrderDetailPage() {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-gray-500 text-lg font-semibold mb-2">Order Not Found</div>
-          <Link href="/au-rubber/portal/orders" className="text-yellow-600 hover:text-yellow-800">
+          <Link
+            href={coreHref("/au-rubber/portal/orders")}
+            className="text-yellow-600 hover:text-yellow-800"
+          >
             Back to Orders
           </Link>
         </div>

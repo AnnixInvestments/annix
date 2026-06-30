@@ -7,6 +7,7 @@ import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { TableLoadingState } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { toastError } from "@/app/lib/api/apiError";
 import {
   auRubberApiClient,
@@ -18,6 +19,7 @@ import { formatDateZA } from "@/app/lib/datetime";
 export default function CompoundStockDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const stockId = Number(params.id);
 
@@ -186,7 +188,7 @@ export default function CompoundStockDetailPage() {
           <p className="text-gray-600">The requested compound stock was not found.</p>
           <button
             type="button"
-            onClick={() => router.push("/au-rubber/portal/compound-stocks")}
+            onClick={() => router.push(coreHref("/au-rubber/portal/compound-stocks"))}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
           >
             Back to Inventory

@@ -24,6 +24,7 @@ import { useExtractionProgress } from "@/app/components/ExtractionProgressModal"
 import { useToast } from "@/app/components/Toast";
 import { DateInput } from "@/app/components/ui/DateInput";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { toastError } from "@/app/lib/api/apiError";
 import {
   auRubberApiClient,
@@ -73,6 +74,7 @@ interface ExtractedSpecs {
 export default function SupplierCocDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const { showExtraction, hideExtraction } = useExtractionProgress();
   const { confirm, ConfirmDialog } = useConfirm();
@@ -224,7 +226,7 @@ export default function SupplierCocDetailPage() {
       await approveSupplierCocMutation.mutateAsync(cocId);
       await queryClient.refetchQueries({ queryKey: rubberKeys.supplierCocs.all });
       showToast("CoC approved", "success");
-      router.replace("/au-rubber/portal/supplier-cocs");
+      router.replace(coreHref("/au-rubber/portal/supplier-cocs"));
     } catch (err) {
       toastError(showToast, err, "Failed to approve CoC");
       setIsApproving(false);
@@ -236,7 +238,7 @@ export default function SupplierCocDetailPage() {
       await authorizeVersionMutation.mutateAsync({ kind: "supplier-cocs", id: cocId });
       await queryClient.refetchQueries({ queryKey: rubberKeys.supplierCocs.all });
       showToast("Version authorized — previous version superseded", "success");
-      router.replace("/au-rubber/portal/supplier-cocs");
+      router.replace(coreHref("/au-rubber/portal/supplier-cocs"));
     } catch (err) {
       toastError(showToast, err, "Failed to authorize version");
     }
@@ -256,7 +258,7 @@ export default function SupplierCocDetailPage() {
       await rejectVersionMutation.mutateAsync({ kind: "supplier-cocs", id: cocId });
       await queryClient.refetchQueries({ queryKey: rubberKeys.supplierCocs.all });
       showToast("Version rejected", "success");
-      router.replace("/au-rubber/portal/supplier-cocs");
+      router.replace(coreHref("/au-rubber/portal/supplier-cocs"));
     } catch (err) {
       toastError(showToast, err, "Failed to reject version");
     }
@@ -543,7 +545,7 @@ export default function SupplierCocDetailPage() {
                   {" "}
                   the{" "}
                   <Link
-                    href={`/au-rubber/portal/supplier-cocs/${coc.previousVersionId}`}
+                    href={coreHref(`/au-rubber/portal/supplier-cocs/${coc.previousVersionId}`)}
                     className="underline font-medium"
                   >
                     previous version
@@ -1170,7 +1172,7 @@ export default function SupplierCocDetailPage() {
                               className="flex items-center gap-3 text-sm bg-blue-50 rounded px-3 py-1.5"
                             >
                               <Link
-                                href={`/au-rubber/portal/supplier-cocs/${sibling.id}`}
+                                href={coreHref(`/au-rubber/portal/supplier-cocs/${sibling.id}`)}
                                 className="text-blue-700 hover:text-blue-900 font-medium"
                               >
                                 #{sibling.id} — {siblingLabel}
@@ -1766,7 +1768,9 @@ export default function SupplierCocDetailPage() {
                         <td className="px-4 py-4 whitespace-nowrap text-sm">
                           {batch.supplierCocId && batch.supplierCocId !== cocId ? (
                             <Link
-                              href={`/au-rubber/portal/supplier-cocs/${batch.supplierCocId}`}
+                              href={coreHref(
+                                `/au-rubber/portal/supplier-cocs/${batch.supplierCocId}`,
+                              )}
                               className="text-yellow-600 hover:text-yellow-800 font-medium"
                             >
                               {rawBatchSupplierCocNumber || `CoC-${batch.supplierCocId}`}
