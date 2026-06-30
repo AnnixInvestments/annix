@@ -21,6 +21,8 @@ import {
 } from "../prompts/piping-domain.prompt";
 import { NixItemParserService } from "./nix-item-parser.service";
 
+const NIX_CHAT_MODEL = "gemini-2.5-flash";
+
 export interface CreateSessionDto {
   owner: NixSessionOwner;
   rfqId?: number;
@@ -198,7 +200,9 @@ export class NixChatService {
       content: rawResponseContent,
       providerUsed,
       tokensUsed,
-    } = await this.aiChatService.chat(conversationHistory, systemPrompt);
+    } = await this.aiChatService.chat(conversationHistory, systemPrompt, undefined, {
+      model: NIX_CHAT_MODEL,
+    });
 
     const responseContent = this.redactPromptLeakage(rawResponseContent);
 
