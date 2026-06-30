@@ -231,6 +231,18 @@ class AuRubberApiClient {
     path: "/admin/auth/me",
   });
 
+  // Manually trigger an inbound-email poll from within the AU Rubber portal.
+  // Hits the same admin endpoint as the admin portal, but through THIS client so
+  // it authenticates with the AU Rubber token (auRubberTokenStore) — AU Rubber
+  // users are admin/employee accounts, so the token clears AdminAuthGuard +
+  // RolesGuard. Using the admin client here 401'd because adminTokenStore is
+  // empty when a user signs in via the unified /core login as AU Rubber only.
+  pollInboundEmailsNow = createEndpoint<[], { processed: number; busy: boolean }>(
+    apiClient,
+    "POST",
+    { path: "/admin/inbound-emails/poll-now" },
+  );
+
   productCodings = createEndpoint<[codingType?: string], RubberProductCodingDto[]>(
     apiClient,
     "GET",

@@ -3,8 +3,8 @@
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
-import { adminApiClient } from "@/app/lib/api/adminApi";
 import { toastError } from "@/app/lib/api/apiError";
+import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 
 interface CheckInboundEmailsButtonProps {
   onPolled?: () => void;
@@ -21,7 +21,7 @@ export function CheckInboundEmailsButton(props: CheckInboundEmailsButtonProps) {
   const handlePoll = async () => {
     try {
       setIsPolling(true);
-      const result = await adminApiClient.pollInboundEmailsNow();
+      const result = await auRubberApiClient.pollInboundEmailsNow();
       if (result.busy) {
         showToast("An email poll is already running — try again in a moment", "info");
         return;
