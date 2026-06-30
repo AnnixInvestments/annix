@@ -10,6 +10,8 @@ export class IndeedPortalAdapter implements PortalAdapter, OnModuleInit {
   readonly portalCode = "indeed";
   readonly displayName = "Indeed";
   readonly costTier: PortalCostTier = "freemium";
+  // Not yet wired (requires partner approval / XML feed setup) — never dispatched.
+  readonly available = false;
 
   constructor(private readonly registry: PortalAdapterRegistry) {}
 

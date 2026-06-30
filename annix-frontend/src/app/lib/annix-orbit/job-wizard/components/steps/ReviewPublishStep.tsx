@@ -180,7 +180,7 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
       const published = await publishMutation.mutateAsync({ id: draft.id, testMode });
       const message = testMode
         ? "Job published in TEST MODE — no external portals were notified. Seed fake applicants below to walk through the company flow."
-        : "Job published — candidates can now apply.";
+        : "Job published — it's live on your Annix Orbit careers page and jobs feed. External job boards aren't connected yet.";
       alert({ message, variant: "success" });
       if (!testMode) {
         onPublished(published);
@@ -265,10 +265,10 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
             className="text-sm px-4 py-2 bg-[#FF8A00] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FF9C33] transition-all disabled:opacity-50"
           >
             {isPredicting
-              ? "Predicting…"
+              ? "Estimating…"
               : volumeData
-                ? "Re-predict volume"
-                : "Predict candidate volume"}
+                ? "Re-estimate volume"
+                : "Estimate candidate volume"}
           </button>
         </div>
 
@@ -285,8 +285,13 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
             </ul>
           </div>
         ) : !isPublished ? (
-          <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900">
-            All required fields are present. Choose how to publish below.
+          <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900 space-y-1">
+            <p className="font-semibold">All required fields are present.</p>
+            <p>
+              Publishing makes this job live on your Annix Orbit careers page and includes it in
+              your Orbit jobs feed. External job boards (Indeed, LinkedIn, PNet, etc.) aren&apos;t
+              connected yet, so reach is limited to your own page and feed for now.
+            </p>
           </div>
         ) : null}
 
@@ -310,7 +315,7 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
               disabled={!canPublish || isPublishing}
               className="px-6 py-3 bg-[#FF8A00] text-[#1a1a40] font-semibold rounded-lg shadow-md hover:bg-[#FF9C33] hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isPublishing ? "Publishing…" : "Publish Job (live)"}
+              {isPublishing ? "Publishing…" : "Publish to Annix Orbit"}
             </button>
             <button
               type="button"
@@ -519,17 +524,22 @@ function VolumePredictionCard({ data }: VolumePredictionCardProps) {
     <div className="rounded-lg bg-gradient-to-br from-[#252560]/5 to-[#FF8A00]/10 border border-[#252560]/30 p-5 space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-xs uppercase tracking-wider text-gray-500">
-          Predicted candidate volume
+          Market-norm volume estimate
         </span>
         <span className="text-xs text-gray-500">Nix confidence {confidencePct}%</span>
       </div>
+      <p className="text-xs text-gray-600">
+        What a role like this typically attracts in the SA market if broadly advertised — not a
+        prediction of your Annix Orbit reach. External job boards aren&apos;t connected yet, so
+        expect fewer applicants.
+      </p>
       <div className="grid grid-cols-3 gap-2 text-center">
         <div className="bg-white rounded p-2 border border-[#e0e0f5]">
           <div className="text-xs text-gray-500">Lower</div>
           <div className="text-base font-semibold text-[#1a1a40]">{data.lowerBound}</div>
         </div>
         <div className="bg-[#FF8A00]/10 rounded p-2 border border-[#FF8A00]/40">
-          <div className="text-xs text-gray-500">Expected</div>
+          <div className="text-xs text-gray-500">Market norm</div>
           <div className="text-2xl font-bold text-[#1a1a40]">{data.expectedApplicants}</div>
         </div>
         <div className="bg-white rounded p-2 border border-[#e0e0f5]">

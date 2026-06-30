@@ -34,7 +34,7 @@ export class PortalPostingOrchestrator {
   ) {}
 
   async postToFreeAdapters(jobPosting: JobPosting): Promise<PortalOrchestratorRunSummary> {
-    const adapters = this.registry.freeAdapters();
+    const adapters = this.dispatchable(jobPosting, this.registry.freeAdapters());
     return this.runAdapters(jobPosting, adapters);
   }
 
@@ -43,9 +43,34 @@ export class PortalPostingOrchestrator {
     portalCodes: string[],
   ): Promise<PortalOrchestratorRunSummary> {
     const adapters = portalCodes
-      .map((code) => this.registry.byCode(code))
+      .map((code) => {
+        const adapter = this.registry.byCode(code);
+        if (!adapter) {
+          this.logger.warn(
+            `Job posting ${jobPosting.id} requested unknown portal "${code}"; skipping.`,
+          );
+        }
+        return adapter;
+      })
       .filter((adapter): adapter is PortalAdapter => adapter !== null);
-    return this.runAdapters(jobPosting, adapters);
+    return this.runAdapters(jobPosting, this.dispatchable(jobPosting, adapters));
+  }
+
+  /**
+   * Drop adapters that are scaffolded but not yet wired (available === false) so
+   * we never call post() on a NotImplemented channel and record a misleading
+   * failure/retry against it.
+   */
+  private dispatchable(jobPosting: JobPosting, adapters: PortalAdapter[]): PortalAdapter[] {
+    return adapters.filter((adapter) => {
+      if (adapter.available === false) {
+        this.logger.log(
+          `Skipping portal "${adapter.portalCode}" for job ${jobPosting.id}: channel not yet available.`,
+        );
+        return false;
+      }
+      return true;
+    });
   }
 
   private async runAdapters(
@@ -92,10 +117,21 @@ export class PortalPostingOrchestrator {
     try {
       const result = await adapter.post(jobPosting);
       if (result.success) {
-        record.status = JobPostingPortalStatus.POSTED;
-        record.postedAt = now().toJSDate();
-        record.portalJobId = result.portalJobId ?? null;
-        record.portalUrl = result.portalUrl ?? null;
+        const submittedForManual =
+          result.outcome === "submitted" || result.requiresManualConfirmation === true;
+        if (submittedForManual) {
+          // Handed off (e.g. emailed for manual posting) — NOT live externally.
+          // Never fabricate an external id or claim POSTED.
+          record.status = JobPostingPortalStatus.SUBMITTED;
+          record.postedAt = null;
+          record.portalJobId = result.portalJobId ?? null;
+          record.portalUrl = result.portalUrl ?? null;
+        } else {
+          record.status = JobPostingPortalStatus.POSTED;
+          record.postedAt = now().toJSDate();
+          record.portalJobId = result.portalJobId ?? null;
+          record.portalUrl = result.portalUrl ?? null;
+        }
         record.lastError = null;
         record.retryCount = 0;
         record.nextRetryAt = null;

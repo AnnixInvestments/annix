@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { portalForCode } from "@annix/product-data/portals";
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -7,7 +6,8 @@ import { JobPosting } from "../../entities/job-posting.entity";
 import { PortalAdapter, PortalCostTier, PortalPostingResult } from "../portal-adapter.interface";
 import { PortalAdapterRegistry } from "../portal-adapter-registry.service";
 
-const DEFAULT_GUMTREE_SUBMISSION_EMAIL = "listings@example.com";
+// Placeholder addresses we must never silently email a real job posting to.
+const PLACEHOLDER_SUBMISSION_EMAILS = new Set(["listings@example.com", ""]);
 
 @Injectable()
 export class GumtreePortalAdapter implements PortalAdapter, OnModuleInit {
@@ -17,6 +17,8 @@ export class GumtreePortalAdapter implements PortalAdapter, OnModuleInit {
   readonly displayName = "Gumtree";
   readonly costTier: PortalCostTier = "free";
 
+  private submissionEmail: string | null = null;
+
   constructor(
     private readonly registry: PortalAdapterRegistry,
     private readonly emailService: EmailService,
@@ -24,23 +26,44 @@ export class GumtreePortalAdapter implements PortalAdapter, OnModuleInit {
   ) {}
 
   onModuleInit(): void {
+    const configured = this.configService.get<string>("GUMTREE_LISTINGS_EMAIL")?.trim() ?? "";
+    if (configured.length === 0 || PLACEHOLDER_SUBMISSION_EMAILS.has(configured.toLowerCase())) {
+      // Fail loudly at startup rather than silently emailing a placeholder
+      // inbox at posting time. The adapter stays registered but refuses to send.
+      this.logger.error(
+        "GUMTREE_LISTINGS_EMAIL is not configured (or is a placeholder). The Gumtree channel " +
+          "will refuse to submit job postings until a real listings inbox is set.",
+      );
+      this.submissionEmail = null;
+    } else {
+      this.submissionEmail = configured;
+    }
     this.registry.register(this);
   }
 
   async post(jobPosting: JobPosting): Promise<PortalPostingResult> {
-    this.logger.warn(
-      "Gumtree does not currently expose a programmatic 'post via email' workflow; this adapter sends a notification email to the configured listings inbox and Annix staff complete the actual posting manually.",
+    if (!this.submissionEmail) {
+      return {
+        success: false,
+        error:
+          "Gumtree listings inbox is not configured (GUMTREE_LISTINGS_EMAIL); refusing to send to a placeholder address.",
+      };
+    }
+
+    // Gumtree exposes no programmatic posting API. This adapter emails the
+    // configured listings inbox so a human completes the actual posting — so the
+    // job is SUBMITTED for manual handling, never POSTED with an external id.
+    this.logger.log(
+      `Submitting job ${jobPosting.id} to the Gumtree listings inbox for manual posting.`,
     );
 
-    const submissionEmail =
-      this.configService.get<string>("GUMTREE_LISTINGS_EMAIL") || DEFAULT_GUMTREE_SUBMISSION_EMAIL;
     const subject = this.subjectFor(jobPosting);
     const text = this.plainTextBody(jobPosting);
     const html = this.htmlBody(jobPosting);
 
     try {
       const sent = await this.emailService.sendEmail({
-        to: submissionEmail,
+        to: this.submissionEmail,
         subject,
         text,
         html,
@@ -56,8 +79,9 @@ export class GumtreePortalAdapter implements PortalAdapter, OnModuleInit {
 
       return {
         success: true,
-        portalJobId: randomUUID(),
-        portalUrl: null,
+        outcome: "submitted",
+        requiresManualConfirmation: true,
+        portalUrl: this.publicJobUrl(jobPosting),
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

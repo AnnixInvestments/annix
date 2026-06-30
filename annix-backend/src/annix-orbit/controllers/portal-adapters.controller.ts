@@ -46,7 +46,9 @@ export class PortalAdaptersController {
         displayName: adapter.displayName,
         costTier: adapter.costTier,
         postingMode: isAssisted ? "assisted" : "api",
-        available: adapter.costTier === "free" || isAssisted,
+        // The adapter's own `available` flag is the source of truth for whether
+        // a channel can be dispatched to. Defaults to true when unset.
+        available: adapter.available ?? true,
       };
     });
   }

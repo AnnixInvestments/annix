@@ -657,11 +657,12 @@ Return JSON with this exact shape:
 }
 
 Rules:
-- Numbers are realistic SA market predictions for the ${window}-day window across job boards (Pnet, Careers24, LinkedIn, Indeed, plus our internal funnel).
+- These numbers are SA MARKET-NORM estimates: what a role like this typically attracts in the ${window}-day window IF it were broadly advertised. They are NOT a forecast of this job's actual reach. Do not assume distribution to Pnet, Careers24, LinkedIn or Indeed — Annix Orbit currently lists jobs only on its own careers page and jobs feed, so real volume will usually be much lower.
 - Heavily volume-skewed roles (entry-level retail, sales) typically draw 50-300 applicants. Senior specialised roles (senior engineering, regulated finance) typically 5-30.
 - Below-market salary, vague title, or many required skills lowers the count; remote work and competitive pay raises it.
 - confidence: 0.7+ for very common SA roles, 0.4-0.6 for niche, <0.4 if you genuinely don't have enough signal.
-- factors[] should be specific: e.g. "Senior B2B sales in Johannesburg typically draws 20-40 candidates", not generic boilerplate.`,
+- factors[] should be specific: e.g. "Senior B2B sales in Johannesburg typically draws 20-40 candidates", not generic boilerplate.
+- warnings[] MUST include this caveat as the first entry: "This is a market-norm estimate, not a prediction of your Annix Orbit reach — external job boards aren't connected yet, so expect fewer applicants."`,
   };
 }
 

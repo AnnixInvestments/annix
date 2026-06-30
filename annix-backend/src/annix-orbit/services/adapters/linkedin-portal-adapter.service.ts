@@ -10,6 +10,8 @@ export class LinkedInPortalAdapter implements PortalAdapter, OnModuleInit {
   readonly portalCode = "linkedin";
   readonly displayName = "LinkedIn";
   readonly costTier: PortalCostTier = "paid";
+  // Not yet wired (requires partner approval) — never dispatched.
+  readonly available = false;
 
   constructor(private readonly registry: PortalAdapterRegistry) {}
 

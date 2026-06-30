@@ -129,12 +129,14 @@ suggests replacements. Examples:
 Hover over a highlighted term to see the replacement; click "Apply Nix's
 fixes" to one-shot resolve every recommended fix.
 
-#### Predicted candidate volume
+#### Market-norm volume estimate
 
-Nix estimates the lower / expected / upper number of applicants the
-posting will attract over the response timeline you set, based on SA
-labour-market signal. Confidence is shown as a percentage; treat it as a
-sanity check, not a forecast.
+Nix estimates the lower / market-norm / upper number of applicants a role
+like this typically attracts over the response timeline you set, based on
+SA labour-market signal **assuming the job is broadly advertised**. It is
+not a prediction of your Annix Orbit reach — external job boards aren't
+connected yet, so expect fewer applicants than the market norm. Confidence
+is shown as a percentage; treat it as a sanity check, not a forecast.
 
 #### Sourcing queries
 

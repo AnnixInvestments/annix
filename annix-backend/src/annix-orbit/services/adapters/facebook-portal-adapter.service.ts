@@ -10,6 +10,8 @@ export class FacebookPortalAdapter implements PortalAdapter, OnModuleInit {
   readonly portalCode = "facebook";
   readonly displayName = "Facebook";
   readonly costTier: PortalCostTier = "freemium";
+  // Not yet wired (requires Graph API permissions) — never dispatched.
+  readonly available = false;
 
   constructor(private readonly registry: PortalAdapterRegistry) {}
 

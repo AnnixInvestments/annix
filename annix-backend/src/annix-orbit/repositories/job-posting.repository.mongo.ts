@@ -10,6 +10,11 @@ import {
 import { JobPosting, JobPostingStatus } from "../entities/job-posting.entity";
 import { JobPostingRepository } from "./job-posting.repository";
 
+// Test-mode postings must never surface on any public surface (job list, XML
+// feed, or direct reference-number lookup). Older rows predate the flag, so a
+// missing/null value is treated as "not test mode".
+const NOT_TEST_MODE = { $or: [{ testMode: null }, { testMode: false }] };
+
 @Injectable()
 export class MongoJobPostingRepository
   extends MongoCrudRepository<JobPosting>
@@ -109,7 +114,7 @@ export class MongoJobPostingRepository
 
   async activeForFeed(): Promise<JobPosting[]> {
     const docs = await this.documents
-      .find({ status: JobPostingStatus.ACTIVE })
+      .find({ status: JobPostingStatus.ACTIVE, ...NOT_TEST_MODE })
       .sort({ activatedAt: -1 })
       .limit(1000)
       .lean()
@@ -119,7 +124,7 @@ export class MongoJobPostingRepository
 
   async findActiveByReferenceNumber(referenceNumber: string): Promise<JobPosting | null> {
     const doc = await this.documents
-      .findOne({ referenceNumber, status: JobPostingStatus.ACTIVE })
+      .findOne({ referenceNumber, status: JobPostingStatus.ACTIVE, ...NOT_TEST_MODE })
       .lean()
       .exec();
     return this.toDomain(doc);
@@ -133,7 +138,7 @@ export class MongoJobPostingRepository
   async activePublicJobs(search?: string): Promise<JobPosting[]> {
     const filter: Record<string, unknown> = {
       status: JobPostingStatus.ACTIVE,
-      $or: [{ testMode: null }, { testMode: false }],
+      ...NOT_TEST_MODE,
     };
     if (search) {
       filter.$and = [
