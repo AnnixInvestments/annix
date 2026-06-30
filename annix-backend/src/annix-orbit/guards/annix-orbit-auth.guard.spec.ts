@@ -13,6 +13,8 @@ interface GuardOverrides {
   payload: Record<string, unknown>;
   rbacRoleCode?: string | null;
   recruiterRole?: string | null;
+  profile?: Record<string, unknown> | null;
+  teamMembers?: Array<Record<string, unknown>>;
 }
 
 function contextFor(): { context: ExecutionContext; request: { user?: unknown } } {
@@ -43,7 +45,23 @@ function guardFor(overrides: GuardOverrides): AnnixOrbitAuthGuard {
     touchLastActiveByEmail: async () => null,
   } as unknown as CandidateRepository;
   const profileRepo = {
-    findByUserId: async () => ({ recruiterRole: overrides.recruiterRole ?? null }),
+    findByUserId: async () =>
+      overrides.profile ?? {
+        id: 1,
+        userId: 42,
+        companyId: 7,
+        userType: "company",
+        recruiterRole: overrides.recruiterRole ?? null,
+      },
+    teamMembers: async () =>
+      overrides.teamMembers ?? [
+        {
+          id: 1,
+          userId: 42,
+          companyId: 7,
+          userType: "company",
+        },
+      ],
   } as unknown as AnnixOrbitProfileRepository;
   return new AnnixOrbitAuthGuard(
     jwtService,
@@ -97,6 +115,33 @@ describe("AnnixOrbitAuthGuard role resolution", () => {
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
     expect((request.user as { role: string }).role).toBe(AnnixOrbitRole.ADMIN);
+  });
+
+  it("upgrades the first company profile to admin even when RBAC is stale viewer", async () => {
+    const { context, request } = contextFor();
+    const guard = guardFor({
+      payload: { type: "annix-orbit", sub: 42, userType: "company", role: "viewer" },
+      rbacRoleCode: "viewer",
+    });
+
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+    expect((request.user as { role: string }).role).toBe(AnnixOrbitRole.ADMIN);
+  });
+
+  it("keeps later company profiles as viewer when RBAC is viewer", async () => {
+    const { context, request } = contextFor();
+    const guard = guardFor({
+      payload: { type: "annix-orbit", sub: 42, userType: "company", role: "viewer" },
+      rbacRoleCode: "viewer",
+      profile: { id: 5, userId: 42, companyId: 7, userType: "company" },
+      teamMembers: [
+        { id: 1, userId: 21, companyId: 7, userType: "company" },
+        { id: 5, userId: 42, companyId: 7, userType: "company" },
+      ],
+    });
+
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+    expect((request.user as { role: string }).role).toBe(AnnixOrbitRole.VIEWER);
   });
 
   it("rejects a token of the wrong type", async () => {

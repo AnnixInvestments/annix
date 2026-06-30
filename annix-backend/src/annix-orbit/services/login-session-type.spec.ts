@@ -33,6 +33,7 @@ function build(opts: {
   candidate: OrbitLoginCandidate;
   profile: Record<string, unknown> | null;
   access?: { role: { code: string } } | null;
+  teamMembers?: Array<Record<string, unknown>>;
 }) {
   const signed: Array<Record<string, unknown>> = [];
   const noop = {} as never;
@@ -40,6 +41,7 @@ function build(opts: {
   const profileRepo = {
     findByUserId: jest.fn(async () => opts.profile),
     create: jest.fn(async (p: Record<string, unknown>) => ({ id: 99, ...p })),
+    teamMembers: jest.fn(async () => opts.teamMembers ?? []),
   };
   const userRepo = {
     save: jest.fn(async (u: User) => u),
@@ -126,6 +128,20 @@ describe("Orbit login session type (#427)", () => {
     expect(result.user.userType).toBe(AnnixOrbitUserType.COMPANY);
     expect(signed[0].userType).toBe(AnnixOrbitUserType.COMPANY);
     expect(signed[0].companyId).toBe(19);
+  });
+
+  it("a first company profile is admin even if its RBAC row is stale viewer", async () => {
+    const { service, signed } = build({
+      candidate: candidate("company", 7, "orbit:company"),
+      profile: { id: 2, userId: 7, userType: AnnixOrbitUserType.COMPANY, companyId: 19 },
+      access: { role: { code: "viewer" } },
+      teamMembers: [{ id: 2, userId: 7, userType: AnnixOrbitUserType.COMPANY, companyId: 19 }],
+    });
+
+    const result = await service.login("u@x.com", "pw", "company");
+
+    expect(result.user.role).toBe("admin");
+    expect(signed[0].role).toBe("admin");
   });
 
   it("a recruiter login stays a recruiter session with its companyId + recruiterRole", async () => {

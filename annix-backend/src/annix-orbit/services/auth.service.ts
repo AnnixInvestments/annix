@@ -1077,10 +1077,44 @@ export class AnnixOrbitAuthService {
         administrator: AnnixOrbitRole.ADMIN,
       };
       const mapped = roleMap[access.role.code];
-      return mapped || AnnixOrbitRole.VIEWER;
+      return this.upgradeEmployerOwnerRole(
+        userId,
+        mapped || AnnixOrbitRole.VIEWER,
+        resolvedProfile,
+      );
     }
 
-    return AnnixOrbitRole.VIEWER;
+    return this.upgradeEmployerOwnerRole(userId, AnnixOrbitRole.VIEWER, resolvedProfile);
+  }
+
+  private async upgradeEmployerOwnerRole(
+    userId: number,
+    role: string,
+    profile: AnnixOrbitProfile | null,
+  ): Promise<string> {
+    if (
+      role === AnnixOrbitRole.ADMIN ||
+      role === AnnixOrbitRole.RECRUITER ||
+      role === AnnixOrbitRole.INDIVIDUAL ||
+      role === AnnixOrbitRole.STUDENT
+    ) {
+      return role;
+    }
+
+    if (profile?.userType === AnnixOrbitUserType.RECRUITER && profile.recruiterRole === "owner") {
+      return AnnixOrbitRole.ADMIN;
+    }
+
+    if (profile?.userType !== AnnixOrbitUserType.COMPANY || !profile.companyId) {
+      return role;
+    }
+
+    const members = await this.profileRepo.teamMembers(profile.companyId);
+    const owner = members.reduce<AnnixOrbitProfile | null>((current, member) => {
+      if (!current) return member;
+      return member.id < current.id ? member : current;
+    }, null);
+    return owner?.userId === userId ? AnnixOrbitRole.ADMIN : role;
   }
 
   private async provisionInvitedSeekerProfile(user: User): Promise<AnnixOrbitProfile | null> {
