@@ -1,6 +1,7 @@
 "use client";
 
 import { toPairs as entries } from "es-toolkit/compat";
+import { Download } from "lucide-react";
 import { useState } from "react";
 import { annixOrbitApiClient, type JobPosting } from "@/app/lib/api/annixOrbitApi";
 import { isApiError } from "@/app/lib/api/apiError";
@@ -45,6 +46,90 @@ const readinessIssues = (draft: JobPosting): ReadinessIssue[] => {
     issues.push({ message: "Employment type is required" });
   }
   return issues;
+};
+
+const formatSalaryRange = (
+  min: number | null,
+  max: number | null,
+  currency: string,
+): string | null => {
+  if (min == null && max == null) return null;
+  const fmt = (n: number) => `${currency} ${n.toLocaleString("en-ZA")}`;
+  if (min != null && max != null) return `${fmt(min)} - ${fmt(max)} / month`;
+  if (min != null) return `from ${fmt(min)} / month`;
+  return `up to ${fmt(max as number)} / month`;
+};
+
+const readableTimeframe = (timeframe: string): string =>
+  timeframe === "3_months" ? "By 3 months" : "By 12 months";
+
+const cleanFilenamePart = (value: string): string => {
+  const cleaned = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return cleaned || "job-post";
+};
+
+const jobPostDownloadText = (draft: JobPosting): string => {
+  const title = draft.title && draft.title !== "Untitled draft" ? draft.title : "Untitled role";
+  const location = draft.location;
+  const province = draft.province;
+  const employmentType = draft.employmentType;
+  const workMode = draft.workMode;
+  const draftSalaryCurrency = draft.salaryCurrency;
+  const salaryCurrency = draftSalaryCurrency || "ZAR";
+  const salaryRange = formatSalaryRange(draft.salaryMin, draft.salaryMax, salaryCurrency);
+  const description = draft.description;
+  const draftSuccessMetrics = draft.successMetrics;
+  const successMetrics = draftSuccessMetrics || [];
+  const draftSkills = draft.skills;
+  const skills = draftSkills || [];
+  const requiredEducation = draft.requiredEducation;
+  const draftRequiredCertifications = draft.requiredCertifications;
+  const requiredCertifications = draftRequiredCertifications || [];
+  const minExperienceYears = draft.minExperienceYears;
+  const applyByEmail = draft.applyByEmail;
+
+  const locationLine = [location, province, employmentType, workMode].filter(Boolean).join(" | ");
+  const successLines = successMetrics.map(
+    (metric) => `- ${readableTimeframe(metric.timeframe)}: ${metric.metric}`,
+  );
+  const skillLines = skills.map((skill) => {
+    const importance = skill.importance;
+    const proficiency = skill.proficiency;
+    return `- ${skill.name} (${importance}, ${proficiency})`;
+  });
+  const requirementLines = [
+    minExperienceYears != null ? `Minimum experience: ${minExperienceYears} years` : null,
+    requiredEducation ? `Education: ${requiredEducation}` : null,
+    requiredCertifications.length > 0
+      ? `Certifications: ${requiredCertifications.join(", ")}`
+      : null,
+  ].filter(Boolean);
+
+  return [
+    title,
+    locationLine,
+    salaryRange,
+    "",
+    description || "No description added yet.",
+    "",
+    successLines.length > 0 ? "What success looks like" : null,
+    successLines.length > 0 ? successLines.join("\n") : null,
+    "",
+    skillLines.length > 0 ? "Skills" : null,
+    skillLines.length > 0 ? skillLines.join("\n") : null,
+    "",
+    requirementLines.length > 0 ? "Requirements" : null,
+    requirementLines.length > 0 ? requirementLines.join("\n") : null,
+    "",
+    applyByEmail ? `Apply by email: ${applyByEmail}` : null,
+  ]
+    .filter((line) => line !== null)
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 };
 
 export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublishStepProps) {
@@ -139,6 +224,22 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
       onError: () =>
         alert({ message: "Couldn't clear test candidates. Try again.", variant: "error" }),
     });
+  };
+
+  const handleDownloadJobPost = async () => {
+    await onFlush();
+    const text = jobPostDownloadText(draft);
+    const title = draft.title && draft.title !== "Untitled draft" ? draft.title : "job-post";
+    const filename = `${cleanFilenamePart(title)}-${draft.id}.txt`;
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -274,7 +375,25 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
         ) : null}
       </StepShell>
 
-      <JobPreviewCard draft={draft} />
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#252560]/30 bg-white px-5 py-4 shadow-md">
+          <div>
+            <p className="text-sm font-semibold text-[#1a1a40]">Candidate-facing preview</p>
+            <p className="text-xs text-gray-600">
+              Download this advert as a text file for email or manual posting elsewhere.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleDownloadJobPost}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#252560] px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-[#1a1a40]"
+          >
+            <Download className="h-4 w-4" aria-hidden="true" />
+            Download post
+          </button>
+        </div>
+        <JobPreviewCard draft={draft} />
+      </div>
     </div>
   );
 }
