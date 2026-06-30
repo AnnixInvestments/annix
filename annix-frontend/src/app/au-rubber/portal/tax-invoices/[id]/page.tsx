@@ -17,6 +17,7 @@ import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import {
   auRubberApiClient,
   type RubberTaxInvoiceDto,
@@ -43,6 +44,7 @@ const returnExceptionLabel = (reason: string): string => {
 export default function TaxInvoiceDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
   const { alert, AlertDialog } = useAlert();
@@ -254,7 +256,7 @@ export default function TaxInvoiceDetailPage() {
         invoice?.invoiceType === "CUSTOMER"
           ? "/au-rubber/portal/tax-invoices/customers"
           : "/au-rubber/portal/tax-invoices/suppliers";
-      router.push(listPath);
+      router.push(coreHref(listPath));
     } catch (err) {
       const message = err instanceof Error ? err.message : "Approval failed";
       alert({ message: message, variant: "error" });
@@ -403,7 +405,7 @@ export default function TaxInvoiceDetailPage() {
         area="Tax Invoices"
         error={error}
         reset={() => router.refresh()}
-        backHref="/au-rubber/portal/tax-invoices/suppliers"
+        backHref={coreHref("/au-rubber/portal/tax-invoices/suppliers")}
         backLabel="Back to Tax Invoices"
         brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
       />

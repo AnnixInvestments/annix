@@ -56,3 +56,46 @@ export function isCorePortalHostedSuffix(app: CoreApp, suffix: string): boolean 
   const hostedForApp = CORE_PORTAL_HOSTED_SUFFIXES_BY_APP[app];
   return hostedForApp.has(suffix);
 }
+
+/**
+ * Multi-segment routes physically hosted under `/core/portal/<app>/...`, keyed by
+ * app and expressed as normalized templates (numeric id segments written as
+ * `:id`). Some apps (AU Rubber) have genuinely nested sub-routes — document and
+ * accounting sections like `companies/suppliers/statements` or
+ * `delivery-notes/scan` — that the single-segment `CORE_PORTAL_HOSTED_SUFFIXES`
+ * model can't express. A path whose numeric-normalized form is in this set is
+ * hosted in-shell; anything else falls through to the single-segment rules.
+ *
+ * Stock Control has no nested hosted routes today, so its set is empty and its
+ * rewrite behaviour is unchanged.
+ */
+export const CORE_PORTAL_HOSTED_ROUTE_TEMPLATES_BY_APP: Record<CoreApp, ReadonlySet<string>> = {
+  "stock-control": new Set([]),
+  "au-rubber": new Set([
+    "delivery-notes/:id",
+    "delivery-notes/suppliers",
+    "delivery-notes/customers",
+    "delivery-notes/scan",
+    "tax-invoices/:id",
+    "tax-invoices/suppliers",
+    "tax-invoices/customers",
+    "companies",
+    "companies/suppliers",
+    "companies/customers",
+    "companies/suppliers/statements",
+    "companies/customers/statements",
+  ]),
+};
+
+function normalizeRouteTemplate(suffixPath: string): string {
+  return suffixPath
+    .split("/")
+    .filter((segment) => segment.length > 0)
+    .map((segment) => (/^\d+$/.test(segment) ? ":id" : segment))
+    .join("/");
+}
+
+export function isCorePortalHostedRouteTemplate(app: CoreApp, suffixPath: string): boolean {
+  const templatesForApp = CORE_PORTAL_HOSTED_ROUTE_TEMPLATES_BY_APP[app];
+  return templatesForApp.has(normalizeRouteTemplate(suffixPath));
+}

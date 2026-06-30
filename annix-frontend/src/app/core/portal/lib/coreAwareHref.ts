@@ -1,6 +1,10 @@
 import { usePathname } from "next/navigation";
 import { useCallback } from "react";
-import { isCorePortalEnabled, isCorePortalHostedSuffix } from "../config/corePortalFlag";
+import {
+  isCorePortalEnabled,
+  isCorePortalHostedRouteTemplate,
+  isCorePortalHostedSuffix,
+} from "../config/corePortalFlag";
 import type { CoreApp } from "../config/navAppMap";
 
 const PORTAL_PREFIX_TO_APP: ReadonlyArray<{ prefix: string; app: CoreApp }> = [
@@ -12,6 +16,13 @@ function rewriteForShell(href: string, app: CoreApp, prefix: string): string {
   const rest = href.slice(prefix.length);
   const queryIndex = rest.search(/[?#]/);
   const suffixPath = queryIndex === -1 ? rest : rest.slice(0, queryIndex);
+  // Nested hosted routes (AU document/accounting sub-pages like
+  // companies/suppliers/statements, delivery-notes/scan, *-/:id) are matched as
+  // whole-path templates first; the single-segment rules below only see flat
+  // list/numeric-detail routes.
+  if (isCorePortalHostedRouteTemplate(app, suffixPath)) {
+    return `/core/portal/${app}/${rest}`;
+  }
   const segments = suffixPath.split("/").filter((segment) => segment.length > 0);
   const firstSegment = segments[0];
   const base = firstSegment ?? "";
@@ -58,6 +69,15 @@ export function useCoreAwareHref(): (href: string) => string {
       }
       if (!inShell) {
         return href;
+      }
+      const rootIndex = href.search(/[?#]/);
+      const rootPath = rootIndex === -1 ? href : href.slice(0, rootIndex);
+      const rootTail = rootIndex === -1 ? "" : href.slice(rootIndex);
+      const rootMatch = PORTAL_PREFIX_TO_APP.find(
+        (entry) => rootPath === entry.prefix.slice(0, -1),
+      );
+      if (rootMatch) {
+        return `/core/portal/${rootMatch.app}${rootTail}`;
       }
       const matched = PORTAL_PREFIX_TO_APP.find((entry) => href.startsWith(entry.prefix));
       if (!matched) {

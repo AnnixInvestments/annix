@@ -81,6 +81,32 @@ const hostedSuffixes = (app: string): Set<string> => {
   return new Set(entries === null ? [] : entries.map((quoted) => quoted.replace(/"/g, "")));
 };
 
+/**
+ * First path segments of the per-app nested hosted route templates, parsed from
+ * the `CORE_PORTAL_HOSTED_ROUTE_TEMPLATES_BY_APP` block of corePortalFlag.ts. A
+ * link whose first segment starts a nested hosted route (e.g. `companies`,
+ * `delivery-notes`, `tax-invoices`) must also flow through `coreHref(...)`, so we
+ * fold these into the hosted set the offender check enforces. (Wrapping a rare
+ * non-hosted sub-path under one of these prefixes is a harmless no-op.)
+ */
+const hostedTemplateFirstSegments = (app: string): Set<string> => {
+  const text = readFileSync(FLAG_FILE, "utf8");
+  const constStart = text.indexOf("CORE_PORTAL_HOSTED_ROUTE_TEMPLATES_BY_APP");
+  if (constStart === -1) {
+    return new Set();
+  }
+  const region = text.slice(constStart);
+  const block = region.match(new RegExp(`"${app}":\\s*new Set\\(\\[([^\\]]*)\\]`));
+  if (block === null) {
+    return new Set();
+  }
+  const entries = block[1].match(/"([a-z0-9-]+)(?:\/[a-z0-9:-]+)*"/g);
+  if (entries === null) {
+    return new Set();
+  }
+  return new Set(entries.map((quoted) => quoted.replace(/"/g, "").split("/")[0]));
+};
+
 const walkTsx = (dir: string): string[] => {
   if (!existsSync(dir)) {
     return [];
@@ -204,7 +230,7 @@ const offendersIn = (path: string, scan: AppScan, hosted: Set<string>): string[]
 };
 
 const scanResults = APPS.map((scan) => {
-  const hosted = hostedSuffixes(scan.app);
+  const hosted = new Set([...hostedSuffixes(scan.app), ...hostedTemplateFirstSegments(scan.app)]);
   const files = scanFiles(scan);
   const offenders = files.flatMap((path) => offendersIn(path, scan, hosted));
   return { app: scan.app, fileCount: files.length, offenders };

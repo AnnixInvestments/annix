@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { TableLoadingState } from "@/app/components/shared/TableComponents";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { useAuRubberTaxInvoiceStatements, useAuRubberTaxInvoices } from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../../../../components/Breadcrumb";
 
@@ -19,6 +20,7 @@ function CompanyInvoicesTable({
   vatTotal: number;
   total: number;
 }) {
+  const coreHref = useCoreAwareHref();
   const query = useAuRubberTaxInvoices({
     invoiceType: "CUSTOMER",
     companyId,
@@ -69,7 +71,7 @@ function CompanyInvoicesTable({
             <tr key={invoice.id} className="hover:bg-gray-50">
               <td className="px-6 py-3 whitespace-nowrap">
                 <Link
-                  href={`/au-rubber/portal/tax-invoices/${invoice.id}`}
+                  href={coreHref(`/au-rubber/portal/tax-invoices/${invoice.id}`)}
                   className="text-sm font-medium text-orange-600 hover:text-orange-900"
                 >
                   {invoice.invoiceNumber}
@@ -119,6 +121,7 @@ function CompanyInvoicesTable({
 }
 
 export default function CustomerStatementsPage() {
+  const coreHref = useCoreAwareHref();
   const statementsQuery = useAuRubberTaxInvoiceStatements("CUSTOMER");
   const rawStatementsData = statementsQuery.data;
   const statements = rawStatementsData || [];
@@ -143,7 +146,7 @@ export default function CustomerStatementsPage() {
           area="Customer Statements"
           error={error}
           reset={() => statementsQuery.refetch()}
-          backHref="/au-rubber/portal/companies/customers"
+          backHref={coreHref("/au-rubber/portal/companies/customers")}
           backLabel="Back to Customers"
           brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
         />

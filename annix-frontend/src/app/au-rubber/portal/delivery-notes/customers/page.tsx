@@ -24,6 +24,7 @@ import {
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { toastError } from "@/app/lib/api/apiError";
 import {
   type AnalyzeCustomerDnsResult,
@@ -63,6 +64,7 @@ const SERVER_SORTABLE_CDN_COLUMNS = new Set<SortColumn>([
 
 export default function CustomerDeliveryNotesPage() {
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const { branding } = useAuRubberBranding();
   const scrollSentinelRef = useScrollRestoration("au-rubber:customer-delivery-notes");
@@ -435,7 +437,7 @@ export default function CustomerDeliveryNotesPage() {
                   return (
                     <li key={dn.id}>
                       <Link
-                        href={`/au-rubber/portal/delivery-notes/${dn.id}`}
+                        href={coreHref(`/au-rubber/portal/delivery-notes/${dn.id}`)}
                         className="inline-flex items-center rounded border border-amber-300 bg-white px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
                       >
                         {dnDisplay || `DN #${dn.id}`}
@@ -603,7 +605,7 @@ export default function CustomerDeliveryNotesPage() {
           </button>
           <CheckInboundEmailsButton onPolled={() => notesQuery.refetch()} />
           <Link
-            href="/au-rubber/portal/delivery-notes/scan"
+            href={coreHref("/au-rubber/portal/delivery-notes/scan")}
             className="inline-flex items-center px-4 py-2 border border-blue-600 rounded-md shadow-sm text-sm font-medium text-blue-600 bg-white hover:bg-blue-50"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -835,13 +837,15 @@ export default function CustomerDeliveryNotesPage() {
                 return (
                   <tr
                     key={note.id}
-                    onClick={() => router.push(`/au-rubber/portal/delivery-notes/${note.id}`)}
+                    onClick={() =>
+                      router.push(coreHref(`/au-rubber/portal/delivery-notes/${note.id}`))
+                    }
                     className="hover:bg-gray-50 cursor-pointer"
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center space-x-2">
                         <Link
-                          href={`/au-rubber/portal/delivery-notes/${note.id}`}
+                          href={coreHref(`/au-rubber/portal/delivery-notes/${note.id}`)}
                           onClick={(e) => e.stopPropagation()}
                           className="text-blue-600 hover:text-blue-800 font-medium"
                         >
@@ -878,7 +882,7 @@ export default function CustomerDeliveryNotesPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {note.auCocId ? (
                         <Link
-                          href={`/au-rubber/portal/au-cocs/${note.auCocId}`}
+                          href={coreHref(`/au-rubber/portal/au-cocs/${note.auCocId}`)}
                           onClick={(e) => e.stopPropagation()}
                           className="text-yellow-600 hover:text-yellow-800"
                         >
@@ -909,7 +913,7 @@ export default function CustomerDeliveryNotesPage() {
                         )}
                       </button>
                       <Link
-                        href={`/au-rubber/portal/delivery-notes/${note.id}`}
+                        href={coreHref(`/au-rubber/portal/delivery-notes/${note.id}`)}
                         className="text-blue-600 hover:text-blue-800"
                       >
                         View

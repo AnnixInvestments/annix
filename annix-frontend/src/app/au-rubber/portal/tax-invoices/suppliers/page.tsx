@@ -37,6 +37,7 @@ const ITEMS_PER_PAGE = 25;
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
 import {
   auRubberApiClient,
@@ -91,6 +92,7 @@ const SERVER_SORTABLE_TI_SUPPLIER_COLUMNS = new Set<SortColumn>([
 
 export default function SupplierTaxInvoicesPage() {
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const { alert, AlertDialog } = useAlert();
   const { branding } = useAuRubberBranding();
@@ -884,7 +886,9 @@ export default function SupplierTaxInvoicesPage() {
                   return (
                     <tr
                       key={inv.id}
-                      onClick={() => router.push(`/au-rubber/portal/tax-invoices/${inv.id}`)}
+                      onClick={() =>
+                        router.push(coreHref(`/au-rubber/portal/tax-invoices/${inv.id}`))
+                      }
                       className={`hover:bg-gray-50 cursor-pointer ${inv.versionStatus === "SUPERSEDED" || inv.versionStatus === "REJECTED" ? "opacity-40" : ""}`}
                     >
                       {hasApprovable && (
@@ -902,7 +906,7 @@ export default function SupplierTaxInvoicesPage() {
                       <td className="px-3 py-3 whitespace-nowrap">
                         <span className="flex items-center gap-1.5">
                           <Link
-                            href={`/au-rubber/portal/tax-invoices/${inv.id}`}
+                            href={coreHref(`/au-rubber/portal/tax-invoices/${inv.id}`)}
                             className="text-orange-600 text-sm font-medium hover:text-orange-800 hover:underline"
                           >
                             {inv.invoiceNumber}
@@ -951,7 +955,9 @@ export default function SupplierTaxInvoicesPage() {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                router.push(`/au-rubber/portal/tax-invoices/${inv.id}#rolls`);
+                                router.push(
+                                  `${coreHref(`/au-rubber/portal/tax-invoices/${inv.id}`)}#rolls`,
+                                );
                               }}
                               className="px-1.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800 hover:bg-amber-200"
                               title="Roll numbers and weights need to be added manually"
@@ -1105,7 +1111,7 @@ export default function SupplierTaxInvoicesPage() {
                     <tr key={cn.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm">
                         <Link
-                          href={`/au-rubber/portal/tax-invoices/${cn.id}`}
+                          href={coreHref(`/au-rubber/portal/tax-invoices/${cn.id}`)}
                           className="text-amber-700 hover:text-amber-900 font-medium"
                         >
                           {cn.invoiceNumber}
@@ -1118,7 +1124,9 @@ export default function SupplierTaxInvoicesPage() {
                       <td className="px-4 py-3 text-sm">
                         {cn.originalInvoiceId ? (
                           <Link
-                            href={`/au-rubber/portal/tax-invoices/${cn.originalInvoiceId}`}
+                            href={coreHref(
+                              `/au-rubber/portal/tax-invoices/${cn.originalInvoiceId}`,
+                            )}
                             className="text-amber-700 hover:text-amber-900"
                           >
                             {rawCnOriginalInvoiceNumber || `#${cn.originalInvoiceId}`}
@@ -1147,7 +1155,7 @@ export default function SupplierTaxInvoicesPage() {
                       <td className="px-4 py-3 text-sm text-right">
                         <div className="flex items-center justify-end gap-1">
                           <Link
-                            href={`/au-rubber/portal/tax-invoices/${cn.id}`}
+                            href={coreHref(`/au-rubber/portal/tax-invoices/${cn.id}`)}
                             className="p-1 text-gray-400 hover:text-amber-600"
                             title="View"
                           >

@@ -19,7 +19,11 @@ import {
 } from "@/app/stock-control/config/navItems";
 import { useStockControlRbac } from "@/app/stock-control/context/StockControlRbacContext";
 import { useViewAs } from "@/app/stock-control/context/ViewAsContext";
-import { isCorePortalEnabled, isCorePortalHostedSuffix } from "../config/corePortalFlag";
+import {
+  isCorePortalEnabled,
+  isCorePortalHostedRouteTemplate,
+  isCorePortalHostedSuffix,
+} from "../config/corePortalFlag";
 import type { CoreApp } from "../config/navAppMap";
 
 const NIX_QUOTE_FLAG = "STOCK_MGMT_NIX_QUOTE_FROM_DOCUMENTS";
@@ -75,6 +79,9 @@ function resolveNavHref(href: string, prefix: string, activeApp: CoreApp): strin
     return corePath;
   }
   if (isCorePortalHostedSuffix(activeApp, suffixBase)) {
+    return corePath;
+  }
+  if (isCorePortalHostedRouteTemplate(activeApp, suffixBase)) {
     return corePath;
   }
   return `/${activeApp}/portal/${rest}`;

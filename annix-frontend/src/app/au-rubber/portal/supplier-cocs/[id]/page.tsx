@@ -872,7 +872,9 @@ export default function SupplierCocDetailPage() {
                   <dt className="text-sm font-medium text-gray-500">Linked Delivery Note</dt>
                   <dd className="mt-1 text-sm">
                     <Link
-                      href={`/au-rubber/portal/delivery-notes/${coc.linkedDeliveryNoteId}`}
+                      href={coreHref(
+                        `/au-rubber/portal/delivery-notes/${coc.linkedDeliveryNoteId}`,
+                      )}
                       className="text-yellow-600 hover:text-yellow-800"
                     >
                       View Delivery Note

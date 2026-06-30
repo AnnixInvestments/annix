@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { Breadcrumb } from "../../components/Breadcrumb";
 
 export default function CompaniesPage() {
+  const coreHref = useCoreAwareHref();
   return (
     <div className="space-y-8">
       <Breadcrumb items={[{ label: "Companies" }]} />
@@ -14,7 +16,7 @@ export default function CompaniesPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Link
-          href="/au-rubber/portal/companies/suppliers"
+          href={coreHref("/au-rubber/portal/companies/suppliers")}
           className="bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow border-l-4 border-orange-500"
         >
           <div className="flex items-center mb-3">
@@ -27,7 +29,7 @@ export default function CompaniesPage() {
         </Link>
 
         <Link
-          href="/au-rubber/portal/companies/customers"
+          href={coreHref("/au-rubber/portal/companies/customers")}
           className="bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow border-l-4 border-blue-500"
         >
           <div className="flex items-center mb-3">

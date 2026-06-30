@@ -392,7 +392,7 @@ function DispatchedSection(props: {
                 </div>
                 {linkedDn && (
                   <Link
-                    href={`/au-rubber/portal/delivery-notes/${linkedDn.id}?returnUrl=${returnUrl}`}
+                    href={`${coreHref(`/au-rubber/portal/delivery-notes/${linkedDn.id}`)}?returnUrl=${returnUrl}`}
                     className="text-xs text-yellow-600 hover:underline"
                   >
                     SDN: {rawLinkedDnDeliveryNoteNumber || `#${linkedDn.id}`}
@@ -458,7 +458,7 @@ function DispatchedSection(props: {
                 </div>
                 {dn && (
                   <Link
-                    href={`/au-rubber/portal/delivery-notes/${dn.id}?returnUrl=${encodeURIComponent(coreHref("/au-rubber/portal/compound-stocks"))}`}
+                    href={`${coreHref(`/au-rubber/portal/delivery-notes/${dn.id}`)}?returnUrl=${encodeURIComponent(coreHref("/au-rubber/portal/compound-stocks"))}`}
                     className="text-xs text-yellow-600 hover:underline"
                   >
                     DN: {rawDnDeliveryNoteNumber || `#${dn.id}`} - {rawDnSupplierCompanyName || ""}
@@ -1096,7 +1096,7 @@ export default function CompoundStocksPage() {
                 <div className="flex items-center space-x-2 shrink-0">
                   {stiModal.invoice && (
                     <a
-                      href={`/au-rubber/portal/tax-invoices/${stiModal.invoice.id}?returnUrl=${encodeURIComponent(coreHref("/au-rubber/portal/compound-stocks"))}`}
+                      href={`${coreHref(`/au-rubber/portal/tax-invoices/${stiModal.invoice.id}`)}?returnUrl=${encodeURIComponent(coreHref("/au-rubber/portal/compound-stocks"))}`}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 rounded-md transition-colors"

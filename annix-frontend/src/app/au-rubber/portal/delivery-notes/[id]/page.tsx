@@ -16,6 +16,7 @@ import {
 } from "@/app/components/ImageViewerToolbar";
 import { useToast } from "@/app/components/Toast";
 import { DateInput } from "@/app/components/ui/DateInput";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { toastError } from "@/app/lib/api/apiError";
 import type {
   DeliveryNoteStatus,
@@ -117,6 +118,7 @@ function safeFixed(value: unknown, decimals: number): string | null {
 }
 
 export default function DeliveryNoteDetailPage() {
+  const coreHref = useCoreAwareHref();
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -672,9 +674,11 @@ export default function DeliveryNoteDetailPage() {
       await finalizeDeliveryNoteMutation.mutateAsync(noteId);
       showToast("Approved & stock created", "success");
       router.push(
-        isCustomerDn
-          ? "/au-rubber/portal/delivery-notes/customers"
-          : "/au-rubber/portal/delivery-notes/suppliers",
+        coreHref(
+          isCustomerDn
+            ? "/au-rubber/portal/delivery-notes/customers"
+            : "/au-rubber/portal/delivery-notes/suppliers",
+        ),
       );
     } catch (err) {
       toastError(showToast, err, "Failed to approve and create stock");
@@ -697,9 +701,11 @@ export default function DeliveryNoteDetailPage() {
       await refileDeliveryNoteStockMutation.mutateAsync(noteId);
       showToast("Stock refiled from corrected data", "success");
       router.push(
-        isCustomerDn
-          ? "/au-rubber/portal/delivery-notes/customers"
-          : "/au-rubber/portal/delivery-notes/suppliers",
+        coreHref(
+          isCustomerDn
+            ? "/au-rubber/portal/delivery-notes/customers"
+            : "/au-rubber/portal/delivery-notes/suppliers",
+        ),
       );
     } catch (err) {
       toastError(showToast, err, "Failed to refile stock");
@@ -737,9 +743,11 @@ export default function DeliveryNoteDetailPage() {
           variant: "success",
         });
         router.push(
-          isCustomerDn
-            ? "/au-rubber/portal/delivery-notes/customers"
-            : "/au-rubber/portal/delivery-notes/suppliers",
+          coreHref(
+            isCustomerDn
+              ? "/au-rubber/portal/delivery-notes/customers"
+              : "/au-rubber/portal/delivery-notes/suppliers",
+          ),
         );
       }
     } catch (err) {
@@ -1209,7 +1217,7 @@ export default function DeliveryNoteDetailPage() {
             {note.linkedCocId && (
               <div className="mt-4 pt-4 border-t">
                 <Link
-                  href={`/au-rubber/portal/supplier-cocs/${note.linkedCocId}`}
+                  href={coreHref(`/au-rubber/portal/supplier-cocs/${note.linkedCocId}`)}
                   className="text-yellow-600 hover:text-yellow-800 text-sm font-medium"
                 >
                   View Linked CoC
@@ -1230,7 +1238,7 @@ export default function DeliveryNoteDetailPage() {
                   {note.sourceSupplierCocs.map((coc) => (
                     <li key={coc.id} className="flex items-center justify-between text-sm">
                       <Link
-                        href={`/au-rubber/portal/supplier-cocs/${coc.id}`}
+                        href={coreHref(`/au-rubber/portal/supplier-cocs/${coc.id}`)}
                         className="text-yellow-600 hover:text-yellow-800 font-medium"
                       >
                         {coc.cocNumber ? coc.cocNumber : `CoC #${coc.id}`}

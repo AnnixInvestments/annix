@@ -12,6 +12,7 @@ import {
   TableLoadingState,
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { toastError } from "@/app/lib/api/apiError";
 import type { RubberTaxInvoiceDto } from "@/app/lib/api/auRubberApi";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
@@ -478,6 +479,7 @@ function CustomerDetailForm(props: {
 
 function CompanyActivity(props: { companyId: number }) {
   const { companyId } = props;
+  const coreHref = useCoreAwareHref();
   const [orders, setOrders] = useState<RubberOrderDto[]>([]);
   const [taxInvoices, setTaxInvoices] = useState<RubberTaxInvoiceDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -536,7 +538,7 @@ function CompanyActivity(props: { companyId: number }) {
                   return (
                     <Link
                       key={order.id}
-                      href={`/au-rubber/portal/orders/${order.id}`}
+                      href={coreHref(`/au-rubber/portal/orders/${order.id}`)}
                       className="block p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
                     >
                       <div className="flex items-center justify-between">
@@ -583,7 +585,7 @@ function CompanyActivity(props: { companyId: number }) {
                   return (
                     <Link
                       key={ti.id}
-                      href={`/au-rubber/portal/tax-invoices/${ti.id}`}
+                      href={coreHref(`/au-rubber/portal/tax-invoices/${ti.id}`)}
                       className="block p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
                     >
                       <div className="flex items-center justify-between">
@@ -626,6 +628,7 @@ function CompanyActivity(props: { companyId: number }) {
 }
 
 export default function CustomersPage() {
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
 
   const [customers, setCustomers] = useState<RubberCompanyDto[]>([]);
@@ -785,7 +788,7 @@ export default function CustomersPage() {
         area="Customers"
         error={error}
         reset={() => fetchData()}
-        backHref="/au-rubber/portal"
+        backHref={coreHref("/au-rubber/portal")}
         backLabel="Back to Dashboard"
         brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
       />

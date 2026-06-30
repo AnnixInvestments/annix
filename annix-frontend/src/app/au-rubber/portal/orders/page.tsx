@@ -67,9 +67,9 @@ const isDeletable = (status: number): boolean => DELETABLE_STATUSES.includes(sta
 
 export default function AuRubberOrdersPage() {
   const { showToast } = useToast();
+  const coreHref = useCoreAwareHref();
   const { alert, AlertDialog } = useAlert();
   const { showExtraction, hideExtraction } = useExtractionProgress();
-  const coreHref = useCoreAwareHref();
   const scrollSentinelRef = useScrollRestoration("au-rubber:orders");
 
   const [statusFilter, setStatusFilter] = useState<number | undefined>(undefined);

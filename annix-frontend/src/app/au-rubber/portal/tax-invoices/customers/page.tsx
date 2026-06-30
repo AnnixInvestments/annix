@@ -26,6 +26,7 @@ import { useExtractionProgress } from "@/app/components/ExtractionProgressModal"
 import { useToast } from "@/app/components/Toast";
 import { DateInput } from "@/app/components/ui/DateInput";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
 import {
   auRubberApiClient,
@@ -60,6 +61,7 @@ const SERVER_SORTABLE_TI_CUSTOMER_COLUMNS = new Set<SortColumn>([
 
 export default function CustomerTaxInvoicesPage() {
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const { alert, AlertDialog } = useAlert();
   const { branding } = useAuRubberBranding();
@@ -795,7 +797,9 @@ export default function CustomerTaxInvoicesPage() {
                   <tr
                     key={inv.id}
                     className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => router.push(`/au-rubber/portal/tax-invoices/${inv.id}`)}
+                    onClick={() =>
+                      router.push(coreHref(`/au-rubber/portal/tax-invoices/${inv.id}`))
+                    }
                   >
                     {hasApprovable && (
                       <td className="px-4 py-4 w-10" onClick={(e) => e.stopPropagation()}>
@@ -811,7 +815,7 @@ export default function CustomerTaxInvoicesPage() {
                     )}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Link
-                        href={`/au-rubber/portal/tax-invoices/${inv.id}`}
+                        href={coreHref(`/au-rubber/portal/tax-invoices/${inv.id}`)}
                         onClick={(e) => e.stopPropagation()}
                         className="text-orange-600 font-medium hover:text-orange-800 hover:underline"
                       >

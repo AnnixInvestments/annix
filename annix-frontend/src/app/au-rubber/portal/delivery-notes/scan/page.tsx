@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { toastError } from "@/app/lib/api/apiError";
 import { type AnalyzedDeliveryNoteResult, auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import { DeliveryNoteAnalysisReview } from "../components/DeliveryNoteAnalysisReview";
@@ -13,6 +14,7 @@ type ReviewedDeliveryNoteData = AnalyzedDeliveryNoteResult["data"];
 
 export default function ScanDeliveryNotePage() {
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const { showExtraction, hideExtraction } = useExtractionProgress();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -89,7 +91,7 @@ export default function ScanDeliveryNotePage() {
         throw new Error("Delivery note was created but no ID was returned");
       }
       showToast("Delivery note created successfully", "success");
-      router.push(`/au-rubber/portal/delivery-notes/${deliveryNoteId}`);
+      router.push(coreHref(`/au-rubber/portal/delivery-notes/${deliveryNoteId}`));
     } catch (err) {
       toastError(showToast, err, "Failed to create delivery note");
     } finally {
