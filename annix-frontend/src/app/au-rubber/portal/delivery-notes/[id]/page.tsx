@@ -208,11 +208,17 @@ export default function DeliveryNoteDetailPage() {
   const [docError, setDocError] = useState<string | null>(null);
   const docViewer = useImageViewer();
 
-  const visiblePages = useMemo(() => {
-    const sourcePages = note?.sourcePageNumbers;
-    if (sourcePages && sourcePages.length > 0) return sourcePages;
-    return Array.from({ length: docTotalPages }, (_unused, i) => i + 1);
-  }, [note?.sourcePageNumbers, docTotalPages]);
+  // The page endpoint always serves THIS DN's own pages re-indexed from 1 and
+  // reports totalPages as the DN's own page count, so the pager must navigate in
+  // that local 1..N space. Earlier this used note.sourcePageNumbers, but those
+  // can be bundle-relative (e.g. [3,4] for a DN on pages 3-4 of a shared PDF),
+  // which desynced the pager from the endpoint — it requested page 3 of a 2-page
+  // slice (404) and disabled "Next" because indexOf(localPage) was -1, leaving
+  // multi-page DNs stuck on page 1.
+  const visiblePages = useMemo(
+    () => Array.from({ length: docTotalPages }, (_unused, i) => i + 1),
+    [docTotalPages],
+  );
   const visiblePageCount = visiblePages.length;
   const visibleIndex = visiblePages.indexOf(docPageNumber);
   const visiblePositionLabel = visibleIndex >= 0 ? visibleIndex + 1 : 1;

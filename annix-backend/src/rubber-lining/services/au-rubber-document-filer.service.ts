@@ -166,6 +166,11 @@ export class AuRubberDocumentFilerService {
       this.bufferAsMulter(slicedBuffer, filename, "application/pdf"),
       targetPath.substring(0, targetPath.lastIndexOf("/")),
     );
+    // Re-index to the sliced PDF's own pages ([1..n]). The slice file IS this
+    // DN's document now, so the viewer navigates it with local page numbers.
+    // (Deliberately NOT recording sourceDocumentPath here: these page numbers
+    // are slice-relative, so they cannot be re-mapped onto the original bundle —
+    // the serve endpoint's source fallback expects bundle-relative pages.)
     const slicedPageNumbers = matchingPages.map((_, index) => index + 1);
     await this.deliveryNoteRepository.updateById(note.id, {
       documentPath: uploaded.path,

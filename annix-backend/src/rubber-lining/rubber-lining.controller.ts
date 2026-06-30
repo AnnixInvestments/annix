@@ -2012,8 +2012,43 @@ Formula: totalPrice = totalKg × salePricePerKg
         return this.rubberCocExtractionService.convertPdfToImages(pdfBuffer);
       });
 
-    const documentPath = note.documentPath;
-    const sourcePages = note.sourcePageNumbers;
+    let documentPath = note.documentPath;
+    let sourcePages = note.sourcePageNumbers;
+
+    // Self-heal a multi-DN bundle that was never split per-DN. When several
+    // customer/supplier delivery notes arrive in one PDF and the extractor
+    // didn't return per-DN page ranges, this DN is left pointing at the FULL
+    // bundle with no sourcePageNumbers — so the viewer would show every page of
+    // every other DN (the "1 / 8 shows DN 1353 on DN 1348" symptom). On the
+    // first page request, derive THIS DN's own pages by scanning the bundle for
+    // its DN number and persist a clean per-DN slice. Only runs when there is no
+    // proper page subset yet, and only on page 1 so navigating pages of an
+    // un-healable doc doesn't re-scan it on every click. Self-correcting: if the
+    // DN genuinely spans the whole document, reslice is a no-op and it shows
+    // as-is.
+    const hasProperSubset = !!sourcePages && sourcePages.length > 0;
+    if (!hasProperSubset && pageNum === 1 && documentPath.toLowerCase().endsWith(".pdf")) {
+      try {
+        const kept = await this.documentFilerService.resliceCustomerDnByDnNumber(note.id);
+        if (kept !== null) {
+          const healed = await this.rubberDeliveryNoteService.deliveryNoteEntityById(note.id);
+          if (healed?.documentPath) {
+            documentPath = healed.documentPath;
+            sourcePages = healed.sourcePageNumbers;
+            this.logger.log(
+              `DN #${id} (${note.deliveryNoteNumber}): auto-resliced multi-DN bundle on view → ${kept} page(s)`,
+            );
+          }
+        }
+      } catch (err) {
+        this.logger.warn(
+          `DN #${id} (${note.deliveryNoteNumber}): auto-reslice on view failed: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+    }
+
     // A split/sibling DN points at a per-DN slice; if that slice is missing from
     // storage, fall back to the full source PDF and map this DN's own pages out
     // of it via sourcePageNumbers, so the operator can still verify extraction.
@@ -2514,8 +2549,11 @@ Formula: totalPrice = totalKg × salePricePerKg
   @Post("portal/au-cocs/:id/generate-pdf")
   @ApiOperation({ summary: "Generate PDF for AU CoC" })
   @ApiParam({ name: "id", description: "AU CoC ID" })
-  async generateAuCocPdf(@Param("id") id: string): Promise<RubberAuCocDto> {
-    await this.rubberAuCocService.generatePdf(Number(id));
+  async generateAuCocPdf(
+    @Param("id") id: string,
+    @Req() req: AdminRequest,
+  ): Promise<RubberAuCocDto> {
+    await this.rubberAuCocService.generatePdf(Number(id), req.user?.companyId ?? null);
     const coc = await this.rubberAuCocService.auCocById(Number(id));
     if (!coc) throw new NotFoundException("AU CoC not found");
     return coc;
@@ -2526,8 +2564,15 @@ Formula: totalPrice = totalKg × salePricePerKg
   @Get("portal/au-cocs/:id/pdf")
   @ApiOperation({ summary: "Preview/download AU CoC PDF" })
   @ApiParam({ name: "id", description: "AU CoC ID" })
-  async auCocPdf(@Param("id") id: string, @Res() res: Response): Promise<void> {
-    const { buffer, filename } = await this.rubberAuCocService.pdfBuffer(Number(id));
+  async auCocPdf(
+    @Param("id") id: string,
+    @Res() res: Response,
+    @Req() req: AdminRequest,
+  ): Promise<void> {
+    const { buffer, filename } = await this.rubberAuCocService.pdfBuffer(
+      Number(id),
+      req.user?.companyId ?? null,
+    );
     res.set({
       "Content-Type": "application/pdf",
       "Content-Disposition": `inline; filename="${filename}"`,
@@ -2541,8 +2586,12 @@ Formula: totalPrice = totalKg × salePricePerKg
   @Post("portal/au-cocs/:id/send")
   @ApiOperation({ summary: "Mark AU CoC as sent to customer" })
   @ApiParam({ name: "id", description: "AU CoC ID" })
-  async sendAuCoc(@Param("id") id: string, @Body() dto: SendAuCocDto): Promise<RubberAuCocDto> {
-    return this.rubberAuCocService.sendToCustomer(Number(id), dto);
+  async sendAuCoc(
+    @Param("id") id: string,
+    @Body() dto: SendAuCocDto,
+    @Req() req: AdminRequest,
+  ): Promise<RubberAuCocDto> {
+    return this.rubberAuCocService.sendToCustomer(Number(id), dto, req.user?.companyId ?? null);
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
@@ -2551,8 +2600,9 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiOperation({ summary: "Send all generated AU CoCs to customer in one email" })
   async bulkSendAuCocs(
     @Body() dto: SendAuCocDto,
+    @Req() req: AdminRequest,
   ): Promise<{ sent: number; total: number; cocNumbers: string[] }> {
-    return this.rubberAuCocService.bulkSendToCustomer(dto);
+    return this.rubberAuCocService.bulkSendToCustomer(dto, req.user?.companyId ?? null);
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
@@ -2575,8 +2625,13 @@ Formula: totalPrice = totalKg × salePricePerKg
   async autoSendAuCoc(
     @Param("id") id: string,
     @Body() body: { overrideEmail?: string },
+    @Req() req: AdminRequest,
   ): Promise<RubberAuCocDto> {
-    return this.rubberAuCocService.sendApprovedAuCocToCustomer(Number(id), body.overrideEmail);
+    return this.rubberAuCocService.sendApprovedAuCocToCustomer(
+      Number(id),
+      body.overrideEmail,
+      req.user?.companyId ?? null,
+    );
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
@@ -2665,10 +2720,12 @@ Formula: totalPrice = totalKg × salePricePerKg
     @Param("id") id: string,
     @Param("supplierCocId") supplierCocId: string,
     @Res() res: Response,
+    @Req() req: AdminRequest,
   ): Promise<void> {
     const { buffer, filename } = await this.rubberAuCocService.generatePdfWithGraph(
       Number(id),
       Number(supplierCocId),
+      req.user?.companyId ?? null,
     );
     res.set({
       "Content-Type": "application/pdf",
@@ -2720,10 +2777,13 @@ Formula: totalPrice = totalKg × salePricePerKg
       "Regenerate AU CoCs (status=GENERATED by default). Pass ?includeSent=true to also overwrite the stored PDF of already-sent CoCs — note this causes drift between the customer's existing copy and the one we hold.",
   })
   @ApiQuery({ name: "includeSent", required: false, type: Boolean })
-  async bulkRegenerateAuCocs(@Query("includeSent") includeSent?: string) {
-    return this.rubberAuCocService.regenerateAllGeneratedCocs({
-      includeSent: includeSent === "true",
-    });
+  async bulkRegenerateAuCocs(@Req() req: AdminRequest, @Query("includeSent") includeSent?: string) {
+    return this.rubberAuCocService.regenerateAllGeneratedCocs(
+      {
+        includeSent: includeSent === "true",
+      },
+      req.user?.companyId ?? null,
+    );
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
@@ -2735,11 +2795,12 @@ Formula: totalPrice = totalKg × salePricePerKg
   })
   async bulkRegenerateAuCocsByIds(
     @Body() body: { cocIds: number[] },
+    @Req() req: AdminRequest,
   ): Promise<{ regenerated: number; failed: number; total: number; errors: string[] }> {
     const cocIds = Array.isArray(body?.cocIds)
       ? body.cocIds.filter((id) => Number.isFinite(id))
       : [];
-    return this.rubberAuCocService.regenerateCocsByIds(cocIds);
+    return this.rubberAuCocService.regenerateCocsByIds(cocIds, req.user?.companyId ?? null);
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
@@ -2751,11 +2812,12 @@ Formula: totalPrice = totalKg × salePricePerKg
   })
   async bulkResendAuCocsByIds(
     @Body() body: { cocIds: number[] },
+    @Req() req: AdminRequest,
   ): Promise<{ sent: number; skipped: number; failed: number; total: number; errors: string[] }> {
     const cocIds = Array.isArray(body?.cocIds)
       ? body.cocIds.filter((id) => Number.isFinite(id))
       : [];
-    return this.rubberAuCocService.resendCocsByIds(cocIds);
+    return this.rubberAuCocService.resendCocsByIds(cocIds, req.user?.companyId ?? null);
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)

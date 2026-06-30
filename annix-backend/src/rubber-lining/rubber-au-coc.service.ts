@@ -414,7 +414,10 @@ export class RubberAuCocService {
     };
   }
 
-  async generatePdf(id: number): Promise<{ buffer: Buffer; filename: string }> {
+  async generatePdf(
+    id: number,
+    companyId?: number | null,
+  ): Promise<{ buffer: Buffer; filename: string }> {
     try {
       this.logger.debug(`Generating PDF for AU CoC ${id}...`);
       const coc = await this.auCocRepository.findById(id, ["customerCompany"]);
@@ -457,7 +460,7 @@ export class RubberAuCocService {
       }
 
       this.logger.debug("PDF data prepared, creating PDF...");
-      const basePdf = await this.createPdf(pdfData);
+      const basePdf = await this.createPdf(pdfData, companyId);
       const filename = `${coc.cocNumber}.pdf`;
 
       const buffer = await (async () => {
@@ -518,7 +521,10 @@ export class RubberAuCocService {
     }
   }
 
-  async regenerateCocsByIds(cocIds: number[]): Promise<{
+  async regenerateCocsByIds(
+    cocIds: number[],
+    companyId?: number | null,
+  ): Promise<{
     regenerated: number;
     failed: number;
     total: number;
@@ -532,7 +538,7 @@ export class RubberAuCocService {
     return cocs.reduce(async (accPromise, coc) => {
       const acc = await accPromise;
       try {
-        await this.generatePdf(coc.id);
+        await this.generatePdf(coc.id, companyId);
         return { ...acc, regenerated: acc.regenerated + 1 };
       } catch (error) {
         const message = `CoC ${coc.cocNumber} (ID ${coc.id}): ${error instanceof Error ? error.message : String(error)}`;
@@ -542,7 +548,10 @@ export class RubberAuCocService {
     }, Promise.resolve(initial));
   }
 
-  async resendCocsByIds(cocIds: number[]): Promise<{
+  async resendCocsByIds(
+    cocIds: number[],
+    companyId?: number | null,
+  ): Promise<{
     sent: number;
     skipped: number;
     failed: number;
@@ -573,7 +582,7 @@ export class RubberAuCocService {
         };
       }
       try {
-        await this.sendApprovedAuCocToCustomer(coc.id);
+        await this.sendApprovedAuCocToCustomer(coc.id, undefined, companyId);
         return { ...acc, sent: acc.sent + 1 };
       } catch (error) {
         const message = `CoC ${coc.cocNumber} (ID ${coc.id}): ${error instanceof Error ? error.message : String(error)}`;
@@ -583,7 +592,10 @@ export class RubberAuCocService {
     }, Promise.resolve(initial));
   }
 
-  async regenerateAllGeneratedCocs(options?: { includeSent?: boolean }): Promise<{
+  async regenerateAllGeneratedCocs(
+    options?: { includeSent?: boolean },
+    companyId?: number | null,
+  ): Promise<{
     regenerated: number;
     failed: number;
     total: number;
@@ -610,7 +622,7 @@ export class RubberAuCocService {
     return cocs.reduce(async (accPromise, coc) => {
       const acc = await accPromise;
       try {
-        await this.generatePdf(coc.id);
+        await this.generatePdf(coc.id, companyId);
         return { ...acc, regenerated: acc.regenerated + 1 };
       } catch (error) {
         const message = `CoC ${coc.cocNumber} (ID ${coc.id}): ${error instanceof Error ? error.message : String(error)}`;
@@ -624,7 +636,10 @@ export class RubberAuCocService {
     }, Promise.resolve(initial));
   }
 
-  async pdfBuffer(id: number): Promise<{ buffer: Buffer; filename: string }> {
+  async pdfBuffer(
+    id: number,
+    companyId?: number | null,
+  ): Promise<{ buffer: Buffer; filename: string }> {
     const coc = await this.auCocRepository.findById(id, ["customerCompany"]);
     if (!coc) {
       throw new BadRequestException("AU CoC not found");
@@ -655,7 +670,7 @@ export class RubberAuCocService {
       items.length > 0
         ? await this.preparePdfData(coc, items)
         : await this.preparePdfDataFromExtractedRolls(coc);
-    const basePdf = await this.createPdf(pdfData);
+    const basePdf = await this.createPdf(pdfData, companyId);
     const filename = `${coc.cocNumber}.pdf`;
 
     const buffer = await (async () => {
@@ -687,7 +702,11 @@ export class RubberAuCocService {
     return parts.join(", ");
   }
 
-  async sendToCustomer(id: number, dto: SendAuCocDto): Promise<RubberAuCocDto> {
+  async sendToCustomer(
+    id: number,
+    dto: SendAuCocDto,
+    companyId?: number | null,
+  ): Promise<RubberAuCocDto> {
     const coc = await this.auCocRepository.findById(id, ["customerCompany"]);
     if (!coc) {
       throw new BadRequestException("AU CoC not found");
@@ -696,13 +715,14 @@ export class RubberAuCocService {
       throw new BadRequestException("PDF must be generated before sending");
     }
 
-    const { buffer: pdfBuffer } = await this.pdfBuffer(id);
+    const { buffer: pdfBuffer } = await this.pdfBuffer(id, companyId);
     const customerName = coc.customerCompany?.name || "Customer";
 
     await this.emailService.sendEmail({
       to: dto.email,
       cc: dto.cc,
       bcc: this.withArchiveBcc(dto.bcc),
+      companyId: companyId ?? undefined,
       subject: `Certificate of Conformance - ${coc.cocNumber}`,
       fromName: "AU Industries",
       html: [
@@ -733,6 +753,7 @@ export class RubberAuCocService {
 
   async bulkSendToCustomer(
     dto: SendAuCocDto,
+    companyId?: number | null,
   ): Promise<{ sent: number; total: number; cocNumbers: string[] }> {
     const generatedCocs = await this.auCocRepository.findByStatusWithCustomerOrderedByCocNumber(
       AuCocStatus.GENERATED,
@@ -746,7 +767,7 @@ export class RubberAuCocService {
     const cocNumbers: string[] = [];
 
     for (const coc of generatedCocs) {
-      const { buffer: pdfBuffer } = await this.pdfBuffer(coc.id);
+      const { buffer: pdfBuffer } = await this.pdfBuffer(coc.id, companyId);
       attachments.push({
         filename: `${coc.cocNumber}.pdf`,
         content: pdfBuffer,
@@ -762,6 +783,7 @@ export class RubberAuCocService {
       to: dto.email,
       cc: dto.cc,
       bcc: this.withArchiveBcc(dto.bcc),
+      companyId: companyId ?? undefined,
       subject: `Certificates of Conformance - ${cocNumbers.length} CoC(s)`,
       fromName: "AU Industries",
       html: [
@@ -1519,10 +1541,10 @@ export class RubberAuCocService {
     return `${colour} ${grade}${hardness} ${curingCode.toUpperCase()}`;
   }
 
-  private async createPdf(data: CocPdfData): Promise<Buffer> {
+  private async createPdf(data: CocPdfData, companyId?: number | null): Promise<Buffer> {
     const { doc, toBuffer } = createPdfDocument({ margin: 40 });
 
-    this.drawHeader(doc, await this.branding.letterheadImage());
+    this.drawHeader(doc, await this.branding.letterheadImage(companyId));
     this.drawDetailsSection(doc, data);
     this.drawLabDataTable(doc, data);
     this.drawComments(doc);
@@ -1532,8 +1554,10 @@ export class RubberAuCocService {
   }
 
   private drawHeader(doc: PdfDoc, letterhead?: Buffer | null): void {
-    // Prefer the admin-uploaded company letterhead; fall back to the bundled
-    // au-header.jpg, then to a drawn text header.
+    // Prefer the acting company's uploaded letterhead (resolved from the
+    // requesting user's companyId); fall back to the bundled au-header.jpg —
+    // which is AU's own letterhead — then to a drawn text header. Cron-driven
+    // auto-generation has no user context, so it lands on the bundled fallback.
     if (letterhead) {
       doc.image(letterhead, 40, 30, { width: 515 });
       return;
@@ -2041,8 +2065,9 @@ export class RubberAuCocService {
   async generatePdfWithGraph(
     id: number,
     supplierCocId?: number,
+    companyId?: number | null,
   ): Promise<{ buffer: Buffer; filename: string }> {
-    const { buffer: cocBuffer, filename } = await this.generatePdf(id);
+    const { buffer: cocBuffer, filename } = await this.generatePdf(id, companyId);
 
     if (!supplierCocId) {
       return { buffer: cocBuffer, filename };
@@ -2151,7 +2176,11 @@ export class RubberAuCocService {
     return this.mapAuCocToDto(coc);
   }
 
-  async sendApprovedAuCocToCustomer(id: number, overrideEmail?: string): Promise<RubberAuCocDto> {
+  async sendApprovedAuCocToCustomer(
+    id: number,
+    overrideEmail?: string,
+    companyId?: number | null,
+  ): Promise<RubberAuCocDto> {
     const coc = await this.auCocRepository.findById(id, ["customerCompany"]);
     if (!coc) throw new BadRequestException("AU CoC not found");
     if (coc.status !== AuCocStatus.APPROVED) {
@@ -2167,6 +2196,6 @@ export class RubberAuCocService {
           "Set the AU CoC recipient email on the customer profile, or supply an override.",
       );
     }
-    return this.sendToCustomer(id, { email: recipientEmail });
+    return this.sendToCustomer(id, { email: recipientEmail }, companyId);
   }
 }
