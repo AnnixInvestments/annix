@@ -734,6 +734,29 @@ export class RubberLiningController {
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
+  @Post("portal/app-profile/test-smtp")
+  @ApiOperation({ summary: "Test SMTP connection with given settings" })
+  async testSmtpConnection(
+    @Body() body: { host: string; port: number; user: string; pass: string },
+  ): Promise<{ success: boolean; error?: string }> {
+    const nodemailer = require("nodemailer");
+    try {
+      const transporter = nodemailer.createTransport({
+        host: body.host,
+        port: body.port,
+        secure: body.port === 465,
+        requireTLS: body.port === 587,
+        auth: { user: body.user, pass: body.pass },
+      });
+      await transporter.verify();
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || "Connection failed" };
+    }
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
+  @ApiBearerAuth()
   @Get("portal/order-statuses")
   @ApiOperation({
     summary: "List order statuses",

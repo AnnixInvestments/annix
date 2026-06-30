@@ -418,6 +418,14 @@ class AuRubberApiClient {
     },
   );
 
+  testSmtpConnection = createEndpoint<
+    [config: { host: string; port: number; user: string; pass: string }],
+    { success: boolean; error?: string }
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/app-profile/test-smtp",
+    body: (config) => config,
+  });
+
   orderStatuses = createEndpoint<[], { value: number; label: string }[]>(apiClient, "GET", {
     path: "/rubber-lining/portal/order-statuses",
   });
@@ -3008,6 +3016,41 @@ class AuRubberApiClient {
       "/rubber-lining/portal/affiliate-commission/price-lists/latest/download",
     );
   }
+
+  quotationCreate = createEndpoint<[dto: unknown], unknown>(apiClient, "POST", {
+    path: "/rubber-lining/portal/quotations",
+    body: (dto) => dto,
+  });
+
+  quotationList = createEndpoint<[], unknown[]>(apiClient, "GET", {
+    path: "/rubber-lining/portal/quotations",
+  });
+
+  quotationGet = createEndpoint<[id: number], unknown>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/portal/quotations/${id}`,
+  });
+
+  quotationUpdate = createEndpoint<[id: number, dto: unknown], unknown>(apiClient, "PATCH", {
+    path: (id) => `/rubber-lining/portal/quotations/${id}`,
+    body: (_id, dto) => dto,
+  });
+
+  quotationDelete = createEndpoint<[id: number], { deleted: boolean }>(apiClient, "DELETE", {
+    path: (id) => `/rubber-lining/portal/quotations/${id}`,
+  });
+
+  quotationPdfBlob = createEndpoint<[id: number], Blob>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/portal/quotations/${id}/pdf`,
+    responseType: "blob",
+  });
+
+  quotationSend = createEndpoint<
+    [id: number, email: string, cc?: string, bcc?: string],
+    { success: boolean }
+  >(apiClient, "POST", {
+    path: (id) => `/rubber-lining/portal/quotations/${id}/send`,
+    body: (_id, email, cc, bcc) => ({ email, cc, bcc }),
+  });
 
   affiliateCommissionPayouts = createEndpoint<[status?: string], unknown[]>(apiClient, "GET", {
     path: (status) =>

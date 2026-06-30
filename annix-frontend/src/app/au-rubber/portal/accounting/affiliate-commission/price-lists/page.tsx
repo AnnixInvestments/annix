@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronDown, ChevronRight, Download, ShoppingCart, Upload, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useToast } from "@/app/components/Toast";
@@ -34,6 +35,7 @@ interface PriceListItem {
 }
 
 export default function PriceListsPage() {
+  const router = useRouter();
   const { showToast } = useToast();
   const { alert, AlertDialog } = useAlert();
   const [items, setItems] = useState<PriceListItem[]>([]);
@@ -48,6 +50,7 @@ export default function PriceListsPage() {
   const [width, setWidth] = useState("1200");
   const [length, setLength] = useState("12.0");
   const [rollCounts, setRollCounts] = useState<Record<number, number>>({});
+  const [cartCount, setCartCount] = useState(0);
 
   const thicknessOptions = useMemo(() => Array.from({ length: 28 }, (_, i) => i + 3), []);
   const widthOptions = useMemo(() => Array.from({ length: 14 }, (_, i) => 800 + i * 50), []);
@@ -79,6 +82,12 @@ export default function PriceListsPage() {
 
   useEffect(() => {
     Promise.all([fetchPriceLists(), fetchLatestItems()]).finally(() => setIsLoading(false));
+    try {
+      const stored = JSON.parse(sessionStorage.getItem("quoteItems") || "[]");
+      setCartCount(stored.length);
+    } catch {
+      /* ignore */
+    }
   }, [fetchPriceLists, fetchLatestItems]);
 
   const handleUpload = async () => {
@@ -110,6 +119,44 @@ export default function PriceListsPage() {
     } catch {
       alert({ message: "Failed to download price list", variant: "error" });
     }
+  };
+
+  const handleAddToQuote = (item: PriceListItem) => {
+    const t = Number(thickness);
+    const w = Number(width);
+    const l = Number(length);
+    const rc = rollCounts[item.id];
+    const qty = rc ?? 1;
+    if (!t || !w || !l || !item.sg) {
+      alert({ message: "Select thickness, width and length first", variant: "warning" });
+      return;
+    }
+    const rollWeight = (t * w * l * item.sg) / 1000;
+    const rollPrice = rollWeight * item.minPrice;
+    const lineExVat = rollPrice * qty;
+    const vat = lineExVat * 0.15;
+    const lineIncVat = lineExVat + vat;
+    const quoteItem = {
+      productCode: item.productCode,
+      productDescription: item.productDescription,
+      colour: item.colour,
+      thickness: t,
+      width: w,
+      length: l,
+      rollWeight,
+      priceKg: item.minPrice,
+      costPrice: item.minPrice,
+      rollPrice,
+      quantity: qty,
+      linePriceExVat: lineExVat,
+      lineVat: vat,
+      linePriceIncVat: lineIncVat,
+    };
+    const existing = JSON.parse(sessionStorage.getItem("quoteItems") || "[]");
+    existing.push(quoteItem);
+    sessionStorage.setItem("quoteItems", JSON.stringify(existing));
+    setCartCount(existing.length);
+    showToast("Added to quote", "success");
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -233,7 +280,7 @@ export default function PriceListsPage() {
                   </td>
                   <td className="px-4 py-2.5">
                     <button
-                      onClick={() => showToast("Add to Quote coming soon")}
+                      onClick={() => handleAddToQuote(item)}
                       className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-600 rounded hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors"
                     >
                       <ShoppingCart className="h-3 w-3" /> Add
@@ -266,6 +313,17 @@ export default function PriceListsPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Base Price List</h1>
           <div className="flex items-center gap-3">
+            {cartCount > 0 && (
+              <button
+                onClick={() =>
+                  router.push("/au-rubber/portal/accounting/affiliate-commission/quotations")
+                }
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 rounded-lg transition-colors"
+              >
+                <ShoppingCart className="h-4 w-4" />
+                Go to Quote ({cartCount})
+              </button>
+            )}
             {latestProcessed && (
               <button
                 onClick={handleDownload}

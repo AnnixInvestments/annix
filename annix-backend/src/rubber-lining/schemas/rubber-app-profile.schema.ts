@@ -60,6 +60,24 @@ export class RubberAppProfile {
   @Prop({ type: String, required: false })
   accentColor: string;
 
+  @Prop({ type: String, required: false })
+  smtpHost: string;
+
+  @Prop({ type: Number, required: false })
+  smtpPort: number;
+
+  @Prop({ type: String, required: false })
+  smtpUser: string;
+
+  @Prop({ type: String, required: false })
+  smtpPass: string;
+
+  @Prop({ type: String, required: false })
+  smtpFromEmail: string;
+
+  @Prop({ type: String, required: false })
+  smtpFromName: string;
+
   @Prop({ type: Date, required: false })
   updatedAt: Date;
 }

@@ -77,17 +77,23 @@ export class EmailService {
     return this.isConfigured;
   }
 
-  private initializeTransporter(): void {
-    const host = this.configService.get<string>("SMTP_HOST");
-    const port = this.configService.get<number>("SMTP_PORT");
-    const user = this.configService.get<string>("SMTP_USER");
-    const pass = this.configService.get<string>("SMTP_PASS");
+  private initializeTransporter(smtpConfig?: {
+    host: string;
+    port: number;
+    user: string;
+    pass: string;
+  }): void {
+    const host = smtpConfig?.host || this.configService.get<string>("SMTP_HOST");
+    const port = smtpConfig?.port || this.configService.get<number>("SMTP_PORT");
+    const user = smtpConfig?.user || this.configService.get<string>("SMTP_USER");
+    const pass = smtpConfig?.pass || this.configService.get<string>("SMTP_PASS");
 
     if (host && port && user && pass) {
       this.transporter = nodemailer.createTransport({
         host,
         port,
         secure: port === 465,
+        requireTLS: port === 587,
         auth: {
           user,
           pass,
@@ -96,9 +102,39 @@ export class EmailService {
       this.isConfigured = true;
       this.logger.log("Email transporter configured successfully");
     } else {
+      this.isConfigured = false;
       this.logger.warn("SMTP not configured - emails will be logged to console");
     }
   }
+
+  configureFromProfile(profile: {
+    smtpHost: string | null;
+    smtpPort: number | null;
+    smtpUser: string | null;
+    smtpPass: string | null;
+    smtpFromEmail: string | null;
+    smtpFromName: string | null;
+  }): void {
+    if (profile.smtpHost && profile.smtpPort && profile.smtpUser && profile.smtpPass) {
+      this.transporter = nodemailer.createTransport({
+        host: profile.smtpHost,
+        port: profile.smtpPort,
+        secure: profile.smtpPort === 465,
+        requireTLS: profile.smtpPort === 587,
+        auth: {
+          user: profile.smtpUser,
+          pass: profile.smtpPass,
+        },
+      });
+      this.isConfigured = true;
+      this.smtpFromEmail = profile.smtpFromEmail || null;
+      this.smtpFromName = profile.smtpFromName || null;
+      this.logger.log("Email transporter configured from app profile");
+    }
+  }
+
+  private smtpFromEmail: string | null = null;
+  private smtpFromName: string | null = null;
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
     if (this.configService.get<string>("EMAIL_DELIVERY_DISABLED") === "true") {
@@ -107,9 +143,13 @@ export class EmailService {
       );
       return true;
     }
-    const fromEmail = this.configService.get<string>("EMAIL_FROM") || "noreply@example.com";
+    const fromEmail =
+      this.smtpFromEmail || this.configService.get<string>("EMAIL_FROM") || "noreply@example.com";
     const fromName =
-      options.fromName || this.configService.get<string>("EMAIL_FROM_NAME") || "Annix";
+      options.fromName ||
+      this.smtpFromName ||
+      this.configService.get<string>("EMAIL_FROM_NAME") ||
+      "Annix";
     const supportEmail = this.configService.get<string>("SUPPORT_EMAIL") || fromEmail;
     const replyTo = options.replyTo || supportEmail;
     const isTransactional = options.isTransactional !== false;

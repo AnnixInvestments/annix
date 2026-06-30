@@ -34,6 +34,8 @@ export const PAGE_PERMISSIONS: Record<string, string> = {
   "/au-rubber/portal/accounting/board-meetings": "accounting:manage",
   "/au-rubber/portal/accounting/history": "accounting:view",
   "/au-rubber/portal/accounting/affiliate-commission": "accounting:view",
+  "/au-rubber/portal/accounting/affiliate-commission/price-lists": "accounting:view",
+  "/au-rubber/portal/accounting/affiliate-commission/quotations": "accounting:view",
   "/au-rubber/portal/website": "website:manage",
   "/au-rubber/portal/settings": "settings:manage",
 };

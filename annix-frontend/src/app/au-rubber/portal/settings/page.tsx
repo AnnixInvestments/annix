@@ -37,6 +37,7 @@ import { RequirePermission } from "../../components/RequirePermission";
 import { PAGE_PERMISSIONS } from "../../config/pagePermissions";
 import { CompanyInfoTab } from "./CompanyInfoTab";
 import { InboundEmailConfigSection } from "./InboundEmailConfigSection";
+import { OutgoingEmailConfigSection } from "./OutgoingEmailConfigSection";
 import { SageConfigSection } from "./SageConfigSection";
 import { SageContactSyncSection } from "./SageContactSyncSection";
 
@@ -1518,6 +1519,7 @@ export default function SettingsPage() {
         {activeTab === "company" && (
           <>
             <CompanyInfoTab />
+            <OutgoingEmailConfigSection />
             <InboundEmailConfigSection />
           </>
         )}

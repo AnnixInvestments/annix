@@ -29,5 +29,12 @@ export class RubberAppProfile {
 
   accentColor: string | null;
 
+  smtpHost: string | null;
+  smtpPort: number | null;
+  smtpUser: string | null;
+  smtpPass: string | null;
+  smtpFromEmail: string | null;
+  smtpFromName: string | null;
+
   updatedAt: Date;
 }

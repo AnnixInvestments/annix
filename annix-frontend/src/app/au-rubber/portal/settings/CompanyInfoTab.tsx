@@ -27,6 +27,12 @@ const EMPTY_PROFILE: RubberAppProfileDto = {
   heroUrl: null,
   primaryColor: null,
   accentColor: null,
+  smtpHost: null,
+  smtpPort: null,
+  smtpUser: null,
+  smtpPass: null,
+  smtpFromEmail: null,
+  smtpFromName: null,
 };
 
 function TextField(props: {
@@ -108,7 +114,7 @@ export function CompanyInfoTab() {
       }
     };
     load();
-  }, []);
+  }, [branding]);
 
   const handleSave = async () => {
     setIsSaving(true);

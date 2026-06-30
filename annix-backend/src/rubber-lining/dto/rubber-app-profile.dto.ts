@@ -88,6 +88,35 @@ export class RubberAppProfileDto {
   @IsOptional()
   @IsString()
   accentColor?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  smtpHost?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  smtpPort?: number | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  smtpUser?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  smtpPass?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  smtpFromEmail?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  smtpFromName?: string | null;
 }
 
 export interface RubberAppProfileResponseDto {
@@ -109,6 +138,12 @@ export interface RubberAppProfileResponseDto {
   heroUrl: string | null;
   primaryColor: string | null;
   accentColor: string | null;
+  smtpHost: string | null;
+  smtpPort: number | null;
+  smtpUser: string | null;
+  smtpPass: string | null;
+  smtpFromEmail: string | null;
+  smtpFromName: string | null;
   updatedAt: Date;
 }
 
@@ -133,6 +168,12 @@ export const toRubberAppProfileResponse = (
   heroUrl: profile.heroUrl ?? null,
   primaryColor: profile.primaryColor ?? null,
   accentColor: profile.accentColor ?? null,
+  smtpHost: profile.smtpHost ?? null,
+  smtpPort: profile.smtpPort ?? null,
+  smtpUser: profile.smtpUser ?? null,
+  smtpPass: profile.smtpPass ?? null,
+  smtpFromEmail: profile.smtpFromEmail ?? null,
+  smtpFromName: profile.smtpFromName ?? null,
   updatedAt: profile.updatedAt,
 });
 
@@ -155,6 +196,12 @@ export const applyRubberAppProfileDto = (
   if (dto.heroUrl !== undefined) updates.heroUrl = dto.heroUrl ?? null;
   if (dto.primaryColor !== undefined) updates.primaryColor = dto.primaryColor ?? null;
   if (dto.accentColor !== undefined) updates.accentColor = dto.accentColor ?? null;
+  if (dto.smtpHost !== undefined) updates.smtpHost = dto.smtpHost ?? null;
+  if (dto.smtpPort !== undefined) updates.smtpPort = dto.smtpPort ?? null;
+  if (dto.smtpUser !== undefined) updates.smtpUser = dto.smtpUser ?? null;
+  if (dto.smtpPass !== undefined) updates.smtpPass = dto.smtpPass ?? null;
+  if (dto.smtpFromEmail !== undefined) updates.smtpFromEmail = dto.smtpFromEmail ?? null;
+  if (dto.smtpFromName !== undefined) updates.smtpFromName = dto.smtpFromName ?? null;
 
   const touchesAddress =
     dto.streetAddress !== undefined ||

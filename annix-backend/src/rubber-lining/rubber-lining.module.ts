@@ -39,6 +39,7 @@ import { LinkedInFeedService } from "./linkedin-feed.service";
 import { FathomProvider } from "./meetings/fathom.provider";
 import { MeetingProviderRegistry } from "./meetings/meeting-provider.registry";
 import { PublicAuIndustriesController } from "./public-au-industries.controller";
+import { QuotationController } from "./quotation.controller";
 import { AffiliateRepository } from "./repositories/affiliate.repository";
 import { MongoAffiliateRepository } from "./repositories/affiliate.repository.mongo";
 import { AffiliatePriceListRepository } from "./repositories/affiliate-price-list.repository";
@@ -53,6 +54,8 @@ import { CommissionPayoutRepository } from "./repositories/commission-payout.rep
 import { MongoCommissionPayoutRepository } from "./repositories/commission-payout.repository.mongo";
 import { CompoundDataSheetRepository } from "./repositories/compound-data-sheet.repository";
 import { MongoCompoundDataSheetRepository } from "./repositories/compound-data-sheet.repository.mongo";
+import { QuotationRepository } from "./repositories/quotation.repository";
+import { MongoQuotationRepository } from "./repositories/quotation.repository.mongo";
 import { RubberAccountSignOffRepository } from "./repositories/rubber-account-sign-off.repository";
 import { MongoRubberAccountSignOffRepository } from "./repositories/rubber-account-sign-off.repository.mongo";
 import { RubberAdhesionRequirementRepository } from "./repositories/rubber-adhesion-requirement.repository";
@@ -199,6 +202,8 @@ import { BlogPostSchema } from "./schemas/blog-post.schema";
 import { ChemicalSupplierDocumentSchema } from "./schemas/chemical-supplier-document.schema";
 import { CommissionPayoutSchema } from "./schemas/commission-payout.schema";
 import { CompoundDataSheetSchema } from "./schemas/compound-data-sheet.schema";
+import { QuotationSchema } from "./schemas/quotation.schema";
+import { QuotationItemSchema } from "./schemas/quotation-item.schema";
 import { RubberAccountSignOffSchema } from "./schemas/rubber-account-sign-off.schema";
 import { RubberAdhesionRequirementSchema } from "./schemas/rubber-adhesion-requirement.schema";
 import { RubberAppProfileSchema } from "./schemas/rubber-app-profile.schema";
@@ -254,6 +259,7 @@ import { ArEmailAdapterService } from "./services/ar-email-adapter.service";
 import { AuRubberDocumentFilerService } from "./services/au-rubber-document-filer.service";
 import { PdfPageCacheService } from "./services/pdf-page-cache.service";
 import { PdfSlicerService } from "./services/pdf-slicer.service";
+import { QuotationService } from "./services/quotation.service";
 import { RubberExtractionOrchestratorService } from "./services/rubber-extraction-orchestrator.service";
 import { RubberOrderConfirmationService } from "./services/rubber-order-confirmation.service";
 import { TestimonialsController } from "./testimonials.controller";
@@ -361,6 +367,8 @@ import { WebsitePagesService } from "./website-pages.service";
       { name: "UserAppAccess", schema: UserAppAccessSchema },
       { name: "JobCard", schema: JobCardSchema },
       { name: "JobCardLineItem", schema: JobCardLineItemSchema },
+      { name: "Quotation", schema: QuotationSchema },
+      { name: "QuotationItem", schema: QuotationItemSchema },
     ]),
   ],
   controllers: [
@@ -375,6 +383,7 @@ import { WebsitePagesService } from "./website-pages.service";
     CompoundDataSheetsController,
     ChemicalSupplierDocumentController,
     PublicAuIndustriesController,
+    QuotationController,
   ],
   providers: [
     RubberSupplierCocReminderService,
@@ -432,6 +441,8 @@ import { WebsitePagesService } from "./website-pages.service";
     RubberStatementReconciliationService,
     AffiliatePriceListService,
     AuRubberCapabilities,
+    QuotationService,
+    repositoryProvider(QuotationRepository, MongoQuotationRepository),
     repositoryProvider(AffiliateRepository, MongoAffiliateRepository),
     repositoryProvider(SalesRepRepository, MongoSalesRepRepository),
     repositoryProvider(AffiliatePriceListRepository, MongoAffiliatePriceListRepository),

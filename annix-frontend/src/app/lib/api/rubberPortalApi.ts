@@ -23,6 +23,12 @@ export interface RubberAppProfileDto {
   heroUrl: string | null;
   primaryColor: string | null;
   accentColor: string | null;
+  smtpHost: string | null;
+  smtpPort: number | null;
+  smtpUser: string | null;
+  smtpPass: string | null;
+  smtpFromEmail: string | null;
+  smtpFromName: string | null;
 }
 
 export interface RubberProductCodingDto {
