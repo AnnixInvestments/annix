@@ -236,6 +236,14 @@ export class RubberCocService {
       processingStatus: CocProcessingStatus.PENDING,
       createdBy: createdBy ?? null,
       documentHash: documentHash ?? null,
+      // Every CoC created here (email import + manual upload) must be a live v1.
+      // The supplier-CoC listing filters versionStatus === ACTIVE by default, so
+      // omitting these left email-imported CoCs invisible (versionStatus null) —
+      // they extracted fine but never showed on the Supplier CoCs page for the
+      // operator to review/approve. Re-issues of an existing cocNumber are
+      // versioned separately once the number is known after extraction.
+      version: 1,
+      versionStatus: DocumentVersionStatus.ACTIVE,
     });
 
     const saved = await this.supplierCocRepository.save(coc);
