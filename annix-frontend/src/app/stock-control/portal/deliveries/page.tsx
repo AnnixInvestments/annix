@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { DateInput } from "@/app/components/ui/DateInput";
+import { coreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { extractErrorMessage } from "@/app/lib/api/apiError";
 import type { AnalyzedDeliveryNoteData, DeliveryNote } from "@/app/lib/api/stockControlApi";
 // eslint-disable-next-line no-restricted-imports -- SdnStatus is an enum value (not type) used in runtime checks; enum is colocated with API types. Tracked as tech debt per Phase 9 of annix/annix#191.
@@ -521,7 +522,7 @@ export default function DeliveriesPage() {
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4">
                     <Link
-                      href={`/stock-control/portal/deliveries/${delivery.id}`}
+                      href={coreAwareHref(`/stock-control/portal/deliveries/${delivery.id}`)}
                       className="text-xs sm:text-sm font-medium text-[var(--sc-primary-hover,#252560)] hover:text-[var(--sc-primary-active,#1c1c48)] break-all"
                     >
                       {delivery.deliveryNumber}

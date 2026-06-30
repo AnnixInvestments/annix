@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ConfirmModal } from "@/app/components/modals/ConfirmModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { coreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import type { JobCard } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
@@ -770,11 +771,13 @@ export default function JobCardsPage() {
                   <tr
                     key={job.id}
                     className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => router.push(`/stock-control/portal/job-cards/${job.id}`)}
+                    onClick={() =>
+                      router.push(coreAwareHref(`/stock-control/portal/job-cards/${job.id}`))
+                    }
                   >
                     <td className="px-3 py-3 whitespace-nowrap">
                       <Link
-                        href={`/stock-control/portal/job-cards/${job.id}`}
+                        href={coreAwareHref(`/stock-control/portal/job-cards/${job.id}`)}
                         className="text-sm font-medium text-[var(--sc-primary-hover,#252560)] hover:text-[var(--sc-primary-active,#1c1c48)] truncate block"
                       >
                         {job.jobNumber}

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
+import { coreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { toastError } from "@/app/lib/api/apiError";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import type { SupplierInvoice } from "@/app/lib/api/stockControlApi";
@@ -529,7 +530,9 @@ export default function InvoicesPage() {
                 <tr
                   key={invoice.id}
                   className="hover:bg-gray-50 cursor-pointer"
-                  onClick={() => router.push(`/stock-control/portal/invoices/${invoice.id}`)}
+                  onClick={() =>
+                    router.push(coreAwareHref(`/stock-control/portal/invoices/${invoice.id}`))
+                  }
                 >
                   <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                     <span className="text-sm font-medium text-[var(--sc-primary-hover,#252560)]">

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { coreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import type { DeliveryNote } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
@@ -135,7 +136,7 @@ export default function DeliveryDetailPage() {
     try {
       setMutationError(null);
       await deleteDeliveryMutation.mutateAsync(deliveryId);
-      router.push("/stock-control/portal/deliveries");
+      router.push(coreAwareHref("/stock-control/portal/deliveries"));
     } catch (err) {
       setMutationError(err instanceof Error ? err.message : "Failed to delete delivery note");
     }
@@ -160,7 +161,7 @@ export default function DeliveryDetailPage() {
         area="Deliveries"
         error={deliveryQueryError}
         reset={() => router.refresh()}
-        backHref="/stock-control/portal/deliveries"
+        backHref={coreAwareHref("/stock-control/portal/deliveries")}
         backLabel="Back to Deliveries"
         brandButtonClass="bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)]"
       />
@@ -176,7 +177,7 @@ export default function DeliveryDetailPage() {
             We couldn't find that delivery note. It may have been removed.
           </p>
           <Link
-            href="/stock-control/portal/deliveries"
+            href={coreAwareHref("/stock-control/portal/deliveries")}
             className="mt-4 inline-block text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
           >
             Back to Deliveries
@@ -224,7 +225,7 @@ export default function DeliveryDetailPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Link
-            href="/stock-control/portal/deliveries"
+            href={coreAwareHref("/stock-control/portal/deliveries")}
             className="text-gray-500 hover:text-gray-700"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

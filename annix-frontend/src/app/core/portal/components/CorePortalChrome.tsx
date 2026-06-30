@@ -8,6 +8,7 @@ import { useCoreActiveApp } from "../CoreActiveAppContext";
 import { CorePortalModuleProvider } from "../CorePortalModuleProvider";
 import type { CoreApp } from "../config/navAppMap";
 import { CoreAppProviders } from "./CoreAppProviders";
+import { CoreChromeBranding } from "./CoreChromeBranding";
 import { CorePortalHeader } from "./CorePortalHeader";
 import { CorePortalPageAccessGuard } from "./CorePortalPageAccessGuard";
 import { CorePortalSidebar } from "./CorePortalSidebar";
@@ -42,30 +43,32 @@ function CorePortalShell(props: { activeApp: CoreApp; auth: NormalizedAuth; chil
   return (
     <CorePortalModuleProvider activeApp={props.activeApp}>
       <CoreAppProviders activeApp={props.activeApp}>
-        <div className="flex h-screen bg-gray-50">
-          <CorePortalSidebar
-            activeApp={props.activeApp}
-            permissions={auth.permissions}
-            isAdmin={auth.isAdmin}
-            isOpen={sidebarOpen}
-            onClose={() => setSidebarOpen(false)}
-          />
-
-          <div className="flex min-w-0 flex-1 flex-col">
-            <CorePortalHeader
+        <CoreChromeBranding activeApp={props.activeApp}>
+          <div className="flex h-screen bg-gray-50">
+            <CorePortalSidebar
               activeApp={props.activeApp}
-              userName={auth.userName}
-              companyName={auth.companyName}
-              onMenuToggle={() => setSidebarOpen((prev) => !prev)}
+              permissions={auth.permissions}
+              isAdmin={auth.isAdmin}
+              isOpen={sidebarOpen}
+              onClose={() => setSidebarOpen(false)}
             />
 
-            <main className="flex-1 overflow-y-auto px-4 py-3 sm:p-6">
-              <CorePortalPageAccessGuard activeApp={props.activeApp} ready={ready}>
-                {props.children}
-              </CorePortalPageAccessGuard>
-            </main>
+            <div className="flex min-w-0 flex-1 flex-col">
+              <CorePortalHeader
+                activeApp={props.activeApp}
+                userName={auth.userName}
+                companyName={auth.companyName}
+                onMenuToggle={() => setSidebarOpen((prev) => !prev)}
+              />
+
+              <main className="flex-1 overflow-y-auto px-4 py-3 sm:p-6">
+                <CorePortalPageAccessGuard activeApp={props.activeApp} ready={ready}>
+                  {props.children}
+                </CorePortalPageAccessGuard>
+              </main>
+            </div>
           </div>
-        </div>
+        </CoreChromeBranding>
       </CoreAppProviders>
     </CorePortalModuleProvider>
   );

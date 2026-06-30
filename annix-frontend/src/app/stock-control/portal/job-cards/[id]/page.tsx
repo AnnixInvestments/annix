@@ -8,6 +8,7 @@ import { createPortal } from "react-dom";
 import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { PdfPreviewModal } from "@/app/components/PdfPreviewModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { coreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import type {
   BackgroundStepStatus,
   JobCard,
@@ -505,7 +506,7 @@ export default function JobCardDetailPage() {
         area="Job Cards"
         error={actionsError}
         reset={fetchData}
-        backHref="/stock-control/portal/job-cards"
+        backHref={coreAwareHref("/stock-control/portal/job-cards")}
         backLabel="Back to Job Cards"
         brandButtonClass="bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)]"
       />
@@ -519,7 +520,7 @@ export default function JobCardDetailPage() {
           <div className="text-gray-900 text-lg font-semibold mb-2">Job card not found</div>
           <p className="text-gray-600">We couldn't find that job card. It may have been removed.</p>
           <Link
-            href="/stock-control/portal/job-cards"
+            href={coreAwareHref("/stock-control/portal/job-cards")}
             className="mt-4 inline-block text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
           >
             Back to Job Cards
@@ -567,7 +568,7 @@ export default function JobCardDetailPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center space-x-4 min-w-0">
           <Link
-            href="/stock-control/portal/job-cards"
+            href={coreAwareHref("/stock-control/portal/job-cards")}
             className="text-gray-500 hover:text-gray-700 flex-shrink-0"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -754,7 +755,9 @@ export default function JobCardDetailPage() {
             return (
               <button
                 type="button"
-                onClick={() => router.push(`/stock-control/portal/job-cards/${next.id}`)}
+                onClick={() =>
+                  router.push(coreAwareHref(`/stock-control/portal/job-cards/${next.id}`))
+                }
                 title={`Go to ${next.label} — your next job card with an action`}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-md shadow-sm text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >

@@ -193,10 +193,10 @@ function SidebarNavList(props: { groups: CoreNavGroup[]; onNavigate: () => void 
                       href={item.href}
                       onClick={props.onNavigate}
                       title={opensClassic ? "Opens classic view" : undefined}
-                      className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${
+                      className={`flex items-center gap-2 rounded-md border-l-2 px-3 py-2 text-sm transition-colors ${
                         active
-                          ? "bg-gray-100 font-semibold text-gray-900"
-                          : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                          ? "border-[var(--brand-accent)] bg-gray-100 font-semibold text-gray-900"
+                          : "border-transparent text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                       }`}
                     >
                       <span className="flex-1">{item.label}</span>
@@ -345,20 +345,19 @@ function AuRubberSidebarNav(props: {
 }
 
 export function CorePortalSidebar(props: CorePortalSidebarProps) {
-  // TODO(#395 Phase 5): derive the wordmark/logo + accent colour per app from
-  // `useBranding(activeApp)` / brand CSS vars. For now the active-app display
-  // name provides identity and the accent stays neutral (no hardcoded per-app
-  // hex, per CLAUDE.md branding rules).
+  // The wordmark bar + active-item accent are driven by the active app's
+  // branding via brand CSS vars (--brand-navbar / --brand-accent), applied by
+  // CoreChromeBranding. No hardcoded per-app hex here (CLAUDE.md branding rule).
   const wordmark = APP_DISPLAY_NAME[props.activeApp];
 
   return (
     <SidebarShell isOpen={props.isOpen} onClose={props.onClose}>
-      <div className="flex h-14 items-center justify-between border-b border-gray-200 px-4">
-        <span className="text-lg font-semibold text-gray-900">{wordmark}</span>
+      <div className="flex h-14 items-center justify-between border-b border-white/10 bg-[var(--brand-navbar)] px-4">
+        <span className="text-lg font-semibold text-white">{wordmark}</span>
         <button
           type="button"
           onClick={props.onClose}
-          className="rounded p-1 text-gray-500 hover:text-gray-700 lg:hidden"
+          className="rounded p-1 text-white/70 hover:text-white lg:hidden"
           aria-label="Close navigation"
         >
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

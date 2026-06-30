@@ -31,6 +31,9 @@ export const CORE_PORTAL_HOSTED_SUFFIXES: ReadonlySet<string> = new Set([
   "job-cards",
   "customer-deliveries",
   "invoices",
+  "purchase-orders",
+  "deliveries",
+  "settings",
 ]);
 
 export function isCorePortalHostedSuffix(suffix: string): boolean {

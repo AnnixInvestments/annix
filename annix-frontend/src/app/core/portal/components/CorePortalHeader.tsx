@@ -27,7 +27,7 @@ export function CorePortalHeader(props: {
   const headerCompanyName = companyName ?? appLabel;
 
   return (
-    <div className="border-b border-gray-200 bg-white print:hidden">
+    <div className="border-b border-t-2 border-gray-200 border-t-[var(--brand-accent)] bg-white print:hidden">
       <OpsHeader
         userName={props.userName}
         companyName={headerCompanyName}
