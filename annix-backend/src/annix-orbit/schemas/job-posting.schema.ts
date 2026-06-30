@@ -19,8 +19,8 @@ export class JobPosting {
   @Prop({ type: String, required: false })
   description: string;
 
-  @Prop({ type: Object, required: true })
-  requiredSkills: Record<string, unknown>;
+  @Prop({ type: [String], required: true, default: [] })
+  requiredSkills: string[];
 
   @Prop({ type: Number, required: false })
   minExperienceYears: number;
@@ -28,19 +28,19 @@ export class JobPosting {
   @Prop({ type: String, required: false })
   requiredEducation: string;
 
-  @Prop({ type: Object, required: true })
-  requiredCertifications: Record<string, unknown>;
+  @Prop({ type: [String], required: true, default: [] })
+  requiredCertifications: string[];
 
   @Prop({ type: String, required: false })
   emailSubjectPattern: string;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, required: true, default: false })
   autoRejectEnabled: boolean;
 
-  @Prop({ type: Number, required: true })
+  @Prop({ type: Number, required: true, default: 35 })
   autoRejectThreshold: number;
 
-  @Prop({ type: Number, required: true })
+  @Prop({ type: Number, required: true, default: 85 })
   autoAcceptThreshold: number;
 
   @Prop({ type: String, required: true })
@@ -76,10 +76,10 @@ export class JobPosting {
   @Prop({ type: Date, required: false })
   activatedAt: Date;
 
-  @Prop({ type: Object, required: true })
-  enabledPortalCodes: Record<string, unknown>;
+  @Prop({ type: [String], required: true, default: [] })
+  enabledPortalCodes: string[];
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, required: true, default: false })
   testMode: boolean;
 
   @Prop({ type: String, required: false })
@@ -109,13 +109,13 @@ export class JobPosting {
   @Prop({ type: String, required: false })
   commissionStructure: string;
 
-  @Prop({ type: Object, required: true })
-  benefits: Record<string, unknown>;
+  @Prop({ type: [String], required: true, default: [] })
+  benefits: string[];
 
-  @Prop({ type: Number, required: true })
+  @Prop({ type: Number, required: true, default: 0 })
   qualityScore: number;
 
-  @Prop({ type: Number, required: true })
+  @Prop({ type: Number, required: true, default: 0 })
   inclusivityScore: number;
 
   @Prop({ type: Object, required: false })

@@ -80,6 +80,12 @@ export class JobPostingService {
       requiredCertifications: [],
       enabledPortalCodes: [],
       benefits: [],
+      autoRejectEnabled: false,
+      autoRejectThreshold: 35,
+      autoAcceptThreshold: 85,
+      testMode: false,
+      qualityScore: 0,
+      inclusivityScore: 0,
     });
   }
 
@@ -279,6 +285,12 @@ export class JobPostingService {
       referenceNumber,
       companyId,
       status: JobPostingStatus.DRAFT,
+      autoRejectEnabled: dto.autoRejectEnabled ?? false,
+      autoRejectThreshold: dto.autoRejectThreshold ?? 35,
+      autoAcceptThreshold: dto.autoAcceptThreshold ?? 85,
+      testMode: false,
+      qualityScore: 0,
+      inclusivityScore: 0,
     });
     return jobPosting;
   }
