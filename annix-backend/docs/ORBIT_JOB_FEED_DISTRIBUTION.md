@@ -8,7 +8,7 @@ recorded `IN_FEED`, **never `POSTED`** (we don't fabricate external reach).
 
 ## The feed endpoint
 
-- **URL:** `GET https://cv.annix.co.za/api/annix-orbit/public/jobs.xml`
+- **URL:** `GET https://orbit.annix.co.za/api/annix-orbit/public/jobs.xml`
   (backend route `annix-orbit/public/jobs.xml`).
 - **Format:** Indeed-style XML — `<source>` root, one `<job>` per active role.
 - **Caching:** `Cache-Control: public, max-age=900, s-maxage=900` (15 min).
@@ -29,8 +29,8 @@ Feed header:
 
 | XML node | Source |
 |---|---|
-| `<publisher>` | Static: "Annix Annix Orbit" |
-| `<publisherurl>` | `orbitPublicBaseUrl()` (`https://cv.annix.co.za`) |
+| `<publisher>` | Static: "Annix Orbit" |
+| `<publisherurl>` | `orbitPublicBaseUrl()` (`https://orbit.annix.co.za`) |
 | `<lastBuildDate>` | Request time (ISO) |
 
 Per `<job>`:
@@ -41,7 +41,7 @@ Per `<job>`:
 | `<referencenumber>` | `referenceNumber` | Stable per job (`JOB-XXXXXX`) |
 | `<date>` | `postedAt` | ISO; `activatedAt ?? createdAt` |
 | `<expirationdate>` | `validThrough` | ISO; `expiryDate ?? postedAt + 60d`. Lets aggregators auto-drop stale roles (matches our expiry cron) |
-| `<url>` | `orbitPublicJobUrl(ref)` | Canonical `https://cv.annix.co.za/jobs/{ref}` |
+| `<url>` | `orbitPublicJobUrl(ref)` | Canonical `https://orbit.annix.co.za/jobs/{ref}` |
 | `<company>` | `companyName` | Falls back to "Confidential employer" |
 | `<city>` | `location` | CDATA; omitted if null |
 | `<state>` | `province` | CDATA; omitted if null |
@@ -78,7 +78,7 @@ accepted feed as a distribution row with status `IN_FEED` once confirmed.
 ### Jooble (free)
 1. Open a ticket at the Jooble Help Center (support portal) requesting XML-feed
    / ATS publishing.
-2. Provide the feed URL: `https://cv.annix.co.za/api/annix-orbit/public/jobs.xml`.
+2. Provide the feed URL: `https://orbit.annix.co.za/api/annix-orbit/public/jobs.xml`.
 3. `JoobleBot` crawls ≥ once/24h. Confirm indexing, then mark `IN_FEED`.
    - Ref: https://help.jooble.org/en/support/solutions/articles/60000700159
 

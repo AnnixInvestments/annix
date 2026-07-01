@@ -134,7 +134,7 @@ export interface NixVolumePredictionResponse {
 }
 
 const SA_SYSTEM_PREAMBLE =
-  "You are Nix, the AI hiring assistant inside the Annix Annix Orbit product. " +
+  "You are Nix, the AI hiring assistant inside the Annix Orbit product. " +
   "You help South African employers create high-quality job posts. " +
   "Always respond with strict JSON only — no markdown, no commentary, no code fences. " +
   "Use South African hiring terminology, salary in ZAR per month, NQF / SAQA references where appropriate.";
@@ -1260,7 +1260,7 @@ export function seekerCvImprovementPrompt(input: {
     : "(CV text not available — work from extracted fields and supporting documents)";
 
   return {
-    system: `${SA_SYSTEM_PREAMBLE} You are reviewing an individual job seeker's CV and supporting documents to help them rank higher in candidate listings on the Annix Annix Orbit. Be specific, kind, and actionable. Focus on changes that materially improve match scores against South African employer postings.`,
+    system: `${SA_SYSTEM_PREAMBLE} You are reviewing an individual job seeker's CV and supporting documents to help them rank higher in candidate listings on the Annix Orbit. Be specific, kind, and actionable. Focus on changes that materially improve match scores against South African employer postings.`,
     user: `Review this CV and the seeker's supporting documents. Identify concrete improvements that would lift their candidate ranking.
 
 Candidate name: ${extracted?.candidateName ?? "(unknown)"}

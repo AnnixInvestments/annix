@@ -62,7 +62,7 @@ export class PublicJobPostingController {
     const items = jobs.map((job) => this.renderJobNode(job)).join("\n");
     return `<?xml version="1.0" encoding="utf-8"?>
 <source>
-  <publisher>Annix Annix Orbit</publisher>
+  <publisher>Annix Orbit</publisher>
   <publisherurl>${escapeXml(orbitPublicBaseUrl())}</publisherurl>
   <lastBuildDate>${escapeXml(generatedAt)}</lastBuildDate>
 ${items}

@@ -6,7 +6,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { PublicJobPosting } from "@/app/lib/api/annixOrbitApi";
-import { API_BASE_URL, ipv4LocalhostUrl } from "@/lib/api-config";
+import { serverApiBaseUrl } from "@/lib/server-api-base";
 import { ShareButtons } from "./ShareButtons";
 
 const EXPIRY_FALLBACK_DAYS = 60;
@@ -63,12 +63,10 @@ interface JobPostingSchema {
 
 async function fetchPublicJob(ref: string): Promise<PublicJobPosting | null> {
   try {
-    const res = await fetch(
-      ipv4LocalhostUrl(
-        `${API_BASE_URL}/annix-orbit/public/job-postings/${encodeURIComponent(ref)}`,
-      ),
-      { next: { revalidate: 300 } },
-    );
+    const base = await serverApiBaseUrl("annix-orbit");
+    const res = await fetch(`${base}/annix-orbit/public/job-postings/${encodeURIComponent(ref)}`, {
+      next: { revalidate: 300 },
+    });
     if (!res.ok) return null;
     return (await res.json()) as PublicJobPosting;
   } catch {

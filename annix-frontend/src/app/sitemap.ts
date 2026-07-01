@@ -3,7 +3,7 @@ import { portalForCode } from "@annix/product-data/portals";
 import { DateTime } from "luxon";
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
-import { API_BASE_URL, ipv4LocalhostUrl } from "@/lib/api-config";
+import { serverApiBaseUrl } from "@/lib/server-api-base";
 import { CASE_STUDIES } from "./au-industries/caseStudies";
 
 const AU_INDUSTRIES_HOSTS = new Set(["auind.co.za", "www.auind.co.za"]);
@@ -16,7 +16,8 @@ const ORBIT_HOSTS = new Set([ORBIT_PORTAL.prodHost, ORBIT_PORTAL.devHost]);
 // /jobs/{ref} URL the middleware serves on the Orbit host.
 async function orbitJobsSitemap(host: string, protocol: string): Promise<MetadataRoute.Sitemap> {
   try {
-    const res = await fetch(ipv4LocalhostUrl(`${API_BASE_URL}/annix-orbit/public/jobs-sitemap`), {
+    const base = await serverApiBaseUrl("annix-orbit");
+    const res = await fetch(`${base}/annix-orbit/public/jobs-sitemap`, {
       next: { revalidate: 900 },
     });
     if (!res.ok) return [];

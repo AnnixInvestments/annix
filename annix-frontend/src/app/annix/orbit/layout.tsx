@@ -2,12 +2,13 @@ import type { Metadata, Viewport } from "next";
 import { AnnixOrbitAuthProvider } from "@/app/context/AnnixOrbitAuthContext";
 import { BrandingProvider } from "@/app/lib/branding/BrandingProvider";
 import { type Branding, brandingFallback, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
-import { API_BASE_URL, ipv4LocalhostUrl } from "@/lib/api-config";
+import { serverApiBaseUrl } from "@/lib/server-api-base";
 import { OrbitPwaProvider } from "./components/OrbitPwaProvider";
 
 async function orbitBrandingForMetadata(): Promise<Branding> {
   try {
-    const url = ipv4LocalhostUrl(`${API_BASE_URL}/public/branding/annix-orbit`);
+    const base = await serverApiBaseUrl("annix-orbit");
+    const url = `${base}/public/branding/annix-orbit`;
     // Short timeout + fallback so a production build (no backend reachable)
     // never hangs prerendering these pages.
     const res = await fetch(url, { next: { revalidate: 60 }, signal: AbortSignal.timeout(2500) });
