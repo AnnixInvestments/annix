@@ -3102,6 +3102,14 @@ class AuRubberApiClient {
     path: "/rubber-lining/portal/affiliate-commission/fix-company-links",
   });
 
+  affiliateCommissionFixInvoiceCustomer = createEndpoint<
+    [invoiceNumbers: string[]],
+    { fixed: Record<string, string>; errors: Record<string, string> }
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/affiliate-commission/fix-invoice-customer",
+    body: (invoiceNumbers) => ({ invoiceNumbers }),
+  });
+
   affiliateCommissionReleaseFromRecon = createEndpoint<
     [bankReconId: number, payoutIds: number[], paidBy: string],
     { released: number }

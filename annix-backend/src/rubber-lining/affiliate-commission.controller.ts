@@ -31,6 +31,7 @@ import {
 } from "./dto/affiliate-commission.dto";
 import { Affiliate, AffiliateStatus } from "./entities/affiliate.entity";
 import { CommissionPayout, PayoutStatus } from "./entities/commission-payout.entity";
+import { CompanyType } from "./entities/rubber-company.entity";
 import { TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
 import { SalesRep, SalesRepStatus } from "./entities/sales-rep.entity";
 import { AffiliateRepository } from "./repositories/affiliate.repository";
@@ -398,6 +399,58 @@ export class AffiliateCommissionController {
       `Fixed company links: moved ${moved} CTI(s) from "${badCompany.name}" (#${badCompany.id}) to "${goodCompany.name}" (#${goodCompany.id})`,
     );
     return { moved };
+  }
+
+  @Post("fix-invoice-customer")
+  @ApiOperation({
+    summary:
+      "Fix specific invoices: look up extracted customer name, find or create company, re-allocate",
+  })
+  async fixInvoiceCustomer(
+    @Body() body: { invoiceNumbers: string[] },
+  ): Promise<{ fixed: Record<string, string>; errors: Record<string, string> }> {
+    const invoices = await this.taxInvoiceRepository.findFilteredWithRelations({
+      invoiceType: TaxInvoiceType.CUSTOMER,
+    });
+
+    const fixed: Record<string, string> = {};
+    const errors: Record<string, string> = {};
+
+    for (const num of body.invoiceNumbers) {
+      const inv = invoices.find((i) => i.invoiceNumber.trim() === num.trim());
+      if (!inv) {
+        errors[num] = "Invoice not found";
+        continue;
+      }
+
+      const extractedName = inv.extractedData?.companyName?.trim();
+      if (!extractedName) {
+        errors[num] = "No extracted company name on invoice";
+        continue;
+      }
+
+      let company = await this.companyRepository.findOneByNameLike(extractedName);
+      if (!company) {
+        company = this.companyRepository.build({
+          name: extractedName,
+          companyType: CompanyType.CUSTOMER,
+        });
+        company = await this.companyRepository.create(company as any);
+        this.logger.log(`Created new company "${extractedName}" (#${company.id}) from CTI #${num}`);
+      }
+
+      if (inv.companyId !== company.id) {
+        await this.taxInvoiceRepository.updateById(inv.id, { companyId: company.id });
+        fixed[num] = extractedName;
+        this.logger.log(
+          `Re-allocated invoice #${num} (${inv.id}) to "${extractedName}" (#${company.id})`,
+        );
+      } else {
+        fixed[num] = `${extractedName} (already correct)`;
+      }
+    }
+
+    return { fixed, errors };
   }
 
   @Post("auto-assign")

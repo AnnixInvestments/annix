@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries } from "es-toolkit/compat";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { auRubberApiClient, type CtiRow } from "@/app/lib/api/auRubberApi";
@@ -43,6 +44,7 @@ export default function AffiliateCommissionDashboardPage() {
   const [ctiLoading, setCtiLoading] = useState(true);
   const [assigningCtis, setAssigningCtis] = useState(false);
   const [fixingLinks, setFixingLinks] = useState(false);
+  const [fixingInvoices, setFixingInvoices] = useState(false);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -184,6 +186,27 @@ export default function AffiliateCommissionDashboardPage() {
       alert({ message: "Failed to fix company links", variant: "error" });
     } finally {
       setFixingLinks(false);
+    }
+  }, [alert, fetchCtis]);
+
+  const handleFixInvoiceCustomer = useCallback(async () => {
+    setFixingInvoices(true);
+    try {
+      const result = (await auRubberApiClient.affiliateCommissionFixInvoiceCustomer([
+        "1350",
+        "1345",
+      ])) as { fixed: Record<string, string>; errors: Record<string, string> };
+      const fixedList = entries(result.fixed);
+      const errs = entries(result.errors);
+      let msg = fixedList.map(([k, v]) => `#${k} → ${v}`).join("; ");
+      if (errs.length > 0)
+        msg += (msg ? " | " : "") + errs.map(([k, v]) => `#${k}: ${v}`).join("; ");
+      alert({ message: msg || "No changes", variant: errs.length > 0 ? "warning" : "success" });
+      fetchCtis();
+    } catch {
+      alert({ message: "Failed to fix invoice customers", variant: "error" });
+    } finally {
+      setFixingInvoices(false);
     }
   }, [alert, fetchCtis]);
 
@@ -432,6 +455,13 @@ export default function AffiliateCommissionDashboardPage() {
                   Customer Tax Invoices (CTI)
                 </h2>
                 <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleFixInvoiceCustomer}
+                    disabled={fixingInvoices}
+                    className="px-3 py-1.5 text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {fixingInvoices ? "Fixing..." : "Fix #1350, #1345"}
+                  </button>
                   <button
                     onClick={handleFixCompanyLinks}
                     disabled={fixingLinks}
