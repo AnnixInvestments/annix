@@ -37,6 +37,7 @@ import { SalesRep, SalesRepStatus } from "./entities/sales-rep.entity";
 import { AffiliateRepository } from "./repositories/affiliate.repository";
 import { AffiliatePriceListRepository } from "./repositories/affiliate-price-list.repository";
 import { CommissionPayoutRepository } from "./repositories/commission-payout.repository";
+import { QuotationRepository } from "./repositories/quotation.repository";
 import { RubberCompanyRepository } from "./repositories/rubber-company.repository";
 import { RubberTaxInvoiceRepository } from "./repositories/rubber-tax-invoice.repository";
 import { SalesRepRepository } from "./repositories/sales-rep.repository";
@@ -54,6 +55,7 @@ export class AffiliateCommissionController {
     private readonly affiliateRepository: AffiliateRepository,
     private readonly priceListRepository: AffiliatePriceListRepository,
     private readonly payoutRepository: CommissionPayoutRepository,
+    private readonly quotationRepo: QuotationRepository,
     private readonly priceListService: AffiliatePriceListService,
     private readonly taxInvoiceRepository: RubberTaxInvoiceRepository,
     private readonly companyRepository: RubberCompanyRepository,
@@ -401,6 +403,24 @@ export class AffiliateCommissionController {
     return { moved };
   }
 
+  @Get("debug-invoices")
+  @ApiOperation({ summary: "Debug: list all CUSTOMER invoice numbers and IDs" })
+  async debugInvoices(): Promise<{
+    invoices: { id: number; number: string; companyId: number; extractedName: string | null }[];
+  }> {
+    const invoices = await this.taxInvoiceRepository.findFilteredWithRelations({
+      invoiceType: TaxInvoiceType.CUSTOMER,
+    });
+    return {
+      invoices: invoices.map((i) => ({
+        id: i.id,
+        number: i.invoiceNumber,
+        companyId: i.companyId,
+        extractedName: i.extractedData?.companyName ?? null,
+      })),
+    };
+  }
+
   @Post("fix-invoice-customer")
   @ApiOperation({
     summary:
@@ -409,9 +429,16 @@ export class AffiliateCommissionController {
   async fixInvoiceCustomer(
     @Body() body: { invoiceNumbers: string[] },
   ): Promise<{ fixed: Record<string, string>; errors: Record<string, string> }> {
+    this.logger.log(`fixInvoiceCustomer called with: ${JSON.stringify(body)}`);
     const invoices = await this.taxInvoiceRepository.findFilteredWithRelations({
       invoiceType: TaxInvoiceType.CUSTOMER,
     });
+    this.logger.log(`Total CUSTOMER invoices found: ${invoices.length}`);
+    for (const i of invoices) {
+      this.logger.log(
+        `  Invoice #${i.invoiceNumber} (id=${i.id}) companyId=${i.companyId} extractedName=${i.extractedData?.companyName}`,
+      );
+    }
 
     const fixed: Record<string, string> = {};
     const errors: Record<string, string> = {};
@@ -434,6 +461,10 @@ export class AffiliateCommissionController {
         company = this.companyRepository.build({
           name: extractedName,
           companyType: CompanyType.CUSTOMER,
+          firebaseUid: `auto-${Date.now()}`,
+          availableProducts: [],
+          isCompoundOwner: false,
+          autoApproveAuCocs: false,
         });
         company = await this.companyRepository.create(company as any);
         this.logger.log(`Created new company "${extractedName}" (#${company.id}) from CTI #${num}`);
@@ -506,5 +537,65 @@ export class AffiliateCommissionController {
       `Auto-assigned ${assigned} invoices to sales rep #${body.salesRepId} (${salesRep.name}), ${skipped} skipped`,
     );
     return { assigned, skipped };
+  }
+
+  @Get("chart-data")
+  @ApiOperation({ summary: "Aggregated chart data (sales by rep/affiliate, quote counts)" })
+  async chartData(@Req() req: any) {
+    const companyId = this.companyId(req);
+
+    const payouts = await this.payoutRepository.findByCompanyId(companyId);
+    const activePayouts = payouts.filter((p) => p.status !== PayoutStatus.CANCELLED);
+
+    const reps = await this.salesRepRepository.findByCompanyId(companyId);
+    const repName = new Map(reps.map((r) => [r.id, r.name]));
+
+    const affiliates = await this.affiliateRepository.findByCompanyId(companyId);
+    const affName = new Map(affiliates.map((a) => [a.id, a.name]));
+
+    const repTotals = new Map<number, number>();
+    for (const p of activePayouts) {
+      if (p.salesRepId != null) {
+        repTotals.set(p.salesRepId, (repTotals.get(p.salesRepId) ?? 0) + p.invoiceTotal);
+      }
+    }
+    const repTotalSum = [...repTotals.values()].reduce((a, b) => a + b, 0);
+    const salesByRep = [...repTotals.entries()]
+      .map(([id, value]) => ({
+        name: repName.get(id) ?? `Rep #${id}`,
+        value: Math.round(value * 100) / 100,
+        percentage: repTotalSum > 0 ? Math.round((value / repTotalSum) * 10000) / 100 : 0,
+      }))
+      .sort((a, b) => b.value - a.value);
+
+    const affTotals = new Map<number, number>();
+    for (const p of activePayouts) {
+      if (p.affiliateId != null) {
+        affTotals.set(p.affiliateId, (affTotals.get(p.affiliateId) ?? 0) + p.invoiceTotal);
+      }
+    }
+    const affTotalSum = [...affTotals.values()].reduce((a, b) => a + b, 0);
+    const salesByAffiliate = [...affTotals.entries()]
+      .map(([id, value]) => ({
+        name: affName.get(id) ?? `Affiliate #${id}`,
+        value: Math.round(value * 100) / 100,
+        percentage: affTotalSum > 0 ? Math.round((value / affTotalSum) * 10000) / 100 : 0,
+      }))
+      .sort((a, b) => b.value - a.value);
+
+    const allQuotations = await this.quotationRepo.findAll();
+    const quotByAff = new Map<number | string, number>();
+    for (const q of allQuotations) {
+      const key = q.affiliateId ?? 0;
+      quotByAff.set(key, (quotByAff.get(key) ?? 0) + 1);
+    }
+    const quotationsByAffiliate = [...quotByAff.entries()]
+      .map(([id, count]) => ({
+        name: id === 0 ? "Direct" : (affName.get(id as number) ?? `Affiliate #${id}`),
+        value: count,
+      }))
+      .sort((a, b) => b.value - a.value);
+
+    return { salesByRep, salesByAffiliate, quotationsByAffiliate };
   }
 }

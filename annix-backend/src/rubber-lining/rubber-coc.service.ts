@@ -79,6 +79,20 @@ export class RubberCocService {
     return cocNumber.trim().replace(/\s+/g, "").replace(/[–—]/g, "-");
   }
 
+  // A CoC number is only trustworthy enough to overwrite an existing value or to
+  // trigger duplicate-versioning if it actually looks like one. Vision OCR of
+  // calender-roll certs occasionally returns a single stray character (e.g.
+  // "R"); when that was accepted as the real number it (a) clobbered a good
+  // placeholder and (b) made three distinct certs collide on the same value,
+  // silently collapsing them into one pending-authorization version chain.
+  // Every real supplier CoC number here has ≥3 alphanumerics and a digit.
+  private isReliableCocNumber(value: string | null | undefined): boolean {
+    if (!value) return false;
+    const normalized = this.normalizeCocNumber(value);
+    const alphanumeric = normalized.replace(/[^a-z0-9]/gi, "");
+    return alphanumeric.length >= 3 && /[0-9]/.test(normalized);
+  }
+
   async nonCanonicalCompounderCocIds(): Promise<number[]> {
     const codings = await this.productCodingRepository.findByType(ProductCodingType.COMPOUND);
     const knownCodes = new Set<string>();
@@ -298,7 +312,14 @@ export class RubberCocService {
     coc.extractedData = extractedData;
     coc.processingStatus = CocProcessingStatus.EXTRACTED;
 
-    if (extractedData.cocNumber) coc.cocNumber = extractedData.cocNumber;
+    // Don't overwrite a good existing number with a junk OCR value (e.g. "R").
+    if (
+      extractedData.cocNumber &&
+      (this.isReliableCocNumber(extractedData.cocNumber) ||
+        !this.isReliableCocNumber(coc.cocNumber))
+    ) {
+      coc.cocNumber = extractedData.cocNumber;
+    }
     if (extractedData.productionDate)
       coc.productionDate = fromISO(extractedData.productionDate).toJSDate();
     if (extractedData.compoundCode) coc.compoundCode = extractedData.compoundCode;
@@ -601,7 +622,14 @@ export class RubberCocService {
     coc.extractedData = merged;
     coc.processingStatus = CocProcessingStatus.EXTRACTED;
 
-    if (merged.cocNumber) coc.cocNumber = merged.cocNumber;
+    // Re-extraction must not clobber a good existing number with a junk OCR
+    // value (e.g. "R") — that is exactly what collapsed distinct roll certs.
+    if (
+      merged.cocNumber &&
+      (this.isReliableCocNumber(merged.cocNumber) || !this.isReliableCocNumber(coc.cocNumber))
+    ) {
+      coc.cocNumber = merged.cocNumber;
+    }
     if (merged.productionDate) coc.productionDate = fromISO(merged.productionDate).toJSDate();
     if (merged.compoundCode) coc.compoundCode = merged.compoundCode;
     if (merged.orderNumber) coc.orderNumber = merged.orderNumber;
@@ -1311,6 +1339,16 @@ export class RubberCocService {
     requiresAuthorization: boolean;
   }> {
     const normalizedCocNumber = this.normalizeCocNumber(cocNumber);
+
+    // Never auto-version off a degenerate number — otherwise several distinct
+    // certificates that all OCR'd to the same junk value (e.g. "R") get
+    // collapsed into one version chain and vanish from the list.
+    if (!this.isReliableCocNumber(cocNumber)) {
+      this.logger.warn(
+        `Skipping duplicate-version check for CoC ${cocId}: extracted number "${normalizedCocNumber}" is not a reliable identifier (needs ≥3 alphanumerics and a digit). Kept as its own active record.`,
+      );
+      return { merged: false, keptCocId: cocId, deletedCocId: null, requiresAuthorization: false };
+    }
 
     const existingActive = await this.versioningService.existingActiveSupplierCoc(
       normalizedCocNumber,

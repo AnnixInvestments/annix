@@ -3117,6 +3117,16 @@ class AuRubberApiClient {
     path: "/rubber-lining/portal/affiliate-commission/payouts/release-from-recon",
     body: (bankReconId, payoutIds, paidBy) => ({ bankReconId, payoutIds, paidBy }),
   });
+
+  affiliateCommissionChartData = createEndpoint<
+    [],
+    {
+      salesByRep: Array<{ name: string; value: number; percentage: number }>;
+      salesByAffiliate: Array<{ name: string; value: number; percentage: number }>;
+    }
+  >(apiClient, "GET", {
+    path: "/rubber-lining/portal/affiliate-commission/chart-data",
+  });
 }
 
 export interface CtiRow {

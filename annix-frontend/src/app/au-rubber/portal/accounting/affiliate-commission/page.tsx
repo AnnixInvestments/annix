@@ -3,12 +3,32 @@
 import { toPairs as entries } from "es-toolkit/compat";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { auRubberApiClient, type CtiRow } from "@/app/lib/api/auRubberApi";
 import { DateTime } from "@/app/lib/datetime";
 import { useAlert } from "@/app/lib/hooks/useAlert";
 import { Breadcrumb } from "../../../components/Breadcrumb";
 import { RequirePermission } from "../../../components/RequirePermission";
 import { PAGE_PERMISSIONS } from "../../../config/pagePermissions";
+
+interface ChartSlice {
+  name: string;
+  value: number;
+  percentage?: number;
+}
+
+const COLORS = [
+  "#D97706",
+  "#2563EB",
+  "#059669",
+  "#DC2626",
+  "#7C3AED",
+  "#DB2777",
+  "#0891B2",
+  "#CA8A04",
+  "#65A30D",
+  "#0284C7",
+];
 
 interface QuotationRow {
   id: number;
@@ -45,19 +65,24 @@ export default function AffiliateCommissionDashboardPage() {
   const [assigningCtis, setAssigningCtis] = useState(false);
   const [fixingLinks, setFixingLinks] = useState(false);
   const [fixingInvoices, setFixingInvoices] = useState(false);
+  const [salesByRep, setSalesByRep] = useState<ChartSlice[]>([]);
+  const [salesByAffiliate, setSalesByAffiliate] = useState<ChartSlice[]>([]);
 
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [repsRaw, affiliates, payouts] = await Promise.all([
+      const [repsRaw, affiliates, payouts, chartData] = await Promise.all([
         auRubberApiClient.affiliateCommissionSalesReps(),
         auRubberApiClient.affiliateCommissionAffiliates(),
         auRubberApiClient.affiliateCommissionPayouts("PENDING"),
+        auRubberApiClient.affiliateCommissionChartData(),
       ]);
       const repList = repsRaw as { id: number; name: string }[];
       setReps(repList);
       setAffiliateCount((affiliates as unknown[]).length);
       setPendingPayouts(payouts as unknown[]);
+      setSalesByRep(chartData.salesByRep);
+      setSalesByAffiliate(chartData.salesByAffiliate);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to load data";
       alert({ message: msg, variant: "error" });
@@ -203,8 +228,9 @@ export default function AffiliateCommissionDashboardPage() {
         msg += (msg ? " | " : "") + errs.map(([k, v]) => `#${k}: ${v}`).join("; ");
       alert({ message: msg || "No changes", variant: errs.length > 0 ? "warning" : "success" });
       fetchCtis();
-    } catch {
-      alert({ message: "Failed to fix invoice customers", variant: "error" });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      alert({ message: `Failed to fix invoice customers: ${msg}`, variant: "error" });
     } finally {
       setFixingInvoices(false);
     }
@@ -287,6 +313,71 @@ export default function AffiliateCommissionDashboardPage() {
                 </p>
               </Link>
             </div>
+
+            {salesByRep.length > 0 || salesByAffiliate.length > 0 ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    Sales Value by Rep
+                  </h3>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <PieChart>
+                      <Pie
+                        data={salesByRep}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={90}
+                        innerRadius={45}
+                        label={({ name, percent }) =>
+                          `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
+                        }
+                      >
+                        {salesByRep.map((_, i) => (
+                          <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value) =>
+                          `R ${Number(value).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`
+                        }
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    Sales Value by Affiliate
+                  </h3>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <PieChart>
+                      <Pie
+                        data={salesByAffiliate}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={90}
+                        innerRadius={45}
+                        label={({ name, percent }) =>
+                          `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
+                        }
+                      >
+                        {salesByAffiliate.map((_, i) => (
+                          <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value) =>
+                          `R ${Number(value).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`
+                        }
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            ) : null}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Link
