@@ -26,6 +26,9 @@ export class QuotationItem {
   @Prop({ type: Number, required: true })
   pricePerKg: number;
 
+  @Prop({ type: Number, required: true, default: 0 })
+  costPrice: number;
+
   @Prop({ type: Number, required: true })
   rollPrice: number;
 

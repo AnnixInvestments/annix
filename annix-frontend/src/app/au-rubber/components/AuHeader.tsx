@@ -581,10 +581,12 @@ export function AuHeader(props: AuHeaderProps) {
                       const showSupplierCocsBadge =
                         item.href === "/au-rubber/portal/supplier-cocs" &&
                         supplierCocsPendingCount > 0;
+                      const opensAdmin = item.href.startsWith("/admin/");
                       return (
                         <Link
                           key={item.href}
                           href={item.href}
+                          title={opensAdmin ? "Opens the admin console" : undefined}
                           className={`flex items-center justify-between px-4 py-2 text-sm transition-colors ${
                             isActive(item.href)
                               ? "bg-yellow-50 text-yellow-800 font-medium"
@@ -593,6 +595,25 @@ export function AuHeader(props: AuHeaderProps) {
                           onClick={() => setHoveredSection(null)}
                         >
                           <span>{item.label}</span>
+                          {opensAdmin && (
+                            <span className="ml-2 flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-gray-400">
+                              Admin
+                              <svg
+                                className="h-3 w-3"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                aria-hidden="true"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M14 5h5m0 0v5m0-5L10 14M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2"
+                                />
+                              </svg>
+                            </span>
+                          )}
                           {showCodingsBadge && (
                             <span
                               className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-800"

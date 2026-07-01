@@ -13,6 +13,10 @@ export class Quotation {
 
   customerVatNumber: string | null;
 
+  status: string;
+
+  profit: number;
+
   validTo: Date | null;
 
   affiliateId: number | null;

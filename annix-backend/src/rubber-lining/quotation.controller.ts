@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Res, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Res,
+  UseGuards,
+} from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { Response } from "express";
 import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
@@ -20,8 +31,14 @@ export class QuotationController {
 
   @Get()
   @ApiOperation({ summary: "List all quotations" })
-  async findAll() {
-    return this.quotationService.findAll();
+  async findAll(@Query("status") status?: string) {
+    return this.quotationService.findAll(status);
+  }
+
+  @Post("backfill-cost-price")
+  @ApiOperation({ summary: "Backfill costPrice and profit for existing quotations" })
+  async backfillCostPrice() {
+    return this.quotationService.backfillCostPrice();
   }
 
   @Get(":id")

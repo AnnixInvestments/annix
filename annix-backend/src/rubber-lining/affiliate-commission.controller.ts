@@ -5,6 +5,7 @@ import {
   Get,
   Inject,
   Logger,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -30,10 +31,13 @@ import {
 } from "./dto/affiliate-commission.dto";
 import { Affiliate, AffiliateStatus } from "./entities/affiliate.entity";
 import { CommissionPayout, PayoutStatus } from "./entities/commission-payout.entity";
+import { TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
 import { SalesRep, SalesRepStatus } from "./entities/sales-rep.entity";
 import { AffiliateRepository } from "./repositories/affiliate.repository";
 import { AffiliatePriceListRepository } from "./repositories/affiliate-price-list.repository";
 import { CommissionPayoutRepository } from "./repositories/commission-payout.repository";
+import { RubberCompanyRepository } from "./repositories/rubber-company.repository";
+import { RubberTaxInvoiceRepository } from "./repositories/rubber-tax-invoice.repository";
 import { SalesRepRepository } from "./repositories/sales-rep.repository";
 import { AffiliatePriceListService } from "./services/affiliate-price-list.service";
 
@@ -50,6 +54,8 @@ export class AffiliateCommissionController {
     private readonly priceListRepository: AffiliatePriceListRepository,
     private readonly payoutRepository: CommissionPayoutRepository,
     private readonly priceListService: AffiliatePriceListService,
+    private readonly taxInvoiceRepository: RubberTaxInvoiceRepository,
+    private readonly companyRepository: RubberCompanyRepository,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
@@ -291,5 +297,161 @@ export class AffiliateCommissionController {
       }
     }
     return { released };
+  }
+
+  @Get("cti-list")
+  @ApiOperation({ summary: "List all customer tax invoices with commission payout info" })
+  async ctiList(@Req() req: any): Promise<
+    Array<{
+      invoiceId: number;
+      invoiceNumber: string;
+      invoiceDate: string | null;
+      customerName: string;
+      totalExVat: number;
+      totalAmount: number;
+      status: string;
+      salesRepName: string | null;
+      affiliateName: string | null;
+      commissionAmount: number;
+      payoutStatus: string | null;
+    }>
+  > {
+    const invoices = await this.taxInvoiceRepository.findFilteredWithRelations({
+      invoiceType: TaxInvoiceType.CUSTOMER,
+    });
+
+    const result: Array<{
+      invoiceId: number;
+      invoiceNumber: string;
+      invoiceDate: string | null;
+      customerName: string;
+      totalExVat: number;
+      totalAmount: number;
+      status: string;
+      salesRepName: string | null;
+      affiliateName: string | null;
+      commissionAmount: number;
+      payoutStatus: string | null;
+    }> = [];
+
+    for (const inv of invoices) {
+      const payouts = await this.payoutRepository.findByInvoiceId(inv.id);
+      const payout = payouts.length > 0 ? payouts[0] : null;
+
+      let salesRepName: string | null = null;
+      let affiliateName: string | null = null;
+      if (payout) {
+        if (payout.salesRepId) {
+          const rep = await this.salesRepRepository.findById(payout.salesRepId);
+          salesRepName = rep?.name ?? null;
+        }
+        if (payout.affiliateId) {
+          const aff = await this.affiliateRepository.findById(payout.affiliateId);
+          affiliateName = aff?.name ?? null;
+        }
+      }
+
+      const total = Number(inv.totalAmount) || 0;
+      const vat = Number(inv.vatAmount) || 0;
+      result.push({
+        invoiceId: inv.id,
+        invoiceNumber: inv.invoiceNumber,
+        invoiceDate: inv.invoiceDate ? inv.invoiceDate.toISOString() : null,
+        customerName: inv.company?.name ?? `Company #${inv.companyId}`,
+        totalExVat: total - vat,
+        totalAmount: total,
+        status: inv.status,
+        salesRepName,
+        affiliateName,
+        commissionAmount: payout?.commissionAmount ?? 0,
+        payoutStatus: payout?.status ?? null,
+      });
+    }
+
+    result.sort((a, b) => (b.invoiceDate ?? "").localeCompare(a.invoiceDate ?? ""));
+    return result;
+  }
+
+  @Post("fix-company-links")
+  @ApiOperation({
+    summary: "One-time fix: relink CTIs from AU Industries to Polymer Lining System",
+  })
+  async fixCompanyLinks(): Promise<{ moved: number }> {
+    const badCompany = await this.companyRepository.findOneByNameLike("AU Industries");
+    const goodCompany = await this.companyRepository.findOneByNameLike("Polymer Lining System");
+    if (!badCompany) throw new NotFoundException("Could not find 'AU Industries' company");
+    if (!goodCompany) throw new NotFoundException("Could not find 'Polymer Lining System' company");
+
+    const invoices = await this.taxInvoiceRepository.findFilteredWithRelations({
+      invoiceType: TaxInvoiceType.CUSTOMER,
+    });
+
+    let moved = 0;
+    for (const inv of invoices) {
+      if (inv.companyId === badCompany.id) {
+        await this.taxInvoiceRepository.updateById(inv.id, { companyId: goodCompany.id });
+        moved++;
+      }
+    }
+
+    this.logger.log(
+      `Fixed company links: moved ${moved} CTI(s) from "${badCompany.name}" (#${badCompany.id}) to "${goodCompany.name}" (#${goodCompany.id})`,
+    );
+    return { moved };
+  }
+
+  @Post("auto-assign")
+  @ApiOperation({
+    summary: "Auto-assign all customer invoices to a sales rep as commission payouts",
+  })
+  async autoAssign(
+    @Req() req: any,
+    @Body() body: { salesRepId: number },
+  ): Promise<{ assigned: number; skipped: number }> {
+    const salesRep = await this.salesRepRepository.findById(body.salesRepId);
+    if (!salesRep) {
+      throw new NotFoundException("Sales rep not found");
+    }
+
+    const invoices = await this.taxInvoiceRepository.findFilteredWithRelations({
+      invoiceType: TaxInvoiceType.CUSTOMER,
+    });
+
+    const companyId = this.companyId(req);
+    let assigned = 0;
+    let skipped = 0;
+
+    for (const inv of invoices) {
+      const existing = await this.payoutRepository.findByInvoiceId(inv.id);
+      if (existing.length > 0) {
+        skipped++;
+        continue;
+      }
+      const total = Number(inv.totalAmount) || 0;
+      const companyName = inv.company?.name ?? `Company #${inv.companyId}`;
+      const payout = this.payoutRepository.build({
+        companyId,
+        commissionType: "SALES_REP",
+        salesRepId: body.salesRepId,
+        affiliateId: null,
+        invoiceId: inv.id,
+        customerId: inv.companyId,
+        customerName: companyName,
+        invoiceNumber: inv.invoiceNumber,
+        invoiceTotal: total,
+        commissionRate: salesRep.commissionPercent,
+        commissionAmount: (total * salesRep.commissionPercent) / 100,
+        status: PayoutStatus.PENDING,
+        releaseSource: "MANUAL",
+        notes: null,
+      });
+      await this.payoutRepository.save(payout);
+      assigned++;
+    }
+
+    this.logger.log(
+      `Auto-assigned ${assigned} invoices to sales rep #${body.salesRepId} (${salesRep.name}), ${skipped} skipped`,
+    );
+    return { assigned, skipped };
   }
 }

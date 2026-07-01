@@ -28,6 +28,8 @@ export class QuotationService {
       customerPhone: dto.customerPhone ?? null,
       customerEmail: dto.customerEmail ?? null,
       customerVatNumber: dto.customerVatNumber ?? null,
+      status: dto.status ?? "Unpaid",
+      profit: dto.profit ?? 0,
       validTo: dto.validTo ? new Date(dto.validTo) : null,
       affiliateId: dto.affiliateId ?? null,
       items: dto.items.map((item) => ({
@@ -39,6 +41,7 @@ export class QuotationService {
         length: item.length,
         rollWeight: item.rollWeight,
         pricePerKg: item.pricePerKg,
+        costPrice: item.costPrice ?? 0,
         rollPrice: item.rollPrice,
         quantity: item.quantity,
         linePriceExVat: item.linePriceExVat,
@@ -54,12 +57,37 @@ export class QuotationService {
     return this.quotationRepo.save(entity);
   }
 
-  async findAll(): Promise<Quotation[]> {
-    return this.quotationRepo.findAll();
+  async findAll(status?: string): Promise<Quotation[]> {
+    const all = await this.quotationRepo.findAll();
+    if (status) return all.filter((q) => q.status === status);
+    return all;
   }
 
   async findById(id: number): Promise<Quotation | null> {
     return this.quotationRepo.findById(id);
+  }
+
+  async backfillCostPrice(): Promise<{ updated: number }> {
+    const all = await this.quotationRepo.findAll();
+    let updated = 0;
+    for (const q of all) {
+      let changed = false;
+      for (const item of q.items) {
+        if (!item.costPrice) {
+          item.costPrice = +(item.pricePerKg * 0.87).toFixed(2);
+          changed = true;
+        }
+      }
+      if (changed) {
+        q.profit = q.items.reduce(
+          (sum, item) => sum + (item.pricePerKg - item.costPrice) * item.rollWeight * item.quantity,
+          0,
+        );
+        await this.quotationRepo.save(q);
+        updated++;
+      }
+    }
+    return { updated };
   }
 
   async update(id: number, dto: UpdateQuotationDto): Promise<Quotation | null> {
@@ -72,6 +100,8 @@ export class QuotationService {
     if (dto.customerEmail !== undefined) existing.customerEmail = dto.customerEmail ?? null;
     if (dto.customerVatNumber !== undefined)
       existing.customerVatNumber = dto.customerVatNumber ?? null;
+    if (dto.status !== undefined) existing.status = dto.status;
+    if (dto.profit !== undefined) existing.profit = dto.profit;
     if (dto.validTo !== undefined) existing.validTo = dto.validTo ? new Date(dto.validTo) : null;
     if (dto.affiliateId !== undefined) existing.affiliateId = dto.affiliateId ?? null;
     if (dto.items !== undefined) {
@@ -84,6 +114,7 @@ export class QuotationService {
         length: item.length ?? 0,
         rollWeight: item.rollWeight ?? 0,
         pricePerKg: item.pricePerKg ?? 0,
+        costPrice: item.costPrice ?? 0,
         rollPrice: item.rollPrice ?? 0,
         quantity: item.quantity ?? 0,
         linePriceExVat: item.linePriceExVat ?? 0,

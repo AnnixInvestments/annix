@@ -3064,6 +3064,10 @@ class AuRubberApiClient {
     body: (_id, email, cc, bcc) => ({ email, cc, bcc }),
   });
 
+  quotationBackfillCostPrice = createEndpoint<[], { updated: number }>(apiClient, "POST", {
+    path: "/rubber-lining/portal/quotations/backfill-cost-price",
+  });
+
   affiliateCommissionPayouts = createEndpoint<[status?: string], unknown[]>(apiClient, "GET", {
     path: (status) =>
       `/rubber-lining/portal/affiliate-commission/payouts${status ? `?status=${status}` : ""}`,
@@ -3082,6 +3086,22 @@ class AuRubberApiClient {
     body: (_id, dto) => dto,
   });
 
+  affiliateCommissionCtiList = createEndpoint<[], CtiRow[]>(apiClient, "GET", {
+    path: "/rubber-lining/portal/affiliate-commission/cti-list",
+  });
+
+  affiliateCommissionAutoAssign = createEndpoint<
+    [dto: { salesRepId: number }],
+    { assigned: number; skipped: number }
+  >(apiClient, "POST", {
+    path: "/rubber-lining/portal/affiliate-commission/auto-assign",
+    body: (dto) => dto,
+  });
+
+  affiliateCommissionFixCompanyLinks = createEndpoint<[], { moved: number }>(apiClient, "POST", {
+    path: "/rubber-lining/portal/affiliate-commission/fix-company-links",
+  });
+
   affiliateCommissionReleaseFromRecon = createEndpoint<
     [bankReconId: number, payoutIds: number[], paidBy: string],
     { released: number }
@@ -3089,6 +3109,20 @@ class AuRubberApiClient {
     path: "/rubber-lining/portal/affiliate-commission/payouts/release-from-recon",
     body: (bankReconId, payoutIds, paidBy) => ({ bankReconId, payoutIds, paidBy }),
   });
+}
+
+export interface CtiRow {
+  invoiceId: number;
+  invoiceNumber: string;
+  invoiceDate: string | null;
+  customerName: string;
+  totalExVat: number;
+  totalAmount: number;
+  status: string;
+  salesRepName: string | null;
+  affiliateName: string | null;
+  commissionAmount: number;
+  payoutStatus: string | null;
 }
 
 export interface WebsitePageDto {

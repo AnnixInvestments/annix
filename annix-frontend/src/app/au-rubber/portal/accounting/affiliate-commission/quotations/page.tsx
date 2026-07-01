@@ -211,6 +211,8 @@ export default function QuotationsPage() {
         customerPhone: customerPhone.trim() || null,
         customerEmail: customerEmail.trim() || null,
         customerVatNumber: customerVat.trim() || null,
+        profit: totalProfit,
+        status: "Unpaid",
         validTo: validTo || null,
         subtotal,
         vatTotal,
@@ -224,6 +226,7 @@ export default function QuotationsPage() {
           length: i.length,
           rollWeight: i.rollWeight,
           pricePerKg: i.priceKg,
+          costPrice: i.costPrice,
           rollPrice: i.rollPrice,
           quantity: i.quantity,
           linePriceExVat: i.linePriceExVat,
@@ -263,6 +266,8 @@ export default function QuotationsPage() {
       customerPhone: customerPhone.trim() || null,
       customerEmail: customerEmail.trim() || null,
       customerVatNumber: customerVat.trim() || null,
+      profit: totalProfit,
+      status: "Unpaid",
       validTo: validTo || null,
       subtotal,
       vatTotal,
@@ -276,6 +281,7 @@ export default function QuotationsPage() {
         length: i.length,
         rollWeight: i.rollWeight,
         pricePerKg: i.priceKg,
+        costPrice: i.costPrice,
         rollPrice: i.rollPrice,
         quantity: i.quantity,
         linePriceExVat: i.linePriceExVat,
@@ -590,71 +596,81 @@ export default function QuotationsPage() {
                   <th className="px-4 py-3 text-right">Ex VAT</th>
                   <th className="px-4 py-3 text-right">VAT</th>
                   <th className="px-4 py-3 text-right">Inc VAT</th>
+                  <th className="px-4 py-3 text-right">Profit</th>
                   <th className="px-4 py-3 w-10" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {items.map((item, idx) => (
-                  <tr
-                    key={idx}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
-                  >
-                    <td className="px-4 py-2.5 font-mono text-xs text-gray-800 dark:text-gray-200">
-                      {item.productCode}
-                    </td>
-                    <td className="px-4 py-2.5 text-gray-800 dark:text-gray-200">
-                      {item.productDescription}
-                    </td>
-                    <td className="px-4 py-2.5 text-gray-600 dark:text-gray-400">{item.colour}</td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-gray-600 dark:text-gray-400">
-                      {item.thickness != null
-                        ? `${item.thickness}mm x ${item.width}mm x ${item.length}m`
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-gray-800 dark:text-gray-200">
-                      {item.rollWeight.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-gray-800 dark:text-gray-200">
-                      R{item.priceKg.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-gray-800 dark:text-gray-200">
-                      R{item.rollPrice.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-2.5 text-center">
-                      <input
-                        type="number"
-                        min={1}
-                        max={100}
-                        value={item.quantity}
-                        onChange={(e) =>
-                          updateQty(idx, Math.max(1, parseInt(e.target.value, 10) || 1))
-                        }
-                        className="w-16 px-2 py-1 text-center border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
-                      />
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-gray-800 dark:text-gray-200">
-                      R{item.linePriceExVat.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-gray-800 dark:text-gray-200">
-                      R{item.lineVat.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-gray-800 dark:text-gray-200">
-                      R{item.linePriceIncVat.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <button
-                        onClick={() => removeItem(idx)}
-                        className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                        title="Remove item"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {items.map((item, idx) => {
+                  const lineProfit =
+                    (item.priceKg - item.costPrice) * item.rollWeight * item.quantity;
+                  return (
+                    <tr
+                      key={idx}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+                    >
+                      <td className="px-4 py-2.5 font-mono text-xs text-gray-800 dark:text-gray-200">
+                        {item.productCode}
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-800 dark:text-gray-200">
+                        {item.productDescription}
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-600 dark:text-gray-400">
+                        {item.colour}
+                      </td>
+                      <td className="px-4 py-2.5 font-mono text-xs text-gray-600 dark:text-gray-400">
+                        {item.thickness != null
+                          ? `${item.thickness}mm x ${item.width}mm x ${item.length}m`
+                          : "—"}
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-mono text-gray-800 dark:text-gray-200">
+                        {item.rollWeight.toFixed(2)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-mono text-gray-800 dark:text-gray-200">
+                        R{item.priceKg.toFixed(2)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-mono text-gray-800 dark:text-gray-200">
+                        R{item.rollPrice.toFixed(2)}
+                      </td>
+                      <td className="px-4 py-2.5 text-center">
+                        <input
+                          type="number"
+                          min={1}
+                          max={100}
+                          value={item.quantity}
+                          onChange={(e) =>
+                            updateQty(idx, Math.max(1, parseInt(e.target.value, 10) || 1))
+                          }
+                          className="w-16 px-2 py-1 text-center border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
+                        />
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-mono text-gray-800 dark:text-gray-200">
+                        R{item.linePriceExVat.toFixed(2)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-mono text-gray-800 dark:text-gray-200">
+                        R{item.lineVat.toFixed(2)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-mono text-gray-800 dark:text-gray-200">
+                        R{item.linePriceIncVat.toFixed(2)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-mono text-green-600 dark:text-green-400">
+                        R{lineProfit.toFixed(2)}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <button
+                          onClick={() => removeItem(idx)}
+                          className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                          title="Remove item"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
                 {items.length === 0 && (
                   <tr>
-                    <td colSpan={12} className="px-4 py-8 text-center text-gray-400 text-sm">
+                    <td colSpan={13} className="px-4 py-8 text-center text-gray-400 text-sm">
                       No items — start from the{" "}
                       <a
                         href="/au-rubber/portal/accounting/affiliate-commission/price-lists"

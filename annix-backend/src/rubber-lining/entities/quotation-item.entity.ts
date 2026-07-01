@@ -7,6 +7,7 @@ export class QuotationItemEntity {
   length: number;
   rollWeight: number;
   pricePerKg: number;
+  costPrice: number;
   rollPrice: number;
   quantity: number;
   linePriceExVat: number;

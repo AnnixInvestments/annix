@@ -27,7 +27,6 @@ interface AffiliateForm {
   contactName: string;
   email: string;
   phone: string;
-  commissionPercent: number;
   notes: string;
 }
 
@@ -36,7 +35,6 @@ const emptyForm: AffiliateForm = {
   contactName: "",
   email: "",
   phone: "",
-  commissionPercent: 0,
   notes: "",
 };
 
@@ -82,7 +80,6 @@ export default function AffiliatesPage() {
       contactName: a.contactName,
       email: a.email,
       phone: affPhone || "",
-      commissionPercent: a.commissionPercent,
       notes: affNotes || "",
     });
     setShowModal(true);
@@ -91,13 +88,11 @@ export default function AffiliatesPage() {
   const handleSave = async () => {
     const rawPhone = form.phone;
     const rawNotes = form.notes;
-    const rawCommissionPercent = form.commissionPercent;
     const dto = {
       name: form.name,
       contactName: form.contactName,
       email: form.email,
       phone: rawPhone || undefined,
-      commissionPercent: rawCommissionPercent || undefined,
       notes: rawNotes || undefined,
     };
 
@@ -183,7 +178,6 @@ export default function AffiliatesPage() {
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Contact</th>
                   <th className="px-4 py-3">Email</th>
-                  <th className="px-4 py-3">Commission %</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 w-20 text-right" />
                 </tr>
@@ -302,22 +296,6 @@ export default function AffiliatesPage() {
                     type="text"
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Commission %
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    step={0.1}
-                    value={form.commissionPercent}
-                    onChange={(e) =>
-                      setForm({ ...form, commissionPercent: parseFloat(e.target.value) || 0 })
-                    }
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
                   />
                 </div>

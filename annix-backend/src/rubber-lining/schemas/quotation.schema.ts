@@ -29,6 +29,12 @@ export class Quotation {
   @Prop({ type: String, required: false })
   customerVatNumber: string;
 
+  @Prop({ type: String, required: true, default: "Unpaid" })
+  status: string;
+
+  @Prop({ type: Number, required: true, default: 0 })
+  profit: number;
+
   @Prop({ type: Date, required: false })
   validTo: Date;
 

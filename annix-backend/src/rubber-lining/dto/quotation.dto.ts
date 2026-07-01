@@ -26,6 +26,10 @@ export class CreateQuotationItemDto {
   @IsNumber()
   pricePerKg: number;
 
+  @IsOptional()
+  @IsNumber()
+  costPrice?: number;
+
   @IsNumber()
   rollPrice: number;
 
@@ -61,6 +65,14 @@ export class CreateQuotationDto {
   @IsOptional()
   @IsString()
   customerVatNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  @IsOptional()
+  @IsNumber()
+  profit?: number;
 
   @IsOptional()
   @IsString()
@@ -120,6 +132,10 @@ export class UpdateQuotationItemDto {
 
   @IsOptional()
   @IsNumber()
+  costPrice?: number;
+
+  @IsOptional()
+  @IsNumber()
   rollPrice?: number;
 
   @IsOptional()
@@ -159,6 +175,14 @@ export class UpdateQuotationDto {
   @IsOptional()
   @IsString()
   customerVatNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  @IsOptional()
+  @IsNumber()
+  profit?: number;
 
   @IsOptional()
   @IsString()
