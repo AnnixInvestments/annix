@@ -22,6 +22,7 @@ import { GlobalSearchModal } from "./GlobalSearchModal";
 import { HeaderViewSwitcher } from "./HeaderViewSwitcher";
 import { NotificationBell } from "./NotificationBell";
 import { OfflineIndicator } from "./OfflineIndicator";
+import { PreviewPill } from "./PreviewPill";
 import { SyncStatus } from "./SyncStatus";
 
 export function StockControlHeader() {
@@ -219,6 +220,7 @@ export function StockControlHeader() {
                       >
                         <span className="[&>svg]:w-4 [&>svg]:h-4">{item.icon}</span>
                         {item.label}
+                        {item.preview && <PreviewPill />}
                       </Link>
                     );
 
@@ -282,6 +284,7 @@ export function StockControlHeader() {
               >
                 <span className="[&>svg]:w-4 [&>svg]:h-4">{item.icon}</span>
                 {item.label}
+                {item.preview && <PreviewPill />}
               </Link>
             );
 

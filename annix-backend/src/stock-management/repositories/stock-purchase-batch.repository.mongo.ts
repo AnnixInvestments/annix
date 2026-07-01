@@ -82,6 +82,18 @@ export class MongoStockPurchaseBatchRepository
     );
   }
 
+  async activeQuantityByProductForCompany(
+    companyId: number,
+  ): Promise<Array<{ productId: number; available: number }>> {
+    const rows = await this.documents
+      .aggregate<{ _id: number; available: number }>([
+        { $match: { companyId, status: "active", quantityRemaining: { $gt: 0 } } },
+        { $group: { _id: "$productId", available: { $sum: "$quantityRemaining" } } },
+      ])
+      .exec();
+    return rows.map((r) => ({ productId: Number(r._id), available: Number(r.available) }));
+  }
+
   async valuationForCompany(companyId: number): Promise<CompanyValuationTotals> {
     const docs = await this.documents.find({ companyId, status: "active" }).lean().exec();
     return docs.reduce<CompanyValuationTotals>(

@@ -173,15 +173,58 @@ export class InventoryService {
     return this.stockItemRepo.findByIdsForCompanyOrderedByName(ids, companyId);
   }
 
+  // Record a StockMovement row for a manual on-hand change so the legacy ledger
+  // has an audit trail (previously manual edits/adjustments wrote NO movement,
+  // which is one reason the two inventory systems can't be reconciled from data).
+  private async journalManualQuantityChange(
+    companyId: number,
+    stockItemId: number,
+    fromQty: number,
+    toQty: number,
+    reason: string,
+  ): Promise<void> {
+    const delta = Number(toQty) - Number(fromQty);
+    if (!Number.isFinite(delta) || delta === 0) return;
+    try {
+      await this.movementRepo.create({
+        stockItemId,
+        movementType: MovementType.ADJUSTMENT,
+        quantity: Math.abs(delta),
+        referenceType: ReferenceType.MANUAL,
+        referenceId: null,
+        notes: `${reason}: ${fromQty} → ${toQty} (${delta >= 0 ? "+" : ""}${delta})`,
+        createdBy: null,
+        companyId,
+      });
+    } catch (err) {
+      this.logger.error(
+        `Failed to journal manual quantity change for stock item ${stockItemId}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
+
   async update(companyId: number, id: number, data: Partial<StockItem>): Promise<StockItem> {
     const item = await this.findById(companyId, id);
     const previousCategory = item.category;
+    const previousQuantity = item.quantity;
     const storedPhotoUrl = item.photoUrl;
     Object.assign(item, data);
     if (!data.photoUrl) {
       item.photoUrl = storedPhotoUrl;
     }
     const saved = await this.stockItemRepo.saveForCompany(companyId, item);
+
+    if (data.quantity !== undefined) {
+      await this.journalManualQuantityChange(
+        companyId,
+        saved.id,
+        previousQuantity,
+        saved.quantity,
+        "Manual stock edit",
+      );
+    }
 
     if (
       data.category !== undefined &&
@@ -503,6 +546,14 @@ export class InventoryService {
     if (!saved) {
       throw new NotFoundException("Stock item not found");
     }
+
+    await this.journalManualQuantityChange(
+      companyId,
+      saved.id,
+      item.quantity,
+      saved.quantity,
+      "Manual quantity adjustment",
+    );
 
     if (delta < 0 && saved.minStockLevel > 0 && saved.quantity < saved.minStockLevel) {
       this.requisitionService

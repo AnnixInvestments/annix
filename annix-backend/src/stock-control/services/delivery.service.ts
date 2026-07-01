@@ -108,6 +108,24 @@ export class DeliveryService {
       this.logger.log(
         `FIFO bridge for delivery ${deliveryNoteId}: ${result.created} batch(es) created, ${result.skipped} skipped`,
       );
+      // Surface unmapped lines loudly: the delivery incremented the legacy stock
+      // count but created no FIFO batch, so the new stock-management system drifts
+      // below legacy for these items. Previously result.errors was discarded and
+      // the miss vanished. Escalate unmapped items to ERROR (they need an
+      // IssuableProduct mapping / reconciliation); log other skips at WARN.
+      if (result.unmappedStockItemIds.length > 0) {
+        this.logger.error(
+          `FIFO bridge for delivery ${deliveryNoteId}: ${result.unmappedStockItemIds.length} line(s) had NO IssuableProduct mapping and were NOT batched — legacy stock will drift above stock-management. Unmapped legacy stock_item ids: [${result.unmappedStockItemIds.join(", ")}]. Map these products (or run reconciliation) so issuance sees the stock.`,
+        );
+      }
+      const nonUnmappedErrors = result.errors.filter(
+        (reason) => !reason.startsWith("no IssuableProduct found"),
+      );
+      if (nonUnmappedErrors.length > 0) {
+        this.logger.warn(
+          `FIFO bridge for delivery ${deliveryNoteId}: skipped line detail — ${nonUnmappedErrors.join("; ")}`,
+        );
+      }
     } catch (error) {
       this.logger.error(
         `FIFO bridge failed for delivery ${deliveryNoteId}: ${error instanceof Error ? error.message : String(error)}`,

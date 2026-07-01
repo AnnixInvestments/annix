@@ -32,6 +32,11 @@ export abstract class StockPurchaseBatchRepository extends CrudRepository<StockP
     productId: number,
   ): Promise<ProductValuationTotals>;
   abstract valuationForCompany(companyId: number): Promise<CompanyValuationTotals>;
+  // Sum of remaining stock across active batches, grouped by product — the
+  // quantity the issuance flow can actually consume. Used by reconciliation.
+  abstract activeQuantityByProductForCompany(
+    companyId: number,
+  ): Promise<Array<{ productId: number; available: number }>>;
   abstract findForProduct(
     companyId: number,
     productId: number,

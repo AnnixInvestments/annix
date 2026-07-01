@@ -29,6 +29,7 @@ import { ReturnsController } from "./controllers/returns.controller";
 import { RubberCompoundController } from "./controllers/rubber-compound.controller";
 import { StockHoldController } from "./controllers/stock-hold.controller";
 import { StockManagementLicenseController } from "./controllers/stock-management-license.controller";
+import { StockReconciliationController } from "./controllers/stock-reconciliation.controller";
 import { StockTakeController } from "./controllers/stock-take.controller";
 import { VarianceCategoryController } from "./controllers/variance-category.controller";
 import { StockManagementFeatureGuard } from "./guards/stock-management-feature.guard";
@@ -138,6 +139,7 @@ import { RubberCompoundService } from "./services/rubber-compound.service";
 import { StockHoldService } from "./services/stock-hold.service";
 import { StockManagementLicenseService } from "./services/stock-management-license.service";
 import { StockManagementNotificationsService } from "./services/stock-management-notifications.service";
+import { StockReconciliationService } from "./services/stock-reconciliation.service";
 import { StockTakeService } from "./services/stock-take.service";
 import { StockTakeCronService } from "./services/stock-take-cron.service";
 import { StockTakeExportService } from "./services/stock-take-export.service";
@@ -200,6 +202,7 @@ const mongooseFeatures = [
     ProductCategoryController,
     IssuableProductController,
     FifoBatchController,
+    StockReconciliationController,
     RubberCompoundController,
     ProductDatasheetController,
     IssuanceController,
@@ -220,6 +223,7 @@ const mongooseFeatures = [
     PaintClassificationService,
     FifoBatchService,
     FifoBootstrapService,
+    StockReconciliationService,
     RubberCompoundService,
     ProductDatasheetService,
     DatasheetExtractionService,

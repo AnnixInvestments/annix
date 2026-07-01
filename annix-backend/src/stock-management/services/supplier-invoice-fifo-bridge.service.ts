@@ -185,7 +185,7 @@ export class SupplierInvoiceFifoBridgeService {
   async createBatchFromDeliveryLine(
     companyId: number,
     line: DeliveryReceiptLineForFifo,
-  ): Promise<{ created: boolean; batchId: number | null; reason?: string }> {
+  ): Promise<{ created: boolean; batchId: number | null; reason?: string; unmapped?: boolean }> {
     if (line.quantity <= 0) {
       return { created: false, batchId: null, reason: "invalid quantity" };
     }
@@ -197,9 +197,13 @@ export class SupplierInvoiceFifoBridgeService {
       this.logger.warn(
         `No IssuableProduct mapped for legacy stock_item_id ${line.legacyStockItemId} (company ${companyId})`,
       );
+      // Drift hazard: the delivery still incremented the legacy stock_items count,
+      // but no FIFO batch is created here — so legacy silently drifts above the new
+      // system. Flag it so the caller can surface it rather than lose it in a count.
       return {
         created: false,
         batchId: null,
+        unmapped: true,
         reason: `no IssuableProduct found for legacy_stock_item_id=${line.legacyStockItemId}`,
       };
     }
@@ -238,10 +242,16 @@ export class SupplierInvoiceFifoBridgeService {
   async createBatchesFromDelivery(
     companyId: number,
     lines: ReadonlyArray<DeliveryReceiptLineForFifo>,
-  ): Promise<{ created: number; skipped: number; errors: string[] }> {
+  ): Promise<{
+    created: number;
+    skipped: number;
+    errors: string[];
+    unmappedStockItemIds: number[];
+  }> {
     let created = 0;
     let skipped = 0;
     const errors: string[] = [];
+    const unmappedStockItemIds: number[] = [];
     for (const line of lines) {
       try {
         const result = await this.createBatchFromDeliveryLine(companyId, line);
@@ -250,13 +260,14 @@ export class SupplierInvoiceFifoBridgeService {
         } else {
           skipped += 1;
           if (result.reason) errors.push(result.reason);
+          if (result.unmapped) unmappedStockItemIds.push(line.legacyStockItemId);
         }
       } catch (err) {
         skipped += 1;
         errors.push(err instanceof Error ? err.message : String(err));
       }
     }
-    return { created, skipped, errors };
+    return { created, skipped, errors, unmappedStockItemIds };
   }
 
   async voidDeliveryBatches(companyId: number, deliveryNoteId: number): Promise<number> {

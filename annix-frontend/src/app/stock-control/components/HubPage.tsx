@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import type { NavItemDef } from "../config/navItems";
+import { PreviewPill } from "./PreviewPill";
 
 interface NavCardProps {
   item: NavItemDef;
@@ -21,8 +22,9 @@ function NavCard(props: NavCardProps) {
       <div className="w-12 h-12 rounded-full bg-[var(--sc-primary-50,#eeeef6)] dark:bg-[var(--sc-primary-active,#1c1c48)]/30 flex items-center justify-center text-[var(--sc-primary,#323288)] dark:text-[var(--sc-primary-400,#5b5b9c)] group-hover:bg-[var(--sc-primary-100,#d6d6e9)] dark:group-hover:bg-[var(--sc-primary-active,#1c1c48)]/50 transition-colors mb-4">
         <span className="w-6 h-6">{item.icon}</span>
       </div>
-      <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">
+      <h3 className="flex items-center gap-1.5 text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">
         {item.label}
+        {item.preview && <PreviewPill />}
       </h3>
       <p className="text-sm text-gray-500 dark:text-gray-400">{description}</p>
     </Link>

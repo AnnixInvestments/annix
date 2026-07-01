@@ -1,5 +1,7 @@
 "use client";
 
+import { PreviewBanner } from "@/app/stock-control/components/PreviewBanner";
+
 const MOCK_CUSTOMERS = [
   {
     id: 1,
@@ -94,16 +96,15 @@ export default function CustomerScorecardPage() {
   return (
     <div className="max-w-7xl mx-auto p-6">
       <div className="mb-6">
+        <PreviewBanner />
+      </div>
+      <div className="mb-6">
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
           Customer Scorecard
         </h1>
         <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
           Payment behaviour, order frequency and credit utilization per customer.
         </p>
-      </div>
-
-      <div className="mb-4 rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
-        Preview — this page shows scaffold content. Backend wiring pending.
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">

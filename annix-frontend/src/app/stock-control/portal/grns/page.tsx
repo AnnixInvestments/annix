@@ -1,5 +1,7 @@
 "use client";
 
+import { PreviewBanner } from "@/app/stock-control/components/PreviewBanner";
+
 const MOCK_GRNS = [
   {
     id: 1,
@@ -64,6 +66,9 @@ function formatZar(value: number): string {
 export default function GrnsPage() {
   return (
     <div className="max-w-7xl mx-auto p-6">
+      <div className="mb-6">
+        <PreviewBanner />
+      </div>
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
@@ -80,10 +85,6 @@ export default function GrnsPage() {
         >
           New GRN
         </button>
-      </div>
-
-      <div className="mb-4 rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
-        Preview — this page shows scaffold content. Backend wiring pending.
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">

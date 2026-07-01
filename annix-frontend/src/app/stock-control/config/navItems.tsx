@@ -17,6 +17,13 @@ export interface NavItemDef {
    * never sees the entry point.
    */
   requiresFeatureFlag?: string;
+  /**
+   * Marks a page that is a preview/beta scaffold — it looks like a real page
+   * but shows sample/placeholder data that isn't live yet. When set, the
+   * toolbar / sidebar / mobile nav and hub cards render a small "Preview"
+   * pill beside the label so users don't mistake mock figures for live data.
+   */
+  preview?: boolean;
 }
 
 export const NAV_GROUP_ORDER = ["Stock", "Supplier", "Customer", "Quality", "Resources"] as const;
@@ -205,6 +212,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     label: "Sales Invoices",
     defaultRoles: ["accounts", "manager", "admin"],
     group: "Customer",
+    preview: true,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -222,6 +230,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     label: "Scorecard",
     defaultRoles: ["accounts", "manager", "admin"],
     group: "Customer",
+    preview: true,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -239,6 +248,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     label: "Documents",
     defaultRoles: ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
     group: "Customer",
+    preview: true,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -307,6 +317,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     href: "/stock-control/portal/preview/stock-management/issue-stock",
     label: "Issue Stock",
     defaultRoles: ["storeman", "manager", "admin"],
+    preview: true,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -341,6 +352,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     label: "Returns",
     defaultRoles: ["storeman", "manager", "admin"],
     group: "Stock",
+    preview: true,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -358,6 +370,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     label: "Stock Take",
     defaultRoles: ["storeman", "accounts", "manager", "admin"],
     group: "Stock",
+    preview: true,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -375,6 +388,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     label: "Stock Management",
     defaultRoles: ["manager", "admin"],
     group: "Stock",
+    preview: true,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -449,6 +463,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     label: "Supplier POs",
     defaultRoles: ["accounts", "manager", "admin"],
     group: "Supplier",
+    preview: true,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -466,6 +481,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     label: "GRNs",
     defaultRoles: ["storeman", "accounts", "manager", "admin"],
     group: "Supplier",
+    preview: true,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -483,6 +499,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     label: "Scorecard",
     defaultRoles: ["accounts", "manager", "admin"],
     group: "Supplier",
+    preview: true,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -768,6 +785,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     label: "Module License",
     defaultRoles: ["admin"],
     group: "Resources",
+    preview: true,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
