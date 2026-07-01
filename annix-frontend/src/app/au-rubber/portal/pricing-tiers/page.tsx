@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import {
   TableEmptyState,
@@ -8,6 +9,7 @@ import {
   TableLoadingState,
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto, RubberPricingTierDto } from "@/app/lib/api/rubberPortalApi";
 import { useAlert } from "@/app/lib/hooks/useAlert";
@@ -15,6 +17,7 @@ import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
 
 export default function AuRubberPricingTiersPage() {
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const { alert, AlertDialog } = useAlert();
 
@@ -112,7 +115,7 @@ export default function AuRubberPricingTiersPage() {
         area="Pricing Tiers"
         error={error}
         reset={() => fetchData()}
-        backHref="/au-rubber/portal"
+        backHref={coreHref("/au-rubber/portal")}
         backLabel="Back to Dashboard"
         brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
       />
@@ -244,67 +247,69 @@ export default function AuRubberPricingTiersPage() {
         )}
       </div>
 
-      {showModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-screen items-center justify-center p-4">
-            <div
-              className="fixed inset-0 bg-black/10 backdrop-blur-md"
-              onClick={() => setShowModal(false)}
-            />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
-                {editingTier ? "Edit Pricing Tier" : "Add Pricing Tier"}
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Tier Name *</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                    placeholder="e.g. Standard, Premium, VIP"
-                  />
+      {showModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] overflow-y-auto">
+            <div className="flex min-h-screen items-center justify-center p-4">
+              <div
+                className="fixed inset-0 bg-black/10 backdrop-blur-md"
+                onClick={() => setShowModal(false)}
+              />
+              <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  {editingTier ? "Edit Pricing Tier" : "Add Pricing Tier"}
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Tier Name *</label>
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                      placeholder="e.g. Standard, Premium, VIP"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Pricing Factor (%) *
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.pricingFactor}
+                      onChange={(e) =>
+                        setFormData({ ...formData, pricingFactor: Number(e.target.value) })
+                      }
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                      placeholder="100"
+                      min="0"
+                      max="500"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      100% = standard pricing. Below 100% = discount. Above 100% = markup.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Pricing Factor (%) *
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.pricingFactor}
-                    onChange={(e) =>
-                      setFormData({ ...formData, pricingFactor: Number(e.target.value) })
-                    }
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                    placeholder="100"
-                    min="0"
-                    max="500"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    100% = standard pricing. Below 100% = discount. Above 100% = markup.
-                  </p>
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={isSaving || !formData.name}
+                    className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50"
+                  >
+                    {isSaving ? "Saving..." : "Save"}
+                  </button>
                 </div>
-              </div>
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={isSaving || !formData.name}
-                  className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50"
-                >
-                  {isSaving ? "Saving..." : "Save"}
-                </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
 
       <ConfirmModal
         isOpen={deleteTierId !== null}

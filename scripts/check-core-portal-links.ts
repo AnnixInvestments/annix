@@ -100,7 +100,7 @@ const hostedTemplateFirstSegments = (app: string): Set<string> => {
   if (block === null) {
     return new Set();
   }
-  const entries = block[1].match(/"([a-z0-9-]+)(?:\/[a-z0-9:-]+)*"/g);
+  const entries = block[1].match(/"([a-z0-9-]+)(?:\/[a-z0-9:*-]+)*"/g);
   if (entries === null) {
     return new Set();
   }

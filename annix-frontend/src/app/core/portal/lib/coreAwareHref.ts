@@ -77,7 +77,7 @@ export function useCoreAwareHref(): (href: string) => string {
         (entry) => rootPath === entry.prefix.slice(0, -1),
       );
       if (rootMatch) {
-        return `/core/portal/${rootMatch.app}${rootTail}`;
+        return `/core/portal/${rootMatch.app}/dashboard${rootTail}`;
       }
       const matched = PORTAL_PREFIX_TO_APP.find((entry) => href.startsWith(entry.prefix));
       if (!matched) {

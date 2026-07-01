@@ -2,6 +2,7 @@
 
 import { isArray } from "es-toolkit/compat";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import {
   Pagination,
@@ -12,6 +13,7 @@ import {
   TableLoadingState,
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
 import { toastError } from "@/app/lib/api/apiError";
 import {
@@ -45,6 +47,7 @@ const UNIT_OF_MEASURE_OPTIONS: { value: OtherStockUnitOfMeasure; label: string }
 ];
 
 export default function OtherItemsPage() {
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const { alert, AlertDialog } = useAlert();
   const [items, setItems] = useState<RubberOtherStockDto[]>([]);
@@ -371,7 +374,7 @@ export default function OtherItemsPage() {
         area="Other Items"
         error={error}
         reset={fetchData}
-        backHref="/au-rubber/portal"
+        backHref={coreHref("/au-rubber/portal")}
         backLabel="Back to Dashboard"
         brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
       />
@@ -614,506 +617,512 @@ export default function OtherItemsPage() {
         />
       </div>
 
-      {showAddItemModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-screen items-center justify-center p-4">
-            <div
-              className="fixed inset-0 bg-black/10 backdrop-blur-md"
-              onClick={() => {
-                setShowAddItemModal(false);
-                resetItemForm();
-              }}
-            />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Add Item</h3>
+      {showAddItemModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] overflow-y-auto">
+            <div className="flex min-h-screen items-center justify-center p-4">
+              <div
+                className="fixed inset-0 bg-black/10 backdrop-blur-md"
+                onClick={() => {
+                  setShowAddItemModal(false);
+                  resetItemForm();
+                }}
+              />
+              <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Add Item</h3>
 
-              <div className="border-b border-gray-200 mb-4">
-                <nav className="-mb-px flex space-x-8">
-                  <button
-                    onClick={() => setAddItemTab("single")}
-                    className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                      addItemTab === "single"
-                        ? "border-yellow-500 text-yellow-600"
-                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                    }`}
-                  >
-                    Single Entry
-                  </button>
-                  <button
-                    onClick={() => setAddItemTab("bulk")}
-                    className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                      addItemTab === "bulk"
-                        ? "border-yellow-500 text-yellow-600"
-                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                    }`}
-                  >
-                    Bulk Import
-                  </button>
-                </nav>
-              </div>
-
-              {addItemTab === "single" ? (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Item Code <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={itemForm.itemCode}
-                        onChange={(e) => setItemForm({ ...itemForm, itemCode: e.target.value })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                        placeholder="ITEM-001"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Item Name <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={itemForm.itemName}
-                        onChange={(e) => setItemForm({ ...itemForm, itemName: e.target.value })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                        placeholder="Item name"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Category</label>
-                      <input
-                        type="text"
-                        value={rawItemFormCategory || ""}
-                        onChange={(e) => {
-                          const rawTargetValue = e.target.value;
-                          setItemForm({ ...itemForm, category: rawTargetValue || null });
-                        }}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                        placeholder="e.g., Tools, PPE"
-                        list="category-suggestions"
-                      />
-                      <datalist id="category-suggestions">
-                        {categories.map((cat) => (
-                          <option key={cat} value={cat} />
-                        ))}
-                      </datalist>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Unit of Measure
-                      </label>
-                      <select
-                        value={itemForm.unitOfMeasure}
-                        onChange={(e) =>
-                          setItemForm({
-                            ...itemForm,
-                            unitOfMeasure: e.target.value as OtherStockUnitOfMeasure,
-                          })
-                        }
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                      >
-                        {UNIT_OF_MEASURE_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Quantity <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        step="0.001"
-                        value={rawItemFormQuantity || ""}
-                        onChange={(e) =>
-                          setItemForm({ ...itemForm, quantity: Number(e.target.value) })
-                        }
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                        placeholder="0"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Min Stock Level
-                      </label>
-                      <input
-                        type="number"
-                        step="0.001"
-                        value={rawItemFormMinStockLevel || ""}
-                        onChange={(e) =>
-                          setItemForm({ ...itemForm, minStockLevel: Number(e.target.value) })
-                        }
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Reorder Point
-                      </label>
-                      <input
-                        type="number"
-                        step="0.001"
-                        value={rawItemFormReorderPoint || ""}
-                        onChange={(e) =>
-                          setItemForm({ ...itemForm, reorderPoint: Number(e.target.value) })
-                        }
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Location</label>
-                      <select
-                        value={rawItemFormLocationId || ""}
-                        onChange={(e) =>
-                          setItemForm({
-                            ...itemForm,
-                            locationId: e.target.value ? Number(e.target.value) : null,
-                          })
-                        }
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                      >
-                        <option value="">Select location</option>
-                        {locations.map((loc) => (
-                          <option key={loc.id} value={loc.id}>
-                            {loc.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Cost per Unit
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={rawItemFormCostPerUnit || ""}
-                        onChange={(e) =>
-                          setItemForm({
-                            ...itemForm,
-                            costPerUnit: e.target.value ? Number(e.target.value) : null,
-                          })
-                        }
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Sell Price per Unit
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={rawItemFormPricePerUnit || ""}
-                        onChange={(e) =>
-                          setItemForm({
-                            ...itemForm,
-                            pricePerUnit: e.target.value ? Number(e.target.value) : null,
-                          })
-                        }
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Supplier</label>
-                      <input
-                        type="text"
-                        value={rawItemFormSupplier || ""}
-                        onChange={(e) => {
-                          const rawTargetValue2 = e.target.value;
-                          setItemForm({ ...itemForm, supplier: rawTargetValue2 || null });
-                        }}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                        placeholder="Supplier name"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Description</label>
-                    <textarea
-                      value={rawItemFormDescription || ""}
-                      onChange={(e) => {
-                        const rawTargetValue3 = e.target.value;
-                        setItemForm({ ...itemForm, description: rawTargetValue3 || null });
-                      }}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                      rows={2}
-                      placeholder="Optional description"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Notes</label>
-                    <textarea
-                      value={rawItemFormNotes || ""}
-                      onChange={(e) => {
-                        const rawTargetValue4 = e.target.value;
-                        setItemForm({ ...itemForm, notes: rawTargetValue4 || null });
-                      }}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                      rows={2}
-                      placeholder="Optional notes"
-                    />
-                  </div>
-                  <div className="mt-6 flex justify-end space-x-3">
+                <div className="border-b border-gray-200 mb-4">
+                  <nav className="-mb-px flex space-x-8">
                     <button
-                      onClick={() => {
-                        setShowAddItemModal(false);
-                        resetItemForm();
-                      }}
-                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                      onClick={() => setAddItemTab("single")}
+                      className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                        addItemTab === "single"
+                          ? "border-yellow-500 text-yellow-600"
+                          : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                      }`}
                     >
-                      Cancel
+                      Single Entry
                     </button>
                     <button
-                      onClick={handleCreateItem}
-                      disabled={isSubmittingItem}
-                      className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50"
+                      onClick={() => setAddItemTab("bulk")}
+                      className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                        addItemTab === "bulk"
+                          ? "border-yellow-500 text-yellow-600"
+                          : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                      }`}
                     >
-                      {isSubmittingItem ? "Creating..." : "Create Item"}
+                      Bulk Import
                     </button>
-                  </div>
+                  </nav>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                    <input
-                      type="file"
-                      accept=".csv"
-                      onChange={handleCsvFileChange}
-                      className="hidden"
-                      id="csv-upload"
-                    />
-                    <label htmlFor="csv-upload" className="cursor-pointer">
-                      <svg
-                        className="mx-auto h-12 w-12 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                        />
-                      </svg>
-                      <p className="mt-2 text-sm text-gray-600">
-                        {csvFileName || "Click to upload CSV file"}
-                      </p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        Columns: item_code, item_name, description, category, unit_of_measure,
-                        quantity, min_stock_level, reorder_point, cost_per_unit, price_per_unit,
-                        location, supplier, notes
-                      </p>
-                    </label>
-                  </div>
 
-                  {csvData.length > 0 && (
-                    <div className="border rounded-lg overflow-hidden">
-                      <div className="bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700">
-                        Preview ({csvData.length} rows)
+                {addItemTab === "single" ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Item Code <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={itemForm.itemCode}
+                          onChange={(e) => setItemForm({ ...itemForm, itemCode: e.target.value })}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                          placeholder="ITEM-001"
+                        />
                       </div>
-                      <div className="max-h-48 overflow-y-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                                Code
-                              </th>
-                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                                Name
-                              </th>
-                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                                Qty
-                              </th>
-                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                                Category
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {csvData.slice(0, 10).map((row, idx) => {
-                              const rawRowCategory = row.category;
-                              return (
-                                <tr key={idx}>
-                                  <td className="px-3 py-2 text-sm text-gray-900">
-                                    {row.itemCode}
-                                  </td>
-                                  <td className="px-3 py-2 text-sm text-gray-900">
-                                    {row.itemName}
-                                  </td>
-                                  <td className="px-3 py-2 text-sm text-gray-900">
-                                    {row.quantity}
-                                  </td>
-                                  <td className="px-3 py-2 text-sm text-gray-900">
-                                    {rawRowCategory || "-"}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Item Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={itemForm.itemName}
+                          onChange={(e) => setItemForm({ ...itemForm, itemName: e.target.value })}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                          placeholder="Item name"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Category</label>
+                        <input
+                          type="text"
+                          value={rawItemFormCategory || ""}
+                          onChange={(e) => {
+                            const rawTargetValue = e.target.value;
+                            setItemForm({ ...itemForm, category: rawTargetValue || null });
+                          }}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                          placeholder="e.g., Tools, PPE"
+                          list="category-suggestions"
+                        />
+                        <datalist id="category-suggestions">
+                          {categories.map((cat) => (
+                            <option key={cat} value={cat} />
+                          ))}
+                        </datalist>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Unit of Measure
+                        </label>
+                        <select
+                          value={itemForm.unitOfMeasure}
+                          onChange={(e) =>
+                            setItemForm({
+                              ...itemForm,
+                              unitOfMeasure: e.target.value as OtherStockUnitOfMeasure,
+                            })
+                          }
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                        >
+                          {UNIT_OF_MEASURE_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Quantity <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          step="0.001"
+                          value={rawItemFormQuantity || ""}
+                          onChange={(e) =>
+                            setItemForm({ ...itemForm, quantity: Number(e.target.value) })
+                          }
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Min Stock Level
+                        </label>
+                        <input
+                          type="number"
+                          step="0.001"
+                          value={rawItemFormMinStockLevel || ""}
+                          onChange={(e) =>
+                            setItemForm({ ...itemForm, minStockLevel: Number(e.target.value) })
+                          }
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Reorder Point
+                        </label>
+                        <input
+                          type="number"
+                          step="0.001"
+                          value={rawItemFormReorderPoint || ""}
+                          onChange={(e) =>
+                            setItemForm({ ...itemForm, reorderPoint: Number(e.target.value) })
+                          }
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Location</label>
+                        <select
+                          value={rawItemFormLocationId || ""}
+                          onChange={(e) =>
+                            setItemForm({
+                              ...itemForm,
+                              locationId: e.target.value ? Number(e.target.value) : null,
+                            })
+                          }
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                        >
+                          <option value="">Select location</option>
+                          {locations.map((loc) => (
+                            <option key={loc.id} value={loc.id}>
+                              {loc.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Cost per Unit
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={rawItemFormCostPerUnit || ""}
+                          onChange={(e) =>
+                            setItemForm({
+                              ...itemForm,
+                              costPerUnit: e.target.value ? Number(e.target.value) : null,
+                            })
+                          }
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Sell Price per Unit
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={rawItemFormPricePerUnit || ""}
+                          onChange={(e) =>
+                            setItemForm({
+                              ...itemForm,
+                              pricePerUnit: e.target.value ? Number(e.target.value) : null,
+                            })
+                          }
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Supplier</label>
+                        <input
+                          type="text"
+                          value={rawItemFormSupplier || ""}
+                          onChange={(e) => {
+                            const rawTargetValue2 = e.target.value;
+                            setItemForm({ ...itemForm, supplier: rawTargetValue2 || null });
+                          }}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                          placeholder="Supplier name"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Description</label>
+                      <textarea
+                        value={rawItemFormDescription || ""}
+                        onChange={(e) => {
+                          const rawTargetValue3 = e.target.value;
+                          setItemForm({ ...itemForm, description: rawTargetValue3 || null });
+                        }}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                        rows={2}
+                        placeholder="Optional description"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Notes</label>
+                      <textarea
+                        value={rawItemFormNotes || ""}
+                        onChange={(e) => {
+                          const rawTargetValue4 = e.target.value;
+                          setItemForm({ ...itemForm, notes: rawTargetValue4 || null });
+                        }}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                        rows={2}
+                        placeholder="Optional notes"
+                      />
+                    </div>
+                    <div className="mt-6 flex justify-end space-x-3">
+                      <button
+                        onClick={() => {
+                          setShowAddItemModal(false);
+                          resetItemForm();
+                        }}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleCreateItem}
+                        disabled={isSubmittingItem}
+                        className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50"
+                      >
+                        {isSubmittingItem ? "Creating..." : "Create Item"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                      <input
+                        type="file"
+                        accept=".csv"
+                        onChange={handleCsvFileChange}
+                        className="hidden"
+                        id="csv-upload"
+                      />
+                      <label htmlFor="csv-upload" className="cursor-pointer">
+                        <svg
+                          className="mx-auto h-12 w-12 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                          />
+                        </svg>
+                        <p className="mt-2 text-sm text-gray-600">
+                          {csvFileName || "Click to upload CSV file"}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          Columns: item_code, item_name, description, category, unit_of_measure,
+                          quantity, min_stock_level, reorder_point, cost_per_unit, price_per_unit,
+                          location, supplier, notes
+                        </p>
+                      </label>
+                    </div>
+
+                    {csvData.length > 0 && (
+                      <div className="border rounded-lg overflow-hidden">
+                        <div className="bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700">
+                          Preview ({csvData.length} rows)
+                        </div>
+                        <div className="max-h-48 overflow-y-auto">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                  Code
+                                </th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                  Name
+                                </th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                  Qty
+                                </th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                  Category
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {csvData.slice(0, 10).map((row, idx) => {
+                                const rawRowCategory = row.category;
+                                return (
+                                  <tr key={idx}>
+                                    <td className="px-3 py-2 text-sm text-gray-900">
+                                      {row.itemCode}
+                                    </td>
+                                    <td className="px-3 py-2 text-sm text-gray-900">
+                                      {row.itemName}
+                                    </td>
+                                    <td className="px-3 py-2 text-sm text-gray-900">
+                                      {row.quantity}
+                                    </td>
+                                    <td className="px-3 py-2 text-sm text-gray-900">
+                                      {rawRowCategory || "-"}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                              {csvData.length > 10 && (
+                                <tr>
+                                  <td
+                                    colSpan={4}
+                                    className="px-3 py-2 text-sm text-gray-500 text-center"
+                                  >
+                                    ...and {csvData.length - 10} more rows
                                   </td>
                                 </tr>
-                              );
-                            })}
-                            {csvData.length > 10 && (
-                              <tr>
-                                <td
-                                  colSpan={4}
-                                  className="px-3 py-2 text-sm text-gray-500 text-center"
-                                >
-                                  ...and {csvData.length - 10} more rows
-                                </td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {importResult && importResult.errors.length > 0 && (
-                    <div className="border border-red-200 rounded-lg bg-red-50 p-4">
-                      <h4 className="text-sm font-medium text-red-800 mb-2">
-                        Import Errors ({importResult.errors.length})
-                      </h4>
-                      <div className="max-h-32 overflow-y-auto text-sm text-red-700">
-                        {importResult.errors.map((err, idx) => (
-                          <div key={idx}>
-                            Row {err.row} ({err.itemCode}): {err.error}
-                          </div>
-                        ))}
+                    {importResult && importResult.errors.length > 0 && (
+                      <div className="border border-red-200 rounded-lg bg-red-50 p-4">
+                        <h4 className="text-sm font-medium text-red-800 mb-2">
+                          Import Errors ({importResult.errors.length})
+                        </h4>
+                        <div className="max-h-32 overflow-y-auto text-sm text-red-700">
+                          {importResult.errors.map((err, idx) => (
+                            <div key={idx}>
+                              Row {err.row} ({err.itemCode}): {err.error}
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  <div className="mt-6 flex justify-end space-x-3">
-                    <button
-                      onClick={() => {
-                        setShowAddItemModal(false);
-                        resetItemForm();
-                      }}
-                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleImportItems}
-                      disabled={isImporting || csvData.length === 0}
-                      className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50"
-                    >
-                      {isImporting ? "Importing..." : `Import ${csvData.length} Items`}
-                    </button>
+                    <div className="mt-6 flex justify-end space-x-3">
+                      <button
+                        onClick={() => {
+                          setShowAddItemModal(false);
+                          resetItemForm();
+                        }}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleImportItems}
+                        disabled={isImporting || csvData.length === 0}
+                        className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50"
+                      >
+                        {isImporting ? "Importing..." : `Import ${csvData.length} Items`}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {showReceiveModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] overflow-y-auto">
+            <div className="flex min-h-screen items-center justify-center p-4">
+              <div
+                className="fixed inset-0 bg-black/10 backdrop-blur-md"
+                onClick={() => setShowReceiveModal(false)}
+              />
+              <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Receive Stock</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Quantity to Receive
+                    </label>
+                    <input
+                      type="number"
+                      value={receiveQty}
+                      onChange={(e) => setReceiveQty(e.target.value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                      placeholder="0"
+                      step="0.001"
+                    />
                   </div>
                 </div>
-              )}
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    onClick={() => setShowReceiveModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleReceive}
+                    disabled={isReceiving || !receiveQty}
+                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
+                  >
+                    {isReceiving ? "Receiving..." : "Receive"}
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
 
-      {showReceiveModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-screen items-center justify-center p-4">
-            <div
-              className="fixed inset-0 bg-black/10 backdrop-blur-md"
-              onClick={() => setShowReceiveModal(false)}
-            />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Receive Stock</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Quantity to Receive
-                  </label>
-                  <input
-                    type="number"
-                    value={receiveQty}
-                    onChange={(e) => setReceiveQty(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                    placeholder="0"
-                    step="0.001"
-                  />
+      {showAdjustModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] overflow-y-auto">
+            <div className="flex min-h-screen items-center justify-center p-4">
+              <div
+                className="fixed inset-0 bg-black/10 backdrop-blur-md"
+                onClick={() => setShowAdjustModal(false)}
+              />
+              <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Adjust Stock</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">New Quantity</label>
+                    <input
+                      type="number"
+                      value={adjustQty}
+                      onChange={(e) => setAdjustQty(e.target.value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                      placeholder="0"
+                      step="0.001"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Reason</label>
+                    <input
+                      type="text"
+                      value={adjustReason}
+                      onChange={(e) => setAdjustReason(e.target.value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                      placeholder="Stock count, damage, etc."
+                    />
+                  </div>
                 </div>
-              </div>
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowReceiveModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleReceive}
-                  disabled={isReceiving || !receiveQty}
-                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
-                >
-                  {isReceiving ? "Receiving..." : "Receive"}
-                </button>
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    onClick={() => setShowAdjustModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleAdjust}
+                    disabled={isAdjusting || adjustQty === ""}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {isAdjusting ? "Adjusting..." : "Adjust"}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {showAdjustModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-screen items-center justify-center p-4">
-            <div
-              className="fixed inset-0 bg-black/10 backdrop-blur-md"
-              onClick={() => setShowAdjustModal(false)}
-            />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Adjust Stock</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">New Quantity</label>
-                  <input
-                    type="number"
-                    value={adjustQty}
-                    onChange={(e) => setAdjustQty(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                    placeholder="0"
-                    step="0.001"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Reason</label>
-                  <input
-                    type="text"
-                    value={adjustReason}
-                    onChange={(e) => setAdjustReason(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                    placeholder="Stock count, damage, etc."
-                  />
-                </div>
-              </div>
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowAdjustModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleAdjust}
-                  disabled={isAdjusting || adjustQty === ""}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {isAdjusting ? "Adjusting..." : "Adjust"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
 
       <ConfirmModal
         isOpen={deleteItemId !== null}

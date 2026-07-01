@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import { DateTime } from "@/app/lib/datetime";
 import { useAlert } from "@/app/lib/hooks/useAlert";
@@ -27,6 +28,7 @@ interface AccountData {
 }
 
 export default function AccountingDashboardPage() {
+  const coreHref = useCoreAwareHref();
   const { alert, AlertDialog } = useAlert();
   const [recentAccounts, setRecentAccounts] = useState<MonthlyAccountSummary[]>([]);
   const [payableSummary, setPayableSummary] = useState<AccountData | null>(null);
@@ -84,7 +86,7 @@ export default function AccountingDashboardPage() {
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Link
-                href="/au-rubber/portal/accounting/payable"
+                href={coreHref("/au-rubber/portal/accounting/payable")}
                 className="block p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
               >
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -107,7 +109,7 @@ export default function AccountingDashboardPage() {
               </Link>
 
               <Link
-                href="/au-rubber/portal/accounting/receivable"
+                href={coreHref("/au-rubber/portal/accounting/receivable")}
                 className="block p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
               >
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -132,14 +134,14 @@ export default function AccountingDashboardPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Link
-                href="/au-rubber/portal/accounting/reconciliation"
+                href={coreHref("/au-rubber/portal/accounting/reconciliation")}
                 className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
               >
                 <h3 className="font-medium text-gray-900 dark:text-gray-100">Reconciliation</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Statement matching</p>
               </Link>
               <Link
-                href="/au-rubber/portal/accounting/directors"
+                href={coreHref("/au-rubber/portal/accounting/directors")}
                 className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
               >
                 <h3 className="font-medium text-gray-900 dark:text-gray-100">Directors</h3>
@@ -148,7 +150,7 @@ export default function AccountingDashboardPage() {
                 </p>
               </Link>
               <Link
-                href="/au-rubber/portal/accounting/history"
+                href={coreHref("/au-rubber/portal/accounting/history")}
                 className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
               >
                 <h3 className="font-medium text-gray-900 dark:text-gray-100">History</h3>
@@ -157,7 +159,7 @@ export default function AccountingDashboardPage() {
                 </p>
               </Link>
               <Link
-                href="/au-rubber/portal/accounting/affiliate-commission"
+                href={coreHref("/au-rubber/portal/accounting/affiliate-commission")}
                 className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
               >
                 <h3 className="font-medium text-gray-900 dark:text-gray-100">
@@ -168,7 +170,7 @@ export default function AccountingDashboardPage() {
                 </p>
               </Link>
               <Link
-                href="/au-rubber/portal/accounting/board-meetings"
+                href={coreHref("/au-rubber/portal/accounting/board-meetings")}
                 className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
               >
                 <h3 className="font-medium text-gray-900 dark:text-gray-100">Board Meetings</h3>
@@ -187,7 +189,7 @@ export default function AccountingDashboardPage() {
                   {recentAccounts.map((account) => (
                     <Link
                       key={account.id}
-                      href={"/au-rubber/portal/accounting/history"}
+                      href={coreHref("/au-rubber/portal/accounting/history")}
                       className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                     >
                       <div>

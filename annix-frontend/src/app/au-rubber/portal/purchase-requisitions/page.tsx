@@ -3,6 +3,7 @@
 import { isArray } from "es-toolkit/compat";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import {
   Pagination,
@@ -14,6 +15,7 @@ import {
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { DateInput } from "@/app/components/ui/DateInput";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
 import { toastError } from "@/app/lib/api/apiError";
 import {
@@ -56,6 +58,7 @@ const sourceColors: Record<RequisitionSourceType, string> = {
 };
 
 export default function PurchaseRequisitionsPage() {
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const { alert, AlertDialog } = useAlert();
   const scrollSentinelRef = useScrollRestoration("au-rubber:purchase-requisitions");
@@ -273,7 +276,7 @@ export default function PurchaseRequisitionsPage() {
         area="Purchase Requisitions"
         error={error}
         reset={fetchData}
-        backHref="/au-rubber/portal"
+        backHref={coreHref("/au-rubber/portal")}
         backLabel="Back to Dashboard"
         brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
       />
@@ -447,7 +450,7 @@ export default function PurchaseRequisitionsPage() {
                 <tr key={req.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <Link
-                      href={`/au-rubber/portal/purchase-requisitions/${req.id}`}
+                      href={coreHref(`/au-rubber/portal/purchase-requisitions/${req.id}`)}
                       className="text-yellow-600 hover:text-yellow-800 font-medium"
                     >
                       {req.requisitionNumber}
@@ -488,7 +491,7 @@ export default function PurchaseRequisitionsPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                     <Link
-                      href={`/au-rubber/portal/purchase-requisitions/${req.id}`}
+                      href={coreHref(`/au-rubber/portal/purchase-requisitions/${req.id}`)}
                       className="text-yellow-600 hover:text-yellow-900"
                     >
                       View
@@ -517,150 +520,152 @@ export default function PurchaseRequisitionsPage() {
         />
       </div>
 
-      {showNewModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-screen items-center justify-center p-4">
-            <div
-              className="fixed inset-0 bg-black/10 backdrop-blur-md"
-              onClick={() => setShowNewModal(false)}
-            />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">New Purchase Requisition</h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Supplier (Optional)
-                    </label>
-                    <select
-                      value={formSupplierCompanyId || ""}
-                      onChange={(e) =>
-                        setFormSupplierCompanyId(e.target.value ? Number(e.target.value) : null)
-                      }
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                    >
-                      <option value="">Select supplier</option>
-                      {companies
-                        .filter((c) => c.companyType === "SUPPLIER")
-                        .map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                    </select>
+      {showNewModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] overflow-y-auto">
+            <div className="flex min-h-screen items-center justify-center p-4">
+              <div
+                className="fixed inset-0 bg-black/10 backdrop-blur-md"
+                onClick={() => setShowNewModal(false)}
+              />
+              <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">New Purchase Requisition</h3>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Supplier (Optional)
+                      </label>
+                      <select
+                        value={formSupplierCompanyId || ""}
+                        onChange={(e) =>
+                          setFormSupplierCompanyId(e.target.value ? Number(e.target.value) : null)
+                        }
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                      >
+                        <option value="">Select supplier</option>
+                        {companies
+                          .filter((c) => c.companyType === "SUPPLIER")
+                          .map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Expected Delivery
+                      </label>
+                      <DateInput
+                        value={formExpectedDeliveryDate}
+                        onChange={(value) => setFormExpectedDeliveryDate(value)}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                      />
+                    </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Expected Delivery
-                    </label>
-                    <DateInput
-                      value={formExpectedDeliveryDate}
-                      onChange={(value) => setFormExpectedDeliveryDate(value)}
+                    <label className="block text-sm font-medium text-gray-700">Notes</label>
+                    <textarea
+                      value={formNotes}
+                      onChange={(e) => setFormNotes(e.target.value)}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                      rows={2}
+                      placeholder="Optional notes"
                     />
                   </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Notes</label>
-                  <textarea
-                    value={formNotes}
-                    onChange={(e) => setFormNotes(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                    rows={2}
-                    placeholder="Optional notes"
-                  />
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium text-gray-700">Items</label>
-                    <button
-                      type="button"
-                      onClick={addFormItem}
-                      className="text-sm text-yellow-600 hover:text-yellow-800"
-                    >
-                      + Add Item
-                    </button>
-                  </div>
-                  <div className="space-y-2">
-                    {formItems.map((item, index) => {
-                      const rawItemCompoundStockId2 = item.compoundStockId;
-                      return (
-                        <div key={index} className="flex items-center space-x-2">
-                          <select
-                            value={rawItemCompoundStockId2 || ""}
-                            onChange={(e) =>
-                              updateFormItem(
-                                index,
-                                "compoundStockId",
-                                e.target.value ? Number(e.target.value) : null,
-                              )
-                            }
-                            className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                          >
-                            <option value="">Select compound</option>
-                            {compoundStocks.map((s) => (
-                              <option key={s.id} value={s.id}>
-                                {s.compoundName} ({s.compoundCode})
-                              </option>
-                            ))}
-                          </select>
-                          <input
-                            type="number"
-                            value={item.quantityKg}
-                            onChange={(e) => updateFormItem(index, "quantityKg", e.target.value)}
-                            placeholder="Qty (kg)"
-                            className="w-32 rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                            step="0.01"
-                          />
-                          {formItems.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => removeFormItem(index)}
-                              className="text-red-600 hover:text-red-800"
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">Items</label>
+                      <button
+                        type="button"
+                        onClick={addFormItem}
+                        className="text-sm text-yellow-600 hover:text-yellow-800"
+                      >
+                        + Add Item
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {formItems.map((item, index) => {
+                        const rawItemCompoundStockId2 = item.compoundStockId;
+                        return (
+                          <div key={index} className="flex items-center space-x-2">
+                            <select
+                              value={rawItemCompoundStockId2 || ""}
+                              onChange={(e) =>
+                                updateFormItem(
+                                  index,
+                                  "compoundStockId",
+                                  e.target.value ? Number(e.target.value) : null,
+                                )
+                              }
+                              className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
                             >
-                              <svg
-                                className="w-5 h-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
+                              <option value="">Select compound</option>
+                              {compoundStocks.map((s) => (
+                                <option key={s.id} value={s.id}>
+                                  {s.compoundName} ({s.compoundCode})
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              type="number"
+                              value={item.quantityKg}
+                              onChange={(e) => updateFormItem(index, "quantityKg", e.target.value)}
+                              placeholder="Qty (kg)"
+                              className="w-32 rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                              step="0.01"
+                            />
+                            {formItems.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => removeFormItem(index)}
+                                className="text-red-600 hover:text-red-800"
                               >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M6 18L18 6M6 6l12 12"
-                                />
-                              </svg>
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
+                                <svg
+                                  className="w-5 h-5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M6 18L18 6M6 6l12 12"
+                                  />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  onClick={() => {
-                    setShowNewModal(false);
-                    resetForm();
-                  }}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreate}
-                  disabled={isCreating}
-                  className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50"
-                >
-                  {isCreating ? "Creating..." : "Create Requisition"}
-                </button>
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    onClick={() => {
+                      setShowNewModal(false);
+                      resetForm();
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreate}
+                    disabled={isCreating}
+                    className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50"
+                  >
+                    {isCreating ? "Creating..." : "Create Requisition"}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
 
       <ConfirmModal
         isOpen={cancelReqId !== null}

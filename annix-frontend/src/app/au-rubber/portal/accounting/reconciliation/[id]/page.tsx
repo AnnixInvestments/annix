@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
@@ -184,7 +185,9 @@ export default function ReconciliationDetailPage() {
 
   if (isLoading) {
     return (
-      <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/accounting"]}>
+      <RequirePermission
+        permission={PAGE_PERMISSIONS["/au-rubber/portal/accounting/reconciliation"]}
+      >
         <div className="flex justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-600" />
         </div>
@@ -194,14 +197,16 @@ export default function ReconciliationDetailPage() {
 
   if (!data) {
     return (
-      <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/accounting"]}>
+      <RequirePermission
+        permission={PAGE_PERMISSIONS["/au-rubber/portal/accounting/reconciliation"]}
+      >
         <div className="text-center py-12 text-gray-500">Reconciliation not found.</div>
       </RequirePermission>
     );
   }
 
   return (
-    <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/accounting"]}>
+    <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/accounting/reconciliation"]}>
       {ConfirmDialog}
       {AlertDialog}
       <div className="space-y-6">
@@ -352,43 +357,45 @@ export default function ReconciliationDetailPage() {
           </div>
         )}
 
-        {showResolve && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4">
-              <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  Resolve Discrepancy
-                </h2>
+        {showResolve &&
+          createPortal(
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4">
+                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    Resolve Discrepancy
+                  </h2>
+                </div>
+                <div className="px-6 py-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Notes
+                  </label>
+                  <textarea
+                    value={resolveNotes}
+                    onChange={(e) => setResolveNotes(e.target.value)}
+                    rows={4}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                    placeholder="Explain why this discrepancy is being resolved..."
+                  />
+                </div>
+                <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+                  <button
+                    onClick={() => setShowResolve(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleResolve}
+                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    Resolve
+                  </button>
+                </div>
               </div>
-              <div className="px-6 py-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Notes
-                </label>
-                <textarea
-                  value={resolveNotes}
-                  onChange={(e) => setResolveNotes(e.target.value)}
-                  rows={4}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                  placeholder="Explain why this discrepancy is being resolved..."
-                />
-              </div>
-              <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
-                <button
-                  onClick={() => setShowResolve(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleResolve}
-                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  Resolve
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+            </div>,
+            document.body,
+          )}
       </div>
     </RequirePermission>
   );

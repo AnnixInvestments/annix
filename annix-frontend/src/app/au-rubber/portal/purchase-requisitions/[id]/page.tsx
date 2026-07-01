@@ -3,11 +3,13 @@
 import { toPairs as entries } from "es-toolkit/compat";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { useToast } from "@/app/components/Toast";
 import { DateInput } from "@/app/components/ui/DateInput";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { toastError } from "@/app/lib/api/apiError";
 import {
   auRubberApiClient,
@@ -28,6 +30,7 @@ const statusColors: Record<RequisitionStatus, string> = {
 export default function PurchaseRequisitionDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const { user } = useAuRubberAuth();
   const rawUserEmail = user?.email;
@@ -153,7 +156,7 @@ export default function PurchaseRequisitionDetailPage() {
       setIsProcessing(true);
       await auRubberApiClient.cancelRequisition(id);
       showToast("Requisition cancelled", "success");
-      router.push("/au-rubber/portal/purchase-requisitions");
+      router.push(coreHref("/au-rubber/portal/purchase-requisitions"));
     } catch (err) {
       toastError(showToast, err, "Failed to cancel");
     } finally {
@@ -175,7 +178,7 @@ export default function PurchaseRequisitionDetailPage() {
         area="Purchase Requisitions"
         error={error}
         reset={() => router.refresh()}
-        backHref="/au-rubber/portal/purchase-requisitions"
+        backHref={coreHref("/au-rubber/portal/purchase-requisitions")}
         backLabel="Back to Purchase Requisitions"
         brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
       />
@@ -192,7 +195,7 @@ export default function PurchaseRequisitionDetailPage() {
           </p>
           <button
             type="button"
-            onClick={() => router.push("/au-rubber/portal/purchase-requisitions")}
+            onClick={() => router.push(coreHref("/au-rubber/portal/purchase-requisitions"))}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
           >
             Back to List
@@ -458,160 +461,166 @@ export default function PurchaseRequisitionDetailPage() {
         </table>
       </div>
 
-      {showRejectModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-screen items-center justify-center p-4">
-            <div
-              className="fixed inset-0 bg-black/10 backdrop-blur-md"
-              onClick={() => setShowRejectModal(false)}
-            />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Reject Requisition</h3>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Reason</label>
-                <textarea
-                  value={rejectReason}
-                  onChange={(e) => setRejectReason(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                  rows={3}
-                  placeholder="Please provide a reason for rejection"
-                />
-              </div>
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowRejectModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleReject}
-                  disabled={isProcessing || !rejectReason.trim()}
-                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
-                >
-                  {isProcessing ? "Rejecting..." : "Reject"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showOrderModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-screen items-center justify-center p-4">
-            <div
-              className="fixed inset-0 bg-black/10 backdrop-blur-md"
-              onClick={() => setShowOrderModal(false)}
-            />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Mark as Ordered</h3>
-              <div className="space-y-4">
+      {showRejectModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] overflow-y-auto">
+            <div className="flex min-h-screen items-center justify-center p-4">
+              <div
+                className="fixed inset-0 bg-black/10 backdrop-blur-md"
+                onClick={() => setShowRejectModal(false)}
+              />
+              <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Reject Requisition</h3>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Purchase Order # (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={orderPoNumber}
-                    onChange={(e) => setOrderPoNumber(e.target.value)}
+                  <label className="block text-sm font-medium text-gray-700">Reason</label>
+                  <textarea
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                    placeholder="e.g., PO-2024-001"
+                    rows={3}
+                    placeholder="Please provide a reason for rejection"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Expected Delivery Date (Optional)
-                  </label>
-                  <DateInput
-                    value={orderExpectedDate}
-                    onChange={(value) => setOrderExpectedDate(value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                  />
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    onClick={() => setShowRejectModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleReject}
+                    disabled={isProcessing || !rejectReason.trim()}
+                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {isProcessing ? "Rejecting..." : "Reject"}
+                  </button>
                 </div>
               </div>
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowOrderModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleMarkOrdered}
-                  disabled={isProcessing}
-                  className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:opacity-50"
-                >
-                  {isProcessing ? "Updating..." : "Mark as Ordered"}
-                </button>
-              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
 
-      {showReceiveModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-screen items-center justify-center p-4">
-            <div
-              className="fixed inset-0 bg-black/10 backdrop-blur-md"
-              onClick={() => setShowReceiveModal(false)}
-            />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Receive Items</h3>
-              <div className="space-y-4">
-                {requisition.items
-                  .filter((item) => item.quantityKg - item.quantityReceivedKg > 0)
-                  .map((item) => {
-                    const rawReceiveAmountsByItemid = receiveAmounts[item.id];
-                    const outstanding = item.quantityKg - item.quantityReceivedKg;
-                    return (
-                      <div key={item.id} className="flex items-center space-x-4">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">{item.compoundName}</p>
-                          <p className="text-xs text-gray-500">
-                            Outstanding: {outstanding.toFixed(2)} kg
-                          </p>
-                        </div>
-                        <div className="w-32">
-                          <input
-                            type="number"
-                            value={rawReceiveAmountsByItemid || ""}
-                            onChange={(e) =>
-                              setReceiveAmounts({
-                                ...receiveAmounts,
-                                [item.id]: e.target.value,
-                              })
-                            }
-                            max={outstanding}
-                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                            placeholder="0"
-                            step="0.01"
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowReceiveModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleReceive}
-                  disabled={isProcessing}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {isProcessing ? "Receiving..." : "Receive"}
-                </button>
+      {showOrderModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] overflow-y-auto">
+            <div className="flex min-h-screen items-center justify-center p-4">
+              <div
+                className="fixed inset-0 bg-black/10 backdrop-blur-md"
+                onClick={() => setShowOrderModal(false)}
+              />
+              <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Mark as Ordered</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Purchase Order # (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={orderPoNumber}
+                      onChange={(e) => setOrderPoNumber(e.target.value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                      placeholder="e.g., PO-2024-001"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Expected Delivery Date (Optional)
+                    </label>
+                    <DateInput
+                      value={orderExpectedDate}
+                      onChange={(value) => setOrderExpectedDate(value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                    />
+                  </div>
+                </div>
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    onClick={() => setShowOrderModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleMarkOrdered}
+                    disabled={isProcessing}
+                    className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:opacity-50"
+                  >
+                    {isProcessing ? "Updating..." : "Mark as Ordered"}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
+
+      {showReceiveModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] overflow-y-auto">
+            <div className="flex min-h-screen items-center justify-center p-4">
+              <div
+                className="fixed inset-0 bg-black/10 backdrop-blur-md"
+                onClick={() => setShowReceiveModal(false)}
+              />
+              <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Receive Items</h3>
+                <div className="space-y-4">
+                  {requisition.items
+                    .filter((item) => item.quantityKg - item.quantityReceivedKg > 0)
+                    .map((item) => {
+                      const rawReceiveAmountsByItemid = receiveAmounts[item.id];
+                      const outstanding = item.quantityKg - item.quantityReceivedKg;
+                      return (
+                        <div key={item.id} className="flex items-center space-x-4">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-900">{item.compoundName}</p>
+                            <p className="text-xs text-gray-500">
+                              Outstanding: {outstanding.toFixed(2)} kg
+                            </p>
+                          </div>
+                          <div className="w-32">
+                            <input
+                              type="number"
+                              value={rawReceiveAmountsByItemid || ""}
+                              onChange={(e) =>
+                                setReceiveAmounts({
+                                  ...receiveAmounts,
+                                  [item.id]: e.target.value,
+                                })
+                              }
+                              max={outstanding}
+                              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                              placeholder="0"
+                              step="0.01"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    onClick={() => setShowReceiveModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleReceive}
+                    disabled={isProcessing}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {isProcessing ? "Receiving..." : "Receive"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { isNumber } from "es-toolkit/compat";
 import { useRouter } from "next/navigation";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 
 interface MatchItem {
   invoiceNumber: string;
@@ -95,6 +96,7 @@ const RESULT_STYLES: Record<string, { bg: string; text: string; label: string }>
 export function ReconciliationMatchView(props: ReconciliationMatchViewProps) {
   const { matchItems, statementId } = props;
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
 
   if (matchItems.length === 0) {
     return (
@@ -146,7 +148,7 @@ export function ReconciliationMatchView(props: ReconciliationMatchViewProps) {
                     hasStiLink
                       ? () =>
                           router.push(
-                            `/au-rubber/portal/tax-invoices/${rawTaxInvoiceId}?from=statement&statementId=${statementId}`,
+                            `${coreHref(`/au-rubber/portal/tax-invoices/${rawTaxInvoiceId}`)}?from=statement&statementId=${statementId}`,
                           )
                       : undefined
                   }
@@ -199,7 +201,7 @@ export function ReconciliationMatchView(props: ReconciliationMatchViewProps) {
                             onClick={(e) => {
                               e.stopPropagation();
                               router.push(
-                                `/au-rubber/portal/delivery-notes/${item.linkedDeliveryNoteId}?from=statement&statementId=${statementId}`,
+                                `${coreHref(`/au-rubber/portal/delivery-notes/${item.linkedDeliveryNoteId}`)}?from=statement&statementId=${statementId}`,
                               );
                             }}
                             className="text-[11px] text-orange-600 hover:text-orange-700 dark:text-orange-400 underline decoration-dotted underline-offset-2"

@@ -70,7 +70,10 @@ interface CoreNavGroup {
 function resolveNavHref(href: string, prefix: string, activeApp: CoreApp): string {
   const startsWith = href.startsWith(prefix);
   if (!startsWith) {
-    return `/core/portal/${activeApp}`;
+    // A nav href that isn't this app's portal path is an absolute cross-app link
+    // (e.g. the Website items point at the admin marketing CMS). Pass it through
+    // unchanged so it navigates out of the shell to that destination.
+    return href;
   }
   const rest = href.slice(prefix.length);
   const suffixBase = rest.split("?")[0];
@@ -194,16 +197,22 @@ function SidebarNavList(props: { groups: CoreNavGroup[]; onNavigate: () => void 
               <div className="space-y-0.5 px-2">
                 {group.items.map((item) => {
                   const active = isActive(item.href);
-                  // A legacy (eject-to-classic) target is one resolveNavHref sent
-                  // OUTSIDE the shell. With the flag OFF every href is in-shell,
-                  // so this is naturally empty until the cutover is ON.
-                  const opensClassic = !item.href.startsWith("/core/portal/");
+                  // A target resolveNavHref sent OUTSIDE the shell. With the flag
+                  // OFF every hosted href is in-shell, so this is empty until the
+                  // cutover is ON — except cross-app links (the Website items open
+                  // the admin marketing CMS), which always leave the shell.
+                  const opensExternal = !item.href.startsWith("/core/portal/");
+                  const opensAdmin = item.href.startsWith("/admin/");
+                  const externalLabel = opensAdmin ? "Admin" : "Classic";
+                  const externalTitle = opensAdmin
+                    ? "Opens the admin console"
+                    : "Opens classic view";
                   return (
                     <Link
                       key={item.key}
                       href={item.href}
                       onClick={props.onNavigate}
-                      title={opensClassic ? "Opens classic view" : undefined}
+                      title={opensExternal ? externalTitle : undefined}
                       className={`flex items-center gap-2 rounded-md border-l-2 px-3 py-2 text-sm transition-colors ${
                         active
                           ? "border-[var(--brand-accent)] bg-gray-100 font-semibold text-gray-900"
@@ -211,9 +220,9 @@ function SidebarNavList(props: { groups: CoreNavGroup[]; onNavigate: () => void 
                       }`}
                     >
                       <span className="flex-1">{item.label}</span>
-                      {opensClassic && (
+                      {opensExternal && (
                         <span className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-gray-400">
-                          Classic
+                          {externalLabel}
                           <svg
                             className="h-3 w-3"
                             fill="none"

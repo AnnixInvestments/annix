@@ -7,6 +7,7 @@ import { createPortal } from "react-dom";
 import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import { Pagination, TableLoadingState } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
 import { auRubberApiClient, type RubberSpecificationDto } from "@/app/lib/api/auRubberApi";
 import type { RubberProductCodingDto } from "@/app/lib/api/rubberPortalApi";
@@ -119,6 +120,7 @@ function SpecificationsTable({
 }
 
 export default function AuRubberCodingsPage() {
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const { alert, AlertDialog } = useAlert();
   const [selectedTab, setSelectedTab] = useState<TabType>("COMPOUND");
@@ -280,7 +282,7 @@ export default function AuRubberCodingsPage() {
           area="Codings"
           error={error}
           reset={retryCodings}
-          backHref="/au-rubber/portal"
+          backHref={coreHref("/au-rubber/portal")}
           backLabel="Back to Dashboard"
           brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
         />

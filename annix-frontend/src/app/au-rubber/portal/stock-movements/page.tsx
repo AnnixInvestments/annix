@@ -12,6 +12,7 @@ import {
   TableLoadingState,
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
 import {
   auRubberApiClient,
@@ -71,6 +72,7 @@ const referenceLabel = (type: CompoundMovementReferenceType) => {
 };
 
 export default function StockMovementsPage() {
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const [movements, setMovements] = useState<RubberCompoundMovementDto[]>([]);
   const [stocks, setStocks] = useState<RubberCompoundStockDto[]>([]);
@@ -170,7 +172,7 @@ export default function StockMovementsPage() {
         area="Stock Movements"
         error={error}
         reset={fetchData}
-        backHref="/au-rubber/portal"
+        backHref={coreHref("/au-rubber/portal")}
         backLabel="Back to Dashboard"
         brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
       />

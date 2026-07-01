@@ -62,7 +62,12 @@ function CorePortalShell(props: { activeApp: CoreApp; auth: NormalizedAuth; chil
               />
 
               <main className="flex-1 overflow-y-auto px-4 py-3 sm:p-6">
-                <CorePortalPageAccessGuard activeApp={props.activeApp} ready={ready}>
+                <CorePortalPageAccessGuard
+                  activeApp={props.activeApp}
+                  ready={ready}
+                  permissions={auth.permissions}
+                  isAdmin={auth.isAdmin}
+                >
                   {props.children}
                 </CorePortalPageAccessGuard>
               </main>

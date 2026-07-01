@@ -49,6 +49,14 @@ export const CORE_PORTAL_HOSTED_SUFFIXES_BY_APP: Record<CoreApp, ReadonlySet<str
     "supplier-cocs",
     "roll-stock",
     "productions",
+    "compound-orders",
+    "stock-movements",
+    "stock-locations",
+    "purchase-requisitions",
+    "other-items",
+    "codings",
+    "pricing-tiers",
+    "quality-tracking",
   ]),
 };
 
@@ -84,18 +92,36 @@ export const CORE_PORTAL_HOSTED_ROUTE_TEMPLATES_BY_APP: Record<CoreApp, Readonly
     "companies/customers",
     "companies/suppliers/statements",
     "companies/customers/statements",
+    "accounting",
+    "accounting/payable",
+    "accounting/receivable",
+    "accounting/reconciliation",
+    "accounting/reconciliation/:id",
+    "accounting/directors",
+    "accounting/history",
+    "quality-tracking/*",
   ]),
 };
 
-function normalizeRouteTemplate(suffixPath: string): string {
-  return suffixPath
-    .split("/")
-    .filter((segment) => segment.length > 0)
-    .map((segment) => (/^\d+$/.test(segment) ? ":id" : segment))
-    .join("/");
+function matchesRouteTemplate(segments: string[], template: string): boolean {
+  const templateSegments = template.split("/").filter((segment) => segment.length > 0);
+  if (segments.length !== templateSegments.length) {
+    return false;
+  }
+  return templateSegments.every((templateSegment, index) => {
+    const segment = segments[index];
+    if (templateSegment === "*") {
+      return segment.length > 0;
+    }
+    if (templateSegment === ":id") {
+      return /^\d+$/.test(segment);
+    }
+    return templateSegment === segment;
+  });
 }
 
 export function isCorePortalHostedRouteTemplate(app: CoreApp, suffixPath: string): boolean {
   const templatesForApp = CORE_PORTAL_HOSTED_ROUTE_TEMPLATES_BY_APP[app];
-  return templatesForApp.has(normalizeRouteTemplate(suffixPath));
+  const segments = suffixPath.split("/").filter((segment) => segment.length > 0);
+  return [...templatesForApp].some((template) => matchesRouteTemplate(segments, template));
 }

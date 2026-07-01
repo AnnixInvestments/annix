@@ -11,6 +11,7 @@ import {
   TableLoadingState,
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
 import { toastError } from "@/app/lib/api/apiError";
 import {
@@ -35,6 +36,7 @@ type SortColumn =
   | "status";
 
 export default function QualityTrackingPage() {
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const summaryQuery = useAuRubberQualityTrackingSummary();
   const alertsQuery = useAuRubberQualityAlerts();
@@ -181,7 +183,7 @@ export default function QualityTrackingPage() {
           summaryQuery.refetch();
           alertsQuery.refetch();
         }}
-        backHref="/au-rubber/portal"
+        backHref={coreHref("/au-rubber/portal")}
         backLabel="Back to Dashboard"
         brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
       />
@@ -355,7 +357,9 @@ export default function QualityTrackingPage() {
                 <tr key={summary.compoundCode} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <Link
-                      href={`/au-rubber/portal/quality-tracking/${encodeURIComponent(summary.compoundCode)}`}
+                      href={coreHref(
+                        `/au-rubber/portal/quality-tracking/${encodeURIComponent(summary.compoundCode)}`,
+                      )}
                       className="text-yellow-600 hover:text-yellow-800 font-medium"
                     >
                       {summary.compoundCode}
@@ -399,7 +403,9 @@ export default function QualityTrackingPage() {
                   <td className="px-6 py-4 whitespace-nowrap">{statusBadge(summary.status)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <Link
-                      href={`/au-rubber/portal/quality-tracking/${encodeURIComponent(summary.compoundCode)}`}
+                      href={coreHref(
+                        `/au-rubber/portal/quality-tracking/${encodeURIComponent(summary.compoundCode)}`,
+                      )}
                       className="text-yellow-600 hover:text-yellow-800"
                     >
                       View

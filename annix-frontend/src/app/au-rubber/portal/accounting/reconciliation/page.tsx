@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useToast } from "@/app/components/Toast";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import { fromISO } from "@/app/lib/datetime";
 import { useAlert } from "@/app/lib/hooks/useAlert";
@@ -33,6 +34,7 @@ interface SupplierOption {
 
 export default function ReconciliationListPage() {
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
@@ -111,7 +113,7 @@ export default function ReconciliationListPage() {
   };
 
   return (
-    <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/accounting"]}>
+    <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/accounting/reconciliation"]}>
       {ConfirmDialog}
       {AlertDialog}
       <div className="space-y-6">
@@ -161,13 +163,13 @@ export default function ReconciliationListPage() {
                   <tr
                     key={r.id}
                     onClick={() =>
-                      router.push(`/au-rubber/portal/accounting/reconciliation/${r.id}`)
+                      router.push(coreHref(`/au-rubber/portal/accounting/reconciliation/${r.id}`))
                     }
                     className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                   >
                     <td className="px-4 py-3">
                       <Link
-                        href={`/au-rubber/portal/accounting/reconciliation/${r.id}`}
+                        href={coreHref(`/au-rubber/portal/accounting/reconciliation/${r.id}`)}
                         onClick={(e) => e.stopPropagation()}
                         className="font-medium text-yellow-600 hover:text-yellow-700"
                       >

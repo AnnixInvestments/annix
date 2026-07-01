@@ -893,7 +893,7 @@ export default function DeliveryNoteDetailPage() {
   const rawStatementId = searchParams.get("statementId");
   const cameFromStatement = fromSource === "statement" && rawStatementId !== null;
   const statementBackPath = cameFromStatement
-    ? `/au-rubber/portal/accounting/reconciliation/${rawStatementId}`
+    ? coreHref(`/au-rubber/portal/accounting/reconciliation/${rawStatementId}`)
     : null;
 
   return (

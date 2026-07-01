@@ -2,6 +2,7 @@
 
 import { isArray } from "es-toolkit/compat";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import {
   Pagination,
@@ -12,6 +13,7 @@ import {
   TableLoadingState,
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
 import { toastError } from "@/app/lib/api/apiError";
 import { auRubberApiClient, type StockLocationDto } from "@/app/lib/api/auRubberApi";
@@ -23,6 +25,7 @@ const ITEMS_PER_PAGE = 25;
 type SortColumn = "name" | "description" | "displayOrder" | "active";
 
 export default function StockLocationsPage() {
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const [locations, setLocations] = useState<StockLocationDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -180,7 +183,7 @@ export default function StockLocationsPage() {
         area="Stock Locations"
         error={error}
         reset={fetchData}
-        backHref="/au-rubber/portal"
+        backHref={coreHref("/au-rubber/portal")}
         backLabel="Back to Dashboard"
         brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
       />
@@ -356,79 +359,81 @@ export default function StockLocationsPage() {
         />
       </div>
 
-      {showModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-screen items-center justify-center p-4">
-            <div
-              className="fixed inset-0 bg-black/10 backdrop-blur-md"
-              onClick={() => setShowModal(false)}
-            />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
-                {editLocation ? "Edit Stock Location" : "Add Stock Location"}
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Name</label>
-                  <input
-                    type="text"
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                    placeholder="e.g., Warehouse A"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Description</label>
-                  <textarea
-                    value={formDescription}
-                    onChange={(e) => setFormDescription(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                    rows={2}
-                    placeholder="Optional description"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Display Order</label>
-                  <input
-                    type="number"
-                    value={formDisplayOrder}
-                    onChange={(e) => setFormDisplayOrder(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                    placeholder="0"
-                  />
-                </div>
-                {editLocation && (
-                  <label className="flex items-center space-x-2 cursor-pointer">
+      {showModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] overflow-y-auto">
+            <div className="flex min-h-screen items-center justify-center p-4">
+              <div
+                className="fixed inset-0 bg-black/10 backdrop-blur-md"
+                onClick={() => setShowModal(false)}
+              />
+              <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  {editLocation ? "Edit Stock Location" : "Add Stock Location"}
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Name</label>
                     <input
-                      type="checkbox"
-                      checked={formActive}
-                      onChange={(e) => setFormActive(e.target.checked)}
-                      className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
+                      type="text"
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                      placeholder="e.g., Warehouse A"
                     />
-                    <span className="text-sm font-medium text-gray-700">Active</span>
-                  </label>
-                )}
-              </div>
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={isSaving || !formName.trim()}
-                  className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50"
-                >
-                  {isSaving ? "Saving..." : editLocation ? "Update" : "Create"}
-                </button>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Description</label>
+                    <textarea
+                      value={formDescription}
+                      onChange={(e) => setFormDescription(e.target.value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                      rows={2}
+                      placeholder="Optional description"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Display Order</label>
+                    <input
+                      type="number"
+                      value={formDisplayOrder}
+                      onChange={(e) => setFormDisplayOrder(e.target.value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                      placeholder="0"
+                    />
+                  </div>
+                  {editLocation && (
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formActive}
+                        onChange={(e) => setFormActive(e.target.checked)}
+                        className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
+                      />
+                      <span className="text-sm font-medium text-gray-700">Active</span>
+                    </label>
+                  )}
+                </div>
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={isSaving || !formName.trim()}
+                    className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50"
+                  >
+                    {isSaving ? "Saving..." : editLocation ? "Update" : "Create"}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
 
       <ConfirmModal
         isOpen={deleteLocationId !== null}

@@ -2,6 +2,7 @@
 
 import { isArray } from "es-toolkit/compat";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import {
   Pagination,
@@ -13,6 +14,7 @@ import {
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { DateInput } from "@/app/components/ui/DateInput";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
 import { toastError } from "@/app/lib/api/apiError";
 import {
@@ -49,6 +51,7 @@ const statusColor = (status: RubberCompoundOrderStatus) => {
 };
 
 export default function CompoundOrdersPage() {
+  const coreHref = useCoreAwareHref();
   const { showToast } = useToast();
   const scrollSentinelRef = useScrollRestoration("au-rubber:compound-orders");
   const [orders, setOrders] = useState<RubberCompoundOrderDto[]>([]);
@@ -229,7 +232,7 @@ export default function CompoundOrdersPage() {
         area="Compound Orders"
         error={error}
         reset={fetchData}
-        backHref="/au-rubber/portal"
+        backHref={coreHref("/au-rubber/portal")}
         backLabel="Back to Dashboard"
         brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
       />
@@ -436,155 +439,159 @@ export default function CompoundOrdersPage() {
         />
       </div>
 
-      {showNewModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-screen items-center justify-center p-4">
-            <div
-              className="fixed inset-0 bg-black/10 backdrop-blur-md"
-              onClick={() => setShowNewModal(false)}
-            />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">New Compound Order</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Compound</label>
-                  <select
-                    value={newCompoundStockId || ""}
-                    onChange={(e) =>
-                      setNewCompoundStockId(e.target.value ? Number(e.target.value) : null)
-                    }
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+      {showNewModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] overflow-y-auto">
+            <div className="flex min-h-screen items-center justify-center p-4">
+              <div
+                className="fixed inset-0 bg-black/10 backdrop-blur-md"
+                onClick={() => setShowNewModal(false)}
+              />
+              <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">New Compound Order</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Compound</label>
+                    <select
+                      value={newCompoundStockId || ""}
+                      onChange={(e) =>
+                        setNewCompoundStockId(e.target.value ? Number(e.target.value) : null)
+                      }
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                    >
+                      <option value="">Select compound</option>
+                      {stocks.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.compoundName} (Current: {s.quantityKg.toFixed(2)} kg)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Quantity (kg)</label>
+                    <input
+                      type="number"
+                      value={newQuantity}
+                      onChange={(e) => setNewQuantity(e.target.value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                      step="0.01"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Supplier</label>
+                    <input
+                      type="text"
+                      value={newSupplier}
+                      onChange={(e) => setNewSupplier(e.target.value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Expected Delivery
+                    </label>
+                    <DateInput
+                      value={newExpectedDelivery}
+                      onChange={(value) => setNewExpectedDelivery(value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Notes</label>
+                    <textarea
+                      value={newNotes}
+                      onChange={(e) => setNewNotes(e.target.value)}
+                      rows={2}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                    />
+                  </div>
+                </div>
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    onClick={() => {
+                      setShowNewModal(false);
+                      resetNewForm();
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                   >
-                    <option value="">Select compound</option>
-                    {stocks.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.compoundName} (Current: {s.quantityKg.toFixed(2)} kg)
-                      </option>
-                    ))}
-                  </select>
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreate}
+                    disabled={isSubmitting || !newCompoundStockId || !newQuantity}
+                    className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50"
+                  >
+                    {isSubmitting ? "Creating..." : "Create"}
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Quantity (kg)</label>
-                  <input
-                    type="number"
-                    value={newQuantity}
-                    onChange={(e) => setNewQuantity(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                    step="0.01"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Supplier</label>
-                  <input
-                    type="text"
-                    value={newSupplier}
-                    onChange={(e) => setNewSupplier(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Expected Delivery
-                  </label>
-                  <DateInput
-                    value={newExpectedDelivery}
-                    onChange={(value) => setNewExpectedDelivery(value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Notes</label>
-                  <textarea
-                    value={newNotes}
-                    onChange={(e) => setNewNotes(e.target.value)}
-                    rows={2}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                  />
-                </div>
-              </div>
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  onClick={() => {
-                    setShowNewModal(false);
-                    resetNewForm();
-                  }}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreate}
-                  disabled={isSubmitting || !newCompoundStockId || !newQuantity}
-                  className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50"
-                >
-                  {isSubmitting ? "Creating..." : "Create"}
-                </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
 
-      {showReceiveModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-screen items-center justify-center p-4">
-            <div
-              className="fixed inset-0 bg-black/10 backdrop-blur-md"
-              onClick={() => setShowReceiveModal(false)}
-            />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Receive Order</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Actual Quantity (kg)
-                  </label>
-                  <input
-                    type="number"
-                    value={receiveQty}
-                    onChange={(e) => setReceiveQty(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                    step="0.01"
-                  />
+      {showReceiveModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] overflow-y-auto">
+            <div className="flex min-h-screen items-center justify-center p-4">
+              <div
+                className="fixed inset-0 bg-black/10 backdrop-blur-md"
+                onClick={() => setShowReceiveModal(false)}
+              />
+              <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Receive Order</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Actual Quantity (kg)
+                    </label>
+                    <input
+                      type="number"
+                      value={receiveQty}
+                      onChange={(e) => setReceiveQty(e.target.value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                      step="0.01"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Batch Number</label>
+                    <input
+                      type="text"
+                      value={receiveBatch}
+                      onChange={(e) => setReceiveBatch(e.target.value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Notes</label>
+                    <textarea
+                      value={receiveNotes}
+                      onChange={(e) => setReceiveNotes(e.target.value)}
+                      rows={2}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Batch Number</label>
-                  <input
-                    type="text"
-                    value={receiveBatch}
-                    onChange={(e) => setReceiveBatch(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                  />
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    onClick={() => setShowReceiveModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleReceive}
+                    disabled={isSubmitting || !receiveQty}
+                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
+                  >
+                    {isSubmitting ? "Receiving..." : "Receive"}
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Notes</label>
-                  <textarea
-                    value={receiveNotes}
-                    onChange={(e) => setReceiveNotes(e.target.value)}
-                    rows={2}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                  />
-                </div>
-              </div>
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowReceiveModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleReceive}
-                  disabled={isSubmitting || !receiveQty}
-                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
-                >
-                  {isSubmitting ? "Receiving..." : "Receive"}
-                </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
 
       <ConfirmModal
         isOpen={cancelOrderId !== null}

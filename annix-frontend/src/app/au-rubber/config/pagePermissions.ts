@@ -46,6 +46,13 @@ export function permissionForPath(pathname: string): string | null {
     return exactMatch;
   }
 
-  const matchingKey = keys(PAGE_PERMISSIONS).find((key) => pathname.startsWith(`${key}/`));
-  return matchingKey ? PAGE_PERMISSIONS[matchingKey] : null;
+  // Longest matching prefix, so a nested detail route (e.g.
+  // accounting/reconciliation/:id) resolves to the most specific permission
+  // (accounting:manage) rather than an ancestor's weaker one (accounting:view).
+  const matchingKeys = keys(PAGE_PERMISSIONS).filter((key) => pathname.startsWith(`${key}/`));
+  const longestKey = matchingKeys.reduce<string | null>(
+    (longest, key) => (longest !== null && longest.length >= key.length ? longest : key),
+    null,
+  );
+  return longestKey ? PAGE_PERMISSIONS[longestKey] : null;
 }

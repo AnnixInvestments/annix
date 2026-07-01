@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { permissionForPath } from "@/app/au-rubber/config/pagePermissions";
 import { useCoreActiveApp } from "../CoreActiveAppContext";
 import type { CoreApp } from "../config/navAppMap";
 
@@ -18,6 +19,20 @@ function pathTargetsApp(pathname: string, app: CoreApp): boolean {
 function pathTargetsOtherApp(pathname: string, activeApp: CoreApp): boolean {
   const otherApp: CoreApp = activeApp === "stock-control" ? "au-rubber" : "stock-control";
   return pathTargetsApp(pathname, otherApp);
+}
+
+// The required AU permission for an in-shell route, or null if the route isn't
+// permission-gated. Maps the shell path back to its legacy `/au-rubber/portal/*`
+// form and reuses the app's own resolver (exact match, then longest-prefix), so
+// the shell gate stays in lockstep with `RequirePermission`. Stock Control uses
+// a separate role model (no PAGE_PERMISSIONS map), so this only applies to AU.
+function requiredAuPermission(pathname: string): string | null {
+  const prefix = "/core/portal/au-rubber";
+  if (!pathTargetsApp(pathname, "au-rubber")) {
+    return null;
+  }
+  const legacyPath = `/au-rubber/portal${pathname.slice(prefix.length)}`;
+  return permissionForPath(legacyPath);
 }
 
 function ContentSkeleton() {
@@ -38,6 +53,8 @@ function ContentSkeleton() {
 export function CorePortalPageAccessGuard(props: {
   activeApp: CoreApp;
   ready: boolean;
+  permissions: string[];
+  isAdmin: boolean;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -93,6 +110,42 @@ export function CorePortalPageAccessGuard(props: {
 
   if (!props.ready) {
     return <ContentSkeleton />;
+  }
+
+  const requiredPermission = requiredAuPermission(pathname);
+  const permissionDenied =
+    requiredPermission !== null &&
+    !props.isAdmin &&
+    !props.permissions.includes(requiredPermission);
+  if (permissionDenied) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center p-6">
+        <div className="max-w-md rounded-lg border border-gray-200 bg-white p-6 text-center shadow-sm">
+          <svg
+            className="mx-auto h-12 w-12 text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+            />
+          </svg>
+          <h2 className="mt-3 text-lg font-semibold text-gray-900">Access denied</h2>
+          <p className="mt-2 text-sm text-gray-700">You don't have permission to view this page.</p>
+          <button
+            type="button"
+            onClick={() => core.switchApp(props.activeApp)}
+            className="mt-4 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            {`Go to ${APP_LABELS[props.activeApp]} dashboard`}
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return <>{props.children}</>;

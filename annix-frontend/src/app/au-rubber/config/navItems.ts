@@ -78,14 +78,6 @@ export const AU_NAV_ITEMS: AuNavItemDef[] = [
     permission: PAGE_PERMISSIONS["/au-rubber/portal/supplier-cocs"],
   },
   {
-    key: "supplier-statements",
-    href: "/au-rubber/portal/supplier-statements",
-    label: "Statements",
-    group: "Suppliers",
-    permission: PAGE_PERMISSIONS["/au-rubber/portal/supplier-statements"],
-  },
-
-  {
     key: "customer-orders",
     href: "/au-rubber/portal/orders",
     label: "Customer Orders",
@@ -189,21 +181,21 @@ export const AU_NAV_ITEMS: AuNavItemDef[] = [
 
   {
     key: "website-pages",
-    href: "/au-rubber/portal/website",
+    href: "/admin/portal/marketing/au",
     label: "Pages",
     group: "Website",
     permission: PAGE_PERMISSIONS["/au-rubber/portal/website"],
   },
   {
     key: "website-blog",
-    href: "/au-rubber/portal/website/blog",
+    href: "/admin/portal/marketing/au/blog",
     label: "Blog",
     group: "Website",
     permission: PAGE_PERMISSIONS["/au-rubber/portal/website"],
   },
   {
     key: "website-testimonials",
-    href: "/au-rubber/portal/website/testimonials",
+    href: "/admin/portal/marketing/au/testimonials",
     label: "Testimonials",
     group: "Website",
     permission: PAGE_PERMISSIONS["/au-rubber/portal/website"],

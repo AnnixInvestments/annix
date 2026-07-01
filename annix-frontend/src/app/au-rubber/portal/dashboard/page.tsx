@@ -150,7 +150,7 @@ export default function AuRubberDashboard() {
             companiesQuery.refetch();
             productsQuery.refetch();
           }}
-          backHref="/au-rubber/portal"
+          backHref={coreHref("/au-rubber/portal")}
           backLabel="Back to Dashboard"
           brandButtonClass="bg-yellow-600 hover:bg-yellow-700"
         />

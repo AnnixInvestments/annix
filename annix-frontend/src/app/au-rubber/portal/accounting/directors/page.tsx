@@ -123,7 +123,7 @@ export default function DirectorsPage() {
   };
 
   return (
-    <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/accounting"]}>
+    <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/accounting/directors"]}>
       <div className="space-y-6">
         <Breadcrumb
           items={[
