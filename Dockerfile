@@ -30,6 +30,15 @@ ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
 # frontend-builder layer has no .git to derive one.
 ARG APP_BUILD_ID=dev
 ENV APP_BUILD_ID=${APP_BUILD_ID}
+# #395 /core cutover flags — build-time, PER-APP (comma-separated app list, or
+# "true"/"all"). Empty default = OFF for every app, so an unset build-arg is a
+# strict no-op. Flip per environment by setting the CORE_PORTAL_ENABLED /
+# CORE_PORTAL_REDIRECT_LEGACY GitHub Actions repo variables (deploy.yml) and
+# rebuilding — there is no runtime toggle for a NEXT_PUBLIC_* constant.
+ARG NEXT_PUBLIC_CORE_PORTAL_ENABLED=
+ENV NEXT_PUBLIC_CORE_PORTAL_ENABLED=${NEXT_PUBLIC_CORE_PORTAL_ENABLED}
+ARG NEXT_PUBLIC_CORE_PORTAL_REDIRECT_LEGACY=
+ENV NEXT_PUBLIC_CORE_PORTAL_REDIRECT_LEGACY=${NEXT_PUBLIC_CORE_PORTAL_REDIRECT_LEGACY}
 COPY --from=product-data-builder /app/packages/product-data/ ./packages/product-data/
 COPY packages/feedback-sdk/ ./packages/feedback-sdk/
 COPY packages/feedback-web/ ./packages/feedback-web/

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { DateInput } from "@/app/components/ui/DateInput";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type { StaffStockFilters } from "@/app/lib/api/stockControlApi";
@@ -63,6 +64,11 @@ export default function ReportsPage() {
   const { profile } = useStockControlAuth();
   const [activeTab, setActiveTab] = useState<ReportTab>("cost-by-job");
   const [showNoMovementsPopup, setShowNoMovementsPopup] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const todayISO = now().toFormat("yyyy-MM-dd");
 
@@ -1106,71 +1112,74 @@ export default function ReportsPage() {
         {activeTab === "staff-stock" && renderStaffStock()}
       </div>
 
-      {showNoMovementsPopup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
-          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full mx-4 overflow-hidden">
-            {profile?.logoUrl &&
-              (() => {
-                const rawCompanyName = profile.companyName;
-                return (
-                  <div
-                    className="flex items-center justify-center p-6 pb-4"
-                    style={{
-                      backgroundColor: profile.primaryColor
-                        ? `${profile.primaryColor}10`
-                        : "#f0fdfa",
-                    }}
-                  >
-                    <img
-                      src={profile.logoUrl}
-                      alt={rawCompanyName || "Company"}
-                      className="h-12 max-w-[180px] object-contain"
-                    />
-                  </div>
-                );
-              })()}
-            <div className="p-6 pt-4 text-center">
-              <svg
-                className="mx-auto h-10 w-10 mb-3"
-                style={{
-                  color: (() => {
-                    const pc = profile ? profile.primaryColor : null;
-                    return pc ? pc : "#0d9488";
-                  })(),
-                }}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Stock Movement</h3>
-              <p className="text-sm text-gray-600 mb-5">
-                There has been no stock movement on the selected date. Please select a different
-                date range.
-              </p>
-              <button
-                type="button"
-                onClick={() => setShowNoMovementsPopup(false)}
-                className="w-full rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors"
-                style={{
-                  backgroundColor: (() => {
-                    const bgc = profile ? profile.primaryColor : null;
-                    return bgc ? bgc : "#0d9488";
-                  })(),
-                }}
-              >
-                Select Another Date
-              </button>
+      {showNoMovementsPopup &&
+        mounted &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/10 backdrop-blur-md">
+            <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full mx-4 overflow-hidden">
+              {profile?.logoUrl &&
+                (() => {
+                  const rawCompanyName = profile.companyName;
+                  return (
+                    <div
+                      className="flex items-center justify-center p-6 pb-4"
+                      style={{
+                        backgroundColor: profile.primaryColor
+                          ? `${profile.primaryColor}10`
+                          : "#f0fdfa",
+                      }}
+                    >
+                      <img
+                        src={profile.logoUrl}
+                        alt={rawCompanyName || "Company"}
+                        className="h-12 max-w-[180px] object-contain"
+                      />
+                    </div>
+                  );
+                })()}
+              <div className="p-6 pt-4 text-center">
+                <svg
+                  className="mx-auto h-10 w-10 mb-3"
+                  style={{
+                    color: (() => {
+                      const pc = profile ? profile.primaryColor : null;
+                      return pc ? pc : "#0d9488";
+                    })(),
+                  }}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Stock Movement</h3>
+                <p className="text-sm text-gray-600 mb-5">
+                  There has been no stock movement on the selected date. Please select a different
+                  date range.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowNoMovementsPopup(false)}
+                  className="w-full rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors"
+                  style={{
+                    backgroundColor: (() => {
+                      const bgc = profile ? profile.primaryColor : null;
+                      return bgc ? bgc : "#0d9488";
+                    })(),
+                  }}
+                >
+                  Select Another Date
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

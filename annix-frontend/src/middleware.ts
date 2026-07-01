@@ -6,6 +6,7 @@ import {
   portalForHost,
 } from "@annix/product-data/portals";
 import { type NextRequest, NextResponse } from "next/server";
+import { coreShellRedirectTarget } from "@/app/core/portal/lib/coreShellRewrite";
 
 const STATIC_FILE_REGEX =
   /\.(jpg|jpeg|png|gif|svg|webp|ico|css|js|woff|woff2|ttf|eot|map|mp4|webm|pdf)$/i;
@@ -82,6 +83,23 @@ export function middleware(request: NextRequest) {
   if (!isCoreItself && !carriesAdminTransfer && CORE_ENTRY_REDIRECT_PATHS.has(pathname)) {
     url.pathname = "/core";
     return NextResponse.redirect(url, 301);
+  }
+
+  // #395 Phase 2: once an app is soaked in-shell (Phase 1 ON) and its legacy deep
+  // URLs are being retired, redirect them into /core so old bookmarks / links land
+  // in the shell rather than legacy chrome. coreShellRedirectTarget applies BOTH
+  // per-app gates (Phase 1 enabled AND Phase 2 redirect-legacy enabled for that
+  // app) and returns null otherwise — so this is a strict no-op for any app not
+  // opted in, and unhosted paths keep serving legacy. Path-prefix hosts only
+  // (dedicated per-app hosts return from the strip-and-rewrite block above; those
+  // are a separate follow-up). 307 keeps it reversible — drop the app from the
+  // flag and the redirect is gone with nothing cached.
+  if (!isCoreItself && !carriesAdminTransfer) {
+    const shellTarget = coreShellRedirectTarget(pathname);
+    if (shellTarget) {
+      url.pathname = shellTarget;
+      return NextResponse.redirect(url, 307);
+    }
   }
 
   // Root-prefix hosts. The public marketing website lives ONLY on the marketing

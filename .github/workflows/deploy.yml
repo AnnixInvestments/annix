@@ -167,6 +167,8 @@ jobs:
             NEXT_PUBLIC_API_URL=/api
             NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
             APP_BUILD_ID=${{ github.sha }}
+            NEXT_PUBLIC_CORE_PORTAL_ENABLED=${{ vars.CORE_PORTAL_ENABLED }}
+            NEXT_PUBLIC_CORE_PORTAL_REDIRECT_LEGACY=${{ vars.CORE_PORTAL_REDIRECT_LEGACY }}
           cache-from: type=gha,scope=app
           cache-to: type=gha,mode=max,scope=app
 

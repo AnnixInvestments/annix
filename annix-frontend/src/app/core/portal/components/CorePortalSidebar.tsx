@@ -19,12 +19,8 @@ import {
 } from "@/app/stock-control/config/navItems";
 import { useStockControlRbac } from "@/app/stock-control/context/StockControlRbacContext";
 import { useViewAs } from "@/app/stock-control/context/ViewAsContext";
-import {
-  isCorePortalEnabled,
-  isCorePortalHostedRouteTemplate,
-  isCorePortalHostedSuffix,
-} from "../config/corePortalFlag";
 import type { CoreApp } from "../config/navAppMap";
+import { coreShellHref } from "../lib/coreShellRewrite";
 
 const NIX_QUOTE_FLAG = "STOCK_MGMT_NIX_QUOTE_FROM_DOCUMENTS";
 
@@ -61,33 +57,22 @@ interface CoreNavGroup {
 /**
  * Resolve a legacy app nav href into the link the shell should render.
  *
- * - Cutover OFF → always in-shell `/core/portal/<app>/<rest>` (today's exact
- *   behaviour; OFF users never reach the shell anyway).
- * - Cutover ON → hosted suffixes (currently just `dashboard`) link in-shell;
- *   everything else links to the EXISTING legacy `/<app>/portal/<rest>` page
- *   (the hybrid — auth carries via the shared per-app token store).
+ * Delegates to the shared `coreShellHref` rewrite core so the sidebar, the
+ * `useCoreAwareHref` hook and the middleware legacy-URL redirect all agree:
+ * a hosted route of an ENABLED app links in-shell (`/core/portal/<app>/<rest>`),
+ * and everything else — an unhosted/sub-route target, or a not-yet-enabled app —
+ * ejects to the legacy `/<app>/portal/<rest>` page (auth carries via the shared
+ * per-app token store). Previously a parallel implementation whose OFF-branch
+ * pointed in-shell, disagreeing with `coreShellHref` for a not-yet-enabled app.
  */
-function resolveNavHref(href: string, prefix: string, activeApp: CoreApp): string {
-  const startsWith = href.startsWith(prefix);
-  if (!startsWith) {
+function resolveNavHref(href: string, prefix: string): string {
+  if (!href.startsWith(prefix)) {
     // A nav href that isn't this app's portal path is an absolute cross-app link
     // (e.g. the Website items point at the admin marketing CMS). Pass it through
     // unchanged so it navigates out of the shell to that destination.
     return href;
   }
-  const rest = href.slice(prefix.length);
-  const suffixBase = rest.split("?")[0];
-  const corePath = `/core/portal/${activeApp}/${rest}`;
-  if (!isCorePortalEnabled()) {
-    return corePath;
-  }
-  if (isCorePortalHostedSuffix(activeApp, suffixBase)) {
-    return corePath;
-  }
-  if (isCorePortalHostedRouteTemplate(activeApp, suffixBase)) {
-    return corePath;
-  }
-  return `/${activeApp}/portal/${rest}`;
+  return coreShellHref(href);
 }
 
 interface CorePortalSidebarProps {
@@ -294,7 +279,7 @@ function StockControlSidebarNav(props: { onNavigate: () => void }) {
   const toItem = (item: (typeof ALL_NAV_ITEMS)[number]): CoreNavItem => ({
     key: item.key,
     label: item.label,
-    href: resolveNavHref(item.href, SC_PORTAL_PREFIX, "stock-control"),
+    href: resolveNavHref(item.href, SC_PORTAL_PREFIX),
   });
 
   const ungrouped = allowed.filter((item) => !item.group);
@@ -309,7 +294,7 @@ function StockControlSidebarNav(props: { onNavigate: () => void }) {
   const adminItems: CoreNavItem[] = SC_ADMIN_LINK_DEFS.map((def) => ({
     key: def.key,
     label: def.label,
-    href: resolveNavHref(`${SC_PORTAL_PREFIX}${def.suffix}`, SC_PORTAL_PREFIX, "stock-control"),
+    href: resolveNavHref(`${SC_PORTAL_PREFIX}${def.suffix}`, SC_PORTAL_PREFIX),
   }));
   const adminGroup: CoreNavGroup | null = isAdminRole
     ? { key: "administration", label: "Administration", items: adminItems }
@@ -354,7 +339,7 @@ function AuRubberSidebarNav(props: {
   const toItem = (item: AuNavItemDef): CoreNavItem => ({
     key: item.key,
     label: item.label,
-    href: resolveNavHref(item.href, AU_PORTAL_PREFIX, "au-rubber"),
+    href: resolveNavHref(item.href, AU_PORTAL_PREFIX),
   });
 
   const standaloneItems = allowed.filter((item) => !item.group).map(toItem);

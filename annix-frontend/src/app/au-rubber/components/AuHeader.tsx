@@ -666,7 +666,7 @@ export function AuHeader(props: AuHeaderProps) {
             />
           </div>
         </div>
-        {isCorePortalEnabled() && (
+        {isCorePortalEnabled("au-rubber") && (
           <Link
             href="/core/portal"
             className="flex items-center gap-2 rounded-lg px-2 py-2 text-white transition-colors hover:bg-white hover:bg-opacity-10"

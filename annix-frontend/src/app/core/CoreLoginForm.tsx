@@ -152,7 +152,9 @@ export function CoreLoginForm() {
       // land on the legacy per-app dashboard exactly as today. A valid returnUrl
       // still wins in both cases.
       const legacyDashboard = DASHBOARD_BY_APP[app];
-      const dashboard = isCorePortalEnabled() ? `/core/portal/${app}/dashboard` : legacyDashboard;
+      const dashboard = isCorePortalEnabled(app)
+        ? `/core/portal/${app}/dashboard`
+        : legacyDashboard;
       router.push(safeReturn ?? dashboard);
     } catch (err) {
       setError(describeLoginError(err));

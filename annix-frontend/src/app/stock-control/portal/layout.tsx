@@ -195,7 +195,7 @@ function PortalContent({ children }: { children: React.ReactNode }) {
                 <div className="print:hidden">
                   <StockControlHeader />
                 </div>
-                {isCorePortalEnabled() && (
+                {isCorePortalEnabled("stock-control") && (
                   <Link
                     href="/core/portal/stock-control/dashboard"
                     className="flex items-center justify-center gap-1.5 bg-[var(--sc-primary,#323288)] px-4 py-1.5 text-xs font-medium text-white hover:bg-[var(--sc-primary-hover,#252560)] print:hidden"

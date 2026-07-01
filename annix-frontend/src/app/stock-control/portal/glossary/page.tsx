@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type { GlossaryTerm } from "@/app/lib/api/stockControlApi";
 import {
@@ -24,6 +25,11 @@ export default function GlossaryPage() {
   const upsertTerm = useUpsertGlossaryTerm();
   const deleteTerm = useDeleteGlossaryTerm();
   const resetAll = useResetGlossary();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isAdmin = profile?.role === "admin";
 
@@ -262,68 +268,73 @@ export default function GlossaryPage() {
         </div>
       </div>
 
-      {editingTerm && (
-        <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
-            <div className="p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                Edit: {editingTerm.abbreviation}
-              </h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Term</label>
-                  <input
-                    type="text"
-                    value={editForm.term}
-                    onChange={(e) => setEditForm((f) => ({ ...f, term: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--sc-primary,#323288)]"
-                  />
+      {editingTerm &&
+        mounted &&
+        createPortal(
+          <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
+              <div className="p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                  Edit: {editingTerm.abbreviation}
+                </h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Term</label>
+                    <input
+                      type="text"
+                      value={editForm.term}
+                      onChange={(e) => setEditForm((f) => ({ ...f, term: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--sc-primary,#323288)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Definition
+                    </label>
+                    <textarea
+                      value={editForm.definition}
+                      onChange={(e) =>
+                        setEditForm((f) => ({
+                          ...f,
+                          definition: e.target.value,
+                        }))
+                      }
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--sc-primary,#323288)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                    <input
+                      type="text"
+                      value={editForm.category}
+                      onChange={(e) => setEditForm((f) => ({ ...f, category: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--sc-primary,#323288)]"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Definition</label>
-                  <textarea
-                    value={editForm.definition}
-                    onChange={(e) =>
-                      setEditForm((f) => ({
-                        ...f,
-                        definition: e.target.value,
-                      }))
-                    }
-                    rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--sc-primary,#323288)]"
-                  />
+                <div className="flex justify-end gap-3 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => setEditingTerm(null)}
+                    className="px-4 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={upsertTerm.isPending}
+                    className="px-4 py-2 text-sm text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)] rounded-lg disabled:opacity-50"
+                  >
+                    {upsertTerm.isPending ? "Saving..." : "Save"}
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                  <input
-                    type="text"
-                    value={editForm.category}
-                    onChange={(e) => setEditForm((f) => ({ ...f, category: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--sc-primary,#323288)]"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setEditingTerm(null)}
-                  className="px-4 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={upsertTerm.isPending}
-                  className="px-4 py-2 text-sm text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)] rounded-lg disabled:opacity-50"
-                >
-                  {upsertTerm.isPending ? "Saving..." : "Save"}
-                </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

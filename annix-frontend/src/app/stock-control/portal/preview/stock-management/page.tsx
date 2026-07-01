@@ -3,6 +3,7 @@
 import { isArray, isString } from "es-toolkit/compat";
 import Link from "next/link";
 import { useState } from "react";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { stockControlTokenStore } from "@/app/lib/api/portalTokenStores";
 
 function parseErrorResponse(text: string, status: number): string {
@@ -116,6 +117,7 @@ function groupLabel(group: PreviewLink["group"]): string {
 }
 
 export default function StockManagementPreviewIndexPage() {
+  const coreHref = useCoreAwareHref();
   const [isSeeding, setIsSeeding] = useState(false);
   const [seedResult, setSeedResult] = useState<SeedResult | null>(null);
   const [seedError, setSeedError] = useState<string | null>(null);
@@ -259,7 +261,7 @@ export default function StockManagementPreviewIndexPage() {
               {items.map((link) => (
                 <Link
                   key={link.href}
-                  href={link.href}
+                  href={coreHref(link.href)}
                   className="block rounded-lg border border-gray-200 bg-white p-4 shadow-sm hover:border-[var(--sc-primary-400,#5b5b9c)] hover:shadow"
                 >
                   <div className="font-semibold text-gray-900">{link.title}</div>

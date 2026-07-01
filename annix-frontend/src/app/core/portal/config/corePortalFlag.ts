@@ -1,25 +1,61 @@
 import type { CoreApp } from "./navAppMap";
 
-const ENV_FLAG = process.env.NEXT_PUBLIC_CORE_PORTAL_ENABLED;
+const ALL_CORE_APPS: readonly CoreApp[] = ["stock-control", "au-rubber"];
 
 /**
- * Master switch for the #395 unified `/core/portal` cutover — option (b) hybrid.
- *
- * DEFAULT OFF: with the flag off, login routes to the legacy
- * `/<app>/portal/dashboard` and nothing about today's behaviour changes. Flip
- * by setting `NEXT_PUBLIC_CORE_PORTAL_ENABLED=true` at build time (a deliberate,
- * reversible per-environment switch — same build-time-constant style as
- * `stock-control/config/rbacMode.ts`).
- *
- * When ON: `CoreLoginForm` routes INTO the shell (`/core/portal/<app>/dashboard`)
- * and the shell's sidebar links hosted routes in-shell while linking every
- * not-yet-migrated route at the EXISTING legacy `/<app>/portal/<suffix>` page
- * (the hybrid — no page migration required).
+ * Parse a PER-APP build-time flag into the set of apps it enables. Accepts a
+ * comma-separated app list (`"stock-control"`, `"stock-control,au-rubber"`) so
+ * each app can flip independently and soak on its own timeline; `"true"` / `"all"`
+ * are a convenience meaning every app. Unknown tokens are ignored. Empty/unset →
+ * no apps (default OFF). Build-time `NEXT_PUBLIC_*` constant, so a change needs a
+ * rebuild+redeploy, not a runtime toggle.
  */
-export const CORE_PORTAL_ENABLED: boolean = ENV_FLAG === "true";
+function parseEnabledApps(raw: string | undefined): ReadonlySet<CoreApp> {
+  if (!raw) {
+    return new Set();
+  }
+  const trimmed = raw.trim().toLowerCase();
+  if (trimmed === "true" || trimmed === "all") {
+    return new Set(ALL_CORE_APPS);
+  }
+  const requested = trimmed
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+  return new Set(ALL_CORE_APPS.filter((app) => requested.includes(app)));
+}
 
-export function isCorePortalEnabled(): boolean {
-  return CORE_PORTAL_ENABLED;
+/**
+ * #395 unified `/core/portal` cutover — Phase 1, PER APP. DEFAULT OFF: with an
+ * app absent from the set, its login routes to the legacy
+ * `/<app>/portal/dashboard` and nothing changes for it. Enable per app via
+ * `NEXT_PUBLIC_CORE_PORTAL_ENABLED` (e.g. `stock-control` to flip Stock Control
+ * while AU Rubber stays legacy), so each app soaks independently. When on for an
+ * app, `CoreLoginForm` routes it INTO the shell and the shell links its hosted
+ * routes in-shell.
+ */
+const CORE_PORTAL_ENABLED_APPS = parseEnabledApps(process.env.NEXT_PUBLIC_CORE_PORTAL_ENABLED);
+
+export function isCorePortalEnabled(app: CoreApp): boolean {
+  return CORE_PORTAL_ENABLED_APPS.has(app);
+}
+
+/**
+ * #395 Phase 2 switch — legacy deep-URL redirect, PER APP. SEPARATE from Phase 1
+ * on purpose: Phase 1 flips an app's shell ON while its legacy `/<app>/portal/*`
+ * URLs keep serving (with a "go to new portal" signpost) so it can soak with a
+ * working fallback; only once soaked do we add THIS app to the redirect set and
+ * the middleware 307-redirects its legacy deep URLs into the shell to retire
+ * them. DEFAULT OFF per app, and a strict no-op for an app unless Phase 1 is also
+ * on for it. Reversible: drop the app and its legacy URLs serve legacy again
+ * (307, not cached).
+ */
+const CORE_PORTAL_REDIRECT_LEGACY_APPS = parseEnabledApps(
+  process.env.NEXT_PUBLIC_CORE_PORTAL_REDIRECT_LEGACY,
+);
+
+export function isCorePortalRedirectLegacyEnabled(app: CoreApp): boolean {
+  return CORE_PORTAL_REDIRECT_LEGACY_APPS.has(app);
 }
 
 /**
@@ -55,6 +91,9 @@ export const CORE_PORTAL_HOSTED_SUFFIXES_BY_APP: Record<CoreApp, ReadonlySet<str
     "glossary",
     "rubber-quote",
     "quote",
+    "stock",
+    "supplier",
+    "customer",
   ]),
   "au-rubber": new Set([
     "dashboard",
@@ -110,6 +149,9 @@ export const CORE_PORTAL_HOSTED_ROUTE_TEMPLATES_BY_APP: Record<CoreApp, Readonly
     "library/mines",
     "library/mines/*",
     "library/documents/*",
+    "preview/stock-management",
+    "preview/stock-management/*",
+    "preview/stock-management/admin/*",
   ]),
   "au-rubber": new Set([
     "delivery-notes/:id",
