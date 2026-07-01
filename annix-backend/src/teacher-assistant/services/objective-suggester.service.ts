@@ -1,9 +1,9 @@
 import type { AgeBucket, DifficultyLevel, Subject } from "@annix/product-data/teacher-assistant";
 import { Injectable, Logger } from "@nestjs/common";
 import { AiApp } from "../../ai-usage/entities/ai-usage-log.entity";
-import { parseJsonFromAi } from "../../lib/json-from-ai";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { parseAiJson } from "../../nix/ai-providers/ai-json";
 
 const METRIC_CATEGORY = "teacher-assistant-suggest";
 const SYSTEM_PROMPT = `You are an expert education designer who writes concise learning objectives.
@@ -40,7 +40,7 @@ export class ObjectiveSuggesterService {
         undefined,
         { app: AiApp.TEACHER_ASSISTANT, actionType: "teacher-suggest-objectives" },
       );
-      const parsed = parseJsonFromAi<AiSuggestionResponse>(response.content);
+      const parsed = parseAiJson<AiSuggestionResponse>(response.content, { repair: true });
       const suggestions = (parsed.suggestions ?? [])
         .map((s) => (typeof s === "string" ? s.trim() : ""))
         .filter((s) => s.length > 0)

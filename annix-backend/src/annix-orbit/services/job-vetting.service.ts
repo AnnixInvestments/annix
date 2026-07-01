@@ -1,9 +1,9 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { AiApp } from "../../ai-usage/entities/ai-usage-log.entity";
 import { now } from "../../lib/datetime";
-import { parseJsonFromAi } from "../../lib/json-from-ai";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { parseAiJson } from "../../nix/ai-providers/ai-json";
 
 export interface JobVettingInput {
   title: string;
@@ -121,7 +121,7 @@ export class JobVettingService {
         { app: AiApp.ANNIX_ORBIT, actionType: "orbit-job-vetting" },
       );
 
-      const parsed = parseJsonFromAi<AiVettingResponse>(response.content);
+      const parsed = parseAiJson<AiVettingResponse>(response.content, { repair: true });
       const notes = this.buildNotes(parsed);
       return {
         acceptsZa: this.coerceBoolean(parsed.acceptsSouthAfrica),

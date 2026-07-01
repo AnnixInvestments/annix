@@ -3,10 +3,10 @@ import { Cron } from "@nestjs/schedule";
 import { AiApp } from "../../ai-usage/entities/ai-usage-log.entity";
 import { now } from "../../lib/datetime";
 import { stripHtmlToText } from "../../lib/html-text";
-import { parseJsonFromAi } from "../../lib/json-from-ai";
 import { MAX_PROMPT_HINTS, sanitizePromptHint } from "../../lib/prompt-hint-sanitizer";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { parseAiJson } from "../../nix/ai-providers/ai-json";
 import { PuppeteerPoolService } from "../../shared/services/puppeteer-pool.service";
 import { type IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { EducationExtractionCorrectionRepository } from "../repositories/education-extraction-correction.repository";
@@ -189,7 +189,9 @@ export class EducationAdmissionIngestionService {
         },
         { app: AiApp.EDUCATION, actionType: "admission-requirement-extraction" },
       );
-      const parsed = parseJsonFromAi<{ requirements?: ExtractedRequirement[] }>(result.content);
+      const parsed = parseAiJson<{ requirements?: ExtractedRequirement[] }>(result.content, {
+        repair: true,
+      });
       const requirements = parsed.requirements ?? [];
       return requirements.filter((req) => Boolean(req?.fieldKey) && Boolean(req?.value));
     } catch (error) {

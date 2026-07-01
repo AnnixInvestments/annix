@@ -848,15 +848,9 @@ export class DrawingExtractionService {
   }
 
   private parseClassification(response: string): DocumentClassification {
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      this.logger.warn("Classification response did not contain valid JSON; defaulting to drawing");
-      return { category: "drawing", confidence: 0, docType: null };
-    }
-
     let parsed: Record<string, unknown>;
     try {
-      parsed = JSON.parse(jsonMatch[0]);
+      parsed = parseAiJsonObject(response);
     } catch (err) {
       this.logger.warn(
         `Classification JSON parse failed (${err instanceof Error ? err.message : "unknown"}); defaulting to drawing`,

@@ -2,6 +2,7 @@
 
 import { isString } from "es-toolkit/compat";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { fieldById } from "@/app/lib/config/rfq/fieldRegistry";
@@ -11,6 +12,7 @@ import { clampPanelGeometryToViewport, type PanelGeometry } from "@/app/lib/pane
 import {
   type ChatMessage,
   nixErrorStatus,
+  nixFriendlyError,
   useCreateNixSession,
   useNixHistory,
   useSendNixMessage,
@@ -306,17 +308,16 @@ const CONTEXT_CONFIGS: Record<PortalContext, ContextConfig> = {
     ],
   },
   general: {
+    // The default context, shared by every app that mounts <NixAssistant />
+    // (Orbit, Teacher Assistant, Sentinel, FieldFlow, …). Its prompts must be
+    // app-agnostic — piping/flange suggestions belong to piping mounts, which
+    // pass an explicit `quickActions` prop instead.
     title: "Chat with Nix",
-    subtitle: "Your AI piping assistant",
-    welcomeMessage:
-      "Ask me anything about piping specifications, or tell me to create items for your RFQ.",
+    subtitle: "Your AI assistant",
+    welcomeMessage: "Ask me anything, or tell me what you'd like help with.",
     quickActions: [
-      { label: "Add a bend", prompt: "Add a 200NB bend at 45 degrees with flanges both ends" },
-      { label: "Validation issues", prompt: "What validation issues do I have?" },
-      {
-        label: "Learn about flanges",
-        prompt: "What are the different types of flange connections?",
-      },
+      { label: "What can you do?", prompt: "What can you help me with?" },
+      { label: "Get started", prompt: "How do I get started?" },
     ],
   },
 };
@@ -338,6 +339,14 @@ interface NixChatPanelProps {
   className?: string;
   portalContext?: PortalContext;
   pageContext?: PageContext;
+  /**
+   * Overrides the context's default quick-action prompts. Non-piping mounts
+   * (Orbit seekers/students/recruiters, etc.) pass their own generic prompts
+   * — or an empty array — so users never see pipe/flange suggestions that
+   * don't apply to their app. When omitted, the piping-oriented context
+   * defaults are used.
+   */
+  quickActions?: Array<{ label: string; prompt: string }>;
 }
 
 const MIN_WIDTH = 320;
@@ -347,6 +356,28 @@ const DEFAULT_HEIGHT = 500;
 const EDGE_PADDING = 16;
 const BOTTOM_PADDING = 80;
 const GEOMETRY_STORAGE_KEY = "nix-chat-panel-geometry";
+const MOBILE_BREAKPOINT = 640;
+
+/**
+ * True below the mobile breakpoint, where the fixed-pixel draggable window
+ * would overflow a ~360px viewport. Resize-aware via matchMedia so the panel
+ * flips between full-screen (mobile) and the draggable window (md+) live.
+ * Starts false to match SSR and avoid a hydration mismatch, then settles on
+ * mount.
+ */
+function useIsMobileViewport(): boolean {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
+    if (typeof window === "undefined") return;
+    const query = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
+    const update = () => setIsMobile(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  return isMobile;
+}
 
 type ResizeEdge = "n" | "e" | "w" | "s" | "nw" | "ne" | "sw" | "se" | null;
 
@@ -468,6 +499,9 @@ export function NixChatPanel(props: NixChatPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   const contextConfig = CONTEXT_CONFIGS[portalContext];
+  const isMobile = useIsMobileViewport();
+  const rawQuickActions = props.quickActions;
+  const quickActions = rawQuickActions ? rawQuickActions : contextConfig.quickActions;
 
   const {
     isActive: isGuidedModeActive,
@@ -642,7 +676,7 @@ export function NixChatPanel(props: NixChatPanelProps) {
   }, [resizeEdge]);
 
   useEffect(() => {
-    if (isDragging || resizeEdge) return;
+    if (isMobile || isDragging || resizeEdge) return;
 
     const geometry: PanelGeometry = {
       x: position.x,
@@ -656,7 +690,7 @@ export function NixChatPanel(props: NixChatPanelProps) {
     } catch {
       // storage full or unavailable
     }
-  }, [position.x, position.y, size.width, size.height, isDragging, resizeEdge]);
+  }, [position.x, position.y, size.width, size.height, isDragging, resizeEdge, isMobile]);
 
   useEffect(() => {
     if (!sessionId && !initialSessionId) {
@@ -680,7 +714,9 @@ export function NixChatPanel(props: NixChatPanelProps) {
         },
         onError: (error) => {
           console.error("Failed to create chat session:", error);
-          setInitError("Could not connect to Nix. Is the backend running?");
+          setInitError(
+            nixFriendlyError(error, "We couldn't reach Nix right now. Please try again."),
+          );
         },
       },
     );
@@ -737,8 +773,7 @@ export function NixChatPanel(props: NixChatPanelProps) {
 
     const showSendError = (error: unknown) => {
       setStreamingContent("");
-      const errorContent =
-        error instanceof Error ? error.message : "Something went wrong. Please try again.";
+      const errorContent = nixFriendlyError(error);
       const errorMessage: ChatMessage = {
         id: nowMillis() + 1,
         role: "assistant",
@@ -963,57 +998,77 @@ export function NixChatPanel(props: NixChatPanelProps) {
   }, []);
 
   const isInteracting = isDragging || resizeEdge !== null;
+  const historyLoading = historyQuery.isLoading;
+  // Treat "no session yet and no error" as connecting — covers the frame
+  // between mount and the post-mount initializeSession() call, so the welcome
+  // state never flashes before the "Connecting to Nix…" spinner.
+  const isConnecting = !sessionId && !initError;
+  const isHistoryLoading = Boolean(sessionId) && historyLoading && messages.length === 0;
 
-  return (
-    <div
-      ref={panelRef}
-      className={`fixed z-50 flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl ${className}`}
-      style={{
+  const containerClassName = isMobile
+    ? "fixed inset-x-0 top-0 z-[9999] flex flex-col bg-white dark:bg-gray-800"
+    : `fixed z-50 flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl ${className}`;
+  const containerStyle: React.CSSProperties | undefined = isMobile
+    ? {
+        // 100dvh tracks the DYNAMIC viewport so the input row stays above the
+        // soft keyboard (inset-0's fixed bottom sits behind it); safe-area
+        // insets keep the header clear of the notch and the input clear of the
+        // home indicator on notched phones.
+        height: "100dvh",
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }
+    : {
         left: position.x,
         top: position.y,
         width: size.width,
         height: size.height,
         userSelect: isInteracting ? "none" : undefined,
-      }}
-    >
-      {/* Resize edges */}
-      <div
-        className="absolute -top-1 left-3 right-3 h-2 cursor-n-resize z-10"
-        onMouseDown={handleResizeStart("n")}
-      />
-      <div
-        className="absolute -bottom-1 left-3 right-3 h-2 cursor-s-resize z-10"
-        onMouseDown={handleResizeStart("s")}
-      />
-      <div
-        className="absolute -left-1 top-3 bottom-3 w-2 cursor-w-resize z-10"
-        onMouseDown={handleResizeStart("w")}
-      />
-      <div
-        className="absolute -right-1 top-3 bottom-3 w-2 cursor-e-resize z-10"
-        onMouseDown={handleResizeStart("e")}
-      />
-      {/* Resize corners */}
-      <div
-        className="absolute -top-1 -left-1 w-3 h-3 cursor-nw-resize z-20"
-        onMouseDown={handleResizeStart("nw")}
-      />
-      <div
-        className="absolute -top-1 -right-1 w-3 h-3 cursor-ne-resize z-20"
-        onMouseDown={handleResizeStart("ne")}
-      />
-      <div
-        className="absolute -bottom-1 -left-1 w-3 h-3 cursor-sw-resize z-20"
-        onMouseDown={handleResizeStart("sw")}
-      />
-      <div
-        className="absolute -bottom-1 -right-1 w-3 h-3 cursor-se-resize z-20"
-        onMouseDown={handleResizeStart("se")}
-      />
+      };
+
+  const panel = (
+    <div ref={panelRef} className={containerClassName} style={containerStyle}>
+      {/* Resize edges + corners — desktop only; mobile is full-screen */}
+      {!isMobile && (
+        <>
+          <div
+            className="absolute -top-1 left-3 right-3 h-2 cursor-n-resize z-10"
+            onMouseDown={handleResizeStart("n")}
+          />
+          <div
+            className="absolute -bottom-1 left-3 right-3 h-2 cursor-s-resize z-10"
+            onMouseDown={handleResizeStart("s")}
+          />
+          <div
+            className="absolute -left-1 top-3 bottom-3 w-2 cursor-w-resize z-10"
+            onMouseDown={handleResizeStart("w")}
+          />
+          <div
+            className="absolute -right-1 top-3 bottom-3 w-2 cursor-e-resize z-10"
+            onMouseDown={handleResizeStart("e")}
+          />
+          <div
+            className="absolute -top-1 -left-1 w-3 h-3 cursor-nw-resize z-20"
+            onMouseDown={handleResizeStart("nw")}
+          />
+          <div
+            className="absolute -top-1 -right-1 w-3 h-3 cursor-ne-resize z-20"
+            onMouseDown={handleResizeStart("ne")}
+          />
+          <div
+            className="absolute -bottom-1 -left-1 w-3 h-3 cursor-sw-resize z-20"
+            onMouseDown={handleResizeStart("sw")}
+          />
+          <div
+            className="absolute -bottom-1 -right-1 w-3 h-3 cursor-se-resize z-20"
+            onMouseDown={handleResizeStart("se")}
+          />
+        </>
+      )}
 
       <div
-        className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-orange-50 dark:bg-gray-700 rounded-t-xl cursor-grab active:cursor-grabbing select-none"
-        onMouseDown={handleDragStart}
+        className={`flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-orange-50 dark:bg-gray-700 rounded-t-xl select-none ${isMobile ? "" : "cursor-grab active:cursor-grabbing"}`}
+        onMouseDown={isMobile ? undefined : handleDragStart}
       >
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center">
@@ -1154,12 +1209,29 @@ export function NixChatPanel(props: NixChatPanelProps) {
               Retry connection
             </button>
           </div>
+        ) : isConnecting ? (
+          <div className="text-center text-gray-500 dark:text-gray-400 mt-8">
+            <div className="w-10 h-10 mx-auto mb-3 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm">Connecting to Nix…</p>
+          </div>
+        ) : isHistoryLoading ? (
+          <div className="mt-2 space-y-3 animate-pulse" aria-hidden="true">
+            <div className="flex justify-start">
+              <div className="h-12 w-2/3 rounded-lg bg-gray-100 dark:bg-gray-700" />
+            </div>
+            <div className="flex justify-end">
+              <div className="h-10 w-1/2 rounded-lg bg-orange-100 dark:bg-gray-600" />
+            </div>
+            <div className="flex justify-start">
+              <div className="h-16 w-3/4 rounded-lg bg-gray-100 dark:bg-gray-700" />
+            </div>
+          </div>
         ) : messages.length === 0 && !streamingContent ? (
           <div className="text-center text-gray-500 dark:text-gray-400 mt-8">
             <MessageCircleIcon className="h-12 w-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
             <p className="text-sm px-4">{contextConfig.welcomeMessage}</p>
             <div className="mt-4 space-y-2">
-              {contextConfig.quickActions.map((action, index) => (
+              {quickActions.map((action, index) => (
                 <button
                   key={index}
                   onClick={() => setInputValue(action.prompt)}
@@ -1283,4 +1355,9 @@ export function NixChatPanel(props: NixChatPanelProps) {
       </div>
     </div>
   );
+
+  if (isMobile) {
+    return createPortal(panel, document.body);
+  }
+  return panel;
 }

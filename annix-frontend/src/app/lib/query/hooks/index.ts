@@ -1178,6 +1178,7 @@ export {
   type NixExtractionSummary,
   NixRequestError,
   nixErrorStatus,
+  nixFriendlyError,
   type ProductDataSheetSearchHit,
   type QuoteCustomerSnapshot,
   type QuoteEditorStateDto,

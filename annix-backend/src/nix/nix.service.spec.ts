@@ -1,4 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { ExtractionMetricService } from "../metrics/extraction-metric.service";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import { S3StorageService } from "../storage/s3-storage.service";
 import { AiChatService } from "./ai-providers/ai-chat.service";
@@ -19,12 +20,17 @@ import { NixLearningRepository } from "./nix-learning.repository";
 import { NixUserPreferenceRepository } from "./nix-user-preference.repository";
 import { NixExtractionProfileRegistry } from "./profiles";
 import { RevisionTrackingService } from "./revision-tracking.service";
+import { DocumentMarkdownFormatter } from "./services/document-markdown-formatter.service";
 import { ExcelExtractorService } from "./services/excel-extractor.service";
+import { NixLearningService } from "./services/nix-learning.service";
 import { PdfExtractorService } from "./services/pdf-extractor.service";
+import { ProductSpecExtractionService } from "./services/product-spec-extraction.service";
+import { VisionExtractionService } from "./services/vision-extraction.service";
 import { WordExtractorService } from "./services/word-extractor.service";
 
 describe("NixService", () => {
   let service: NixService;
+  let visionService: VisionExtractionService;
   let extractionRepo: jest.Mocked<NixExtractionRepository>;
   let learningRepo: jest.Mocked<NixLearningRepository>;
   let clarificationRepo: jest.Mocked<NixClarificationRepository>;
@@ -144,6 +150,14 @@ describe("NixService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NixService,
+        DocumentMarkdownFormatter,
+        VisionExtractionService,
+        ProductSpecExtractionService,
+        NixLearningService,
+        {
+          provide: ExtractionMetricService,
+          useValue: { time: jest.fn((_c: string, _o: string, fn: () => unknown) => fn()) },
+        },
         { provide: NixExtractionRepository, useValue: mockExtractionRepo },
         { provide: NixLearningRepository, useValue: mockLearningRepo },
         { provide: NixUserPreferenceRepository, useValue: mockPreferenceRepo },
@@ -182,6 +196,7 @@ describe("NixService", () => {
     }).compile();
 
     service = module.get<NixService>(NixService);
+    visionService = module.get<VisionExtractionService>(VisionExtractionService);
     extractionRepo = module.get(NixExtractionRepository);
     learningRepo = module.get(NixLearningRepository);
     clarificationRepo = module.get(NixClarificationRepository);
@@ -719,15 +734,7 @@ describe("NixService", () => {
         providerUsed: "gemini",
       } as Awaited<ReturnType<AiChatService["chatWithImage"]>>);
 
-      await (
-        service as unknown as {
-          extractFromPdfWithVision: (
-            buffer: Buffer,
-            documentName: string,
-            profileSystemPrompt?: string,
-          ) => Promise<unknown>;
-        }
-      ).extractFromPdfWithVision(Buffer.from("fake-pdf"), "scanned.pdf");
+      await visionService.extractFromPdfWithVision(Buffer.from("fake-pdf"), "scanned.pdf");
 
       const systemPrompt = aiChatService.chatWithImage.mock.calls[0][3];
       expect(systemPrompt).toContain(hardeningPhrase);

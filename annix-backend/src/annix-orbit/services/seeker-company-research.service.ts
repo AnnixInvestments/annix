@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { safeFetch } from "../../lib/safe-outbound-fetch";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { parseAiJsonObject } from "../../nix/ai-providers/ai-json";
 
 export interface CompanyResearchResult {
   companySummary: string | null;
@@ -65,9 +66,7 @@ export class SeekerCompanyResearchService {
         "gemini",
         { maxOutputTokens: MAX_OUTPUT_TOKENS, thinkingBudget: 0 },
       );
-      const match = content.match(/\{[\s\S]*\}/);
-      if (!match) return null;
-      const parsed = JSON.parse(match[0]) as {
+      const parsed = parseAiJsonObject(content) as {
         companySummary?: unknown;
         inferredBullets?: unknown;
       };

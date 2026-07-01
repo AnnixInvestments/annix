@@ -33,7 +33,7 @@ D5 includes the **US**, but D4 only covered POPIA+GDPR. Processing **US minors**
 |---|---|
 | Auth / registration | `annix-orbit/controllers/auth.controller.ts` + `services/auth.service.ts` |
 | Consent / minors | `annix-orbit/services/popia.service.ts` + `entities/annix-orbit-ee-consent-text-version.entity.ts` |
-| AI (Gemini only) | `nix/ai-providers/ai-chat.service.ts` via `NixModule`; parse output with `lib/json-from-ai.ts`. **Never** add a new AI abstraction or call Claude/OpenAI directly. |
+| AI (Gemini only) | `nix/ai-providers/ai-chat.service.ts` via `NixModule`; parse output with `nix/ai-providers/ai-json.ts` (`parseAiJson`/`parseAiJsonObject`/`parseAiJsonArray`). **Never** add a new AI abstraction or call Claude/OpenAI directly. |
 | Employment bridge (Phase 4) | `annix-orbit/services/job-match.service.ts`, candidate / seeker-jobs / interview / reference services |
 | RBAC | `rbac/entities/` (`app`, `app-role`, `user-app-access`, permissions) — add student/parent/teacher roles to the **existing Orbit app**; don't mint a new app |
 | Shared utilities | `annix-backend/src/lib/`: `datetime.ts`, `base-crud.service.ts`, `entity-helpers.ts`, `pdf-builder.ts`, `app-storage-helper.ts`, `reference-data/` |

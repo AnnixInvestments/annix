@@ -1,4 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { ExtractionMetricService } from "../metrics/extraction-metric.service";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import { S3StorageService } from "../storage/s3-storage.service";
 import { AiChatService } from "./ai-providers/ai-chat.service";
@@ -19,12 +20,16 @@ import { NixLearningRepository } from "./nix-learning.repository";
 import { NixUserPreferenceRepository } from "./nix-user-preference.repository";
 import { NixExtractionProfileRegistry } from "./profiles";
 import { RevisionTrackingService } from "./revision-tracking.service";
+import { DocumentMarkdownFormatter } from "./services/document-markdown-formatter.service";
 import {
   ExcelExtractorService,
   ExtractedItem,
   ExtractionResult,
 } from "./services/excel-extractor.service";
+import { NixLearningService } from "./services/nix-learning.service";
 import { PdfExtractorService } from "./services/pdf-extractor.service";
+import { ProductSpecExtractionService } from "./services/product-spec-extraction.service";
+import { VisionExtractionService } from "./services/vision-extraction.service";
 import { WordExtractorService } from "./services/word-extractor.service";
 
 describe("NixService Integration Tests", () => {
@@ -211,6 +216,14 @@ describe("NixService Integration Tests", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NixService,
+        DocumentMarkdownFormatter,
+        VisionExtractionService,
+        ProductSpecExtractionService,
+        NixLearningService,
+        {
+          provide: ExtractionMetricService,
+          useValue: { time: jest.fn((_c: string, _o: string, fn: () => unknown) => fn()) },
+        },
         { provide: NixExtractionRepository, useValue: mockExtractionRepo },
         { provide: NixClarificationRepository, useValue: mockClarificationRepo },
         { provide: NixLearningRepository, useValue: mockLearningRepo },

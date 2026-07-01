@@ -193,6 +193,17 @@ export default function NixPage() {
                       currentPage: "Nix AI Assistant Page",
                       portalContext: "general",
                     }}
+                    quickActions={[
+                      {
+                        label: "Add a bend",
+                        prompt: "Add a 200NB bend at 45 degrees with flanges both ends",
+                      },
+                      { label: "Validation issues", prompt: "What validation issues do I have?" },
+                      {
+                        label: "Learn about flanges",
+                        prompt: "What are the different types of flange connections?",
+                      },
+                    ]}
                     className="!fixed !inset-0 !rounded-none !shadow-none !border-0 !z-0 relative !w-full !h-full"
                   />
                 </div>

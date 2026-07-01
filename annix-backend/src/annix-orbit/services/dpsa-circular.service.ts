@@ -3,8 +3,8 @@ import { Cron } from "@nestjs/schedule";
 import { chunk } from "es-toolkit/compat";
 import { now } from "../../lib/datetime";
 import { extractTextFromPdf } from "../../lib/document-extraction";
-import { parseJsonFromAi } from "../../lib/json-from-ai";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { parseAiJsonArray } from "../../nix/ai-providers/ai-json";
 import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
 import { JobMarketSource, JobSourceProvider } from "../entities/job-market-source.entity";
 import { ExternalJobRepository } from "../repositories/external-job.repository";
@@ -265,9 +265,11 @@ export class DpsaCircularService {
         thinkingBudget: 0,
       },
     );
-    const parsed = parseJsonFromAi<DpsaVacancy[]>(result.content);
-    if (!Array.isArray(parsed)) {
-      this.logger.warn("DPSA chunk returned non-array");
+    let parsed: DpsaVacancy[];
+    try {
+      parsed = parseAiJsonArray(result.content, { repair: true }) as DpsaVacancy[];
+    } catch {
+      this.logger.warn("DPSA chunk returned non-array or unparseable JSON");
       return [];
     }
     return parsed.filter((v) => Boolean(v?.postNumber) && Boolean(v?.title));

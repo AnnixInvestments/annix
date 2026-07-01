@@ -10,8 +10,8 @@ import { Injectable, Logger } from "@nestjs/common";
 import { isString } from "es-toolkit/compat";
 import { AiApp } from "../../ai-usage/entities/ai-usage-log.entity";
 import { now } from "../../lib/datetime";
-import { parseJsonFromAi } from "../../lib/json-from-ai";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { parseAiJson } from "../../nix/ai-providers/ai-json";
 import { JobAnalysisCacheRepository } from "../repositories/job-analysis-cache.repository";
 import { EscoNormalisationService } from "./esco-normalisation.service";
 
@@ -174,7 +174,7 @@ export class JobCategorizationService {
         },
         { app: AiApp.ANNIX_ORBIT, actionType: "orbit-job-analysis" },
       );
-      const parsed = parseJsonFromAi<AiJobAnalysisResponse>(response.content);
+      const parsed = parseAiJson<AiJobAnalysisResponse>(response.content, { repair: true });
       const rawCategory = parsed.category ? parsed.category.trim() : "";
       const category = isJobCategoryKey(rawCategory) ? rawCategory : null;
       const skills = [
@@ -274,7 +274,7 @@ export class JobCategorizationService {
         },
         { app: AiApp.ANNIX_ORBIT, actionType: "orbit-candidate-category" },
       );
-      const parsed = parseJsonFromAi<AiCategoriesResponse>(response.content);
+      const parsed = parseAiJson<AiCategoriesResponse>(response.content, { repair: true });
       const raw = parsed.categories ?? [];
       const valid = raw
         .filter((value): value is string => isString(value))
@@ -312,7 +312,7 @@ export class JobCategorizationService {
         },
         { app: AiApp.ANNIX_ORBIT, actionType: "orbit-job-category" },
       );
-      const parsed = parseJsonFromAi<AiCategoryResponse>(response.content);
+      const parsed = parseAiJson<AiCategoryResponse>(response.content, { repair: true });
       const candidate = parsed.category ? parsed.category.trim() : "";
       if (isJobCategoryKey(candidate)) {
         this.aiCache.set(cacheKey, candidate);

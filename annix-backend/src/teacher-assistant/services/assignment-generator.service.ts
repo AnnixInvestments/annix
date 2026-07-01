@@ -13,9 +13,9 @@ import {
 } from "@annix/product-data/teacher-assistant";
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { AiApp } from "../../ai-usage/entities/ai-usage-log.entity";
-import { parseJsonFromAi } from "../../lib/json-from-ai";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { parseAiJson } from "../../nix/ai-providers/ai-json";
 import { SectionFillerService } from "./section-filler.service";
 
 const FILLED_WARNING_PATTERNS: Record<string, RegExp[]> = {
@@ -122,7 +122,7 @@ export class AssignmentGeneratorService {
       undefined,
       { app: AiApp.TEACHER_ASSISTANT, actionType: "teacher-regenerate-section" },
     );
-    const partial = parseJsonFromAi<Partial<Assignment>>(response.content);
+    const partial = parseAiJson<Partial<Assignment>>(response.content, { repair: true });
     const merged: Assignment = {
       ...existingAssignment,
       ...partial,
@@ -189,7 +189,7 @@ export class AssignmentGeneratorService {
 
       let assignment: Assignment;
       try {
-        assignment = parseJsonFromAi<Assignment>(response.content);
+        assignment = parseAiJson<Assignment>(response.content, { repair: true });
       } catch (error) {
         lastFailures = [
           {

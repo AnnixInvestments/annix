@@ -156,6 +156,16 @@ export default tseslint.config(
           message:
             "Direct calls to Sage API endpoints are forbidden — use SageApiService or SageService via sageRateLimiter (CLAUDE.md Sage DLA compliance). Only files inside src/sage-export/ and src/annix-sentinel/sentinel-integrations/sage/ may reference Sage URLs.",
         },
+        {
+          selector: "Literal[regex.pattern='\\\\{[\\\\s\\\\S]*\\\\}']",
+          message:
+            "Use parseAiJsonObject/parseAiJsonArray from nix/ai-providers/ai-json — do not greedily match+JSON.parse AI output (#430). The greedy /\\{[\\s\\S]*\\}/ regex swallows trailing prose or a second object; the canonical parser extracts the FIRST balanced object/array and fails closed.",
+        },
+        {
+          selector: "Literal[regex.pattern='\\\\[[\\\\s\\\\S]*\\\\]']",
+          message:
+            "Use parseAiJsonArray from nix/ai-providers/ai-json — do not greedily match+JSON.parse AI output (#430). The greedy /\\[[\\s\\S]*\\]/ regex swallows trailing content; the canonical parser extracts the FIRST balanced array and fails closed.",
+        },
       ],
       "no-restricted-imports": [
         "error",

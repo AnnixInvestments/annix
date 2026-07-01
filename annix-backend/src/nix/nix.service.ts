@@ -1,13 +1,12 @@
 import * as fs from "node:fs";
 import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
 import { bufferToMulterFile, documentPath } from "../lib/app-storage-helper";
+import { ExtractionMetricService } from "../metrics/extraction-metric.service";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import { S3StorageService } from "../storage/s3-storage.service";
 import { StorageArea } from "../storage/storage.interface";
 import { AiChatService } from "./ai-providers/ai-chat.service";
 import { AiExtractionService } from "./ai-providers/ai-extraction.service";
-import { DEFAULT_EXTRACTION_SYSTEM_PROMPT } from "./ai-providers/ai-provider.interface";
-import { hardenedExtractionSystemInstruction } from "./ai-providers/untrusted-content";
 import { ProcessDocumentDto, ProcessDocumentResponseDto } from "./dto/process-document.dto";
 import {
   SubmitClarificationDto,
@@ -24,48 +23,31 @@ import {
   ExtractionStatus,
   NixExtraction,
 } from "./entities/nix-extraction.entity";
-import { LearningSource, LearningType, NixLearning } from "./entities/nix-learning.entity";
+import { NixLearning } from "./entities/nix-learning.entity";
 import { MineInferenceService } from "./mine-inference.service";
 import { NixClarificationRepository } from "./nix-clarification.repository";
 import { NixExtractionRepository } from "./nix-extraction.repository";
-import { NixLearningRepository } from "./nix-learning.repository";
 import { NixUserPreferenceRepository } from "./nix-user-preference.repository";
 import { NixExtractionProfileRegistry } from "./profiles";
 import { RevisionTrackingService, type SupersessionVerdict } from "./revision-tracking.service";
+import { DocumentMarkdownFormatter } from "./services/document-markdown-formatter.service";
 import {
   ExcelExtractorService,
   ExtractedItem,
-  ExtractionResult,
   SpecificationCellData,
 } from "./services/excel-extractor.service";
-import { enforceExplicitDescriptionSpecs } from "./services/explicit-size-guard";
+import type { NixFeedbackPayload } from "./services/learning-feedback.util";
 import {
-  feedbackLearningRow,
-  feedbackPatternKey,
-  type NixFeedbackPayload,
-} from "./services/learning-feedback.util";
+  NixLearningService,
+  type NixLearningWriteTrust,
+  TRUSTED_LEARNING_WRITE,
+} from "./services/nix-learning.service";
 import { PdfExtractorService } from "./services/pdf-extractor.service";
+import { ProductSpecExtractionService } from "./services/product-spec-extraction.service";
+import { VisionExtractionService } from "./services/vision-extraction.service";
 import { WordExtractorService } from "./services/word-extractor.service";
 
-/**
- * Trust context for a learning write, derived from the request's authenticated
- * identity (never from a client-supplied body field). Authenticated writes are
- * trusted (`quarantined:false`, USER_CORRECTION); anonymous writes are
- * quarantined and tagged with a one-way IP hash for audit. Defaults to a trusted
- * system write so internal callers (e.g. patchExtractionItem auto-corrections)
- * are unaffected.
- */
-export interface NixLearningWriteTrust {
-  ownerUserId: number | null;
-  quarantined: boolean;
-  sourceIpHash: string | null;
-}
-
-export const TRUSTED_LEARNING_WRITE: NixLearningWriteTrust = {
-  ownerUserId: null,
-  quarantined: false,
-  sourceIpHash: null,
-};
+export { type NixLearningWriteTrust, TRUSTED_LEARNING_WRITE };
 
 @Injectable()
 export class NixService {
@@ -73,7 +55,6 @@ export class NixService {
 
   constructor(
     private readonly extractionRepo: NixExtractionRepository,
-    private readonly learningRepo: NixLearningRepository,
     private readonly preferenceRepo: NixUserPreferenceRepository,
     private readonly clarificationRepo: NixClarificationRepository,
     private readonly excelExtractor: ExcelExtractorService,
@@ -87,6 +68,11 @@ export class NixService {
     private readonly profileRegistry: NixExtractionProfileRegistry,
     private readonly mineInferenceService: MineInferenceService,
     private readonly revisionTrackingService: RevisionTrackingService,
+    private readonly documentMarkdownFormatter: DocumentMarkdownFormatter,
+    private readonly visionExtractionService: VisionExtractionService,
+    private readonly productSpecExtractionService: ProductSpecExtractionService,
+    private readonly nixLearningService: NixLearningService,
+    private readonly extractionMetricService: ExtractionMetricService,
   ) {}
 
   private resolveSourceLinkage(dto: ProcessDocumentDto): {
@@ -322,8 +308,18 @@ export class NixService {
         "No source document on file for this extraction (predates S3 persistence). Re-upload the file instead.",
       );
     }
+    const storagePath = extraction.storagePath;
+    return this.extractionMetricService.time("asca-quote-extract-bulk", "retry-extract", () =>
+      this.runRetryExtraction(extraction, storagePath, extractionId),
+    );
+  }
 
-    const buffer = await this.s3StorageService.download(extraction.storagePath);
+  private async runRetryExtraction(
+    extraction: NixExtraction,
+    storagePath: string,
+    extractionId: number,
+  ): Promise<NixExtraction> {
+    const buffer = await this.s3StorageService.download(storagePath);
     const tempPath = `${process.env.TEMP || process.env.TMPDIR || "/tmp"}/nix-retry-${extractionId}-${Date.now()}-${extraction.documentName}`;
     fs.writeFileSync(tempPath, buffer);
 
@@ -381,12 +377,15 @@ export class NixService {
           throw new Error(`Unsupported document type for retry: ${documentType}`);
       }
 
-      const relevanceFiltered = await this.filterByRelevance(extractedItems, undefined);
+      const relevanceFiltered = await this.nixLearningService.filterByRelevance(
+        extractedItems,
+        undefined,
+      );
       const relevantItems = this.dropPseudoItemsForSpec(relevanceFiltered, extraction.documentRole);
 
       extraction.extractedData = extractedData;
       extraction.extractedItems = relevantItems;
-      extraction.relevanceScore = this.calculateOverallRelevance(relevantItems);
+      extraction.relevanceScore = this.nixLearningService.calculateOverallRelevance(relevantItems);
       extraction.processingTimeMs = Date.now() - startTime;
       extraction.status = ExtractionStatus.COMPLETED;
       extraction.errorMessage = undefined;
@@ -618,7 +617,10 @@ export class NixService {
         }
       }
 
-      const relevanceFiltered = await this.filterByRelevance(extractedItems, dto.productTypes);
+      const relevanceFiltered = await this.nixLearningService.filterByRelevance(
+        extractedItems,
+        dto.productTypes,
+      );
       const relevantItems = this.dropPseudoItemsForSpec(relevanceFiltered, dto.documentRole);
       const specClarifications = await this.generateSpecificationClarifications(
         extraction,
@@ -634,7 +636,7 @@ export class NixService {
 
       extraction.extractedData = extractedData;
       extraction.extractedItems = relevantItems;
-      extraction.relevanceScore = this.calculateOverallRelevance(relevantItems);
+      extraction.relevanceScore = this.nixLearningService.calculateOverallRelevance(relevantItems);
       extraction.processingTimeMs = Date.now() - startTime;
       extraction.status =
         clarifications.length > 0
@@ -793,7 +795,7 @@ export class NixService {
     await this.clarificationRepo.save(clarification);
 
     if (dto.allowLearning !== false) {
-      await this.learnFromClarification(clarification, trust);
+      await this.nixLearningService.learnFromClarification(clarification, trust);
     }
 
     const remainingCount = await this.clarificationRepo.countPendingForExtraction(
@@ -968,7 +970,7 @@ export class NixService {
           this.logger.log(
             `Text extraction yielded ${pdfText.trim().length} chars / ${aiResult.items.length} items / metadata-empty=${metadataEmpty} / specs-empty=${specsEmpty} — retrying via vision (chatWithImage, application/pdf).`,
           );
-          const visionResult = await this.extractFromPdfWithVision(
+          const visionResult = await this.visionExtractionService.extractFromPdfWithVision(
             dataBuffer,
             documentName || documentPath.split("/").pop() || "document.pdf",
             systemPrompt,
@@ -1070,190 +1072,6 @@ export class NixService {
   }
 
   /**
-   * Parse a JSON extraction response defensively. With responseFormat: 'json'
-   * the model SHOULD return a clean JSON document, but vision responses can
-   * still get truncated when an item-rich drawing approaches the output cap.
-   * If JSON.parse fails we fall back to truncating at the last comma boundary
-   * we can trust and re-trying — a partial result with N items beats throwing
-   * the whole extraction away.
-   */
-  private parseExtractionJson(raw: string): Record<string, unknown> | null {
-    if (!raw || raw.trim().length === 0) return null;
-    const cleaned = raw
-      .replace(/```json\s*/g, "")
-      .replace(/```\s*/g, "")
-      .trim();
-    for (const candidate of this.jsonObjectCandidates(cleaned)) {
-      try {
-        const parsed = JSON.parse(candidate);
-        if (parsed && typeof parsed === "object") return parsed as Record<string, unknown>;
-      } catch {
-        // try the next candidate slice
-      }
-    }
-    return null;
-  }
-
-  /**
-   * Ordered list of substrings to attempt JSON.parse on, most-likely-correct
-   * first. Gemini sometimes wraps the JSON in a prose preamble ("Here is the
-   * extracted data:\n{...}") or trailing commentary, or truncates mid-array
-   * when it hits the output-token cap — each of which makes a naive
-   * JSON.parse of the whole response throw. We recover by (1) the first
-   * brace-balanced object, (2) first `{` to last `}`, and (3) a salvaged
-   * truncated `"items": [...]` array.
-   */
-  private jsonObjectCandidates(text: string): string[] {
-    const candidates: string[] = [text];
-    const firstBrace = text.indexOf("{");
-    if (firstBrace < 0) return candidates;
-    const fromFirstBrace = text.slice(firstBrace);
-    const balanced = this.firstBalancedJsonObject(fromFirstBrace);
-    if (balanced) candidates.push(balanced);
-    const lastBrace = fromFirstBrace.lastIndexOf("}");
-    if (lastBrace > 0) {
-      candidates.push(fromFirstBrace.slice(0, lastBrace + 1));
-      // Truncated after a complete item but before the array/object closed:
-      // close the items array and the root object so the items parsed so far
-      // are still recovered.
-      candidates.push(`${fromFirstBrace.slice(0, lastBrace + 1)}]}`);
-    }
-    const itemsClose = fromFirstBrace.lastIndexOf("]");
-    if (itemsClose > 0) candidates.push(`${fromFirstBrace.slice(0, itemsClose + 1)}}`);
-    return candidates;
-  }
-
-  /**
-   * Returns the first complete, brace-balanced JSON object in the string,
-   * tracking string literals and escapes so braces inside quoted values
-   * don't throw off the depth count. Returns null when the object never
-   * closes (a truncated response), letting the caller fall back to the
-   * truncation-salvage candidates.
-   */
-  private firstBalancedJsonObject(text: string): string | null {
-    let depth = 0;
-    let inString = false;
-    let escaped = false;
-    for (let i = 0; i < text.length; i++) {
-      const ch = text[i];
-      if (escaped) {
-        escaped = false;
-        continue;
-      }
-      if (ch === "\\") {
-        if (inString) escaped = true;
-        continue;
-      }
-      if (ch === '"') {
-        inString = !inString;
-        continue;
-      }
-      if (inString) continue;
-      if (ch === "{") depth++;
-      else if (ch === "}") {
-        depth--;
-        if (depth === 0) return text.slice(0, i + 1);
-      }
-    }
-    return null;
-  }
-
-  /**
-   * Vision-based PDF extraction. Sends the raw PDF to Gemini's multimodal
-   * API (chatWithImage with media_type "application/pdf") so it OCRs the
-   * rendered pages directly — needed for image-based engineering drawings
-   * where pdf-parse returns nothing useful. Returns null if the response
-   * can't be parsed as JSON in the expected shape.
-   */
-  private async extractFromPdfWithVision(
-    pdfBuffer: Buffer,
-    documentName: string,
-    profileSystemPrompt?: string,
-  ): Promise<{
-    items: ExtractedItem[];
-    specifications: Record<string, unknown>;
-    specificationCells: SpecificationCellData[];
-    metadata: Record<string, unknown>;
-    providerUsed: string;
-    processingTimeMs: number;
-  } | null> {
-    const start = Date.now();
-    const base64 = pdfBuffer.toString("base64");
-    const userPrompt = `Document: ${documentName}\n\nExtract every quotable line item AND every cross-cutting specification clause you can see, following the JSON shape in the system prompt. Read the PDF visually — title blocks, dimensioned drawings, BOM tables, handwritten markups all count.`;
-    const systemPrompt = hardenedExtractionSystemInstruction(
-      profileSystemPrompt ?? DEFAULT_EXTRACTION_SYSTEM_PROMPT,
-    );
-
-    try {
-      // Cap the outer re-send loop: each chatWithImage already runs its own
-      // transient-error retry, and re-sending the whole (large) PDF on a mere
-      // JSON-parse miss rarely helps while multiplying vision cost/latency.
-      // One re-send covers model non-determinism; beyond that we fail cleanly.
-      const maxAttempts = 2;
-      let result: Awaited<ReturnType<typeof this.aiChatService.chatWithImage>> | null = null;
-      let parsed: Record<string, unknown> | null = null;
-      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        result = await this.aiChatService.chatWithImage(
-          base64,
-          "application/pdf",
-          userPrompt,
-          systemPrompt,
-          { temperature: 0.1, maxOutputTokens: 32_768, responseFormat: "json" },
-        );
-        parsed = this.parseExtractionJson(result.content);
-        if (parsed) break;
-        this.logger.warn(
-          `Vision extraction returned no parseable JSON for ${documentName} on attempt ${attempt}/${maxAttempts}; raw length=${result.content.length}`,
-        );
-      }
-      if (!parsed || !result) {
-        this.logger.error(
-          `Vision extraction failed to return parseable JSON for ${documentName} after ${maxAttempts} attempts — the drawing could not be read.`,
-        );
-        return null;
-      }
-      const rawItems = Array.isArray(parsed.items) ? parsed.items : [];
-      if (rawItems.length > 0) {
-        const sample = rawItems[0];
-        const sampleKeys = Object.keys(sample as Record<string, unknown>);
-        this.logger.log(
-          `Vision extraction sample item keys: [${sampleKeys.join(", ")}]; first item: ${JSON.stringify(sample).slice(0, 400)}`,
-        );
-      }
-      const items: ExtractedItem[] = rawItems.map((item: Record<string, unknown>) =>
-        this.guardVisionItem(this.normaliseVisionItem(item)),
-      );
-      // 'specifications' may be an object keyed by clause code (the canonical
-      // shape since #253 prompt rewrite) OR an array of cells from older
-      // pipeline runs. Handle both so the dict goes to specifications and
-      // the array goes to specificationCells.
-      const rawSpecs = parsed.specifications;
-      const specifications: Record<string, unknown> =
-        rawSpecs && typeof rawSpecs === "object" && !Array.isArray(rawSpecs)
-          ? (rawSpecs as Record<string, unknown>)
-          : {};
-      const specificationCells: SpecificationCellData[] = Array.isArray(rawSpecs)
-        ? (rawSpecs as SpecificationCellData[])
-        : [];
-      return {
-        items,
-        specifications,
-        specificationCells,
-        metadata: (parsed.metadata as Record<string, unknown>) ?? {},
-        providerUsed: result.providerUsed,
-        processingTimeMs: Date.now() - start,
-      };
-    } catch (err) {
-      this.logger.error(
-        `Vision extraction threw for ${documentName}: ${
-          err instanceof Error ? err.message : "unknown"
-        }`,
-      );
-      return null;
-    }
-  }
-
-  /**
    * Drops "items" from a specification-role extraction when they don't look
    * like real Bill of Materials rows. Specifications hold clause-level facts
    * under 'specifications', not 'items' — so we only keep an entry under
@@ -1302,172 +1120,6 @@ export class NixService {
       );
     }
     return kept;
-  }
-
-  /**
-   * Coerces a Gemini-vision-returned item into our internal ExtractedItem
-   * shape. Vision responses are looser than the strictly-structured text
-   * extraction path, so we apply lenient mapping with sensible defaults
-   * rather than throwing on schema drift.
-   */
-  // Issue #294: re-assert the row's own description-derived specs after the AI
-  // pass so a sub-item cannot inherit a parent's bore/material. The text path
-  // does this in ai-extraction.service; the vision path (image-only drawings —
-  // exactly where nested sub-items are most likely) previously skipped it.
-  private guardVisionItem(item: ExtractedItem): ExtractedItem {
-    const { item: guarded, corrections } = enforceExplicitDescriptionSpecs(item);
-    if (corrections.length > 0) {
-      this.logger.warn(
-        `Vision explicit-size guard corrected row ${item.rowNumber} ("${item.description.substring(0, 80)}"): ${corrections.join("; ")}`,
-      );
-    }
-    return guarded;
-  }
-
-  private normaliseVisionItem(item: Record<string, unknown>): ExtractedItem {
-    // Gemini occasionally nests dimensions, lining, and other groups despite
-    // the system prompt asking for a flat schema. Flatten one level so the
-    // multi-key lookup below sees them whether top-level or nested.
-    const flat: Record<string, unknown> = { ...item };
-    const dims = item.dimensions;
-    if (dims && typeof dims === "object" && !Array.isArray(dims)) {
-      Object.assign(flat, dims as Record<string, unknown>);
-    }
-    const lining = item.internal_lining ?? item.internalLining ?? item.lining;
-    if (lining && typeof lining === "object" && !Array.isArray(lining)) {
-      const liningObj = lining as Record<string, unknown>;
-      if (liningObj.material && !flat.liningType) flat.liningType = liningObj.material;
-      if (liningObj.thicknessMm && !flat.liningThicknessMm)
-        flat.liningThicknessMm = liningObj.thicknessMm;
-    }
-    const drawingRef = item.drawing_reference ?? item.drawingReference;
-    if (drawingRef && typeof drawingRef === "object" && !Array.isArray(drawingRef)) {
-      const refObj = drawingRef as Record<string, unknown>;
-      const parts = [refObj.number, refObj.mto, refObj.sheet]
-        .filter((v) => typeof v === "string" && v.length > 0)
-        .join(" ");
-      if (parts.length > 0) flat.drawingReference = parts;
-    }
-
-    const numFrom = (...keys: string[]): number | null => {
-      for (const k of keys) {
-        const v = flat[k];
-        if (typeof v === "number") return v;
-        if (typeof v === "string" && v.trim().length > 0) {
-          const parsed = Number.parseFloat(v);
-          if (Number.isFinite(parsed)) return parsed;
-        }
-      }
-      return null;
-    };
-    const strFrom = (...keys: string[]): string | null => {
-      for (const k of keys) {
-        const v = flat[k];
-        if (typeof v === "string" && v.trim().length > 0) return v;
-      }
-      return null;
-    };
-    const description = strFrom("description", "desc", "itemDescription") ?? "";
-    const liningType = strFrom("liningType", "lining", "internal_lining", "internalLining");
-    const coatingSystem = strFrom(
-      "coatingSystem",
-      "paintSystem",
-      "external_paint_system_ref",
-      "external_paint_system_reference",
-      "externalPaintSystemRef",
-      "externalPaintSystem",
-      "external_paint_system",
-    );
-    const materialClass = strFrom(
-      "materialClass",
-      "material_class_ref",
-      "material_class_reference",
-      "materialClassRef",
-      "material_class",
-    );
-    const liningThicknessMm = numFrom(
-      "liningThicknessMm",
-      "liningThickness",
-      "lining_thickness_mm",
-    );
-    const liningFlangeFaceThicknessMm = numFrom(
-      "liningFlangeFaceThicknessMm",
-      "liningFlangeFaceThickness",
-      "lining_flange_face_thickness_mm",
-    );
-    const internalCoatingDescription = strFrom(
-      "internalCoatingDescription",
-      "corrosionInternal",
-      "corrosion_int",
-      "internalPaint",
-    );
-    const externalCoatingDescription = strFrom(
-      "externalCoatingDescription",
-      "corrosionExternal",
-      "corrosion_ext",
-      "externalPaint",
-    );
-    const bandingDetails = strFrom("bandingDetails", "bands", "bandCallout");
-    const flangeClass = strFrom("flangeClass", "flange_class", "flangeClassRating");
-    const deviationsRaw = item["deviations"];
-    const deviations = Array.isArray(deviationsRaw)
-      ? (deviationsRaw.filter((d) => typeof d === "string" && d.length > 0) as string[])
-      : null;
-    return {
-      rowNumber: numFrom("rowNumber") ?? 0,
-      itemNumber:
-        strFrom(
-          "itemNumber",
-          "mark",
-          "markNumber",
-          "mark_number",
-          "itemNo",
-          "itemMark",
-          "spoolNumber",
-          "spool_number",
-          "no",
-        ) ?? null,
-      description,
-      itemType: (strFrom("itemType", "type") as ExtractedItem["itemType"]) ?? "unknown",
-      material: strFrom("material"),
-      materialGrade: strFrom("materialGrade", "grade"),
-      diameter: numFrom(
-        "diameter",
-        "nb",
-        "NB",
-        "NB_mm",
-        "nb_mm",
-        "nominalBore",
-        "nominal_bore_mm",
-        "bore",
-      ),
-      diameterUnit: (strFrom("diameterUnit") as ExtractedItem["diameterUnit"]) ?? "mm",
-      secondaryDiameter: numFrom("secondaryDiameter"),
-      length: numFrom("length", "lengthMm", "length_mm", "L", "overallLengthMm"),
-      wallThickness: numFrom("wallThickness", "wt", "WT", "WT_mm", "wt_mm", "wall_thickness_mm"),
-      schedule: strFrom("schedule"),
-      angle: numFrom("angle"),
-      flangeConfig:
-        (strFrom("flangeConfig", "endConfiguration", "end_configuration", "ends") as
-          | ExtractedItem["flangeConfig"]
-          | undefined) ?? null,
-      quantity: numFrom("quantity", "qty", "count") ?? 1,
-      unit: strFrom("unit") ?? "ea",
-      confidence: numFrom("confidence") ?? 0.7,
-      needsClarification: false,
-      clarificationReason: null,
-      rawData: item as Record<string, unknown>,
-      ...(liningType ? { liningType } : {}),
-      ...(coatingSystem ? { coatingSystem } : {}),
-      ...(materialClass ? { materialClass } : {}),
-      ...(liningThicknessMm !== null ? { liningThicknessMm } : {}),
-      ...(liningFlangeFaceThicknessMm !== null ? { liningFlangeFaceThicknessMm } : {}),
-      ...(internalCoatingDescription ? { internalCoatingDescription } : {}),
-      ...(externalCoatingDescription ? { externalCoatingDescription } : {}),
-      ...(bandingDetails ? { bandingDetails } : {}),
-      ...(flangeClass ? { flangeClass } : {}),
-      ...(deviations && deviations.length > 0 ? { deviations } : {}),
-    } as ExtractedItem;
   }
 
   private async extractFromExcel(documentPath: string): Promise<{
@@ -1663,37 +1315,6 @@ export class NixService {
     };
   }
 
-  private async filterByRelevance(
-    items: Array<any>,
-    _productTypes?: string[],
-  ): Promise<Array<any>> {
-    const learningRules = await this.learningRepo.findActiveRelevanceRules();
-
-    return items.map((item) => ({
-      ...item,
-      confidence: this.calculateItemConfidence(item, learningRules),
-    }));
-  }
-
-  private calculateItemConfidence(item: any, rules: NixLearning[]): number {
-    let confidence = 0.5;
-
-    rules.forEach((rule) => {
-      if (item.description?.toLowerCase().includes(rule.patternKey.toLowerCase())) {
-        confidence = Math.min(1, confidence + 0.1 * rule.confidence);
-      }
-    });
-
-    return confidence;
-  }
-
-  private calculateOverallRelevance(items: Array<any>): number {
-    if (items.length === 0) return 0;
-
-    const totalConfidence = items.reduce((sum, item) => sum + (item.confidence || 0.5), 0);
-    return totalConfidence / items.length;
-  }
-
   private async generateClarifications(
     extraction: NixExtraction,
     items: Array<any>,
@@ -1825,76 +1446,22 @@ export class NixService {
     return clarifications;
   }
 
-  private async learnFromClarification(
-    clarification: NixClarification,
-    trust: NixLearningWriteTrust = TRUSTED_LEARNING_WRITE,
-  ): Promise<void> {
-    if (!clarification.responseText || !clarification.context?.itemDescription) {
-      return;
-    }
-
-    const writeSource = trust.quarantined
-      ? LearningSource.ANON_UNVERIFIED
-      : LearningSource.USER_CORRECTION;
-
-    // Same trust-lane isolation as recordCorrection: an anonymous answer writes
-    // a quarantined row (never feeds a prompt) and can never mutate a trusted
-    // row; an authenticated answer stays in the trusted lane.
-    const existing = await this.learningRepo.findCorrectionByPatternKey(
-      clarification.context.itemDescription,
-    );
-    const existingRule =
-      existing && (existing.quarantined === true) === trust.quarantined ? existing : null;
-
-    if (existingRule) {
-      existingRule.learnedValue = clarification.responseText;
-      existingRule.confirmationCount += 1;
-      existingRule.confidence = Math.min(1, existingRule.confidence + 0.05);
-      existingRule.source = writeSource;
-      existingRule.quarantined = trust.quarantined;
-      if (trust.sourceIpHash != null) {
-        existingRule.sourceIpHash = trust.sourceIpHash;
-      }
-      await this.learningRepo.save(existingRule);
-    } else {
-      await this.learningRepo.create({
-        learningType: LearningType.CORRECTION,
-        source: writeSource,
-        patternKey: clarification.context.itemDescription,
-        originalValue: clarification.context.extractedValue,
-        learnedValue: clarification.responseText,
-        confidence: 0.6,
-        confirmationCount: 1,
-        quarantined: trust.quarantined,
-        sourceIpHash: trust.sourceIpHash ?? undefined,
-      });
-    }
-
-    clarification.usedForLearning = true;
-    await this.clarificationRepo.save(clarification);
-  }
-
   async seedAdminRule(
     category: string,
     patternKey: string,
     learnedValue: string,
     applicableProducts?: string[],
   ): Promise<NixLearning> {
-    return this.learningRepo.create({
-      learningType: LearningType.RELEVANCE_RULE,
-      source: LearningSource.ADMIN_SEEDED,
+    return this.nixLearningService.seedAdminRule(
       category,
       patternKey,
       learnedValue,
       applicableProducts,
-      confidence: 0.9,
-      confirmationCount: 1,
-      isActive: true,
-    });
+    );
   }
 
   async adminLearningRules(): Promise<NixLearning[]> {
-    return this.learningRepo.findAdminSeededOrdered();
+    return this.nixLearningService.adminLearningRules();
   }
 
   /**
@@ -1959,7 +1526,7 @@ export class NixService {
             ? `mark ${itemNumber}`
             : `extraction ${extractionId} item ${targetIndex}`;
       try {
-        await this.recordCorrection({
+        await this.nixLearningService.recordCorrection({
           extractionId,
           itemDescription,
           fieldName: field,
@@ -1990,100 +1557,14 @@ export class NixService {
     },
     trust: NixLearningWriteTrust = TRUSTED_LEARNING_WRITE,
   ): Promise<{ success: boolean }> {
-    const patternKey = `${correction.itemDescription}::${correction.fieldName}`;
-    const writeSource = trust.quarantined
-      ? LearningSource.ANON_UNVERIFIED
-      : LearningSource.USER_CORRECTION;
-
-    // Only ever read/mutate a row in the WRITER'S OWN trust lane: an anonymous
-    // (quarantined) write must never touch a trusted row (that's the poison
-    // vector), and a trusted write must never adopt a quarantined row's state.
-    const existing = await this.learningRepo.findCorrectionByPatternKey(patternKey);
-    const existingRule =
-      existing && (existing.quarantined === true) === trust.quarantined ? existing : null;
-
-    if (existingRule) {
-      if (existingRule.learnedValue === String(correction.correctedValue)) {
-        existingRule.confirmationCount += 1;
-        existingRule.confidence = Math.min(1, existingRule.confidence + 0.05);
-      } else {
-        existingRule.learnedValue = String(correction.correctedValue);
-        existingRule.originalValue =
-          correction.originalValue != null ? String(correction.originalValue) : undefined;
-        existingRule.confirmationCount = 1;
-        existingRule.confidence = 0.6;
-      }
-      existingRule.source = writeSource;
-      existingRule.quarantined = trust.quarantined;
-      if (trust.sourceIpHash != null) {
-        existingRule.sourceIpHash = trust.sourceIpHash;
-      }
-      await this.learningRepo.save(existingRule);
-      this.logger.log(`Updated learning rule for pattern: ${patternKey}`);
-    } else {
-      await this.learningRepo.create({
-        learningType: LearningType.CORRECTION,
-        source: writeSource,
-        patternKey,
-        category: correction.fieldName,
-        originalValue:
-          correction.originalValue != null ? String(correction.originalValue) : undefined,
-        learnedValue: String(correction.correctedValue),
-        confidence: 0.6,
-        confirmationCount: 1,
-        isActive: true,
-        quarantined: trust.quarantined,
-        sourceIpHash: trust.sourceIpHash ?? undefined,
-      });
-      this.logger.log(`Created new learning rule for pattern: ${patternKey}`);
-    }
-
-    return { success: true };
+    return this.nixLearningService.recordCorrection(correction, trust);
   }
 
-  // Issue #263: batch feedback posted at RFQ submit time — the diff
-  // between what Nix extracted and what the customer ended up with at
-  // Step 3 (field corrections, deleted rows, manually added rows).
-  // One NixLearning row per correction; re-submitting the same diff
-  // confirms the existing row instead of duplicating it.
   async recordFeedbackBatch(
     payload: NixFeedbackPayload,
     trust: NixLearningWriteTrust = TRUSTED_LEARNING_WRITE,
   ): Promise<{ success: boolean; recorded: number }> {
-    const writeSource = trust.quarantined
-      ? LearningSource.ANON_UNVERIFIED
-      : LearningSource.USER_CORRECTION;
-    const results = await Promise.all(
-      (payload.corrections ?? []).map(async (correction) => {
-        const patternKey = feedbackPatternKey(payload.extractionId, correction);
-        const existingRow = await this.learningRepo.findCorrectionByPatternKey(patternKey);
-        const existing =
-          existingRow && (existingRow.quarantined === true) === trust.quarantined
-            ? existingRow
-            : null;
-        if (existing) {
-          existing.confirmationCount += 1;
-          existing.confidence = 1;
-          existing.source = writeSource;
-          existing.quarantined = trust.quarantined;
-          if (trust.sourceIpHash != null) {
-            existing.sourceIpHash = trust.sourceIpHash;
-          }
-          await this.learningRepo.save(existing);
-          return existing;
-        }
-        return this.learningRepo.create({
-          ...feedbackLearningRow(payload, correction),
-          source: writeSource,
-          quarantined: trust.quarantined,
-          sourceIpHash: trust.sourceIpHash ?? undefined,
-        });
-      }),
-    );
-    this.logger.log(
-      `Recorded ${results.length} Step 3 feedback correction(s) for extraction ${payload.extractionId ?? "n/a"}`,
-    );
-    return { success: true, recorded: results.length };
+    return this.nixLearningService.recordFeedbackBatch(payload, trust);
   }
 
   async processAndSaveToSecureDocuments(
@@ -2111,23 +1592,34 @@ export class NixService {
 
       if (documentType === DocumentType.PDF) {
         const result = await this.pdfExtractor.extractFromPdf(filePath);
-        extractedContent = this.formatPdfExtractionAsMarkdown(fileName, result);
+        extractedContent = this.documentMarkdownFormatter.formatPdfExtractionAsMarkdown(
+          fileName,
+          result,
+        );
         metadata = result.metadata || {};
       } else if (documentType === DocumentType.EXCEL) {
         const result = await this.excelExtractor.extractFromExcel(filePath);
-        extractedContent = this.formatExcelExtractionAsMarkdown(fileName, result);
+        extractedContent = this.documentMarkdownFormatter.formatExcelExtractionAsMarkdown(
+          fileName,
+          result,
+        );
         metadata = result.metadata || {};
       } else if (documentType === DocumentType.WORD) {
         const result = await this.wordExtractor.extractFromWord(filePath);
-        extractedContent = this.formatWordExtractionAsMarkdown(fileName, result);
+        extractedContent = this.documentMarkdownFormatter.formatWordExtractionAsMarkdown(
+          fileName,
+          result,
+        );
         metadata = result.metadata || {};
       } else {
         const content = fs.readFileSync(filePath, "utf-8");
-        extractedContent = this.formatTextAsMarkdown(fileName, content);
+        extractedContent = this.documentMarkdownFormatter.formatTextAsMarkdown(fileName, content);
       }
 
       const title = customTitle || fileName.replace(/\.[^.]+$/, "");
-      const description = customDescription || this.generateDescription(metadata, extractedContent);
+      const description =
+        customDescription ||
+        this.documentMarkdownFormatter.generateDescription(metadata, extractedContent);
 
       const document = await this.secureDocumentsService.create(
         {
@@ -2241,7 +1733,7 @@ export class NixService {
         "",
         `- **Original filename:** ${fileName}`,
         `- **File type:** ${ext.toUpperCase()}`,
-        `- **Size:** ${this.formatFileSize(storageResult.size)}`,
+        `- **Size:** ${this.documentMarkdownFormatter.formatFileSize(storageResult.size)}`,
         `- **MIME type:** ${storageResult.mimeType}`,
         "",
         "*This is an attachment. Use the download button to get the original file, or view the preview above.*",
@@ -2284,222 +1776,6 @@ export class NixService {
     }
   }
 
-  private formatFileSize(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  }
-
-  private formatPdfExtractionAsMarkdown(fileName: string, result: ExtractionResult): string {
-    const lines: string[] = [
-      `# ${fileName.replace(/\.[^.]+$/, "")}`,
-      "",
-      `> Processed by Nix on ${new Date().toISOString()}`,
-      "",
-    ];
-
-    if (result.metadata) {
-      lines.push("## Document Metadata", "");
-      const meta = result.metadata;
-      if (meta.projectName) lines.push(`- **Project Name:** ${meta.projectName}`);
-      if (meta.projectReference) lines.push(`- **Project Reference:** ${meta.projectReference}`);
-      if (meta.projectLocation) lines.push(`- **Location:** ${meta.projectLocation}`);
-      if (meta.standard) lines.push(`- **Standard:** ${meta.standard}`);
-      if (meta.materialGrade) lines.push(`- **Material Grade:** ${meta.materialGrade}`);
-      if (meta.coating) lines.push(`- **Coating:** ${meta.coating}`);
-      if (meta.lining) lines.push(`- **Lining:** ${meta.lining}`);
-      lines.push("");
-    }
-
-    if (result.items && result.items.length > 0) {
-      lines.push("## Extracted Items", "");
-      lines.push("| # | Description | Type | Size | Material | Qty |");
-      lines.push("|---|-------------|------|------|----------|-----|");
-
-      result.items.forEach((item, index) => {
-        const description = item.description || "-";
-        const type = item.itemType || "-";
-        const size = item.diameter
-          ? `${item.diameter}${item.diameterUnit === "mm" ? "mm" : '"'}`
-          : "-";
-        const material = item.materialGrade || item.material || "-";
-        const qty = item.quantity || "-";
-        lines.push(
-          `| ${index + 1} | ${description.substring(0, 50)} | ${type} | ${size} | ${material} | ${qty} |`,
-        );
-      });
-      lines.push("");
-    }
-
-    if (result.specificationCells && result.specificationCells.length > 0) {
-      lines.push("## Specification Data", "");
-      result.specificationCells.forEach((spec) => {
-        lines.push(`### ${spec.rawText || "Specification"}`);
-        if (spec.parsedData) {
-          const parsed = spec.parsedData;
-          if (parsed.materialGrade) lines.push(`- **Material Grade:** ${parsed.materialGrade}`);
-          if (parsed.wallThickness) lines.push(`- **Wall Thickness:** ${parsed.wallThickness}`);
-          if (parsed.lining) lines.push(`- **Lining:** ${parsed.lining}`);
-          if (parsed.externalCoating) lines.push(`- **Coating:** ${parsed.externalCoating}`);
-          if (parsed.standard) lines.push(`- **Standard:** ${parsed.standard}`);
-          if (parsed.schedule) lines.push(`- **Schedule:** ${parsed.schedule}`);
-        }
-        lines.push("");
-      });
-    }
-
-    lines.push("---", "");
-    lines.push(`*Source file: ${fileName}*`);
-    lines.push(`*Total rows processed: ${result.totalRows}*`);
-    lines.push(`*Items extracted: ${result.items?.length || 0}*`);
-
-    return lines.join("\n");
-  }
-
-  private formatExcelExtractionAsMarkdown(fileName: string, result: ExtractionResult): string {
-    const lines: string[] = [
-      `# ${fileName.replace(/\.[^.]+$/, "")}`,
-      "",
-      `> Processed by Nix on ${new Date().toISOString()}`,
-      "",
-      `**Sheet:** ${result.sheetName || "Unknown"}`,
-      "",
-    ];
-
-    if (result.metadata) {
-      lines.push("## Document Metadata", "");
-      const meta = result.metadata;
-      if (meta.projectName) lines.push(`- **Project Name:** ${meta.projectName}`);
-      if (meta.projectReference) lines.push(`- **Project Reference:** ${meta.projectReference}`);
-      if (meta.projectLocation) lines.push(`- **Location:** ${meta.projectLocation}`);
-      if (meta.standard) lines.push(`- **Standard:** ${meta.standard}`);
-      if (meta.materialGrade) lines.push(`- **Material Grade:** ${meta.materialGrade}`);
-      lines.push("");
-    }
-
-    if (result.items && result.items.length > 0) {
-      lines.push("## Extracted Items", "");
-      lines.push("| # | Description | Type | Size | Material | Qty |");
-      lines.push("|---|-------------|------|------|----------|-----|");
-
-      result.items.forEach((item, index) => {
-        const description = item.description || "-";
-        const type = item.itemType || "-";
-        const size = item.diameter
-          ? `${item.diameter}${item.diameterUnit === "mm" ? "mm" : '"'}`
-          : "-";
-        const material = item.materialGrade || item.material || "-";
-        const qty = item.quantity || "-";
-        lines.push(
-          `| ${index + 1} | ${description.substring(0, 50)} | ${type} | ${size} | ${material} | ${qty} |`,
-        );
-      });
-      lines.push("");
-    }
-
-    lines.push("---", "");
-    lines.push(`*Source file: ${fileName}*`);
-    lines.push(`*Total rows processed: ${result.totalRows}*`);
-    lines.push(`*Items extracted: ${result.items?.length || 0}*`);
-
-    return lines.join("\n");
-  }
-
-  private formatWordExtractionAsMarkdown(
-    fileName: string,
-    result: ExtractionResult & { rawText?: string },
-  ): string {
-    const lines: string[] = [
-      `# ${fileName.replace(/\.[^.]+$/, "")}`,
-      "",
-      `> Processed by Nix on ${new Date().toISOString()}`,
-      "",
-    ];
-
-    if (result.metadata) {
-      lines.push("## Document Metadata", "");
-      const meta = result.metadata;
-      if (meta.projectName) lines.push(`- **Project Name:** ${meta.projectName}`);
-      if (meta.projectReference) lines.push(`- **Project Reference:** ${meta.projectReference}`);
-      if (meta.projectLocation) lines.push(`- **Location:** ${meta.projectLocation}`);
-      if (meta.standard) lines.push(`- **Standard:** ${meta.standard}`);
-      if (meta.materialGrade) lines.push(`- **Material Grade:** ${meta.materialGrade}`);
-      lines.push("");
-    }
-
-    if (result.items && result.items.length > 0) {
-      lines.push("## Extracted Items", "");
-      lines.push("| # | Description | Type | Size | Material | Qty |");
-      lines.push("|---|-------------|------|------|----------|-----|");
-
-      result.items.forEach((item, index) => {
-        const description = item.description || "-";
-        const type = item.itemType || "-";
-        const size = item.diameter
-          ? `${item.diameter}${item.diameterUnit === "mm" ? "mm" : '"'}`
-          : "-";
-        const material = item.materialGrade || item.material || "-";
-        const qty = item.quantity || "-";
-        lines.push(
-          `| ${index + 1} | ${description.substring(0, 50)} | ${type} | ${size} | ${material} | ${qty} |`,
-        );
-      });
-      lines.push("");
-    }
-
-    if (result.rawText) {
-      lines.push("## Document Content", "");
-      lines.push(result.rawText);
-      lines.push("");
-    }
-
-    lines.push("---", "");
-    lines.push(`*Source file: ${fileName}*`);
-    lines.push(`*Total lines processed: ${result.totalRows}*`);
-    lines.push(`*Items extracted: ${result.items?.length || 0}*`);
-
-    return lines.join("\n");
-  }
-
-  private formatTextAsMarkdown(fileName: string, content: string): string {
-    const lines: string[] = [
-      `# ${fileName.replace(/\.[^.]+$/, "")}`,
-      "",
-      `> Processed by Nix on ${new Date().toISOString()}`,
-      "",
-      "## Content",
-      "",
-      content,
-      "",
-      "---",
-      `*Source file: ${fileName}*`,
-    ];
-
-    return lines.join("\n");
-  }
-
-  private generateDescription(metadata: Record<string, unknown>, content: string): string {
-    const parts: string[] = [];
-
-    if (metadata.projectName) {
-      parts.push(`Project: ${metadata.projectName}`);
-    }
-    if (metadata.projectReference) {
-      parts.push(`Ref: ${metadata.projectReference}`);
-    }
-
-    if (parts.length === 0) {
-      const firstLine = content
-        .split("\n")
-        .find((line) => line.trim() && !line.startsWith("#") && !line.startsWith(">"));
-      if (firstLine) {
-        parts.push(firstLine.trim().substring(0, 100));
-      }
-    }
-
-    return parts.join(" | ") || "Nix processed document";
-  }
-
   private cleanupUploadedFile(filePath: string): void {
     try {
       if (fs.existsSync(filePath)) {
@@ -2535,123 +1811,7 @@ export class NixService {
     mimeType: string,
     kind: "coating" | "lining",
   ): Promise<{ brand: string | null; description: string | null }> {
-    const base64 = fileBuffer.toString("base64");
-    const mediaType = this.normaliseDataSheetMediaType(mimeType);
-    if (!mediaType) {
-      this.logger.warn(`Unsupported data sheet media type: ${mimeType}`);
-      return { brand: null, description: null };
-    }
-
-    const systemPrompt = hardenedExtractionSystemInstruction(
-      `You read product data sheets and emit a single JSON object: {"brand": string|null, "description": string|null}. No prose, no markdown — JSON only. Use null when the field is genuinely absent. Never invent values.`,
-    );
-
-    const userPrompt =
-      kind === "coating" ? this.coatingDataSheetPrompt() : this.liningDataSheetPrompt();
-
-    try {
-      const result = await this.aiChatService.chatWithImage(
-        base64,
-        mediaType,
-        userPrompt,
-        systemPrompt,
-        { temperature: 0.1, maxOutputTokens: 1024, responseFormat: "json" },
-      );
-      return this.parseProductSpecResponse(result.content);
-    } catch (error) {
-      this.logger.warn(
-        `Product spec extraction failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
-      return { brand: null, description: null };
-    }
-  }
-
-  private coatingDataSheetPrompt(): string {
-    return [
-      "Read this paint / coating product data sheet and produce ONE supplier entry suitable for a customer-facing quote.",
-      "",
-      'Return JSON shape: {"brand": string, "description": string}.',
-      "",
-      "- `brand` is the manufacturer / supplier (e.g. 'Stoncor', 'Carboline', 'Corrocoat', 'Hempel', 'Jotun', 'Sigma', 'International Paint', 'Sherwin-Williams'). Just the company name. Do NOT put the product name in `brand`.",
-      "- `description` is the line a quoter would write next to that brand. Most product data sheets describe a SINGLE coat (the product), so usually one '<Product name> @ <DFT range>μm' entry. If the sheet describes a multi-coat system, list each coat separated by ', '.",
-      "  - Use ranges like '100-150μm' when the sheet gives a recommended DFT range, otherwise the single recommended value.",
-      "  - Append ', colour: <name>' or ', RAL <number>' ONLY if the sheet specifies a colour for THIS coat (skip generic 'available colours' lists).",
-      "  - Skip product codes, certification numbers, marketing copy, ingredient breakdowns, and application instructions.",
-      "",
-      "Example outputs:",
-      "  Single coat: 'Carboguard 890 Aluminium @ 100-150μm'",
-      "  System: 'Carboguard 890 Aluminium @ 100-150μm, Carbothane 137 HS @ 50-100μm, colour: RAL 5012'",
-      "",
-      "If the document is genuinely not a paint product data sheet (e.g. it's a rubber lining, a generic spec, an invoice), return both fields as null.",
-    ].join("\n");
-  }
-
-  private liningDataSheetPrompt(): string {
-    return [
-      'Read this rubber / polymer / elastomer lining or sheeting product data sheet. Return JSON: {"brand": null, "description": string}.',
-      "",
-      "`brand` stays null — linings are quoted as a single product and the brand is captured elsewhere as the spec code.",
-      "",
-      "`description` is a single comma-separated line of THIS PRODUCT'S properties, drawn ONLY from what the data sheet actually states. Include each field below only when the data sheet specifies it, in this order:",
-      "  1. Hardness (e.g. '60 Shore A', '70 Shore A')",
-      "  2. Cure method (e.g. 'steam cured', 'autoclave vulcanised', 'press cured', 'CSV cured')",
-      "  3. Bonding compatibility (e.g. 'hot-bonded', 'cold-bonded', 'self-adhesive')",
-      "  4. Polymer family (e.g. 'natural rubber', 'silica-reinforced natural rubber', 'NBR', 'EPDM', 'butyl', 'neoprene')",
-      "  5. Specific gravity if given (e.g. 'SG 1.05')",
-      "  6. Tensile strength if given (e.g. '24 MPa tensile')",
-      "  7. Abrasion / wear resistance class if given",
-      "  8. Colour (e.g. 'red', 'black', 'tan', 'natural')",
-      "",
-      "Example outputs:",
-      "  '60 Shore A, steam cured, hot-bonded, natural rubber, red'",
-      "  '50 Shore A, autoclave vulcanised, silica-reinforced natural rubber, red'",
-      "  '70 Shore A, NBR, oil resistant, black'",
-      "",
-      "Important: bore thickness and flange thickness do NOT come from product data sheets — those are application-specific and entered elsewhere by the quoter. Don't try to extract them.",
-      "",
-      "Drop any field that isn't explicitly on the data sheet — don't invent values to pad the line. Most rubber data sheets give hardness + cure method + colour at minimum, so you should normally have at least three fields. Only return description as null if this is genuinely not a rubber/polymer product data sheet.",
-    ].join("\n");
-  }
-
-  private normaliseDataSheetMediaType(
-    mimeType: string,
-  ): "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "application/pdf" | null {
-    const lower = mimeType.toLowerCase();
-    if (lower === "application/pdf") return "application/pdf";
-    if (lower === "image/jpeg" || lower === "image/jpg") return "image/jpeg";
-    if (lower === "image/png") return "image/png";
-    if (lower === "image/gif") return "image/gif";
-    if (lower === "image/webp") return "image/webp";
-    return null;
-  }
-
-  private parseProductSpecResponse(raw: string): {
-    brand: string | null;
-    description: string | null;
-  } {
-    const empty = { brand: null, description: null };
-    if (!raw || raw.trim().length === 0) return empty;
-    const cleaned = raw
-      .trim()
-      .replace(/^```(?:json)?\s*/i, "")
-      .replace(/\s*```$/i, "");
-    try {
-      const parsed = JSON.parse(cleaned) as { brand?: unknown; description?: unknown };
-      const brand =
-        typeof parsed.brand === "string" && parsed.brand.trim().length > 0
-          ? parsed.brand.trim()
-          : null;
-      const description =
-        typeof parsed.description === "string" && parsed.description.trim().length > 0
-          ? parsed.description.trim()
-          : null;
-      return { brand, description };
-    } catch (error) {
-      this.logger.warn(
-        `Failed to parse product spec response as JSON: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
-      return empty;
-    }
+    return this.productSpecExtractionService.extractProductSpec(fileBuffer, mimeType, kind);
   }
 }
 

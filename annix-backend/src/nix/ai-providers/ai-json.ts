@@ -1,6 +1,14 @@
+import { jsonrepair } from "jsonrepair";
 import { allowlistKeys } from "./untrusted-content";
 
 export { allowlistKeys };
+
+export interface AiJsonParseOptions {
+  // Opt into a jsonrepair pass before giving up (for models that emit trailing
+  // commas / unquoted keys / minor breakage). Still fails CLOSED — a response
+  // that cannot be repaired throws AiJsonError, never returns null/partial.
+  repair?: boolean;
+}
 
 /**
  * Thrown when an AI response cannot be turned into the expected JSON shape —
@@ -66,23 +74,40 @@ function extractBalanced(text: string, open: string, close: string): string | nu
   return null;
 }
 
-function parseBalanced(content: string, open: string, close: string): unknown {
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function parseBalanced(content: string, open: string, close: string, repair: boolean): unknown {
   const text = stripCodeFences(content ?? "");
   const extracted = extractBalanced(text, open, close);
-  if (extracted === null) {
+  if (extracted !== null) {
+    try {
+      return JSON.parse(extracted);
+    } catch (error: unknown) {
+      if (!repair) {
+        throw new AiJsonError(`AI response JSON was malformed: ${errorMessage(error)}`);
+      }
+    }
+  } else if (!repair) {
     throw new AiJsonError(`AI response contained no balanced JSON "${open}...${close}"`);
   }
+
   try {
-    return JSON.parse(extracted);
+    return JSON.parse(jsonrepair(extracted ?? text));
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new AiJsonError(`AI response JSON was malformed: ${message}`);
+    throw new AiJsonError(
+      `AI response JSON was malformed even after repair: ${errorMessage(error)}`,
+    );
   }
 }
 
 /** Parse an AI response expected to be a single JSON object. Fails closed. */
-export function parseAiJsonObject(content: string): Record<string, unknown> {
-  const parsed = parseBalanced(content, "{", "}");
+export function parseAiJsonObject(
+  content: string,
+  options?: AiJsonParseOptions,
+): Record<string, unknown> {
+  const parsed = parseBalanced(content, "{", "}", options?.repair ?? false);
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
     throw new AiJsonError("AI response was not a JSON object");
   }
@@ -90,12 +115,25 @@ export function parseAiJsonObject(content: string): Record<string, unknown> {
 }
 
 /** Parse an AI response expected to be a JSON array. Fails closed. */
-export function parseAiJsonArray(content: string): unknown[] {
-  const parsed = parseBalanced(content, "[", "]");
+export function parseAiJsonArray(content: string, options?: AiJsonParseOptions): unknown[] {
+  const parsed = parseBalanced(content, "[", "]", options?.repair ?? false);
   if (!Array.isArray(parsed)) {
     throw new AiJsonError("AI response was not a JSON array");
   }
   return parsed;
+}
+
+/**
+ * Generic object-parse entry — the canonical replacement for the deleted
+ * `parseJsonFromAi<T>`. Always yields a JSON object (fails closed otherwise);
+ * pass `{ repair: true }` for the lenient jsonrepair-backed behaviour the old
+ * helper had.
+ */
+export function parseAiJson<T = Record<string, unknown>>(
+  content: string,
+  options?: AiJsonParseOptions,
+): T {
+  return parseAiJsonObject(content, options) as T;
 }
 
 /** Coerce an AI-extracted value to a finite number, or null. */

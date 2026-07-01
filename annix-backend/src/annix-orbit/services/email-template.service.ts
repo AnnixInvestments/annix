@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
 import { EmailService } from "../../email/email.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { parseAiJsonObject } from "../../nix/ai-providers/ai-json";
 import {
   AnnixOrbitEmailTemplate,
   CvEmailTemplateKind,
@@ -201,16 +202,7 @@ Rules:
     content: string,
     def: EmailTemplateDefinition,
   ): { subject: string; bodyHtml: string; bodyText: string } {
-    const cleaned = content
-      .trim()
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/```\s*$/i, "");
-    const match = cleaned.match(/\{[\s\S]*\}/);
-    if (!match) {
-      throw new Error("Nix did not return a JSON object");
-    }
-    const raw = JSON.parse(match[0]) as Record<string, unknown>;
+    const raw = parseAiJsonObject(content) as Record<string, unknown>;
     const subject = typeof raw.subject === "string" ? raw.subject.slice(0, 240) : def.subject;
     const bodyHtml = typeof raw.bodyHtml === "string" ? raw.bodyHtml : def.bodyHtml;
     const bodyText = typeof raw.bodyText === "string" ? raw.bodyText : def.bodyText;

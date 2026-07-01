@@ -1,20 +1,5 @@
+import { anyPortalAuthHeaders } from "@/app/lib/api/portalTokenStores";
 import { browserBaseUrl } from "@/lib/api-config";
-
-const chatAuthHeaders = (): Record<string, string> => {
-  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
-  if (typeof window === "undefined") return {};
-  const token =
-    localStorage.getItem("adminAccessToken") ||
-    localStorage.getItem("customerAccessToken") ||
-    localStorage.getItem("supplierAccessToken") ||
-    localStorage.getItem("annixRepAccessToken") ||
-    localStorage.getItem("authToken") ||
-    localStorage.getItem("token");
-  if (token) {
-    return { Authorization: `Bearer ${token}` };
-  }
-  return {};
-};
 
 export interface ChatSession {
   sessionId: number;
@@ -144,7 +129,7 @@ export const nixChatApi = {
     const response = await fetch(`${browserBaseUrl()}/nix/chat/session`, {
       method: "POST",
       headers: {
-        ...chatAuthHeaders(),
+        ...anyPortalAuthHeaders(),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ rfqId }),
@@ -159,7 +144,7 @@ export const nixChatApi = {
 
   async session(sessionId: number): Promise<ChatSession> {
     const response = await fetch(`${browserBaseUrl()}/nix/chat/session/${sessionId}`, {
-      headers: chatAuthHeaders(),
+      headers: anyPortalAuthHeaders(),
     });
 
     if (!response.ok) {
@@ -171,7 +156,7 @@ export const nixChatApi = {
 
   async history(sessionId: number): Promise<{ sessionId: number; messages: ChatMessage[] }> {
     const response = await fetch(`${browserBaseUrl()}/nix/chat/session/${sessionId}/history`, {
-      headers: chatAuthHeaders(),
+      headers: anyPortalAuthHeaders(),
     });
 
     if (!response.ok) {
@@ -197,7 +182,7 @@ export const nixChatApi = {
     const response = await fetch(`${browserBaseUrl()}/nix/chat/session/${sessionId}/message`, {
       method: "POST",
       headers: {
-        ...chatAuthHeaders(),
+        ...anyPortalAuthHeaders(),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ message, context }),
@@ -224,7 +209,7 @@ export const nixChatApi = {
     const response = await fetch(`${browserBaseUrl()}/nix/chat/session/${sessionId}/stream`, {
       method: "POST",
       headers: {
-        ...chatAuthHeaders(),
+        ...anyPortalAuthHeaders(),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ message, context }),
@@ -278,7 +263,7 @@ export const nixChatApi = {
     const response = await fetch(`${browserBaseUrl()}/nix/chat/session/${sessionId}/preferences`, {
       method: "POST",
       headers: {
-        ...chatAuthHeaders(),
+        ...anyPortalAuthHeaders(),
         "Content-Type": "application/json",
       },
       body: JSON.stringify(preferences),
@@ -302,7 +287,7 @@ export const nixChatApi = {
     const response = await fetch(`${browserBaseUrl()}/nix/chat/session/${sessionId}/correction`, {
       method: "POST",
       headers: {
-        ...chatAuthHeaders(),
+        ...anyPortalAuthHeaders(),
         "Content-Type": "application/json",
       },
       body: JSON.stringify(correction),
@@ -318,7 +303,7 @@ export const nixChatApi = {
   async endSession(sessionId: number): Promise<{ success: boolean }> {
     const response = await fetch(`${browserBaseUrl()}/nix/chat/session/${sessionId}/end`, {
       method: "POST",
-      headers: chatAuthHeaders(),
+      headers: anyPortalAuthHeaders(),
     });
 
     if (!response.ok) {
@@ -338,7 +323,7 @@ export const nixChatApi = {
     const response = await fetch(`${browserBaseUrl()}/nix/chat/validate/item`, {
       method: "POST",
       headers: {
-        ...chatAuthHeaders(),
+        ...anyPortalAuthHeaders(),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ item, context }),
@@ -363,7 +348,7 @@ export const nixChatApi = {
     const response = await fetch(`${browserBaseUrl()}/nix/chat/validate/rfq`, {
       method: "POST",
       headers: {
-        ...chatAuthHeaders(),
+        ...anyPortalAuthHeaders(),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ items }),
@@ -387,7 +372,7 @@ export const nixChatApi = {
     const response = await fetch(`${browserBaseUrl()}/nix/chat/session/${sessionId}/parse-items`, {
       method: "POST",
       headers: {
-        ...chatAuthHeaders(),
+        ...anyPortalAuthHeaders(),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ message, context }),
@@ -415,7 +400,7 @@ export const nixChatApi = {
     const response = await fetch(`${browserBaseUrl()}/nix/chat/session/${sessionId}/create-items`, {
       method: "POST",
       headers: {
-        ...chatAuthHeaders(),
+        ...anyPortalAuthHeaders(),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

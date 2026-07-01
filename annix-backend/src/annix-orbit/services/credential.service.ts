@@ -11,6 +11,7 @@ import { EmailService } from "../../email/email.service";
 import { DateTime } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { parseAiJsonObject } from "../../nix/ai-providers/ai-json";
 import {
   hardenedExtractionSystemInstruction,
   wrapUntrustedDocument,
@@ -86,9 +87,7 @@ export class CredentialService {
         undefined,
         { app: AiApp.ANNIX_ORBIT, actionType: "orbit-credential-doc" },
       );
-      const match = content.match(/\{[\s\S]*\}/);
-      if (!match) return empty;
-      const parsed = JSON.parse(match[0]) as {
+      const parsed = parseAiJsonObject(content) as {
         credentialType?: string;
         issuedAt?: string | null;
         expiresAt?: string | null;
@@ -337,9 +336,7 @@ export class CredentialService {
         undefined,
         { app: AiApp.ANNIX_ORBIT, actionType: "orbit-credential-cv" },
       );
-      const match = content.match(/\{[\s\S]*\}/);
-      if (!match) return [];
-      const parsed = JSON.parse(match[0]) as {
+      const parsed = parseAiJsonObject(content) as {
         credentials?: Array<{
           credentialType?: string;
           issuedAt?: string | null;

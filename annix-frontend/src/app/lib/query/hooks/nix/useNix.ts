@@ -1,4 +1,4 @@
-import { isString, keys } from "es-toolkit/compat";
+import { isObject, isString, keys } from "es-toolkit/compat";
 import { sessionExpiredEvent } from "@/app/components/SessionExpiredModal";
 import { refreshActivePortalToken } from "@/app/lib/api/portalRefresh";
 import { anyPortalAuthHeaders } from "@/app/lib/api/portalTokenStores";
@@ -18,12 +18,40 @@ type PortalContext = "admin" | "customer" | "supplier" | "annix-rep" | "general"
  */
 export class NixRequestError extends Error {
   readonly status: number;
+  /**
+   * The server-provided, user-safe message (the JSON body's `error` field)
+   * when one was present — distinct from `message`, which falls back to a
+   * technical `errorLabel: statusText` string when the server sent nothing
+   * friendly. UI should surface `friendlyMessage` and NEVER `message`.
+   */
+  readonly friendlyMessage: string | null;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, friendlyMessage: string | null = null) {
     super(message);
     this.name = "NixRequestError";
     this.status = status;
+    this.friendlyMessage = friendlyMessage;
   }
+}
+
+const NIX_GENERIC_ERROR = "Something went wrong — please try again.";
+
+/**
+ * Resolves a user-safe message for a caught Nix error. Prefers the
+ * server-provided friendly `error` field (carried on `NixRequestError`),
+ * otherwise returns a fixed generic line. NEVER returns a raw
+ * `Error.message` / status-text string, so internal exception detail can
+ * never leak into chat bubbles, toasts or alerts.
+ */
+export function nixFriendlyError(error: unknown, fallback: string = NIX_GENERIC_ERROR): string {
+  if (isObject(error)) {
+    const record = error as { friendlyMessage?: unknown };
+    const friendly = record.friendlyMessage;
+    if (isString(friendly) && friendly.trim().length > 0) {
+      return friendly;
+    }
+  }
+  return fallback;
 }
 
 /**
@@ -219,8 +247,9 @@ async function nixRequest<TResponse>(
     if (options.parseErrorBody) {
       const body = await response.json().catch(() => null);
       const rawError = body ? body.error : null;
-      const errorMessage = rawError || `${options.errorLabel}: ${statusText}`;
-      throw new NixRequestError(errorMessage, status);
+      const serverFriendly = isString(rawError) && rawError.trim().length > 0 ? rawError : null;
+      const errorMessage = serverFriendly || `${options.errorLabel}: ${statusText}`;
+      throw new NixRequestError(errorMessage, status, serverFriendly);
     }
     throw new NixRequestError(`${options.errorLabel}: ${statusText}`, status);
   }

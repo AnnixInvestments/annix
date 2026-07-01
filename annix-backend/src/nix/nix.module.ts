@@ -106,6 +106,7 @@ import { ProductDataSheetSchema } from "./schemas/product-data-sheet.schema";
 import { AutoApprovalService } from "./services/auto-approval.service";
 import { CustomFieldService } from "./services/custom-field.service";
 import { DocumentAnnotationService } from "./services/document-annotation.service";
+import { DocumentMarkdownFormatter } from "./services/document-markdown-formatter.service";
 import { DocumentVerificationService } from "./services/document-verification.service";
 import { ExcelExtractorService } from "./services/excel-extractor.service";
 import { NixAnonGeminiCeilingService } from "./services/nix-anon-gemini-ceiling.service";
@@ -113,13 +114,16 @@ import { NixChatService } from "./services/nix-chat.service";
 import { NixChatItemService } from "./services/nix-chat-item.service";
 import { NixExtractionSessionService } from "./services/nix-extraction-session.service";
 import { NixItemParserService } from "./services/nix-item-parser.service";
+import { NixLearningService } from "./services/nix-learning.service";
 import { NixTurnstileService } from "./services/nix-turnstile.service";
 import { NixValidationService } from "./services/nix-validation.service";
 import { PdfExtractorService } from "./services/pdf-extractor.service";
+import { ProductSpecExtractionService } from "./services/product-spec-extraction.service";
 import { QuotePdfService } from "./services/quote-pdf.service";
 import { QuoteToJobCardService } from "./services/quote-to-job-card.service";
 import { RegistrationDocumentVerifierService } from "./services/registration-document-verifier.service";
 import { RoleClassifierService } from "./services/role-classifier.service";
+import { VisionExtractionService } from "./services/vision-extraction.service";
 import { WordExtractorService } from "./services/word-extractor.service";
 
 @Module({
@@ -194,6 +198,10 @@ import { WordExtractorService } from "./services/word-extractor.service";
     MineInferenceService,
     MineLibraryService,
     RevisionTrackingService,
+    DocumentMarkdownFormatter,
+    VisionExtractionService,
+    ProductSpecExtractionService,
+    NixLearningService,
     ProductDataSheetsService,
     NixService,
     NixAnonGeminiCeilingService,

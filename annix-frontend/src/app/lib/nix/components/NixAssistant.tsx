@@ -16,10 +16,17 @@ interface PageContext {
 interface NixAssistantProps {
   context?: PortalContext;
   pageContext?: PageContext;
+  /**
+   * Overrides Nix's default quick-action prompts. Piping mounts pass their own
+   * (bend/flange) prompts; non-piping apps leave this unset to get the generic
+   * defaults rather than piping suggestions.
+   */
+  quickActions?: Array<{ label: string; prompt: string }>;
 }
 
 export function NixAssistant(props: NixAssistantProps) {
   const { context = "general", pageContext } = props;
+  const quickActions = props.quickActions;
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [errorKey, setErrorKey] = useState(0);
@@ -52,6 +59,7 @@ export function NixAssistant(props: NixAssistantProps) {
             onSessionCreated={handleSessionCreated}
             portalContext={context}
             pageContext={pageContext ?? { currentPage: "General Portal", portalContext: context }}
+            quickActions={quickActions}
           />
         </NixErrorBoundary>
       )}

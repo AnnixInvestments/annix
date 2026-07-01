@@ -101,6 +101,27 @@ const findSimilarClarifications = (
   });
 };
 
+const clarificationLabel = (c: NixClarificationDto): string => {
+  const cctx = c.context;
+  if (cctx.cellRef) return `Spec ${cctx.cellRef}`;
+  if (cctx.itemNumber) return cctx.itemNumber;
+  if (cctx.rowNumber) return `Row ${cctx.rowNumber}`;
+  return "Item";
+};
+
+const clarificationValueSummary = (c: NixClarificationDto): string => {
+  const cctx = c.context;
+  const parts: string[] = [];
+  if (cctx.extractedMaterial) parts.push(`Material: ${cctx.extractedMaterial}`);
+  if (cctx.extractedDiameter) parts.push(`Dia: ${cctx.extractedDiameter}mm`);
+  if (cctx.extractedLength) parts.push(`Len: ${cctx.extractedLength}mm`);
+  if (cctx.extractedAngle) parts.push(`Angle: ${cctx.extractedAngle}°`);
+  if (cctx.extractedFlangeConfig) parts.push(`Flange: ${cctx.extractedFlangeConfig}`);
+  if (cctx.extractedQuantity) parts.push(`Qty: ${cctx.extractedQuantity}`);
+  const summary = parts.join(" · ");
+  return summary.length > 0 ? summary : "No extracted values on file";
+};
+
 export default function NixClarificationPopup(props: NixClarificationPopupProps) {
   const {
     clarification,
@@ -115,7 +136,7 @@ export default function NixClarificationPopup(props: NixClarificationPopupProps)
   } = props;
   const [response, setResponse] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [applyToSimilar, setApplyToSimilar] = useState(true);
+  const [applyToSimilar, setApplyToSimilar] = useState(false);
   const [pages, setPages] = useState<PdfPageImage[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoadingDocument, setIsLoadingDocument] = useState(false);
@@ -239,7 +260,10 @@ export default function NixClarificationPopup(props: NixClarificationPopupProps)
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/10 backdrop-blur-md" onClick={onClose} />
+      {/* Backdrop is inert on click: dismissing the dialog by clicking outside
+          used to slip past the extracted values without an explicit Skip /
+          confirm. The header ✕ and the Skip button are the explicit exits. */}
+      <div className="absolute inset-0 bg-black/10 backdrop-blur-md" />
       <div
         className={`relative bg-white rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300 flex ${
           hasDocument ? "w-full max-w-7xl h-[90vh]" : "max-w-2xl w-full max-h-[90vh]"
@@ -478,10 +502,21 @@ export default function NixClarificationPopup(props: NixClarificationPopupProps)
                     <br />
                     <span className="text-blue-600">
                       Other items are asking the same type of question. Your answer will be applied
-                      to all of them.
+                      to all of them — review each below before confirming.
                     </span>
                   </span>
                 </label>
+
+                {applyToSimilar && (
+                  <ul className="mt-2 space-y-1 border-t border-blue-200 pt-2">
+                    {similarClarifications.map((c) => (
+                      <li key={c.id} className="flex items-start gap-2 text-xs text-blue-800">
+                        <span className="font-medium shrink-0">{clarificationLabel(c)}:</span>
+                        <span className="text-blue-700">{clarificationValueSummary(c)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
 

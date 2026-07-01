@@ -10,6 +10,7 @@ import {
 import { Injectable, Logger } from "@nestjs/common";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { parseAiJsonObject } from "../../nix/ai-providers/ai-json";
 import { Candidate } from "../entities/candidate.entity";
 import { SEEKER_EVENTS } from "../lib/seeker-testing.constants";
 import { CandidateRepository } from "../repositories/candidate.repository";
@@ -162,9 +163,7 @@ export class WorkProfileService {
         workExtractionSystemPrompt(),
         "gemini",
       );
-      const match = content.match(/\{[\s\S]*\}/);
-      if (!match) return null;
-      const parsed = JSON.parse(match[0]) as { shared?: Partial<WorkProfile["shared"]> };
+      const parsed = parseAiJsonObject(content) as { shared?: Partial<WorkProfile["shared"]> };
       if (!parsed?.shared) return null;
       const shared = parsed.shared;
       return {

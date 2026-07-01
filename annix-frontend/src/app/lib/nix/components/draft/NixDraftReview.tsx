@@ -7,13 +7,27 @@ import {
 } from "@/app/components/ExtractionProgressModal";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { useToast } from "@/app/components/Toast";
+import { metricsApi } from "@/app/lib/api/metricsApi";
 import { useAdaptiveExtractionProgress } from "@/app/lib/hooks/useAdaptiveExtractionProgress";
 import { useAlert } from "@/app/lib/hooks/useAlert";
 import { nixApi } from "@/app/lib/nix";
-import type { NixExtractionSessionDto, NixExtractionSummary } from "@/app/lib/query/hooks";
+import {
+  type NixExtractionSessionDto,
+  type NixExtractionSummary,
+  nixFriendlyError,
+} from "@/app/lib/query/hooks";
 import { ExtractionGroup } from "./ExtractionGroup";
 import { NixSpecViewerModal, useNixSpecViewer } from "./NixSpecViewer";
 import { useSpecLookup } from "./useSpecLookup";
+
+// Shared metric key for re-extraction timings — used by both the single-row
+// Retry (seeding its progress-modal estimate) and Re-extract-all (bulk). The
+// backend records durations under the same category/operation via
+// ExtractionMetricService.time(), so the estimate sharpens with every run
+// instead of relying on a hardcoded value.
+const RETRY_METRIC_CATEGORY = "asca-quote-extract-bulk";
+const RETRY_METRIC_OPERATION = "retry-extract";
+const RETRY_FALLBACK_MS = 45_000;
 
 /**
  * Top-level draft-review block — drawings + specs + other groups,
@@ -75,16 +89,20 @@ export function NixDraftReview(props: {
     async (extraction: NixExtractionSummary) => {
       try {
         setRetryingId(extraction.id);
+        const stats = await metricsApi
+          .extractionStats(RETRY_METRIC_CATEGORY, RETRY_METRIC_OPERATION)
+          .catch(() => null);
+        const rawAverageMs = stats ? stats.averageMs : null;
+        const estimatedDurationMs = rawAverageMs || RETRY_FALLBACK_MS;
         showExtraction({
           brand,
           label: `Re-extracting ${extraction.documentName}…`,
-          estimatedDurationMs: 60_000,
+          estimatedDurationMs,
         });
         await nixApi.retryExtraction(extraction.id);
         await onSessionChanged();
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Re-extract failed";
-        alert({ message, variant: "error" });
+        alert({ message: nixFriendlyError(err), variant: "error" });
       } finally {
         hideExtraction();
         setRetryingId(null);
@@ -112,7 +130,8 @@ export function NixDraftReview(props: {
     try {
       const result = await runBulk({
         brand,
-        metricCategory: "asca-quote-extract-bulk",
+        metricCategory: RETRY_METRIC_CATEGORY,
+        metricOperation: RETRY_METRIC_OPERATION,
         items: retryableExtractions,
         itemId: (extraction) => extraction.id,
         itemLabel: (extraction, i, t) =>
@@ -154,8 +173,7 @@ export function NixDraftReview(props: {
         }
         pdfPreview.open(url, extraction.documentName);
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to open document";
-        alert({ message, variant: "error" });
+        alert({ message: nixFriendlyError(err), variant: "error" });
       }
     },
     [showToast, alert, pdfPreview],

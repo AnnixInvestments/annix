@@ -1,9 +1,9 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { chunk, isNumber, isString } from "es-toolkit/compat";
 import { stripHtmlToText } from "../../../lib/html-text";
-import { parseJsonFromAi } from "../../../lib/json-from-ai";
 import { ExtractionMetricService } from "../../../metrics/extraction-metric.service";
 import { AiChatService } from "../../../nix/ai-providers/ai-chat.service";
+import { parseAiJson } from "../../../nix/ai-providers/ai-json";
 import { DESCRIPTION_LIMIT } from "../../config/external-job-ingest";
 import { JobMarketSource } from "../../entities/job-market-source.entity";
 import { ExternalJobRepository } from "../../repositories/external-job.repository";
@@ -186,7 +186,7 @@ export class SitemapCrawlIngestionService {
           maxOutputTokens: EXTRACTION_MAX_TOKENS,
         },
       );
-      const parsed = parseJsonFromAi<CrawledJobExtraction>(result.content);
+      const parsed = parseAiJson<CrawledJobExtraction>(result.content, { repair: true });
       const title = clean(parsed.title);
       if (!title) {
         return this.fallbackResult(url, externalId, html);

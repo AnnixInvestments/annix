@@ -9,8 +9,8 @@ import type {
 import { templateForSubject } from "@annix/product-data/teacher-assistant";
 import { Injectable, Logger } from "@nestjs/common";
 import { AiApp } from "../../ai-usage/entities/ai-usage-log.entity";
-import { parseJsonFromAi } from "../../lib/json-from-ai";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { parseAiJson } from "../../nix/ai-providers/ai-json";
 
 const FILLER_SYSTEM_PROMPT = `You are an expert education designer filling in a missing section of an assignment.
 Return STRICT JSON only — no prose, no markdown fences, no commentary.
@@ -202,7 +202,7 @@ export class SectionFillerService {
       undefined,
       { app: AiApp.TEACHER_ASSISTANT, actionType: "teacher-fill-rubric" },
     );
-    const parsed = parseJsonFromAi<RubricResponse>(response.content);
+    const parsed = parseAiJson<RubricResponse>(response.content, { repair: true });
     return Array.isArray(parsed.rubric) ? parsed.rubric : null;
   }
 
@@ -219,7 +219,7 @@ export class SectionFillerService {
       undefined,
       { app: AiApp.TEACHER_ASSISTANT, actionType: "teacher-fill-teacher-notes" },
     );
-    const parsed = parseJsonFromAi<TeacherNotesResponse>(response.content);
+    const parsed = parseAiJson<TeacherNotesResponse>(response.content, { repair: true });
     return parsed.teacherNotes ?? null;
   }
 
@@ -252,7 +252,7 @@ export class SectionFillerService {
       undefined,
       { app: AiApp.TEACHER_ASSISTANT, actionType: "teacher-fill-string-list" },
     );
-    const parsed = parseJsonFromAi<StringListResponse>(response.content);
+    const parsed = parseAiJson<StringListResponse>(response.content, { repair: true });
     return Array.isArray(parsed.items) ? parsed.items.filter((s) => s.trim().length > 0) : null;
   }
 
@@ -270,7 +270,7 @@ export class SectionFillerService {
       undefined,
       { app: AiApp.TEACHER_ASSISTANT, actionType: "teacher-fill-parent-note" },
     );
-    const parsed = parseJsonFromAi<StringListResponse>(response.content);
+    const parsed = parseAiJson<StringListResponse>(response.content, { repair: true });
     if (Array.isArray(parsed.items) && parsed.items.length > 0) {
       return parsed.items[0]?.trim() || null;
     }
@@ -446,7 +446,7 @@ export class SectionFillerService {
       undefined,
       { app: AiApp.TEACHER_ASSISTANT, actionType: "teacher-fill-shell" },
     );
-    const parsed = parseJsonFromAi<ShellResponse>(response.content);
+    const parsed = parseAiJson<ShellResponse>(response.content, { repair: true });
     if (!parsed.title || !parsed.studentBrief) return null;
     return parsed;
   }
@@ -482,7 +482,7 @@ export class SectionFillerService {
       undefined,
       { app: AiApp.TEACHER_ASSISTANT, actionType: "teacher-fill-tasks" },
     );
-    const parsed = parseJsonFromAi<TasksResponse>(response.content);
+    const parsed = parseAiJson<TasksResponse>(response.content, { repair: true });
     if (!Array.isArray(parsed.tasks) || parsed.tasks.length < 3) return null;
     return parsed.tasks;
   }
@@ -506,7 +506,7 @@ export class SectionFillerService {
       undefined,
       { app: AiApp.TEACHER_ASSISTANT, actionType: "teacher-fill-extras" },
     );
-    const parsed = parseJsonFromAi<ExtrasResponse>(response.content);
+    const parsed = parseAiJson<ExtrasResponse>(response.content, { repair: true });
     return parsed;
   }
 
