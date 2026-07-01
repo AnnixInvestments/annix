@@ -5,7 +5,7 @@ category: Hiring
 roles: [recruiter, admin]
 order: 1
 tags: [jobs, nix, ai, wizard]
-lastUpdated: 2026-05-13
+lastUpdated: 2026-07-01
 summary: Walk through the six-step job-posting wizard and learn when to lean on Nix.
 readingMinutes: 6
 relatedPaths: [annix-frontend/src/app/lib/annix-orbit/job-wizard, annix-frontend/src/app/annix/orbit/portal/jobs, annix-backend/src/annix-orbit/services/nix-job-assist.service.ts, annix-backend/src/annix-orbit/services/nix-prompts.ts]
@@ -22,6 +22,9 @@ come back without losing work.
 Open it from the Dashboard ("Post a New Job") or the Jobs page ("Create
 Job"). The URL is `/annix/orbit/portal/jobs/new`; the draft id is added
 to the URL once the first save lands so the page is shareable / bookmarkable.
+Use **Save job listing** at the top of the wizard whenever you want to leave
+the flow and return to the Dashboard. The listing appears in the Dashboard's
+Job listings table with a **Continue** link for drafts.
 
 ## The six steps
 
@@ -146,8 +149,9 @@ funnel. Each engine has a copy button + an "Open in new tab" link.
 
 ## Tips
 
-- **Auto-save runs every time you leave a field** — there's no Save
-  button on each step. Step transitions force-flush.
+- **Auto-save runs every time you leave a field**. Step transitions force-flush,
+  and **Save job listing** force-saves the current draft before returning you to
+  the Dashboard.
 - **Move forward before all suggestions are perfect.** The quality score
   updates live; you can come back to a step at any time via the stepper.
 - **Treat Nix suggestions as a starting point** — they're tuned to the

@@ -1,9 +1,11 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import { Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { JobPosting, UpdateJobWizardPayload } from "@/app/lib/api/annixOrbitApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useOrbitCreateJobDraft, useOrbitJobWizardDraft } from "@/app/lib/query/hooks";
 import { annixOrbitKeys } from "@/app/lib/query/keys";
 import { WIZARD_STEPS, type WizardStepId } from "../constants/wizard-steps";
@@ -29,6 +31,7 @@ export interface JobWizardProps {
 
 export function JobWizard({ jobId }: JobWizardProps) {
   const router = useRouter();
+  const { alert: showAlert, AlertDialog } = useAlert();
   const queryClient = useQueryClient();
   const createDraft = useOrbitCreateJobDraft();
   const draftQuery = useOrbitJobWizardDraft(jobId);
@@ -37,6 +40,7 @@ export function JobWizard({ jobId }: JobWizardProps) {
   const step = useWizardStep();
   const autoSave = useWizardAutoSave(resolvedId);
   const [highestVisited, setHighestVisited] = useState(step.index);
+  const [isSavingListing, setIsSavingListing] = useState(false);
   const [titlePreview, setTitlePreview] = useState<{
     samplePreview: string;
     sampleResponsibilities: string[];
@@ -103,6 +107,21 @@ export function JobWizard({ jobId }: JobWizardProps) {
     step.next();
   };
 
+  const handleSaveListing = async () => {
+    setIsSavingListing(true);
+    const saved = await autoSave.flush();
+    if (saved) {
+      await queryClient.invalidateQueries({ queryKey: annixOrbitKeys.jobPostings.all });
+      router.push("/annix/orbit/portal/dashboard");
+      return;
+    }
+    setIsSavingListing(false);
+    showAlert({
+      message: "Couldn't save this job listing. Please try again before leaving the page.",
+      variant: "error",
+    });
+  };
+
   const handleBack = () => {
     step.back();
   };
@@ -141,6 +160,7 @@ export function JobWizard({ jobId }: JobWizardProps) {
   if (isLoading || !draft) {
     return (
       <div className="flex items-center justify-center py-24">
+        {AlertDialog}
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white" />
       </div>
     );
@@ -151,15 +171,27 @@ export function JobWizard({ jobId }: JobWizardProps) {
 
   return (
     <div className="space-y-8">
+      {AlertDialog}
       <header className="space-y-3">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-2xl font-bold text-white">Post a New Job</h1>
             <p className="text-white/70 mt-1">{stepDescription}</p>
           </div>
-          <span className="text-xs text-white/60 uppercase tracking-widest">
-            Step {step.index + 1} of {WIZARD_STEPS.length}
-          </span>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleSaveListing}
+              disabled={isSavingListing}
+              className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-[#252560] shadow-md transition-all hover:bg-[#f0f0fc] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Save className="h-4 w-4" aria-hidden="true" />
+              {isSavingListing ? "Saving..." : "Save job listing"}
+            </button>
+            <span className="text-xs text-white/60 uppercase tracking-widest">
+              Step {step.index + 1} of {WIZARD_STEPS.length}
+            </span>
+          </div>
         </div>
         <JobPostingStepper
           current={step.current}

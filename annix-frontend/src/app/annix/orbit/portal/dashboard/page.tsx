@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
-import type { Candidate } from "@/app/lib/api/annixOrbitApi";
+import type { Candidate, JobPosting } from "@/app/lib/api/annixOrbitApi";
+import { formatDateZA } from "@/app/lib/datetime";
 import {
   useOrbitDashboardStats,
+  useOrbitJobPostings,
   useOrbitMarketInsights,
   useOrbitTopCandidates,
 } from "@/app/lib/query/hooks";
@@ -46,6 +48,7 @@ export default function DashboardPage() {
   const { data: stats, isLoading: statsLoading } = useOrbitDashboardStats();
   const { data: topCandidates = [], isLoading: candidatesLoading } = useOrbitTopCandidates();
   const { data: marketInsights } = useOrbitMarketInsights();
+  const { data: jobListings = [], isLoading: jobListingsLoading } = useOrbitJobPostings();
 
   const userType = user ? user.userType : null;
   const companyId = profile ? profile.companyId : null;
@@ -57,7 +60,7 @@ export default function DashboardPage() {
     }
   }, [isIndividual, router]);
 
-  const isLoading = isIndividual ? true : statsLoading || candidatesLoading;
+  const isLoading = isIndividual ? true : statsLoading || candidatesLoading || jobListingsLoading;
 
   if (isLoading) {
     return (
@@ -211,6 +214,53 @@ export default function DashboardPage() {
               </p>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5]">
+        <div className="px-6 py-4 border-b border-[#e0e0f5] flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Job listings</h2>
+            <p className="text-sm text-gray-500">
+              Continue saved drafts, edit published listings or start another vacancy.
+            </p>
+          </div>
+          <PostJobButton variant="navy" />
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Listing
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Location
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Last saved
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Action
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {jobListings.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                    No saved job listings yet. Start a new listing and save it here when you want to
+                    come back later.
+                  </td>
+                </tr>
+              ) : (
+                jobListings.map((job) => <JobListingRow key={job.id} job={job} />)
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -388,6 +438,61 @@ export default function DashboardPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function jobStatusColor(status: string) {
+  const colors: Record<string, string> = {
+    draft: "bg-gray-100 text-gray-800",
+    active: "bg-green-100 text-green-800",
+    paused: "bg-yellow-100 text-yellow-800",
+    closed: "bg-red-100 text-red-800",
+  };
+  const color = colors[status];
+  return color || "bg-gray-100 text-gray-800";
+}
+
+function JobListingRow({ job }: { job: JobPosting }) {
+  const rawTitle = job.title;
+  const title = rawTitle && rawTitle !== "Untitled draft" ? rawTitle : "Untitled listing";
+  const referenceNumber = job.referenceNumber;
+  const location = job.location;
+  const province = job.province;
+  const joinedLocation = [location, province].filter(Boolean).join(", ");
+  const locationLabel = joinedLocation || "-";
+  const status = job.status;
+  const updatedAt = job.updatedAt;
+  const actionLabel = status === "draft" ? "Continue" : "Edit";
+  const editHref = `/annix/orbit/portal/jobs/${job.id}/edit${
+    status === "draft" ? "?step=basics" : ""
+  }`;
+
+  return (
+    <tr className="hover:bg-gray-50">
+      <td className="px-6 py-4">
+        <div className="text-sm font-semibold text-gray-900">{title}</div>
+        <div className="text-xs text-gray-500">{referenceNumber || `Draft #${job.id}`}</div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{locationLabel}</td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span
+          className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${jobStatusColor(status)}`}
+        >
+          {status.replace(/_/g, " ")}
+        </span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+        {formatDateZA(updatedAt)}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+        <Link
+          href={editHref}
+          className="font-semibold text-[#323288] hover:text-[#252560] dark:text-[#9ea0e8] dark:hover:text-[#c0c0eb]"
+        >
+          {actionLabel}
+        </Link>
+      </td>
+    </tr>
   );
 }
 

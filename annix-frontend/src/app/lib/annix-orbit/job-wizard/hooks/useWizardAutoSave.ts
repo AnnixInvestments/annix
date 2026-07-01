@@ -11,7 +11,7 @@ const DEBOUNCE_MS = 700;
 export interface UseWizardAutoSaveResult {
   status: AutoSaveStatus;
   schedule: (patch: UpdateJobWizardPayload) => void;
-  flush: () => Promise<void>;
+  flush: () => Promise<boolean>;
 }
 
 /**
@@ -32,10 +32,12 @@ export function useWizardAutoSave(jobId: number | null): UseWizardAutoSaveResult
     try {
       await updateMutation.mutateAsync({ id, payload: patch });
       setStatus("saved");
+      return true;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.error("[wizard autosave] save failed", { patch, error: message });
       setStatus("error");
+      return false;
     }
   };
 
@@ -46,8 +48,8 @@ export function useWizardAutoSave(jobId: number | null): UseWizardAutoSaveResult
     }
     const patch = queuedPatchRef.current;
     queuedPatchRef.current = null;
-    if (!patch || !jobId) return;
-    await persist(jobId, patch);
+    if (!patch || !jobId) return true;
+    return persist(jobId, patch);
   };
 
   const schedule = (patch: UpdateJobWizardPayload) => {

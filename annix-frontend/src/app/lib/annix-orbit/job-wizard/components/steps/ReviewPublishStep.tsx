@@ -21,7 +21,7 @@ import { StepShell } from "../StepShell";
 export interface ReviewPublishStepProps {
   draft: JobPosting;
   onPublished: (job: JobPosting) => void;
-  onFlush: () => Promise<void>;
+  onFlush: () => Promise<boolean>;
 }
 
 interface ReadinessIssue {
@@ -171,14 +171,22 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
   const volumeData = volumeMutation.data;
   const isPredicting = volumeMutation.isPending;
   const handleScore = async () => {
-    await onFlush();
+    const saved = await onFlush();
+    if (!saved) {
+      alert({ message: "Save the latest changes before scoring this job.", variant: "error" });
+      return;
+    }
     qualityScoreMutation.mutate(draft.id, {
       onError: () =>
         alert({ message: "Couldn't fetch quality score. Try again.", variant: "error" }),
     });
   };
   const handlePredict = async () => {
-    await onFlush();
+    const saved = await onFlush();
+    if (!saved) {
+      alert({ message: "Save the latest changes before predicting volume.", variant: "error" });
+      return;
+    }
     volumeMutation.mutate(draft.id, {
       onError: () => alert({ message: "Couldn't predict volume. Try again.", variant: "error" }),
     });
@@ -188,7 +196,11 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
     if (!canPublish) return;
     setIsPublishing(true);
     try {
-      await onFlush();
+      const saved = await onFlush();
+      if (!saved) {
+        alert({ message: "Save the latest changes before publishing this job.", variant: "error" });
+        return;
+      }
       const published = await publishMutation.mutateAsync({ id: draft.id, testMode });
       const message = testMode
         ? "Job published in TEST MODE — no external portals were notified. Seed fake applicants below to walk through the company flow."

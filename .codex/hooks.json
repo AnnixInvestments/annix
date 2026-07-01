@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import sys,json; d=json.load(sys.stdin); cmd=d.get('tool_input',{}).get('command',''); exit(0 if 'git push' in cmd else 1)\" && echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"A git push just succeeded. If you fixed any pre-push or pre-commit failures earlier in this conversation (biome lint, test failures, type errors, missing mocks, etc.), update the memory file at ~/.claude/projects/C--Users-andy-Documents-Annix-sync/memory/feedback_pre_push_failures.md with the new failure pattern so future sessions can avoid it. Also check if the pre-commit hook at .githooks/pre-commit should be updated to catch this class of failure earlier.\"}}'",
+            "timeout": 5,
+            "statusMessage": "Checking push status..."
+          }
+        ]
+      }
+    ]
+  }
+}
