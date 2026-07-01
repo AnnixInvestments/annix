@@ -306,18 +306,16 @@ export class AdminPlatformLimitsService {
 
   private async orbitStorageCard(): Promise<PlatformLimitCard | null> {
     const connection = this.orbitConnection;
-    if (!connection) return null;
+    if (!connection?.db) return null;
     try {
-      const client = connection.getClient();
-      const { databases } = await client.db().admin().listDatabases();
-      const orbitDbs = databases.filter((database) => database.name.startsWith("orbit_"));
-      const sizes = await Promise.all(
-        orbitDbs.map(async (database) => {
-          const stats = await client.db(database.name).command({ dbStats: 1 });
-          return ((stats.dataSize ?? 0) + (stats.indexSize ?? 0)) / 1024 / 1024;
-        }),
-      );
-      const totalMb = Math.round(sizes.reduce((sum, mb) => sum + mb, 0) * 10) / 10;
+      // Report only THIS environment's own Orbit database, not every orbit_*
+      // database that happens to share the cluster — a stray/leftover env db
+      // (e.g. an orphaned orbit_staging on the prod cluster) must not inflate
+      // this environment's figure.
+      const db = connection.db;
+      const stats = await db.command({ dbStats: 1 });
+      const totalMb =
+        Math.round((((stats.dataSize ?? 0) + (stats.indexSize ?? 0)) / 1024 / 1024) * 10) / 10;
       const freeMb = Math.max(0, Math.round((ATLAS_STORAGE_CAP_MB - totalMb) * 10) / 10);
       return buildCard({
         id: "orbit-storage",
@@ -325,7 +323,7 @@ export class AdminPlatformLimitsService {
         value: totalMb,
         unit: "MB",
         limit: ATLAS_STORAGE_CAP_MB,
-        details: `${freeMb} MB free · logical size Atlas enforces on M0`,
+        details: `${freeMb} MB free · ${db.databaseName} logical size (Atlas M0 cluster cap)`,
       });
     } catch (error) {
       this.logger.warn(`orbitStorageCard failed: ${String(error)}`);
@@ -609,29 +607,26 @@ export class AdminPlatformLimitsService {
 
   private async orbitStorageBreakdown(): Promise<PlatformLimitBreakdown> {
     const connection = this.orbitConnection;
-    if (!connection) throw new NotFoundException("Orbit connection unavailable");
-    const client = connection.getClient();
-    const { databases } = await client.db().admin().listDatabases();
-    const orbitDbs = databases.filter((database) => database.name.startsWith("orbit_"));
-    const rows = await Promise.all(
-      orbitDbs.map(async (database) => {
-        const stats = await client.db(database.name).command({ dbStats: 1 });
-        const sizeMb =
-          Math.round((((stats.dataSize ?? 0) + (stats.indexSize ?? 0)) / 1024 / 1024) * 10) / 10;
-        return {
-          label: database.name,
-          value: sizeMb,
-          unit: "MB",
-          percent: percentOf(sizeMb, ATLAS_STORAGE_CAP_MB),
-        };
-      }),
-    );
-    const sorted = [...rows].sort((a, b) => b.value - a.value);
+    if (!connection?.db) throw new NotFoundException("Orbit connection unavailable");
+    // Only this environment's own Orbit database — never other env databases
+    // that may share the cluster (e.g. a stray orbit_staging on the prod cluster).
+    const db = connection.db;
+    const stats = await db.command({ dbStats: 1 });
+    const sizeMb =
+      Math.round((((stats.dataSize ?? 0) + (stats.indexSize ?? 0)) / 1024 / 1024) * 10) / 10;
+    const rows = [
+      {
+        label: db.databaseName,
+        value: sizeMb,
+        unit: "MB",
+        percent: percentOf(sizeMb, ATLAS_STORAGE_CAP_MB),
+      },
+    ];
     return this.breakdownResult(
       "orbit-storage",
-      "Orbit cluster storage by database",
-      sorted,
-      `all orbit_* databases share the single ${ATLAS_STORAGE_CAP_MB} MB Atlas M0 logical-size cap`,
+      "Orbit storage (this environment)",
+      rows,
+      `${db.databaseName} against the ${ATLAS_STORAGE_CAP_MB} MB Atlas M0 cluster cap`,
     );
   }
 
