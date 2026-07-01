@@ -122,6 +122,25 @@ export class MongoJobPostingRepository
     return this.toDomainList(docs);
   }
 
+  async findByIds(ids: number[]): Promise<JobPosting[]> {
+    if (ids.length === 0) return [];
+    const docs = await this.documents
+      .find({ _id: { $in: ids } })
+      .lean()
+      .exec();
+    return this.toDomainList(docs);
+  }
+
+  async findActiveExpired(asOf: Date, limit: number): Promise<JobPosting[]> {
+    const docs = await this.documents
+      .find({ status: JobPostingStatus.ACTIVE, expiryDate: { $ne: null, $lte: asOf } })
+      .sort({ expiryDate: 1 })
+      .limit(limit)
+      .lean()
+      .exec();
+    return this.toDomainList(docs);
+  }
+
   async findActiveByReferenceNumber(referenceNumber: string): Promise<JobPosting | null> {
     const doc = await this.documents
       .findOne({ referenceNumber, status: JobPostingStatus.ACTIVE, ...NOT_TEST_MODE })

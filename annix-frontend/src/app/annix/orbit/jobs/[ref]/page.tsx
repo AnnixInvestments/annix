@@ -1,10 +1,15 @@
-"use client";
-
+import { portalForCode } from "@annix/product-data/portals";
+// eslint-disable-next-line no-restricted-imports -- server component: the "use client" datetime wrapper cannot be imported here; this page is server-rendered so JSON-LD lands in the initial HTML for Google for Jobs.
+import { DateTime } from "luxon";
+import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import { annixOrbitApiClient, type PublicJobPosting } from "@/app/lib/api/annixOrbitApi";
-import { formatDateLongZA, fromISO } from "@/app/lib/datetime";
+import { notFound } from "next/navigation";
+import type { PublicJobPosting } from "@/app/lib/api/annixOrbitApi";
+import { API_BASE_URL, ipv4LocalhostUrl } from "@/lib/api-config";
+import { ShareButtons } from "./ShareButtons";
+
+const EXPIRY_FALLBACK_DAYS = 60;
 
 const EMPLOYMENT_TYPE_LABELS: Record<string, string> = {
   full_time: "Full-time",
@@ -32,10 +37,7 @@ interface JobPostingSchema {
   datePosted: string;
   validThrough?: string;
   employmentType?: string;
-  hiringOrganization: {
-    "@type": "Organization";
-    name: string;
-  };
+  hiringOrganization: { "@type": "Organization"; name: string };
   jobLocation: {
     "@type": "Place";
     address: {
@@ -55,31 +57,50 @@ interface JobPostingSchema {
       unitText: "MONTH";
     };
   };
-  identifier: {
-    "@type": "PropertyValue";
-    name: string;
-    value: string;
-  };
+  identifier: { "@type": "PropertyValue"; name: string; value: string };
   directApply: boolean;
 }
 
+async function fetchPublicJob(ref: string): Promise<PublicJobPosting | null> {
+  try {
+    const res = await fetch(
+      ipv4LocalhostUrl(
+        `${API_BASE_URL}/annix-orbit/public/job-postings/${encodeURIComponent(ref)}`,
+      ),
+      { next: { revalidate: 300 } },
+    );
+    if (!res.ok) return null;
+    return (await res.json()) as PublicJobPosting;
+  } catch {
+    return null;
+  }
+}
+
+async function canonicalJobUrl(ref: string): Promise<string> {
+  const headersList = await headers();
+  const host = (headersList.get("host") ?? portalForCode("annix-orbit").prodHost).split(":")[0];
+  const proto = headersList.get("x-forwarded-proto") ?? "https";
+  return `${proto}://${host}/jobs/${encodeURIComponent(ref)}`;
+}
+
+function validThroughFor(job: PublicJobPosting): string | null {
+  if (job.validThrough) return job.validThrough;
+  return DateTime.fromISO(job.postedAt).plus({ days: EXPIRY_FALLBACK_DAYS }).toISO();
+}
+
 function buildJobPostingSchema(job: PublicJobPosting): JobPostingSchema {
-  const postedAt = job.postedAt;
-  const validThrough = fromISO(postedAt).plus({ days: 60 }).toISO();
-  const employmentTypeKey = job.employmentType;
-  const employmentType = employmentTypeKey ? SCHEMA_EMPLOYMENT_TYPE[employmentTypeKey] : null;
-  const minSalary = job.salaryMin;
-  const maxSalary = job.salaryMax;
+  const employmentType = job.employmentType ? SCHEMA_EMPLOYMENT_TYPE[job.employmentType] : null;
   const rawCurrency = job.salaryCurrency;
   const currency = rawCurrency || "ZAR";
-  const hasSalary = minSalary !== null || maxSalary !== null;
+  const hasSalary = job.salaryMin !== null || job.salaryMax !== null;
+  const validThrough = validThroughFor(job);
 
   const schema: JobPostingSchema = {
     "@context": "https://schema.org/",
     "@type": "JobPosting",
     title: job.title,
     description: job.description ? job.description : job.title,
-    datePosted: postedAt,
+    datePosted: job.postedAt,
     hiringOrganization: {
       "@type": "Organization",
       name: job.companyName ? job.companyName : "Confidential employer",
@@ -101,20 +122,16 @@ function buildJobPostingSchema(job: PublicJobPosting): JobPostingSchema {
     directApply: false,
   };
 
-  if (validThrough) {
-    schema.validThrough = validThrough;
-  }
-  if (employmentType) {
-    schema.employmentType = employmentType;
-  }
+  if (validThrough) schema.validThrough = validThrough;
+  if (employmentType) schema.employmentType = employmentType;
   if (hasSalary) {
     schema.baseSalary = {
       "@type": "MonetaryAmount",
       currency,
       value: {
         "@type": "QuantitativeValue",
-        minValue: minSalary !== null ? minSalary : undefined,
-        maxValue: maxSalary !== null ? maxSalary : undefined,
+        minValue: job.salaryMin !== null ? job.salaryMin : undefined,
+        maxValue: job.salaryMax !== null ? job.salaryMax : undefined,
         unitText: "MONTH",
       },
     };
@@ -124,8 +141,7 @@ function buildJobPostingSchema(job: PublicJobPosting): JobPostingSchema {
 }
 
 function formatSalaryBand(job: PublicJobPosting): string | null {
-  const min = job.salaryMin;
-  const max = job.salaryMax;
+  const { salaryMin: min, salaryMax: max } = job;
   const rawCurrency = job.salaryCurrency;
   const currency = rawCurrency || "ZAR";
   if (!min && !max) return null;
@@ -134,78 +150,64 @@ function formatSalaryBand(job: PublicJobPosting): string | null {
   return `Up to ${currency} ${(max ?? 0).toLocaleString()} per month`;
 }
 
-export default function PublicJobPostingPage() {
-  const params = useParams<{ ref: string }>();
-  const rawRef = params?.ref;
-  const refParam = rawRef ?? "";
-  const [job, setJob] = useState<PublicJobPosting | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    if (!refParam) return;
-    setIsLoading(true);
-    annixOrbitApiClient
-      .publicJobPosting(refParam)
-      .then((result) => {
-        setJob(result);
-        setError(null);
-      })
-      .catch((err) => {
-        const message = err instanceof Error ? err.message : "Job not found";
-        setError(message);
-        setJob(null);
-      })
-      .finally(() => setIsLoading(false));
-  }, [refParam]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white" />
-      </div>
-    );
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ ref: string }>;
+}): Promise<Metadata> {
+  const { ref } = await params;
+  const job = await fetchPublicJob(ref);
+  if (!job) {
+    return { title: "Job not available — Annix Orbit", robots: { index: false, follow: false } };
   }
+  const canonical = await canonicalJobUrl(ref);
+  const locationSuffix = job.location ? ` — ${job.location}` : "";
+  const description = (job.description ? job.description : job.title)
+    .replace(/\s+/g, " ")
+    .slice(0, 160);
+  return {
+    title: `${job.title}${locationSuffix} | Annix Orbit`,
+    description,
+    alternates: { canonical },
+    robots: { index: true, follow: true },
+    openGraph: { title: job.title, description, url: canonical, type: "website" },
+  };
+}
 
-  if (error || !job) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8 text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Job not available</h1>
-          <p className="text-gray-600 mb-6">
-            This job posting could not be found, or it has been closed.
-          </p>
-          <Link
-            href="/annix/orbit/jobs"
-            className="inline-block bg-[#323288] text-white py-3 px-6 rounded-lg font-medium hover:bg-[#252560] transition-colors"
-          >
-            Browse other jobs
-          </Link>
-        </div>
-      </div>
-    );
-  }
+export default async function PublicJobPostingPage({
+  params,
+}: {
+  params: Promise<{ ref: string }>;
+}) {
+  const { ref } = await params;
+  const job = await fetchPublicJob(ref);
+  if (!job) notFound();
 
+  const canonical = await canonicalJobUrl(ref);
   const salaryBand = formatSalaryBand(job);
-  const employmentType = job.employmentType;
-  const employmentLabelLookup = employmentType ? EMPLOYMENT_TYPE_LABELS[employmentType] : null;
-  const employmentLabel = employmentType ? employmentLabelLookup || employmentType : null;
-  const description = job.description;
+  const employmentTypeKey = job.employmentType;
+  const employmentLabelLookup = employmentTypeKey
+    ? EMPLOYMENT_TYPE_LABELS[employmentTypeKey]
+    : null;
+  const employmentLabel = employmentTypeKey ? (employmentLabelLookup ?? employmentTypeKey) : null;
+  const companyName = job.companyName;
+  const applyEmail = job.applyByEmail;
+  const minExperience = job.minExperienceYears;
+  const requiredEducation = job.requiredEducation;
   const requiredSkills = job.requiredSkills;
   const requiredCertifications = job.requiredCertifications;
-  const requiredEducation = job.requiredEducation;
-  const minExperience = job.minExperienceYears;
-  const applyEmail = job.applyByEmail;
-  const companyName = job.companyName;
-  const postedAtIso = job.postedAt;
-  const postedAtLabel = formatDateLongZA(postedAtIso);
-  const responseDays = job.responseTimelineDays;
+  const hasRequirements =
+    minExperience != null ||
+    Boolean(requiredEducation) ||
+    requiredSkills.length > 0 ||
+    requiredCertifications.length > 0;
+  const postedAtLabel = DateTime.fromISO(job.postedAt).toFormat("d LLLL yyyy");
   const subjectLine = `Application for ${job.title} (${job.referenceNumber})`;
-  const mailtoSubject = encodeURIComponent(subjectLine);
-  const mailtoLink = applyEmail ? `mailto:${applyEmail}?subject=${mailtoSubject}` : null;
+  const mailtoLink = applyEmail
+    ? `mailto:${applyEmail}?subject=${encodeURIComponent(subjectLine)}`
+    : null;
 
-  const jobPostingSchema = buildJobPostingSchema(job);
-  const jobPostingJsonLd = JSON.stringify(jobPostingSchema)
+  const jobPostingJsonLd = JSON.stringify(buildJobPostingSchema(job))
     .replace(/</g, "\\u003c")
     .replace(/>/g, "\\u003e")
     .replace(/&/g, "\\u0026");
@@ -245,93 +247,26 @@ export default function PublicJobPostingPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6 text-sm">
             {job.location ? (
               <div className="flex items-center gap-2 text-gray-700">
-                <svg
-                  className="w-4 h-4 text-[#f0f0fc]0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.244-4.243a8 8 0 1111.314 0z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                </svg>
                 {job.location}
                 {job.province ? `, ${job.province}` : ""}
               </div>
             ) : null}
             {employmentLabel ? (
-              <div className="flex items-center gap-2 text-gray-700">
-                <svg
-                  className="w-4 h-4 text-[#f0f0fc]0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                  />
-                </svg>
-                {employmentLabel}
-              </div>
+              <div className="flex items-center gap-2 text-gray-700">{employmentLabel}</div>
             ) : null}
             {salaryBand ? (
-              <div className="flex items-center gap-2 text-gray-700">
-                <svg
-                  className="w-4 h-4 text-[#f0f0fc]0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                {salaryBand}
-              </div>
+              <div className="flex items-center gap-2 text-gray-700">{salaryBand}</div>
             ) : null}
-            <div className="flex items-center gap-2 text-gray-700">
-              <svg
-                className="w-4 h-4 text-[#f0f0fc]0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
-              Posted {postedAtLabel}
-            </div>
+            <div className="flex items-center gap-2 text-gray-700">Posted {postedAtLabel}</div>
           </div>
 
-          {description ? (
+          {job.description ? (
             <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-line border-t border-gray-100 pt-6 mb-6">
-              {description}
+              {job.description}
             </div>
           ) : null}
 
-          {minExperience != null ||
-          requiredEducation ||
-          requiredSkills.length > 0 ||
-          requiredCertifications.length > 0 ? (
+          {hasRequirements ? (
             <div className="border-t border-gray-100 pt-6 space-y-4">
               <h2 className="text-lg font-semibold text-gray-900">Minimum requirements</h2>
               <ul className="text-sm text-gray-700 space-y-2">
@@ -378,6 +313,10 @@ export default function PublicJobPostingPage() {
               </ul>
             </div>
           ) : null}
+
+          <div className="border-t border-gray-100 pt-6 mt-6">
+            <ShareButtons url={canonical} title={job.title} />
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-8">
@@ -423,9 +362,9 @@ export default function PublicJobPostingPage() {
           ) : null}
 
           <p className="text-xs text-gray-500 mt-4">
-            We will get back to you within {responseDays} day{responseDays === 1 ? "" : "s"} of
-            receiving your application. Applicants who do not meet the minimum requirements will
-            receive an automated decline.
+            We will get back to you within {job.responseTimelineDays} day
+            {job.responseTimelineDays === 1 ? "" : "s"} of receiving your application. Applicants
+            who do not meet the minimum requirements will receive an automated decline.
           </p>
         </div>
       </main>

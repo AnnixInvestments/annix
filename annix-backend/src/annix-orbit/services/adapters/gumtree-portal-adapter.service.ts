@@ -1,9 +1,14 @@
-import { portalForCode } from "@annix/product-data/portals";
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { EmailService } from "../../../email/email.service";
 import { JobPosting } from "../../entities/job-posting.entity";
-import { PortalAdapter, PortalCostTier, PortalPostingResult } from "../portal-adapter.interface";
+import { orbitPublicJobUrl } from "../../lib/public-job-url";
+import {
+  PortalAdapter,
+  PortalCostTier,
+  PortalPostingMode,
+  PortalPostingResult,
+} from "../portal-adapter.interface";
 import { PortalAdapterRegistry } from "../portal-adapter-registry.service";
 
 // Placeholder addresses we must never silently email a real job posting to.
@@ -16,6 +21,9 @@ export class GumtreePortalAdapter implements PortalAdapter, OnModuleInit {
   readonly portalCode = "gumtree";
   readonly displayName = "Gumtree";
   readonly costTier: PortalCostTier = "free";
+  // Auto-submits by emailing the listings inbox (no user action), so it is an
+  // automated channel even though a human completes the actual Gumtree posting.
+  readonly postingMode: PortalPostingMode = "api";
 
   private submissionEmail: string | null = null;
 
@@ -98,8 +106,7 @@ export class GumtreePortalAdapter implements PortalAdapter, OnModuleInit {
 
   private publicJobUrl(jobPosting: JobPosting): string | null {
     if (!jobPosting.referenceNumber) return null;
-    const portal = portalForCode("annix-orbit");
-    return `https://${portal.prodHost}/jobs/${jobPosting.referenceNumber}`;
+    return orbitPublicJobUrl(jobPosting.referenceNumber);
   }
 
   private plainTextBody(jobPosting: JobPosting): string {

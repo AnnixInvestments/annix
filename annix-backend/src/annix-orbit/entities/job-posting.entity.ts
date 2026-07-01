@@ -9,6 +9,8 @@ export enum JobPostingStatus {
   ACTIVE = "active",
   PAUSED = "paused",
   CLOSED = "closed",
+  /** Auto-closed after passing its expiryDate; de-indexed from external surfaces. */
+  EXPIRED = "expired",
 }
 
 export enum EmploymentType {
@@ -79,6 +81,9 @@ export class JobPosting {
   applyByEmail: string | null;
 
   activatedAt: Date | null;
+
+  /** When the advert auto-expires (drives schema.org validThrough + de-index). */
+  expiryDate: Date | null;
 
   enabledPortalCodes: string[];
 

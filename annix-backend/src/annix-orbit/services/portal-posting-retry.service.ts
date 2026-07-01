@@ -27,6 +27,11 @@ export class PortalPostingRetryService {
 
     this.logger.log(`Retrying ${due.length} failed portal posting(s).`);
 
+    // Batch-hydrate the jobs in one query instead of one findById per record.
+    const jobIds = Array.from(new Set(due.map((record) => record.jobPostingId)));
+    const jobs = await this.jobPostingRepo.findByIds(jobIds);
+    const jobById = new Map(jobs.map((job) => [job.id, job]));
+
     let succeeded = 0;
     let stillFailed = 0;
 
@@ -40,7 +45,7 @@ export class PortalPostingRetryService {
         continue;
       }
 
-      const jobPosting = await this.jobPostingRepo.findById(record.jobPostingId);
+      const jobPosting = jobById.get(record.jobPostingId);
       if (!jobPosting) {
         this.logger.warn(
           `Skipping retry for portal posting ${record.id}: job posting ${record.jobPostingId} no longer exists.`,

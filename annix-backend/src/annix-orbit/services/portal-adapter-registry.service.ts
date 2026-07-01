@@ -26,7 +26,17 @@ export class PortalAdapterRegistry {
     return this.adapters.get(code) ?? null;
   }
 
-  freeAdapters(): PortalAdapter[] {
-    return this.all().filter((adapter) => adapter.costTier === "free");
+  /**
+   * The channels a job auto-distributes to when it has no explicit
+   * enabledPortalCodes: free, wired-up, and automatically dispatchable (feed or
+   * api — NOT assisted boards, which need a human and surface in the UI).
+   */
+  defaultAutoChannels(): PortalAdapter[] {
+    return this.all().filter(
+      (adapter) =>
+        adapter.costTier === "free" &&
+        adapter.available !== false &&
+        adapter.postingMode !== "assisted",
+    );
   }
 }

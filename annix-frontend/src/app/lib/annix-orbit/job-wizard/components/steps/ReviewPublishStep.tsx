@@ -10,8 +10,11 @@ import {
   useOrbitClearTestCandidates,
   useOrbitPublishJobDraft,
   useOrbitSeedTestCandidates,
+  useOrbitUpdateJobWizard,
 } from "@/app/lib/query/hooks";
 import { useNixCall } from "../../hooks/useNixCall";
+import { ChannelPicker } from "../ChannelPicker";
+import { DistributionStatusPanel } from "../DistributionStatusPanel";
 import { JobPreviewCard } from "../JobPreviewCard";
 import { StepShell } from "../StepShell";
 
@@ -146,9 +149,18 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
     label: "Nix is predicting candidate volume…",
     fn: (id: number) => annixOrbitApiClient.nixPredictedVolume(id),
   });
+  const updateWizardMutation = useOrbitUpdateJobWizard();
   const { alert, AlertDialog } = useAlert();
   const [isPublishing, setIsPublishing] = useState(false);
   const [seedCountInput, setSeedCountInput] = useState("10");
+  const rawEnabledCodes = draft.enabledPortalCodes;
+  const draftEnabledCodes = rawEnabledCodes ?? [];
+  const [enabledCodes, setEnabledCodes] = useState<string[]>(draftEnabledCodes);
+
+  const handleChannelsChange = (codes: string[]) => {
+    setEnabledCodes(codes);
+    updateWizardMutation.mutate({ id: draft.id, payload: { enabledPortalCodes: codes } });
+  };
 
   const issues = readinessIssues(draft);
   const canPublish = issues.length === 0;
@@ -307,6 +319,14 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
           </div>
         ) : null}
 
+        {!isPublished && canPublish ? (
+          <ChannelPicker
+            value={enabledCodes}
+            onChange={handleChannelsChange}
+            disabled={isPublishing}
+          />
+        ) : null}
+
         {!isPublished ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
@@ -325,6 +345,12 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
             >
               {isPublishing ? "Publishing…" : "Publish in TEST MODE (no external portals)"}
             </button>
+          </div>
+        ) : null}
+
+        {isPublished && !isTestMode ? (
+          <div className="rounded-lg border border-[#252560]/20 bg-[#f8f8fe] p-4">
+            <DistributionStatusPanel jobPostingId={draft.id} />
           </div>
         ) : null}
 

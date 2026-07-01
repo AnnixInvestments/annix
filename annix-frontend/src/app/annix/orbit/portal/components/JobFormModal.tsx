@@ -325,11 +325,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
                         className={`text-xs px-2 py-0.5 rounded-full ml-auto ${
                           tier === "free"
                             ? "bg-green-100 text-green-700"
-                            : tier === "freemium"
-                              ? "bg-amber-100 text-amber-700"
-                              : tier === "assisted"
-                                ? "bg-blue-100 text-blue-700"
-                                : "bg-[#e0e0f5] text-[#252560]"
+                            : "bg-amber-100 text-amber-700"
                         }`}
                       >
                         {tier}

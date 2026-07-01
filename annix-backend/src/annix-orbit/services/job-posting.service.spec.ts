@@ -6,6 +6,7 @@ describe("JobPostingService", () => {
     create: jest.fn(),
     findByReferenceNumber: jest.fn(),
     findWizardDraft: jest.fn(),
+    findByIdForCompanyWithCandidates: jest.fn(),
     save: jest.fn(),
   };
   const companyRepo = {};
@@ -13,8 +14,15 @@ describe("JobPostingService", () => {
   const jobSuccessMetricRepo = {};
   const jobScreeningQuestionRepo = {};
   const portalPostingOrchestrator = {
-    postToFreeAdapters: jest.fn(),
-    postToSelectedAdapters: jest.fn(),
+    distribute: jest.fn(),
+  };
+  const portalPostingRepo = {
+    findByJob: jest.fn(),
+    save: jest.fn(),
+  };
+  const googleIndexing = {
+    notifyUpdated: jest.fn(),
+    notifyDeleted: jest.fn(),
   };
   const txRunner = {};
 
@@ -40,6 +48,8 @@ describe("JobPostingService", () => {
       jobSuccessMetricRepo as never,
       jobScreeningQuestionRepo as never,
       portalPostingOrchestrator as never,
+      portalPostingRepo as never,
+      googleIndexing as never,
       txRunner as never,
     );
 
@@ -48,16 +58,14 @@ describe("JobPostingService", () => {
     jobPostingRepo.findByReferenceNumber.mockResolvedValue(null);
     jobPostingRepo.create.mockImplementation(async (data) => ({ id: 123, ...data }));
     jobPostingRepo.save.mockImplementation(async (draft) => draft);
-    portalPostingOrchestrator.postToFreeAdapters.mockResolvedValue({
+    portalPostingOrchestrator.distribute.mockResolvedValue({
       attempted: 0,
       succeeded: 0,
       failed: 0,
     });
-    portalPostingOrchestrator.postToSelectedAdapters.mockResolvedValue({
-      attempted: 0,
-      succeeded: 0,
-      failed: 0,
-    });
+    portalPostingRepo.findByJob.mockResolvedValue([]);
+    googleIndexing.notifyUpdated.mockResolvedValue({ ok: true });
+    googleIndexing.notifyDeleted.mockResolvedValue({ ok: true });
   });
 
   it("creates a wizard draft with every schema-required default", async () => {
@@ -93,32 +101,67 @@ describe("JobPostingService", () => {
 
       expect(result.testMode).toBe(true);
       expect(result.status).toBe(JobPostingStatus.ACTIVE);
-      // The cost/abuse-sensitive invariant: test mode must never reach a portal.
-      expect(portalPostingOrchestrator.postToFreeAdapters).not.toHaveBeenCalled();
-      expect(portalPostingOrchestrator.postToSelectedAdapters).not.toHaveBeenCalled();
+      // The cost/abuse-sensitive invariant: test mode must never reach a channel.
+      expect(portalPostingOrchestrator.distribute).not.toHaveBeenCalled();
     });
 
-    it("dispatches to the free adapters on a live publish with no selected portals", async () => {
+    it("distributes to channels on a live publish", async () => {
       jobPostingRepo.findWizardDraft.mockResolvedValue(publishableDraft());
 
       await service().publishDraft(45, 123, { testMode: false });
 
-      expect(portalPostingOrchestrator.postToFreeAdapters).toHaveBeenCalledTimes(1);
-      expect(portalPostingOrchestrator.postToSelectedAdapters).not.toHaveBeenCalled();
+      expect(portalPostingOrchestrator.distribute).toHaveBeenCalledTimes(1);
     });
 
-    it("dispatches to the selected adapters when enabledPortalCodes is set", async () => {
+    it("sets a 60-day expiry on publish when none is set", async () => {
+      jobPostingRepo.findWizardDraft.mockResolvedValue(publishableDraft());
+
+      const result = await service().publishDraft(45, 123, { testMode: false });
+
+      expect(result.expiryDate).toBeInstanceOf(Date);
+    });
+
+    it("passes the job (with its enabledPortalCodes) to distribute", async () => {
       jobPostingRepo.findWizardDraft.mockResolvedValue(
         publishableDraft({ enabledPortalCodes: ["gumtree"] }),
       );
 
       await service().publishDraft(45, 123, { testMode: false });
 
-      expect(portalPostingOrchestrator.postToSelectedAdapters).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 123 }),
-        ["gumtree"],
+      expect(portalPostingOrchestrator.distribute).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 123, enabledPortalCodes: ["gumtree"] }),
       );
-      expect(portalPostingOrchestrator.postToFreeAdapters).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("close / pause de-index", () => {
+    beforeEach(() => {
+      jobPostingRepo.findByIdForCompanyWithCandidates.mockResolvedValue(
+        publishableDraft({ status: JobPostingStatus.ACTIVE, referenceNumber: "JOB-ABC123" }),
+      );
+    });
+
+    it("close() fires Indexing URL_DELETED and marks distribution rows UNPOSTED", async () => {
+      portalPostingRepo.findByJob.mockResolvedValue([{ status: "posted" }]);
+
+      await service().close(45, 123);
+
+      expect(googleIndexing.notifyDeleted).toHaveBeenCalledWith(
+        expect.stringContaining("/jobs/JOB-ABC123"),
+      );
+      expect(portalPostingRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: "unposted" }),
+      );
+    });
+
+    it("pause() also de-indexes the job", async () => {
+      portalPostingRepo.findByJob.mockResolvedValue([]);
+
+      await service().pause(45, 123);
+
+      expect(googleIndexing.notifyDeleted).toHaveBeenCalledWith(
+        expect.stringContaining("/jobs/JOB-ABC123"),
+      );
     });
   });
 });

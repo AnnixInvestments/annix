@@ -5,6 +5,7 @@ import { JobPosting } from "../entities/job-posting.entity";
 export abstract class JobPostingRepository extends CrudRepository<JobPosting> {
   abstract withTransaction(context: TransactionContext): JobPostingRepository;
   abstract findByCompany(companyId: number, status?: string): Promise<JobPosting[]>;
+  abstract findByIds(ids: number[]): Promise<JobPosting[]>;
   abstract findByIdForCompany(id: number, companyId: number): Promise<JobPosting | null>;
   abstract findByIdForCompanyWithCandidates(
     id: number,
@@ -23,6 +24,7 @@ export abstract class JobPostingRepository extends CrudRepository<JobPosting> {
   abstract findByIdForCompanyWithSkills(id: number, companyId: number): Promise<JobPosting | null>;
   abstract activeForCompany(companyId: number): Promise<JobPosting[]>;
   abstract activeForFeed(): Promise<JobPosting[]>;
+  abstract findActiveExpired(asOf: Date, limit: number): Promise<JobPosting[]>;
   abstract findActiveByReferenceNumber(referenceNumber: string): Promise<JobPosting | null>;
   abstract findByReferenceNumber(referenceNumber: string): Promise<JobPosting | null>;
   abstract activePublicJobs(search?: string): Promise<JobPosting[]>;

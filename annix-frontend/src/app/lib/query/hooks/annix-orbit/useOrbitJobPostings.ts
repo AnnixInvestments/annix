@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   type AssistedPostingPackEntry,
   annixOrbitApiClient,
+  type JobDistributionEntry,
   type JobPosting,
   type PortalAdapterSummary,
   type UpdateJobWizardPayload,
@@ -13,6 +14,32 @@ export function useOrbitPortalAdapters() {
     queryKey: ["annix-orbit", "portal-adapters"],
     queryFn: () => annixOrbitApiClient.portalAdapters(),
     staleTime: 60 * 60 * 1000,
+  });
+}
+
+export function useOrbitJobDistribution(jobPostingId: number | null) {
+  return useQuery<JobDistributionEntry[]>({
+    queryKey: ["annix-orbit", "job-distribution", jobPostingId ?? 0],
+    queryFn: () => annixOrbitApiClient.jobDistribution(jobPostingId as number),
+    enabled: jobPostingId !== null && jobPostingId > 0,
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useOrbitMarkChannelSubmitted() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    { portalCode: string; status: string },
+    Error,
+    { id: number; portalCode: string; portalUrl?: string }
+  >({
+    mutationFn: ({ id, portalCode, portalUrl }) =>
+      annixOrbitApiClient.markChannelSubmitted(id, portalCode, portalUrl),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["annix-orbit", "job-distribution", variables.id],
+      });
+    },
   });
 }
 

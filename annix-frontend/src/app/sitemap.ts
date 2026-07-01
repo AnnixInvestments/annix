@@ -1,11 +1,36 @@
+import { portalForCode } from "@annix/product-data/portals";
 // eslint-disable-next-line no-restricted-imports -- server component cannot import the "use client" datetime wrapper; sitemap.ts is rendered at request time on the server
 import { DateTime } from "luxon";
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
+import { API_BASE_URL, ipv4LocalhostUrl } from "@/lib/api-config";
 import { CASE_STUDIES } from "./au-industries/caseStudies";
 
 const AU_INDUSTRIES_HOSTS = new Set(["auind.co.za", "www.auind.co.za"]);
 const AUIND_SITE_URL = "https://auind.co.za";
+
+const ORBIT_PORTAL = portalForCode("annix-orbit");
+const ORBIT_HOSTS = new Set([ORBIT_PORTAL.prodHost, ORBIT_PORTAL.devHost]);
+
+// The Orbit jobs sitemap: one entry per active public advert, at the canonical
+// /jobs/{ref} URL the middleware serves on the Orbit host.
+async function orbitJobsSitemap(host: string, protocol: string): Promise<MetadataRoute.Sitemap> {
+  try {
+    const res = await fetch(ipv4LocalhostUrl(`${API_BASE_URL}/annix-orbit/public/jobs-sitemap`), {
+      next: { revalidate: 900 },
+    });
+    if (!res.ok) return [];
+    const jobs = (await res.json()) as Array<{ referenceNumber: string; lastModified: string }>;
+    return jobs.map((job) => ({
+      url: `${protocol}://${host}/jobs/${encodeURIComponent(job.referenceNumber)}`,
+      lastModified: job.lastModified ? DateTime.fromISO(job.lastModified).toJSDate() : undefined,
+      changeFrequency: "daily" as const,
+      priority: 0.8,
+    }));
+  } catch {
+    return [];
+  }
+}
 
 const CORE_PRODUCT_SLUGS = [
   "rubber-lining",
@@ -21,6 +46,10 @@ const CORE_PRODUCT_SLUGS = [
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const headersList = await headers();
   const host = (headersList.get("host") ?? "").toLowerCase().split(":")[0];
+
+  if (ORBIT_HOSTS.has(host)) {
+    return orbitJobsSitemap(host, headersList.get("x-forwarded-proto") ?? "https");
+  }
 
   if (!AU_INDUSTRIES_HOSTS.has(host)) {
     return [];

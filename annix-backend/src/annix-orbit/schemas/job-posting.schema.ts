@@ -76,6 +76,9 @@ export class JobPosting {
   @Prop({ type: Date, required: false })
   activatedAt: Date;
 
+  @Prop({ type: Date, required: false })
+  expiryDate: Date;
+
   @Prop({ type: [String], required: true, default: [] })
   enabledPortalCodes: string[];
 

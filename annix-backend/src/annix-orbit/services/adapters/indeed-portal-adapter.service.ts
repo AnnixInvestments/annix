@@ -1,6 +1,11 @@
 import { Injectable, Logger, NotImplementedException, OnModuleInit } from "@nestjs/common";
 import { JobPosting } from "../../entities/job-posting.entity";
-import { PortalAdapter, PortalCostTier, PortalPostingResult } from "../portal-adapter.interface";
+import {
+  PortalAdapter,
+  PortalCostTier,
+  PortalPostingMode,
+  PortalPostingResult,
+} from "../portal-adapter.interface";
 import { PortalAdapterRegistry } from "../portal-adapter-registry.service";
 
 @Injectable()
@@ -9,7 +14,8 @@ export class IndeedPortalAdapter implements PortalAdapter, OnModuleInit {
 
   readonly portalCode = "indeed";
   readonly displayName = "Indeed";
-  readonly costTier: PortalCostTier = "freemium";
+  readonly costTier: PortalCostTier = "paid";
+  readonly postingMode: PortalPostingMode = "api";
   // Not yet wired (requires partner approval / XML feed setup) — never dispatched.
   readonly available = false;
 

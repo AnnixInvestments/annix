@@ -1,6 +1,11 @@
 import { Injectable, Logger, NotImplementedException, OnModuleInit } from "@nestjs/common";
 import { JobPosting } from "../../entities/job-posting.entity";
-import { PortalAdapter, PortalCostTier, PortalPostingResult } from "../portal-adapter.interface";
+import {
+  PortalAdapter,
+  PortalCostTier,
+  PortalPostingMode,
+  PortalPostingResult,
+} from "../portal-adapter.interface";
 import { PortalAdapterRegistry } from "../portal-adapter-registry.service";
 
 @Injectable()
@@ -9,7 +14,8 @@ export class FacebookPortalAdapter implements PortalAdapter, OnModuleInit {
 
   readonly portalCode = "facebook";
   readonly displayName = "Facebook";
-  readonly costTier: PortalCostTier = "freemium";
+  readonly costTier: PortalCostTier = "free";
+  readonly postingMode: PortalPostingMode = "api";
   // Not yet wired (requires Graph API permissions) — never dispatched.
   readonly available = false;
 

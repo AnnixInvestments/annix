@@ -156,6 +156,12 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
     module: "Annix Orbit",
     defaultCron: "0 */6 * * *",
   },
+  "annix-orbit:expire-stale-jobs": {
+    description:
+      "Auto-close active job adverts past their expiry date; mark EXPIRED and de-index (Google URL_DELETED + distribution rows UNPOSTED)",
+    module: "Annix Orbit",
+    defaultCron: "0 */6 * * *",
+  },
   "annix-orbit:readiness-snapshot": {
     description:
       "Daily Seeker launch-readiness snapshot (KPIs, error rate, TTFV, criteria, status)",

@@ -1,15 +1,21 @@
 import { JobPosting } from "../entities/job-posting.entity";
 
-export type PortalCostTier = "free" | "freemium" | "paid" | "assisted";
+// Cost and mechanism are ORTHOGONAL axes — a channel can be free-but-manual
+// (assisted board) or paid-but-programmatic (Indeed API). They used to be
+// conflated in a single 4-value costTier; they are now split.
+export type PortalCostTier = "free" | "paid";
+export type PortalPostingMode = "feed" | "api" | "assisted";
 
 /**
  * What a successful adapter run actually achieved.
- * - "posted": the job is live on the external portal under a real external id.
- * - "submitted": the job was handed off for manual/out-of-band posting (e.g. an
- *   email to a listings inbox). It is NOT live externally yet and must never be
- *   recorded as POSTED with a fabricated external id.
+ * - "posted": live on the external portal under a real external id.
+ * - "submitted": handed off for manual/out-of-band posting (e.g. emailed to a
+ *   listings inbox). NOT live externally yet; never recorded as POSTED.
+ * - "in_feed": discoverable via a feed we control (Google for Jobs, jobs.xml).
+ * - "skipped": deliberately not dispatched (see skipReason).
  */
-export type PortalPostingOutcome = "posted" | "submitted";
+export type PortalPostingOutcome = "posted" | "submitted" | "in_feed" | "skipped";
+export type PortalSkipReason = "budget" | "unknown_channel";
 
 export interface PortalPostingResult {
   success: boolean;
@@ -19,6 +25,9 @@ export interface PortalPostingResult {
   requiresManualConfirmation?: boolean;
   portalJobId?: string;
   portalUrl?: string | null;
+  skipReason?: PortalSkipReason;
+  /** Actual cost of the dispatch, in the channel's currency (paid channels). */
+  cost?: number;
   error?: string;
 }
 
@@ -39,6 +48,8 @@ export interface PortalAdapter {
   readonly portalCode: string;
   readonly displayName: string;
   readonly costTier: PortalCostTier;
+  /** How this channel receives a job: passive feed, programmatic API, or manual. */
+  readonly postingMode: PortalPostingMode;
   /**
    * Whether this channel is wired up and may be dispatched to. Defaults to true
    * when omitted. Set false for adapters that are scaffolded but not yet

@@ -29,6 +29,28 @@ export class MongoJobPostingPortalPostingRepository
     return this.toDomain(doc);
   }
 
+  async findByJob(jobPostingId: number): Promise<JobPostingPortalPosting[]> {
+    const docs = await this.documents.find({ jobPostingId }).lean().exec();
+    return this.toDomainList(docs);
+  }
+
+  async sumCostSince(companyId: number, portalCode: string, since: Date): Promise<number> {
+    const result = await this.documents
+      .aggregate<{ total: number }>([
+        {
+          $match: {
+            companyId,
+            portalCode,
+            cost: { $ne: null, $gt: 0 },
+            createdAt: { $gte: since },
+          },
+        },
+        { $group: { _id: null, total: { $sum: "$cost" } } },
+      ])
+      .exec();
+    return result[0]?.total ?? 0;
+  }
+
   async findRetryDue(now: Date, limit: number): Promise<JobPostingPortalPosting[]> {
     const docs = await this.documents
       .find({

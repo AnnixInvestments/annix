@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Fragment, useState } from "react";
+import { DistributionStatusPanel } from "@/app/lib/annix-orbit/job-wizard/components/DistributionStatusPanel";
 import type { JobPosting } from "@/app/lib/api/annixOrbitApi";
 import {
   useOrbitDeleteJobPosting,
@@ -14,6 +16,7 @@ export default function JobsPage() {
   const { data: jobs = [], isLoading } = useOrbitJobPostings();
   const statusChangeMutation = useOrbitJobPostingStatusChange();
   const deleteMutation = useOrbitDeleteJobPosting();
+  const [expandedJobId, setExpandedJobId] = useState<number | null>(null);
 
   const handleStatusChange = (job: JobPosting, action: "activate" | "pause" | "close") => {
     statusChangeMutation.mutate({ id: job.id, action });
@@ -98,114 +101,135 @@ export default function JobsPage() {
                 jobs.map((job) => {
                   const referenceNumber = job.referenceNumber;
                   const description = job.description;
+                  const canShowDistribution = job.status !== "draft";
+                  const isExpanded = expandedJobId === job.id;
                   return (
-                    <tr key={job.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {referenceNumber ? (
-                          <a
-                            href={`/annix/orbit/jobs/${referenceNumber}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-mono text-xs text-[#252560] hover:text-[#1a1a40] dark:text-[#c0c0eb] dark:hover:text-white underline-offset-2 hover:underline"
-                          >
-                            {referenceNumber}
-                          </a>
-                        ) : (
-                          <span className="text-xs text-gray-400">—</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900">{job.title}</div>
-                        {description ? (
-                          <div className="text-sm text-gray-500 truncate max-w-xs">
-                            {description}
+                    <Fragment key={job.id}>
+                      <tr className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {referenceNumber ? (
+                            <a
+                              href={`/annix/orbit/jobs/${referenceNumber}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-mono text-xs text-[#252560] hover:text-[#1a1a40] dark:text-[#c0c0eb] dark:hover:text-white underline-offset-2 hover:underline"
+                            >
+                              {referenceNumber}
+                            </a>
+                          ) : (
+                            <span className="text-xs text-gray-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900">{job.title}</div>
+                          {description ? (
+                            <div className="text-sm text-gray-500 truncate max-w-xs">
+                              {description}
+                            </div>
+                          ) : null}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-wrap gap-1">
+                            {job.requiredSkills.slice(0, 3).map((skill, i) => (
+                              <span
+                                key={i}
+                                className="inline-flex px-2 py-0.5 text-xs bg-[#e0e0f5] text-[#252560] rounded"
+                              >
+                                {skill}
+                              </span>
+                            ))}
+                            {job.requiredSkills.length > 3 && (
+                              <span className="text-xs text-gray-500">
+                                +{job.requiredSkills.length - 3}
+                              </span>
+                            )}
                           </div>
-                        ) : null}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-wrap gap-1">
-                          {job.requiredSkills.slice(0, 3).map((skill, i) => (
-                            <span
-                              key={i}
-                              className="inline-flex px-2 py-0.5 text-xs bg-[#e0e0f5] text-[#252560] rounded"
-                            >
-                              {skill}
-                            </span>
-                          ))}
-                          {job.requiredSkills.length > 3 && (
-                            <span className="text-xs text-gray-500">
-                              +{job.requiredSkills.length - 3}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-600">
-                          {job.minExperienceYears ? `${job.minExperienceYears}+ years` : "-"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusColor(job.status)}`}
-                        >
-                          {job.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                        <div className="flex items-center justify-end space-x-2">
-                          {job.status === "draft" && (
-                            <button
-                              onClick={() => handleStatusChange(job, "activate")}
-                              className="text-green-600 hover:text-green-700"
-                            >
-                              Activate
-                            </button>
-                          )}
-                          {job.status === "active" && (
-                            <button
-                              onClick={() => handleStatusChange(job, "pause")}
-                              className="text-yellow-600 hover:text-yellow-700"
-                            >
-                              Pause
-                            </button>
-                          )}
-                          {job.status === "paused" && (
-                            <button
-                              onClick={() => handleStatusChange(job, "activate")}
-                              className="text-green-600 hover:text-green-700"
-                            >
-                              Resume
-                            </button>
-                          )}
-                          {job.status !== "closed" && (
-                            <button
-                              onClick={() => handleStatusChange(job, "close")}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              Close
-                            </button>
-                          )}
-                          <button
-                            onClick={() => router.push(`/annix/orbit/portal/jobs/${job.id}/slots`)}
-                            className="text-[#FF8A00] hover:text-[#FF9C33]"
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-gray-600">
+                            {job.minExperienceYears ? `${job.minExperienceYears}+ years` : "-"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusColor(job.status)}`}
                           >
-                            Slots
-                          </button>
-                          <button
-                            onClick={() => router.push(`/annix/orbit/portal/jobs/${job.id}/edit`)}
-                            className="text-[#323288] hover:text-[#252560] dark:text-[#9ea0e8] dark:hover:text-[#c0c0eb]"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(job)}
-                            className="text-gray-400 hover:text-red-600"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                            {job.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                          <div className="flex items-center justify-end space-x-2">
+                            {job.status === "draft" && (
+                              <button
+                                onClick={() => handleStatusChange(job, "activate")}
+                                className="text-green-600 hover:text-green-700"
+                              >
+                                Activate
+                              </button>
+                            )}
+                            {job.status === "active" && (
+                              <button
+                                onClick={() => handleStatusChange(job, "pause")}
+                                className="text-yellow-600 hover:text-yellow-700"
+                              >
+                                Pause
+                              </button>
+                            )}
+                            {job.status === "paused" && (
+                              <button
+                                onClick={() => handleStatusChange(job, "activate")}
+                                className="text-green-600 hover:text-green-700"
+                              >
+                                Resume
+                              </button>
+                            )}
+                            {job.status !== "closed" && (
+                              <button
+                                onClick={() => handleStatusChange(job, "close")}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                Close
+                              </button>
+                            )}
+                            {canShowDistribution && (
+                              <button
+                                onClick={() => setExpandedJobId(isExpanded ? null : job.id)}
+                                className="text-[#252560] hover:text-[#1a1a40] dark:text-[#9ea0e8] dark:hover:text-[#c0c0eb]"
+                              >
+                                {isExpanded ? "Hide reach" : "Reach"}
+                              </button>
+                            )}
+                            <button
+                              onClick={() =>
+                                router.push(`/annix/orbit/portal/jobs/${job.id}/slots`)
+                              }
+                              className="text-[#FF8A00] hover:text-[#FF9C33]"
+                            >
+                              Slots
+                            </button>
+                            <button
+                              onClick={() => router.push(`/annix/orbit/portal/jobs/${job.id}/edit`)}
+                              className="text-[#323288] hover:text-[#252560] dark:text-[#9ea0e8] dark:hover:text-[#c0c0eb]"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete(job)}
+                              className="text-gray-400 hover:text-red-600"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {isExpanded ? (
+                        <tr className="bg-[#f8f8fe]">
+                          <td colSpan={6} className="px-6 py-4">
+                            <DistributionStatusPanel jobPostingId={job.id} />
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
                   );
                 })
               )}

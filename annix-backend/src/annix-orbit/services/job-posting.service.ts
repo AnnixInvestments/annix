@@ -5,7 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-import { now } from "../../lib/datetime";
+import { fromJSDate, now } from "../../lib/datetime";
 import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { CompanyRepository } from "../../platform/company.repository";
 import { CreateJobPostingDto, UpdateJobPostingDto } from "../dto/job-posting.dto";
@@ -16,11 +16,18 @@ import {
   JobPostingStatus,
   WorkMode,
 } from "../entities/job-posting.entity";
+import { JobPostingPortalStatus } from "../entities/job-posting-portal-posting.entity";
+import { orbitPublicJobUrl } from "../lib/public-job-url";
 import { JobPostingRepository } from "../repositories/job-posting.repository";
+import { JobPostingPortalPostingRepository } from "../repositories/job-posting-portal-posting.repository";
 import { JobScreeningQuestionRepository } from "../repositories/job-screening-question.repository";
 import { JobSkillRepository } from "../repositories/job-skill.repository";
 import { JobSuccessMetricRepository } from "../repositories/job-success-metric.repository";
+import { GoogleIndexingClient } from "./google-indexing.client";
 import { PortalPostingOrchestrator } from "./portal-posting-orchestrator.service";
+
+// Adverts auto-expire 60 days after activation unless a shorter expiry is set.
+export const JOB_POSTING_EXPIRY_DAYS = 60;
 
 const REF_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const REF_LENGTH = 6;
@@ -45,6 +52,7 @@ export interface PublicJobPostingDto {
   responseTimelineDays: number;
   applyByEmail: string | null;
   postedAt: Date;
+  validThrough: string | null;
   companyName: string | null;
 }
 
@@ -59,6 +67,8 @@ export class JobPostingService {
     private readonly jobSuccessMetricRepo: JobSuccessMetricRepository,
     private readonly jobScreeningQuestionRepo: JobScreeningQuestionRepository,
     private readonly portalPostingOrchestrator: PortalPostingOrchestrator,
+    private readonly portalPostingRepo: JobPostingPortalPostingRepository,
+    private readonly googleIndexing: GoogleIndexingClient,
     private readonly txRunner: TransactionRunner,
   ) {}
 
@@ -245,6 +255,9 @@ export class JobPostingService {
     if (!draft.activatedAt) {
       draft.activatedAt = now().toJSDate();
     }
+    if (!draft.expiryDate) {
+      draft.expiryDate = now().plus({ days: JOB_POSTING_EXPIRY_DAYS }).toJSDate();
+    }
     const saved = await this.jobPostingRepo.save(draft);
     if (!saved.testMode) {
       this.distributeToPortals(saved);
@@ -336,8 +349,13 @@ export class JobPostingService {
       const newStatus = dto.status as JobPostingStatus;
       const wasActive = jobPosting.status === JobPostingStatus.ACTIVE;
       jobPosting.status = newStatus;
-      if (newStatus === JobPostingStatus.ACTIVE && !wasActive && !jobPosting.activatedAt) {
-        jobPosting.activatedAt = now().toJSDate();
+      if (newStatus === JobPostingStatus.ACTIVE && !wasActive) {
+        if (!jobPosting.activatedAt) {
+          jobPosting.activatedAt = now().toJSDate();
+        }
+        if (!jobPosting.expiryDate) {
+          jobPosting.expiryDate = now().plus({ days: JOB_POSTING_EXPIRY_DAYS }).toJSDate();
+        }
       }
     }
 
@@ -359,25 +377,45 @@ export class JobPostingService {
     return updated;
   }
 
-  private distributeToPortals(jobPosting: JobPosting): void {
-    const codes = jobPosting.enabledPortalCodes ?? [];
-    const dispatch =
-      codes.length > 0
-        ? this.portalPostingOrchestrator.postToSelectedAdapters(jobPosting, codes)
-        : this.portalPostingOrchestrator.postToFreeAdapters(jobPosting);
+  /**
+   * A job has left ACTIVE (closed / paused / expired): de-index the public URL
+   * via the Indexing API and mark every distribution row UNPOSTED so no channel
+   * still claims the role is live.
+   */
+  async deindexAndUnpost(jobPosting: JobPosting): Promise<void> {
+    if (jobPosting.referenceNumber) {
+      void this.googleIndexing
+        .notifyDeleted(orbitPublicJobUrl(jobPosting.referenceNumber))
+        .catch((error) => {
+          const message = error instanceof Error ? error.message : String(error);
+          this.logger.error(`Indexing delete ping for job ${jobPosting.id} failed: ${message}`);
+        });
+    }
+    const rows = await this.portalPostingRepo.findByJob(jobPosting.id);
+    for (const row of rows) {
+      if (row.status === JobPostingPortalStatus.UNPOSTED) continue;
+      row.status = JobPostingPortalStatus.UNPOSTED;
+      await this.portalPostingRepo.save(row);
+    }
+  }
 
-    void dispatch.catch((error) => {
+  private distributeToPortals(jobPosting: JobPosting): void {
+    void this.portalPostingOrchestrator.distribute(jobPosting).catch((error) => {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(`Portal distribution for job posting ${jobPosting.id} failed: ${message}`);
     });
   }
 
   async pause(companyId: number, id: number): Promise<JobPosting> {
-    return this.update(companyId, id, { status: JobPostingStatus.PAUSED });
+    const updated = await this.update(companyId, id, { status: JobPostingStatus.PAUSED });
+    await this.deindexAndUnpost(updated);
+    return updated;
   }
 
   async close(companyId: number, id: number): Promise<JobPosting> {
-    return this.update(companyId, id, { status: JobPostingStatus.CLOSED });
+    const updated = await this.update(companyId, id, { status: JobPostingStatus.CLOSED });
+    await this.deindexAndUnpost(updated);
+    return updated;
   }
 
   async activeJobPostingsForCompany(companyId: number): Promise<JobPosting[]> {
@@ -412,9 +450,36 @@ export class JobPostingService {
         responseTimelineDays: job.responseTimelineDays,
         applyByEmail: ANNIX_ORBIT_APPLICATIONS_INBOX,
         postedAt: job.activatedAt ? job.activatedAt : job.createdAt,
+        validThrough: this.computeValidThrough(job),
         companyName: company?.name ? company.name : null,
       };
     });
+  }
+
+  /**
+   * schema.org validThrough for the advert: the stored expiryDate if set,
+   * otherwise 60 days from activation (matching the auto-expiry default).
+   */
+  private computeValidThrough(job: JobPosting): string | null {
+    if (job.expiryDate) return fromJSDate(job.expiryDate).toISO();
+    const base = job.activatedAt ?? job.createdAt;
+    if (!base) return null;
+    return fromJSDate(base).plus({ days: JOB_POSTING_EXPIRY_DAYS }).toISO();
+  }
+
+  /** Minimal active-job list for the jobs sitemap (test-mode already excluded). */
+  async listActiveJobRefs(): Promise<Array<{ referenceNumber: string; lastModified: string }>> {
+    const jobs = await this.jobPostingRepo.activeForFeed();
+    const entries: Array<{ referenceNumber: string; lastModified: string }> = [];
+    for (const job of jobs) {
+      if (!job.referenceNumber) continue;
+      const base = job.activatedAt ?? job.createdAt;
+      entries.push({
+        referenceNumber: job.referenceNumber,
+        lastModified: base ? (fromJSDate(base).toISO() ?? "") : "",
+      });
+    }
+    return entries;
   }
 
   async publicByReferenceNumber(referenceNumber: string): Promise<PublicJobPostingDto | null> {
@@ -441,6 +506,7 @@ export class JobPostingService {
       responseTimelineDays: jobPosting.responseTimelineDays,
       applyByEmail: ANNIX_ORBIT_APPLICATIONS_INBOX,
       postedAt: jobPosting.activatedAt ?? jobPosting.createdAt,
+      validThrough: this.computeValidThrough(jobPosting),
       companyName: company?.name ?? null,
     };
   }

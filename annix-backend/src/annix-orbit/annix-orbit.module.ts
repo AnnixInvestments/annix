@@ -8,6 +8,7 @@ import { AuditModule } from "../audit/audit.module";
 import { EmailModule } from "../email/email.module";
 import { FeatureFlagsModule } from "../feature-flags/feature-flags.module";
 import { FeedbackModule } from "../feedback/feedback.module";
+import { JobChannelRateLimiter } from "../lib/job-channel-rate-limiter";
 import { LibreOfficeConversionService } from "../lib/libreoffice-conversion.service";
 import { ORBIT_CONNECTION } from "../lib/persistence/mongo-connections";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
@@ -306,9 +307,11 @@ import { SeekerWorkflowStepSchema } from "./schemas/seeker-workflow-step.schema"
 import { SourceRespectRankSchema } from "./schemas/source-respect-rank.schema";
 import { AssistedPortalAdapters } from "./services/adapters/assisted-portal-adapters.service";
 import { FacebookPortalAdapter } from "./services/adapters/facebook-portal-adapter.service";
+import { GoogleForJobsChannel } from "./services/adapters/google-for-jobs.channel";
 import { GumtreePortalAdapter } from "./services/adapters/gumtree-portal-adapter.service";
 import { IndeedPortalAdapter } from "./services/adapters/indeed-portal-adapter.service";
 import { LinkedInPortalAdapter } from "./services/adapters/linkedin-portal-adapter.service";
+import { OrbitXmlFeedChannel } from "./services/adapters/orbit-xml-feed.channel";
 import { AdminOrbitUserService } from "./services/admin-orbit-user.service";
 import { AdzunaService } from "./services/adzuna.service";
 import { AnalyticsService } from "./services/analytics.service";
@@ -347,10 +350,13 @@ import { EmailTemplateService } from "./services/email-template.service";
 import { EmbeddingService } from "./services/embedding.service";
 import { EscoNormalisationService } from "./services/esco-normalisation.service";
 import { GeocodeService } from "./services/geocode.service";
+import { GoogleIndexingClient } from "./services/google-indexing.client";
 import { IndividualProfileService } from "./services/individual-profile.service";
 import { InterviewBookingService } from "./services/interview-booking.service";
 import { InterviewReminderService } from "./services/interview-reminder.service";
 import { JobCategorizationService } from "./services/job-categorization.service";
+import { JobChannelCostGuard } from "./services/job-channel-cost-guard.service";
+import { JobExpiryService } from "./services/job-expiry.service";
 import { JobIngestionService } from "./services/job-ingestion.service";
 import { JobMarketCountriesService } from "./services/job-market-countries.service";
 import { JobMarketSourceService } from "./services/job-market-source.service";
@@ -705,6 +711,12 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     PortalAdapterRegistry,
     PortalPostingOrchestrator,
     PortalPostingRetryService,
+    JobChannelCostGuard,
+    JobChannelRateLimiter,
+    GoogleIndexingClient,
+    JobExpiryService,
+    GoogleForJobsChannel,
+    OrbitXmlFeedChannel,
     GumtreePortalAdapter,
     LinkedInPortalAdapter,
     IndeedPortalAdapter,

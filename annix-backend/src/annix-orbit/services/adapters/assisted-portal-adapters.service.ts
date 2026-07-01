@@ -1,14 +1,15 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { JobPosting } from "../../entities/job-posting.entity";
+import { orbitPublicJobUrl } from "../../lib/public-job-url";
 import {
   AssistedPostingInstructions,
   PortalAdapter,
   PortalCostTier,
+  PortalPostingMode,
   PortalPostingResult,
 } from "../portal-adapter.interface";
 import { PortalAdapterRegistry } from "../portal-adapter-registry.service";
 
-const PUBLIC_JOB_HOST = "annix-orbit.annix.co.za";
 const APPLICATIONS_INBOX = "jobs@annix.co.za";
 
 interface AssistedPortalDef {
@@ -100,11 +101,15 @@ export class AssistedPortalAdapters implements OnModuleInit {
     return {
       portalCode: def.code,
       displayName: def.displayName,
-      costTier: "assisted" as PortalCostTier,
+      costTier: "free" as PortalCostTier,
+      postingMode: "assisted" as PortalPostingMode,
       post: (_jobPosting: JobPosting): Promise<PortalPostingResult> => {
+        // Assisted boards can't be auto-posted — the recruiter opens the deep
+        // link, pastes the copy pack and marks it done in the distribution UI.
         return Promise.resolve({
-          success: false,
-          error: `${def.displayName} is assisted-posting only. Open the deep link, paste the generated copy, and mark it complete by hand.`,
+          success: true,
+          outcome: "skipped",
+          requiresManualConfirmation: true,
         });
       },
       assistedInstructions: (jobPosting: JobPosting): AssistedPostingInstructions => {
@@ -121,7 +126,7 @@ function buildInstructions(
   const refNumber = jobPosting.referenceNumber
     ? jobPosting.referenceNumber
     : `JOB-${jobPosting.id}`;
-  const publicUrl = `https://${PUBLIC_JOB_HOST}/annix/orbit/jobs/${refNumber}`;
+  const publicUrl = orbitPublicJobUrl(refNumber);
   const copyTitle = `${jobPosting.title} — Ref ${refNumber}`;
   const copyBody = bodyTemplate(jobPosting, publicUrl, refNumber);
   const copyContact = contactTemplate(jobPosting, refNumber);

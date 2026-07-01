@@ -16,8 +16,14 @@ export class JobPostingPortalPosting {
   @Prop({ type: Number, required: true })
   jobPostingId: number;
 
+  @Prop({ type: Number, required: false })
+  companyId: number;
+
   @Prop({ type: String, required: true })
   portalCode: string;
+
+  @Prop({ type: Number, required: false })
+  cost: number;
 
   @Prop({ type: String, required: false })
   portalJobId: string;
@@ -27,6 +33,9 @@ export class JobPostingPortalPosting {
 
   @Prop({ type: String, required: true })
   status: string;
+
+  @Prop({ type: String, required: false })
+  skipReason: string;
 
   @Prop({ type: Date, required: false })
   postedAt: Date;

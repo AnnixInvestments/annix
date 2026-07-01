@@ -766,9 +766,22 @@ export interface UpdateJobWizardPayload {
 export interface PortalAdapterSummary {
   code: string;
   displayName: string;
-  costTier: "free" | "freemium" | "paid" | "assisted";
-  postingMode: "api" | "assisted";
+  costTier: "free" | "paid";
+  postingMode: "feed" | "api" | "assisted";
   available: boolean;
+}
+
+export interface JobDistributionEntry {
+  portalCode: string;
+  displayName: string;
+  costTier: string;
+  postingMode: "feed" | "api" | "assisted";
+  status: string;
+  skipReason: string | null;
+  portalUrl: string | null;
+  postedAt: string | null;
+  lastError: string | null;
+  updatedAt: string | null;
 }
 
 export interface AssistedPostingPackEntry {
@@ -798,6 +811,7 @@ export interface PublicJobPosting {
   responseTimelineDays: number;
   applyByEmail: string | null;
   postedAt: string;
+  validThrough: string | null;
   companyName: string | null;
 }
 
@@ -3265,6 +3279,21 @@ class AnnixOrbitApiClient {
 
   async assistedPostingPack(jobPostingId: number): Promise<AssistedPostingPackEntry[]> {
     return this.request(`/annix-orbit/job-postings/${jobPostingId}/assisted-posting-pack`);
+  }
+
+  async jobDistribution(jobPostingId: number): Promise<JobDistributionEntry[]> {
+    return this.request(`/annix-orbit/job-postings/${jobPostingId}/distribution`);
+  }
+
+  async markChannelSubmitted(
+    jobPostingId: number,
+    portalCode: string,
+    portalUrl?: string,
+  ): Promise<{ portalCode: string; status: string }> {
+    return this.request(
+      `/annix-orbit/job-postings/${jobPostingId}/distribution/${encodeURIComponent(portalCode)}/mark-submitted`,
+      { method: "POST", body: JSON.stringify({ portalUrl }) },
+    );
   }
 
   async interviewSlotsForCompany(fromIso?: string | null): Promise<InterviewSlot[]> {
