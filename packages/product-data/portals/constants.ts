@@ -74,7 +74,7 @@ export const PORTAL_HOSTS: readonly PortalHost[] = [
     code: "annix-orbit",
     displayName: "Annix Orbit",
     internalPathPrefix: "/annix/orbit",
-    prodHost: "cv.annix.co.za",
+    prodHost: "orbit.annix.co.za",
     prodHostAliases: [],
     devHost: "cv.localhost",
   },

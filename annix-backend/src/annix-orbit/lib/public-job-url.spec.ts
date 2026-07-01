@@ -9,8 +9,8 @@ describe("orbit public job URL", () => {
 
   it("defaults to the Orbit prod host with the canonical /jobs/{ref} path", () => {
     delete process.env.ORBIT_PUBLIC_URL;
-    expect(orbitPublicBaseUrl()).toBe("https://cv.annix.co.za");
-    expect(orbitPublicJobUrl("JOB-ABC123")).toBe("https://cv.annix.co.za/jobs/JOB-ABC123");
+    expect(orbitPublicBaseUrl()).toBe("https://orbit.annix.co.za");
+    expect(orbitPublicJobUrl("JOB-ABC123")).toBe("https://orbit.annix.co.za/jobs/JOB-ABC123");
   });
 
   it("honours the ORBIT_PUBLIC_URL override and strips trailing slashes", () => {
