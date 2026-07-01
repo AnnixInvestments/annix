@@ -172,11 +172,10 @@ export class MineInferenceService {
       // Doc-number prefix → first letters of mine name (e.g. 'LHU' → 'Langer
       // Heinrich Uranium' = 'lhum'). Strong signal when the prefix is at
       // least 3 chars and corresponds letter-for-letter to the mine's
-      // initials — that's almost always the customer's filing convention,
-      // not a coincidence. Bumped above the strong-match threshold so docs
-      // whose Gemini metadata didn't capture the mine name explicitly
-      // (just title + revision + date) still auto-tag via the filename's
-      // doc-number prefix alone.
+      // initials — often the customer's filing convention, but a 3-char prefix
+      // is weak enough to collide by chance, so it sits BELOW the strong-match
+      // threshold: it surfaces as a suggestion for the user to confirm rather
+      // than silently binding a mineId on the prefix alone (issue #430).
       if (docPrefix && docPrefix.length >= 3) {
         const initials = mineName
           .split(" ")
@@ -185,7 +184,7 @@ export class MineInferenceService {
           .toLowerCase();
         if (initials.startsWith(docPrefix.toLowerCase())) {
           candidates.push({
-            confidence: 0.8,
+            confidence: 0.65,
             reason: `document number prefix '${docPrefix}' matches mine initials`,
           });
         }

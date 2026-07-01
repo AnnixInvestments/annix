@@ -82,9 +82,19 @@ export class NixChatItemService {
       };
     }
 
-    const unifiedItems = itemsToCreate
-      .map((item, index) => this.convertToUnifiedItem(item, index))
-      .filter((item): item is UnifiedRfqItemDto => item !== null);
+    const conversions = itemsToCreate.map((item, index) => ({
+      index,
+      unified: this.convertToUnifiedItem(item, index),
+    }));
+    const unifiedItems = conversions
+      .filter((c): c is { index: number; unified: UnifiedRfqItemDto } => c.unified !== null)
+      .map((c) => c.unified);
+    const droppedItems = conversions
+      .filter((c) => c.unified === null)
+      .map((c) => ({
+        index: c.index,
+        reason: "Missing a required specification (e.g. nominal bore) — not created",
+      }));
 
     if (unifiedItems.length === 0) {
       return {
@@ -93,10 +103,13 @@ export class NixChatItemService {
         rfqNumber: "",
         itemsCreated: 0,
         items: [],
-        failedItems: itemsToCreate.map((_, index) => ({
-          index,
-          reason: "Could not convert to RFQ item format",
-        })),
+        failedItems:
+          droppedItems.length > 0
+            ? droppedItems
+            : itemsToCreate.map((_, index) => ({
+                index,
+                reason: "Could not convert to RFQ item format",
+              })),
       };
     }
 
@@ -128,6 +141,7 @@ export class NixChatItemService {
           quantity: this.extractQuantity(item),
           originalIndex: index,
         })),
+        failedItems: droppedItems.length > 0 ? droppedItems : undefined,
       };
     } catch (error) {
       this.logger.error(`Failed to create RFQ from chat: ${error.message}`);
@@ -142,15 +156,25 @@ export class NixChatItemService {
     }
   }
 
+  // An item may be auto-created only when its required specs are actually
+  // present — a grounded signal — rather than because the model self-reported a
+  // high confidence (which is uncalibrated). Items missing itemType/diameter
+  // always require an explicit confirmation instead of being created on trust.
+  private hasRequiredFieldsForCreation(item: ParsedItemDto): boolean {
+    return !!item.itemType && item.specifications?.diameter != null;
+  }
+
   private filterConfirmedItems(dto: CreateItemsFromChatDto): ParsedItemDto[] {
     if (!dto.confirmations || dto.confirmations.length === 0) {
-      return dto.items.filter((item) => item.action === "create_item");
+      return dto.items.filter(
+        (item) => item.action === "create_item" && this.hasRequiredFieldsForCreation(item),
+      );
     }
 
     return dto.items.filter((item, index) => {
       const confirmation = dto.confirmations?.find((c) => c.index === index);
       if (!confirmation) {
-        return item.action === "create_item" && item.confidence >= 0.7;
+        return item.action === "create_item" && this.hasRequiredFieldsForCreation(item);
       }
       if (confirmation.confirmed && confirmation.modifiedSpecs) {
         item.specifications = { ...item.specifications, ...confirmation.modifiedSpecs };
@@ -184,9 +208,15 @@ export class NixChatItemService {
   private createStraightPipeItem(
     specs: ParsedItemDto["specifications"],
     description: string,
-  ): UnifiedRfqItemDto {
+  ): UnifiedRfqItemDto | null {
+    if (specs?.diameter == null) {
+      this.logger.warn(
+        `Cannot create a straight pipe without a nominal bore — skipping "${description}" instead of guessing a size.`,
+      );
+      return null;
+    }
     const straightPipe: UnifiedStraightPipeDto = {
-      nominalBoreMm: specs?.diameter || 200,
+      nominalBoreMm: specs.diameter,
       scheduleType: "schedule",
       scheduleNumber: specs?.schedule || "Sch 40",
       pipeEndConfiguration: this.mapFlangeConfig(specs?.flangeConfig),
@@ -206,9 +236,15 @@ export class NixChatItemService {
   private createBendItem(
     specs: ParsedItemDto["specifications"],
     description: string,
-  ): UnifiedRfqItemDto {
+  ): UnifiedRfqItemDto | null {
+    if (specs?.diameter == null) {
+      this.logger.warn(
+        `Cannot create a bend without a nominal bore — skipping "${description}" instead of guessing a size.`,
+      );
+      return null;
+    }
     const bend: UnifiedBendDto = {
-      nominalBoreMm: specs?.diameter || 200,
+      nominalBoreMm: specs.diameter,
       scheduleNumber: specs?.schedule || "Sch 40",
       bendDegrees: specs?.angle || 90,
       bendEndConfiguration: this.mapBendEndConfig(specs?.flangeConfig),
@@ -230,14 +266,20 @@ export class NixChatItemService {
     itemType: "reducer" | "tee",
     specs: ParsedItemDto["specifications"],
     description: string,
-  ): UnifiedRfqItemDto {
+  ): UnifiedRfqItemDto | null {
+    if (specs?.diameter == null) {
+      this.logger.warn(
+        `Cannot create a ${itemType} without a nominal bore — skipping "${description}" instead of guessing a size.`,
+      );
+      return null;
+    }
     const fittingTypeMap: Record<string, string> = {
       reducer: "CONCENTRIC_REDUCER",
       tee: "SHORT_TEE",
     };
 
     const fitting: UnifiedFittingDto = {
-      nominalDiameterMm: specs?.diameter || 200,
+      nominalDiameterMm: specs.diameter,
       scheduleNumber: specs?.schedule || "Sch 40",
       fittingType: fittingTypeMap[itemType] || "SHORT_TEE",
       fittingStandard: "SABS719",

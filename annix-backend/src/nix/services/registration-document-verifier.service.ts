@@ -454,6 +454,7 @@ export class RegistrationDocumentVerifierService {
         [{ role: "user", content: prompt }],
         systemPrompt,
         "gemini",
+        { responseFormat: "json", temperature: 0.1 },
       );
       return content || null;
     } catch (error) {

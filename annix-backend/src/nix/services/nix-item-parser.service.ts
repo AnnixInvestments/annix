@@ -45,6 +45,34 @@ export class NixItemParserService {
 
   constructor(private readonly aiChatService: AiChatService) {}
 
+  // Request JSON mode + low temperature and retry a JSON-parse miss once, rather
+  // than relying on a prose "respond with JSON only" instruction and failing on
+  // the first malformed reply (the recurring "did not yield a JSON object").
+  private async chatForJson(
+    messages: ChatMessage[],
+    systemPrompt: string,
+  ): Promise<Record<string, unknown>> {
+    const maxAttempts = 2;
+    let lastError: unknown = new Error("No JSON produced");
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const { content } = await this.aiChatService.chat(messages, systemPrompt, undefined, {
+        responseFormat: "json",
+        temperature: 0.1,
+      });
+      try {
+        return parseAiJsonObject(content) as Record<string, unknown>;
+      } catch (error) {
+        lastError = error;
+        this.logger.warn(
+          `Item-parser JSON parse miss (attempt ${attempt}/${maxAttempts}): ${
+            error instanceof Error ? error.message : error
+          }`,
+        );
+      }
+    }
+    throw lastError;
+  }
+
   async parseUserIntent(
     userMessage: string,
     context?: {
@@ -62,9 +90,7 @@ export class NixItemParserService {
     ];
 
     try {
-      const { content: response } = await this.aiChatService.chat(messages, systemPrompt);
-
-      const parsed = parseAiJsonObject(response) as any;
+      const parsed = (await this.chatForJson(messages, systemPrompt)) as any;
 
       return {
         action: parsed.action || "unknown",
@@ -97,9 +123,7 @@ export class NixItemParserService {
     ];
 
     try {
-      const { content: response } = await this.aiChatService.chat(messages, systemPrompt);
-
-      const parsed = parseAiJsonObject(response) as any;
+      const parsed = (await this.chatForJson(messages, systemPrompt)) as any;
       const items: ParsedItemIntent[] = (parsed.items || [parsed]).map(
         (item: any, index: number) => ({
           action: item.action || "create_item",

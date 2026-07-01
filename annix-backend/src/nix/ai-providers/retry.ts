@@ -1,10 +1,31 @@
 import { Logger } from "@nestjs/common";
 
 const MAX_RETRIES = 3;
-const RETRYABLE_STATUS_PATTERNS = [/\b429\b/, /\b529\b/, /\b503\b/, /overloaded/i, /rate.?limit/i];
+const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504, 529]);
+const RETRYABLE_MESSAGE_PATTERNS = [
+  /\b(429|500|502|503|504|529)\b/,
+  /overloaded/i,
+  /rate.?limit/i,
+  /econnreset/i,
+  /etimedout/i,
+  /econnrefused/i,
+  /enotfound/i,
+  /eai_again/i,
+  /socket hang ?up/i,
+  /fetch failed/i,
+];
+const RETRYABLE_ERROR_CODES = /^(ECONNRESET|ETIMEDOUT|ECONNREFUSED|ENOTFOUND|EAI_AGAIN)$/i;
 
-function isRetryableError(error: Error): boolean {
-  return RETRYABLE_STATUS_PATTERNS.some((pattern) => pattern.test(error.message));
+export function isRetryableError(error: Error): boolean {
+  const status = (error as { status?: unknown }).status;
+  if (typeof status === "number" && RETRYABLE_STATUSES.has(status)) {
+    return true;
+  }
+  const code = (error as { code?: unknown }).code;
+  if (typeof code === "string" && RETRYABLE_ERROR_CODES.test(code)) {
+    return true;
+  }
+  return RETRYABLE_MESSAGE_PATTERNS.some((pattern) => pattern.test(error.message));
 }
 
 function retryDelayMs(attempt: number): number {

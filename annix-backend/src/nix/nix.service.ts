@@ -38,6 +38,7 @@ import {
   ExtractionResult,
   SpecificationCellData,
 } from "./services/excel-extractor.service";
+import { enforceExplicitDescriptionSpecs } from "./services/explicit-size-guard";
 import {
   feedbackLearningRow,
   feedbackPatternKey,
@@ -1184,7 +1185,11 @@ export class NixService {
     );
 
     try {
-      const maxAttempts = 3;
+      // Cap the outer re-send loop: each chatWithImage already runs its own
+      // transient-error retry, and re-sending the whole (large) PDF on a mere
+      // JSON-parse miss rarely helps while multiplying vision cost/latency.
+      // One re-send covers model non-determinism; beyond that we fail cleanly.
+      const maxAttempts = 2;
       let result: Awaited<ReturnType<typeof this.aiChatService.chatWithImage>> | null = null;
       let parsed: Record<string, unknown> | null = null;
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -1216,7 +1221,7 @@ export class NixService {
         );
       }
       const items: ExtractedItem[] = rawItems.map((item: Record<string, unknown>) =>
-        this.normaliseVisionItem(item),
+        this.guardVisionItem(this.normaliseVisionItem(item)),
       );
       // 'specifications' may be an object keyed by clause code (the canonical
       // shape since #253 prompt rewrite) OR an array of cells from older
@@ -1305,6 +1310,20 @@ export class NixService {
    * extraction path, so we apply lenient mapping with sensible defaults
    * rather than throwing on schema drift.
    */
+  // Issue #294: re-assert the row's own description-derived specs after the AI
+  // pass so a sub-item cannot inherit a parent's bore/material. The text path
+  // does this in ai-extraction.service; the vision path (image-only drawings —
+  // exactly where nested sub-items are most likely) previously skipped it.
+  private guardVisionItem(item: ExtractedItem): ExtractedItem {
+    const { item: guarded, corrections } = enforceExplicitDescriptionSpecs(item);
+    if (corrections.length > 0) {
+      this.logger.warn(
+        `Vision explicit-size guard corrected row ${item.rowNumber} ("${item.description.substring(0, 80)}"): ${corrections.join("; ")}`,
+      );
+    }
+    return guarded;
+  }
+
   private normaliseVisionItem(item: Record<string, unknown>): ExtractedItem {
     // Gemini occasionally nests dimensions, lining, and other groups despite
     // the system prompt asking for a flat schema. Flatten one level so the

@@ -21,6 +21,11 @@ export interface ChatGenerationOptions {
   // Opt-in only (some accounts reject the field), so default behaviour is
   // unchanged for callers that don't set it.
   thinkingBudget?: number;
+  // Gemini responseSchema (OpenAPI-subset) threaded into generationConfig so the
+  // model is constrained to a shape/enum rather than free-text-then-parse. Implies
+  // JSON output. Used for fixed-enum classifiers where flash-lite is weak at raw
+  // JSON (the recurring "did not yield a JSON object" failure).
+  responseSchema?: Record<string, unknown>;
 }
 
 // Real per-call token breakdown from Gemini's usageMetadata, so ai_usage_logs
@@ -233,13 +238,16 @@ export class GeminiChatProvider {
     // verbose. (Sending thinkingConfig.thinkingBudget=0 would be more
     // surgical but the field is rejected by v1beta on some accounts.)
     const requestedMax = options?.maxOutputTokens ?? this.maxTokens;
+    const wantsJson = options?.responseFormat === "json" || !!options?.responseSchema;
     const generationConfig: Record<string, unknown> = {
       temperature: options?.temperature ?? this.temperature,
-      maxOutputTokens:
-        options?.responseFormat === "json" ? Math.max(requestedMax, 4096) : requestedMax,
+      maxOutputTokens: wantsJson ? Math.max(requestedMax, 4096) : requestedMax,
     };
-    if (options?.responseFormat === "json") {
+    if (wantsJson) {
       generationConfig.responseMimeType = "application/json";
+    }
+    if (options?.responseSchema) {
+      generationConfig.responseSchema = options.responseSchema;
     }
     if (options?.thinkingBudget !== undefined) {
       generationConfig.thinkingConfig = { thinkingBudget: options.thinkingBudget };

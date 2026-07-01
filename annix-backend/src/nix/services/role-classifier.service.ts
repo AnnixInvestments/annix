@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { AiApp } from "../../ai-usage/entities/ai-usage-log.entity";
 import { AiChatService } from "../ai-providers/ai-chat.service";
 import { hardenedExtractionSystemInstruction } from "../ai-providers/untrusted-content";
 import { DocumentRole } from "../entities/nix-extraction.entity";
@@ -83,6 +84,11 @@ drawing (engineering drawings, workshop sheets, isometrics, GA drawings, bills o
 specification (painting / coating / lining specs, welding procedures, ITP/QCP, datasheets, technical standards, scope-of-work requirement clauses)
 other (correspondence, cover letters, narratives, anything else)`;
 
+const ROLE_GLANCE_SCHEMA = {
+  type: "STRING",
+  enum: ["drawing", "specification", "other"],
+};
+
 @Injectable()
 export class RoleClassifierService {
   private readonly logger = new Logger(RoleClassifierService.name);
@@ -122,6 +128,8 @@ export class RoleClassifierService {
         "application/pdf",
         AI_GLANCE_PROMPT,
         hardenedExtractionSystemInstruction(""),
+        { responseSchema: ROLE_GLANCE_SCHEMA },
+        { app: AiApp.NIX, actionType: "role-glance" },
       );
       const answer = (response.content || "").trim().toLowerCase();
       const role = answer.includes("drawing")

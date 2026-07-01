@@ -23,7 +23,7 @@ import {
   type ChatGenerationOptions,
   GeminiChatProvider,
 } from "./gemini-chat.provider";
-import { withRetry } from "./retry";
+import { isRetryableError, withRetry } from "./retry";
 
 export type { AiUsage, ChatGenerationOptions };
 
@@ -331,7 +331,11 @@ export class AiChatService implements OnModuleInit {
     let errorMessage = "";
 
     try {
-      for await (const chunk of provider.streamChat(messages, systemPrompt)) {
+      for await (const chunk of this.streamProviderWithConnectRetry(
+        provider,
+        messages,
+        systemPrompt,
+      )) {
         if (chunk.type === "error") {
           hasError = true;
           errorMessage = chunk.error || "Unknown error";
@@ -390,6 +394,55 @@ export class AiChatService implements OnModuleInit {
 
     const code = classifyAiError(new Error(errorMessage));
     yield { type: "error", error: userMessageForAiErrorCode(code) };
+  }
+
+  private async *streamProviderWithConnectRetry(
+    provider: ChatProvider,
+    messages: ChatMessage[],
+    systemPrompt?: string,
+  ): AsyncGenerator<StreamChunk> {
+    const maxConnectRetries = 2;
+    let yieldedStart = false;
+    for (let attempt = 0; attempt <= maxConnectRetries; attempt++) {
+      let yieldedContent = false;
+      try {
+        for await (const chunk of provider.streamChat(messages, systemPrompt)) {
+          if (chunk.type === "error") {
+            const err = new Error(chunk.error || "Unknown error");
+            if (!yieldedContent && attempt < maxConnectRetries && isRetryableError(err)) {
+              this.logger.warn(
+                `${provider.name} stream connect error (attempt ${attempt + 1}/${maxConnectRetries + 1}), retrying: ${err.message}`,
+              );
+              break;
+            }
+            yield chunk;
+            return;
+          }
+          if (chunk.type === "message_start") {
+            // A retry re-opens the provider stream, which emits message_start
+            // again — forward only the first so the SSE client sees one turn.
+            if (yieldedStart) {
+              continue;
+            }
+            yieldedStart = true;
+          }
+          if (chunk.type === "content_delta") {
+            yieldedContent = true;
+          }
+          yield chunk;
+        }
+        return;
+      } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        if (yieldedContent || attempt >= maxConnectRetries || !isRetryableError(err)) {
+          throw err;
+        }
+        this.logger.warn(
+          `${provider.name} stream threw before content (attempt ${attempt + 1}/${maxConnectRetries + 1}), retrying: ${err.message}`,
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** attempt));
+    }
   }
 
   private async selectProviderWithFallback(
