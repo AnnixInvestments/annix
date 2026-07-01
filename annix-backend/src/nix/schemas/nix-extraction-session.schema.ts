@@ -64,6 +64,9 @@ export class NixExtractionSession {
   @Prop({ type: Number, required: false })
   quoteTotalIncVat: number;
 
+  @Prop({ type: Object, required: false })
+  sourcingPlan: Record<string, unknown>;
+
   @Prop({ type: Date, required: false })
   createdAt: Date;
 

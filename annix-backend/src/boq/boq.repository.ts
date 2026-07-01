@@ -29,4 +29,8 @@ export abstract class BoqRepository extends CrudRepository<Boq> {
   abstract recalculateTotals(boqId: number): Promise<void>;
   abstract findRfqLinksByRfqIds(rfqIds: number[]): Promise<BoqRfqLink[]>;
   abstract findByRfqId(rfqId: number): Promise<Boq[]>;
+  abstract findBySourceBucket(
+    sourceSessionId: number,
+    sourceBucketRef: string,
+  ): Promise<Boq | null>;
 }

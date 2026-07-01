@@ -56,6 +56,10 @@ export class MongoNixExtractionSessionRepository
     await this.documents.findByIdAndUpdate(sessionId, { $set: { jobCardId } }).exec();
   }
 
+  async setSourcingPlan(sessionId: number, plan: Record<string, unknown>): Promise<void> {
+    await this.documents.findByIdAndUpdate(sessionId, { $set: { sourcingPlan: plan } }).exec();
+  }
+
   withTransaction(context: TransactionContext): MongoNixExtractionSessionRepository {
     if (!(context instanceof MongoTransactionContext)) {
       throw new Error("MongoNixExtractionSessionRepository requires a MongoTransactionContext");

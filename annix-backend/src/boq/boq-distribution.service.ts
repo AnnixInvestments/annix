@@ -754,11 +754,11 @@ export class BoqDistributionService {
   ): Promise<{ updated: number; removed: number }> {
     const capabilitySections = sectionsForCapabilities(newCapabilities);
 
-    const accessRecords = await this.accessRepository.findBySupplierAndStatuses(supplierProfileId, [
-      SupplierBoqStatus.PENDING,
-      SupplierBoqStatus.VIEWED,
-      SupplierBoqStatus.DECLINED,
-    ]);
+    const distributionAccess = await this.accessRepository.findBySupplierAndStatuses(
+      supplierProfileId,
+      [SupplierBoqStatus.PENDING, SupplierBoqStatus.VIEWED, SupplierBoqStatus.DECLINED],
+    );
+    const accessRecords = distributionAccess.filter((access) => access.accessOrigin !== "sourcing");
 
     if (accessRecords.length === 0) {
       return { updated: 0, removed: 0 };

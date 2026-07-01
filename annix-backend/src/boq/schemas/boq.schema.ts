@@ -48,6 +48,12 @@ export class Boq {
 
   @Prop({ type: Number, required: false })
   createdById: number;
+
+  @Prop({ type: Number, required: false })
+  sourceSessionId: number;
+
+  @Prop({ type: String, required: false })
+  sourceBucketRef: string;
 }
 
 export const BoqSchema = SchemaFactory.createForClass(Boq);

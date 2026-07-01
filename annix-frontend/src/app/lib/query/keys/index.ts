@@ -33,6 +33,7 @@ export { reviewKeys } from "./reviewKeys";
 export type { RfqQueryParams } from "./rfqKeys";
 export { rfqKeys } from "./rfqKeys";
 export { rubberKeys } from "./rubberKeys";
+export { sourcingKeys } from "./sourcingKeys";
 export { stockControlKeys } from "./stockControlKeys";
 export { supplierKeys } from "./supplierKeys";
 export { teacherAssistantKeys } from "./teacherAssistantKeys";

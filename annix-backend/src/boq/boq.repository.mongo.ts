@@ -25,7 +25,7 @@ export class MongoBoqRepository extends MongoCrudRepository<Boq> implements BoqR
   }
 
   async findAllPaginated(params: BoqListParams): Promise<[Boq[], number]> {
-    const filter: Record<string, unknown> = {};
+    const filter: Record<string, unknown> = { sourceSessionId: { $exists: false } };
 
     if (params.status) filter.status = params.status;
     if (params.drawingId) filter.drawingId = params.drawingId;
@@ -55,6 +55,14 @@ export class MongoBoqRepository extends MongoCrudRepository<Boq> implements BoqR
 
   async findOneWithRelations(id: number): Promise<Boq | null> {
     const document = await this.documents.findById(id).lean().exec();
+    return this.toDomain(document);
+  }
+
+  async findBySourceBucket(sourceSessionId: number, sourceBucketRef: string): Promise<Boq | null> {
+    const document = await this.documents
+      .findOne({ sourceSessionId, sourceBucketRef })
+      .lean()
+      .exec();
     return this.toDomain(document);
   }
 

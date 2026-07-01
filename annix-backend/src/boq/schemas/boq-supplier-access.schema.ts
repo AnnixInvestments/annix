@@ -58,6 +58,15 @@ export class BoqSupplierAccess {
   @Prop({ type: Date, required: false })
   quoteSubmittedAt: Date;
 
+  @Prop({ type: String, required: false })
+  accessOrigin: string;
+
+  @Prop({ type: Number, required: false })
+  sourceSessionId: number;
+
+  @Prop({ type: String, required: false })
+  bucketRef: string;
+
   @Prop({ type: Date, required: false })
   createdAt: Date;
 

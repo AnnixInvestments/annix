@@ -1331,6 +1331,22 @@ export {
   useRfqDetail,
   useRfqs,
 } from "./rfq/useRfqs";
+export type {
+  SourcingBucket,
+  SourcingDraftLineItem,
+  SourcingExternalCandidate,
+  SourcingPlan,
+  SourcingSendResult,
+  SourcingUnmatchedItem,
+} from "./sourcing/useSourcing";
+export {
+  useDraftSourcingAi,
+  usePlanSourcing,
+  useReassignSourcingItem,
+  useSendSourcingBucket,
+  useSourcingPlan,
+  useUpdateSourcingDraftBody,
+} from "./sourcing/useSourcing";
 export {
   positectorStreamingEventsUrl,
   positectorWebhookUrl,

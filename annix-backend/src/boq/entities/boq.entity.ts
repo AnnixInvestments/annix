@@ -64,6 +64,20 @@ export class Boq {
   @ApiProperty({ description: "Total estimated cost", required: false })
   totalEstimatedCost?: number;
 
+  @ApiProperty({
+    description:
+      "NixExtractionSession id this BOQ was materialized from when published via the RFQ sourcing in-app quote surface (issue #432). Null for BOQs created through the normal drawing/RFQ flow.",
+    required: false,
+  })
+  sourceSessionId?: number | null;
+
+  @ApiProperty({
+    description:
+      "Sourcing bucket reference (supplierProfileId::category) this BOQ was materialized from. Null for non-sourcing BOQs.",
+    required: false,
+  })
+  sourceBucketRef?: string | null;
+
   @ApiProperty({ description: "Creation date" })
   createdAt: Date;
 

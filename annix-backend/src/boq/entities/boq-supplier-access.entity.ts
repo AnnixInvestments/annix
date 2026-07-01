@@ -91,6 +91,27 @@ export class BoqSupplierAccess {
   @ApiProperty({ description: "When quote was submitted" })
   quoteSubmittedAt?: Date;
 
+  @ApiProperty({
+    description:
+      "How this access record was created: 'distribution' for the classic BOQ→supplier distribution flow, 'sourcing' when materialized from an RFQ sourcing bucket (issue #432). Treat an absent value as 'distribution'.",
+    required: false,
+  })
+  accessOrigin?: "distribution" | "sourcing";
+
+  @ApiProperty({
+    description:
+      "NixExtractionSession id this access record was materialized from when created via the RFQ sourcing in-app quote surface. Null for distribution access records.",
+    required: false,
+  })
+  sourceSessionId?: number | null;
+
+  @ApiProperty({
+    description:
+      "Sourcing bucket reference (supplierProfileId::category) this access record was materialized from. Null for distribution access records.",
+    required: false,
+  })
+  bucketRef?: string | null;
+
   @ApiProperty({ description: "Creation date" })
   createdAt: Date;
 

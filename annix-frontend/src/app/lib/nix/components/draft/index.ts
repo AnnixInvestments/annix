@@ -34,6 +34,7 @@ export {
   useNixSpecViewer,
 } from "./NixSpecViewer";
 export { RevisionBadge } from "./RevisionBadge";
+export { SourcingReview } from "./SourcingReview";
 export { SpecificationCard } from "./SpecificationCard";
 export { StatCard } from "./StatCard";
 export { type ResolvedCode, type SpecLookup, useSpecLookup } from "./useSpecLookup";

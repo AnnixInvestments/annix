@@ -156,6 +156,13 @@ export class NixExtractionSession {
   })
   quoteTotalIncVat?: number | null;
 
+  @ApiProperty({
+    description:
+      "RFQ supplier-sourcing plan (issue #432) — the mutable draft state produced by RfqSourcingDistributionService.planSourcing: per-supplier draft buckets, external manual candidates, unmatched items and per-bucket edited draft bodies. Additive and optional; only populated for 'rfq' sessions that have run sourcing. Shape mirrors StoredSourcingPlan.",
+    required: false,
+  })
+  sourcingPlan?: Record<string, unknown>;
+
   createdAt: Date;
 
   updatedAt: Date;

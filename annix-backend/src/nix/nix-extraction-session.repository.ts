@@ -21,4 +21,6 @@ export abstract class NixExtractionSessionRepository extends CrudRepository<NixE
   abstract unlinkExtractionsFromSession(sessionId: number): Promise<void>;
 
   abstract setJobCardId(sessionId: number, jobCardId: number): Promise<void>;
+
+  abstract setSourcingPlan(sessionId: number, plan: Record<string, unknown>): Promise<void>;
 }
