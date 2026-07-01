@@ -27,6 +27,12 @@ legal_risk_check() {
   fi
 }
 
+secret_scan_check() {
+  if [ -f "${ROOT_DIR}/scripts/check-secrets.sh" ]; then
+    bash "${ROOT_DIR}/scripts/check-secrets.sh" pushed
+  fi
+}
+
 duplication_check() {
   if [ -f "${ROOT_DIR}/scripts/check-inter-app-duplication.sh" ]; then
     bash "${ROOT_DIR}/scripts/check-inter-app-duplication.sh" pushed
@@ -125,6 +131,7 @@ pull_rebase() {
 }
 
 cd "$ROOT_DIR"
+timed_step "secret scan" secret_scan_check
 timed_step "legal risk check" legal_risk_check
 timed_step "duplication check" duplication_check
 timed_step "git pull --rebase" pull_rebase

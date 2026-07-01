@@ -1,12 +1,22 @@
 #!/usr/bin/env node
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 import pg from "pg";
 
+const require = createRequire(new URL("../annix-backend/package.json", import.meta.url));
+require("dotenv").config({
+  path: fileURLToPath(new URL("../annix-backend/.env", import.meta.url)),
+  quiet: true,
+});
+
+const connectionString = process.env.NEON_STAGING_DATABASE_URL;
+if (!connectionString) {
+  console.error("NEON_STAGING_DATABASE_URL is required (set it in annix-backend/.env)");
+  process.exit(1);
+}
+
 const client = new pg.Client({
-  host: "ep-calm-mountain-ab5o40px.eu-west-2.aws.neon.tech",
-  port: 5432,
-  user: "neondb_owner",
-  password: "npg_Hds3MzGXvl8R",
-  database: "neondb",
+  connectionString,
   ssl: { rejectUnauthorized: false },
 });
 await client.connect();
