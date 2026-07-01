@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
+import { AiApp } from "../../ai-usage/entities/ai-usage-log.entity";
 import { now } from "../../lib/datetime";
 import { stripHtmlToText } from "../../lib/html-text";
 import { parseJsonFromAi } from "../../lib/json-from-ai";
@@ -186,6 +187,7 @@ export class EducationAdmissionIngestionService {
           thinkingBudget: 0,
           maxOutputTokens: EXTRACTION_MAX_TOKENS,
         },
+        { app: AiApp.EDUCATION, actionType: "admission-requirement-extraction" },
       );
       const parsed = parseJsonFromAi<{ requirements?: ExtractedRequirement[] }>(result.content);
       const requirements = parsed.requirements ?? [];

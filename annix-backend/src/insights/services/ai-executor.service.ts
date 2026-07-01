@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { AiApp } from "../../ai-usage/entities/ai-usage-log.entity";
 import { now } from "../../lib/datetime";
 import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
@@ -153,7 +154,16 @@ export class AiExecutorService {
     const prompt = buildPickerPrompt(portfolio, context);
     let aiContent: string;
     try {
-      const response = await this.ai.chat([{ role: "user", content: prompt }], SYSTEM_PROMPT);
+      const response = await this.ai.chat(
+        [{ role: "user", content: prompt }],
+        SYSTEM_PROMPT,
+        undefined,
+        undefined,
+        {
+          app: AiApp.INSIGHTS,
+          actionType: "paper-portfolio-picker",
+        },
+      );
       aiContent = response.content;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -230,7 +240,16 @@ export class AiExecutorService {
 
     let aiContent: string;
     try {
-      const response = await this.ai.chat([{ role: "user", content: prompt }], SYSTEM_PROMPT);
+      const response = await this.ai.chat(
+        [{ role: "user", content: prompt }],
+        SYSTEM_PROMPT,
+        undefined,
+        undefined,
+        {
+          app: AiApp.INSIGHTS,
+          actionType: "paper-portfolio-override",
+        },
+      );
       aiContent = response.content;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -279,7 +298,16 @@ export class AiExecutorService {
     const prompt = buildPurePrompt(portfolio, context);
     let aiContent: string;
     try {
-      const response = await this.ai.chat([{ role: "user", content: prompt }], SYSTEM_PROMPT);
+      const response = await this.ai.chat(
+        [{ role: "user", content: prompt }],
+        SYSTEM_PROMPT,
+        undefined,
+        undefined,
+        {
+          app: AiApp.INSIGHTS,
+          actionType: "paper-portfolio-pure",
+        },
+      );
       aiContent = response.content;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

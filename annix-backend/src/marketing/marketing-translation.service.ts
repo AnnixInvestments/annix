@@ -6,6 +6,7 @@ import {
 } from "@annix/product-data/marketing";
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { cloneDeep } from "es-toolkit/compat";
+import { AiApp } from "../ai-usage/entities/ai-usage-log.entity";
 import { ExtractionMetricService } from "../metrics/extraction-metric.service";
 import { AiChatService } from "../nix/ai-providers/ai-chat.service";
 import { MarketingSiteContentService } from "./marketing-site-content.service";
@@ -206,6 +207,8 @@ export class MarketingTranslationService {
         [{ role: "user" as const, content: text }],
         systemPrompt,
         "gemini",
+        undefined,
+        { app: AiApp.MARKETING, actionType: "marketing-long-field-translation" },
       );
       const cleaned = content.trim();
       return cleaned === "" ? null : cleaned;
@@ -278,6 +281,8 @@ export class MarketingTranslationService {
       [{ role: "user" as const, content: userPrompt }],
       systemPrompt,
       "gemini",
+      undefined,
+      { app: AiApp.MARKETING, actionType: "marketing-batch-translation" },
     );
     return parseJsonRecord(content);
   }

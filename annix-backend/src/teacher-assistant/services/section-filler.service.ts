@@ -8,6 +8,7 @@ import type {
 } from "@annix/product-data/teacher-assistant";
 import { templateForSubject } from "@annix/product-data/teacher-assistant";
 import { Injectable, Logger } from "@nestjs/common";
+import { AiApp } from "../../ai-usage/entities/ai-usage-log.entity";
 import { parseJsonFromAi } from "../../lib/json-from-ai";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 
@@ -198,6 +199,8 @@ export class SectionFillerService {
       [{ role: "user", content: prompt }],
       FILLER_SYSTEM_PROMPT,
       "gemini",
+      undefined,
+      { app: AiApp.TEACHER_ASSISTANT, actionType: "teacher-fill-rubric" },
     );
     const parsed = parseJsonFromAi<RubricResponse>(response.content);
     return Array.isArray(parsed.rubric) ? parsed.rubric : null;
@@ -213,6 +216,8 @@ export class SectionFillerService {
       [{ role: "user", content: prompt }],
       FILLER_SYSTEM_PROMPT,
       "gemini",
+      undefined,
+      { app: AiApp.TEACHER_ASSISTANT, actionType: "teacher-fill-teacher-notes" },
     );
     const parsed = parseJsonFromAi<TeacherNotesResponse>(response.content);
     return parsed.teacherNotes ?? null;
@@ -244,6 +249,8 @@ export class SectionFillerService {
       [{ role: "user", content: prompt }],
       FILLER_SYSTEM_PROMPT,
       "gemini",
+      undefined,
+      { app: AiApp.TEACHER_ASSISTANT, actionType: "teacher-fill-string-list" },
     );
     const parsed = parseJsonFromAi<StringListResponse>(response.content);
     return Array.isArray(parsed.items) ? parsed.items.filter((s) => s.trim().length > 0) : null;
@@ -260,6 +267,8 @@ export class SectionFillerService {
       [{ role: "user", content: prompt }],
       FILLER_SYSTEM_PROMPT,
       "gemini",
+      undefined,
+      { app: AiApp.TEACHER_ASSISTANT, actionType: "teacher-fill-parent-note" },
     );
     const parsed = parseJsonFromAi<StringListResponse>(response.content);
     if (Array.isArray(parsed.items) && parsed.items.length > 0) {
@@ -434,6 +443,8 @@ export class SectionFillerService {
       [{ role: "user", content: prompt }],
       FILLER_SYSTEM_PROMPT,
       "gemini",
+      undefined,
+      { app: AiApp.TEACHER_ASSISTANT, actionType: "teacher-fill-shell" },
     );
     const parsed = parseJsonFromAi<ShellResponse>(response.content);
     if (!parsed.title || !parsed.studentBrief) return null;
@@ -468,6 +479,8 @@ export class SectionFillerService {
       [{ role: "user", content: prompt }],
       FILLER_SYSTEM_PROMPT,
       "gemini",
+      undefined,
+      { app: AiApp.TEACHER_ASSISTANT, actionType: "teacher-fill-tasks" },
     );
     const parsed = parseJsonFromAi<TasksResponse>(response.content);
     if (!Array.isArray(parsed.tasks) || parsed.tasks.length < 3) return null;
@@ -490,6 +503,8 @@ export class SectionFillerService {
       [{ role: "user", content: prompt }],
       FILLER_SYSTEM_PROMPT,
       "gemini",
+      undefined,
+      { app: AiApp.TEACHER_ASSISTANT, actionType: "teacher-fill-extras" },
     );
     const parsed = parseJsonFromAi<ExtrasResponse>(response.content);
     return parsed;

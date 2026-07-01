@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { AiApp } from "../../ai-usage/entities/ai-usage-log.entity";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import type { ChatMessage } from "../../nix/ai-providers/claude-chat.provider";
@@ -50,7 +51,11 @@ export class EducationMentorService {
     const result = await this.metrics.time(
       MENTOR_METRIC_CATEGORY,
       profile.curriculum ?? "Other",
-      () => this.aiChatService.chat(messages, MENTOR_SYSTEM_PROMPT),
+      () =>
+        this.aiChatService.chat(messages, MENTOR_SYSTEM_PROMPT, undefined, undefined, {
+          app: AiApp.EDUCATION,
+          actionType: "education-mentor-chat",
+        }),
     );
 
     const log = await this.adviceLogRepo.create({

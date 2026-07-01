@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
+import { AiApp } from "../../ai-usage/entities/ai-usage-log.entity";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { parseAiJsonArray } from "../../nix/ai-providers/ai-json";
 import { fromISO, now } from "../lib/datetime";
@@ -199,6 +200,9 @@ export class AnnixSentinelRegulatoryService {
           },
         ],
         EXTRACTION_SYSTEM_PROMPT,
+        undefined,
+        undefined,
+        { app: AiApp.SENTINEL, actionType: "regulatory-update-extraction" },
       );
 
       const parsed = parseAiJsonArray(result.content);

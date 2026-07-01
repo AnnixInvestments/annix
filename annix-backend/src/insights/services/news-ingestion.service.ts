@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { Injectable, Logger } from "@nestjs/common";
+import { AiApp } from "../../ai-usage/entities/ai-usage-log.entity";
 import { now } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
@@ -223,7 +224,16 @@ Rules:
 - All implication strings must be non-empty
 - Output ONLY the JSON object, no surrounding text or code fences`;
 
-    const result = await this.ai.chat([{ role: "user", content: userMessage }], systemPrompt);
+    const result = await this.ai.chat(
+      [{ role: "user", content: userMessage }],
+      systemPrompt,
+      undefined,
+      undefined,
+      {
+        app: AiApp.INSIGHTS,
+        actionType: "news-analysis",
+      },
+    );
     return parseGeminiResponse(result.content);
   }
 }

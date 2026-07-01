@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Octokit } from "@octokit/rest";
+import { AiApp } from "../ai-usage/entities/ai-usage-log.entity";
 import { AiChatService } from "../nix/ai-providers/ai-chat.service";
 import { type IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import { CustomerFeedbackRepository } from "./customer-feedback.repository";
@@ -146,6 +147,9 @@ export class FeedbackGithubService {
       const response = await this.aiChatService.chat(
         [{ role: "user", content: input }],
         TRANSLATOR_PROMPT,
+        undefined,
+        undefined,
+        { app: AiApp.PLATFORM, actionType: "feedback-triage" },
       );
       const parsed = this.parseTranslatorResponse(response.content);
       if (parsed) {

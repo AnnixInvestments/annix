@@ -1,5 +1,6 @@
 import type { AgeBucket, DifficultyLevel, Subject } from "@annix/product-data/teacher-assistant";
 import { Injectable, Logger } from "@nestjs/common";
+import { AiApp } from "../../ai-usage/entities/ai-usage-log.entity";
 import { parseJsonFromAi } from "../../lib/json-from-ai";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
@@ -36,6 +37,8 @@ export class ObjectiveSuggesterService {
         [{ role: "user", content: userPrompt }],
         SYSTEM_PROMPT,
         "gemini",
+        undefined,
+        { app: AiApp.TEACHER_ASSISTANT, actionType: "teacher-suggest-objectives" },
       );
       const parsed = parseJsonFromAi<AiSuggestionResponse>(response.content);
       const suggestions = (parsed.suggestions ?? [])

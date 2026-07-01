@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { AiApp } from "../../ai-usage/entities/ai-usage-log.entity";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { CompanyRepository } from "../../platform/company.repository";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
@@ -123,6 +124,9 @@ export class AnnixSentinelAiService {
       const result = await this.aiChatService.chat(
         [{ role: "user", content: question }],
         fullSystemPrompt,
+        undefined,
+        undefined,
+        { app: AiApp.SENTINEL, actionType: "compliance-chat" },
       );
 
       return {
@@ -229,6 +233,8 @@ export class AnnixSentinelAiService {
         mimeType as SupportedMediaType,
         prompt,
         systemPrompt,
+        undefined,
+        { app: AiApp.SENTINEL, actionType: "document-checklist-analysis" },
       );
 
       const cleaned = result.content

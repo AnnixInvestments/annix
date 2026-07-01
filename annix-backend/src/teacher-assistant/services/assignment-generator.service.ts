@@ -12,6 +12,7 @@ import {
   validateAssignment,
 } from "@annix/product-data/teacher-assistant";
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { AiApp } from "../../ai-usage/entities/ai-usage-log.entity";
 import { parseJsonFromAi } from "../../lib/json-from-ai";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
@@ -118,6 +119,8 @@ export class AssignmentGeneratorService {
       [{ role: "user", content: prompt }],
       SYSTEM_PROMPT,
       "gemini",
+      undefined,
+      { app: AiApp.TEACHER_ASSISTANT, actionType: "teacher-regenerate-section" },
     );
     const partial = parseJsonFromAi<Partial<Assignment>>(response.content);
     const merged: Assignment = {
@@ -158,7 +161,16 @@ export class AssignmentGeneratorService {
       let response: Awaited<ReturnType<typeof this.aiChat.chat>>;
       try {
         response = await withTimeout(
-          this.aiChat.chat([{ role: "user", content: prompt }], SYSTEM_PROMPT, "gemini"),
+          this.aiChat.chat(
+            [{ role: "user", content: prompt }],
+            SYSTEM_PROMPT,
+            "gemini",
+            undefined,
+            {
+              app: AiApp.TEACHER_ASSISTANT,
+              actionType: "teacher-generate-assignment",
+            },
+          ),
           SINGLE_AI_CALL_TIMEOUT_MS,
           `Generation attempt ${attempt + 1}`,
         );

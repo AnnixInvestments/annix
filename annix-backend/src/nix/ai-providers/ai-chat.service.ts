@@ -139,7 +139,7 @@ export class AiChatService implements OnModuleInit {
     usageLog?: AiUsageLogContext,
   ): Promise<{ content: string; providerUsed: string; tokensUsed?: number; usage?: AiUsage }> {
     await this.aiQuotaService.assertWithinQuota(
-      usageLog ?? { app: AiApp.UNKNOWN, actionType: "uncontextualized" },
+      usageLog ?? { app: AiApp.PLATFORM, actionType: "uncontextualized" },
     );
 
     const providerToUse = providerOverride || this.preferredProvider;
@@ -268,7 +268,7 @@ export class AiChatService implements OnModuleInit {
     modelOverride?: string,
   ): void {
     const context: AiUsageLogContext = usageLog ?? {
-      app: AiApp.UNKNOWN,
+      app: AiApp.PLATFORM,
       actionType: "uncontextualized",
     };
     const provider = providerName.startsWith("gemini") ? AiProvider.GEMINI : AiProvider.CLAUDE;
