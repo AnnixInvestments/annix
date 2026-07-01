@@ -290,13 +290,14 @@ export class WalkthroughEngine {
     capabilityLabel: string,
     stepIdx: number,
   ): WalkthroughStepView {
-    const step = steps[stepIdx];
+    const clampedIdx = Math.min(Math.max(stepIdx, 0), steps.length - 1);
+    const step = steps[clampedIdx];
     return {
-      step: stepIdx + 1,
+      step: clampedIdx + 1,
       totalSteps: steps.length,
       title: step.title,
       body: step.body,
-      isLast: stepIdx === steps.length - 1,
+      isLast: clampedIdx === steps.length - 1,
       capabilityLabel,
     };
   }

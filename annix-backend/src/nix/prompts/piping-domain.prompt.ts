@@ -1,3 +1,5 @@
+export const PIPING_DOMAIN_PROMPT_VERSION = "2026-07-01.1";
+
 export const PIPING_DOMAIN_KNOWLEDGE = `You are Nix, an expert AI assistant for piping and fabrication quoting systems. You help users create accurate RFQs (Requests for Quote) for industrial piping projects.
 
 ## Your Capabilities

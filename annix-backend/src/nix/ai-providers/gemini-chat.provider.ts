@@ -130,6 +130,9 @@ export class GeminiChatProvider {
         totalTokens: 0,
         cachedInputTokens: 0,
       };
+      let yieldedText = false;
+      let finishReason: string | undefined;
+      let blockReason: string | undefined;
 
       try {
         while (true) {
@@ -149,8 +152,11 @@ export class GeminiChatProvider {
             try {
               const data = JSON.parse(jsonStr);
               const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+              finishReason = data.candidates?.[0]?.finishReason ?? finishReason;
+              blockReason = data.promptFeedback?.blockReason ?? blockReason;
 
               if (text) {
+                yieldedText = true;
                 yield {
                   type: "content_delta",
                   delta: text,
@@ -164,6 +170,22 @@ export class GeminiChatProvider {
               this.logger.warn(`Failed to parse SSE event: ${parseError.message}`);
             }
           }
+        }
+
+        if (blockReason) {
+          this.logger.warn(
+            `Gemini stream blocked (blockReason=${blockReason}, finishReason=${finishReason ?? "none"})`,
+          );
+          yield {
+            type: "error",
+            error: `Gemini blocked the request (blockReason=${blockReason})`,
+          };
+          return;
+        }
+        if (!yieldedText) {
+          this.logger.warn(
+            `Gemini stream produced no content (finishReason=${finishReason ?? "none"})`,
+          );
         }
 
         yield {
@@ -245,8 +267,23 @@ export class GeminiChatProvider {
 
     const data = await response.json();
     const usage = geminiUsage(data.usageMetadata);
+    const candidate = data.candidates?.[0];
+    const text = candidate?.content?.parts?.[0]?.text ?? "";
+    const finishReason = candidate?.finishReason;
+    const blockReason = data.promptFeedback?.blockReason;
+
+    if (blockReason) {
+      this.logger.warn(
+        `Gemini blocked the request (blockReason=${blockReason}, finishReason=${finishReason ?? "none"})`,
+      );
+      throw new Error(`Gemini blocked the request (blockReason=${blockReason})`);
+    }
+    if (!text) {
+      this.logger.warn(`Gemini returned empty text (finishReason=${finishReason ?? "none"})`);
+    }
+
     return {
-      content: data.candidates?.[0]?.content?.parts?.[0]?.text || "",
+      content: text,
       tokensUsed: data.usageMetadata?.totalTokenCount ?? undefined,
       usage,
     };

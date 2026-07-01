@@ -6,6 +6,12 @@ import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { nowMillis } from "../../lib/datetime";
 import { defaultVisionInputLimits, reduceVisionInput } from "../../lib/pdf/vision-input-guard";
 import {
+  AI_UNAVAILABLE_MESSAGE,
+  aiUnavailableError,
+  classifyAiError,
+  userMessageForAiErrorCode,
+} from "./ai-errors";
+import {
   ChatMessage,
   ClaudeChatProvider,
   DocumentContent,
@@ -46,25 +52,11 @@ interface ChatProvider {
   ): Promise<{ content: string; tokensUsed?: number; usage?: AiUsage }>;
 }
 
-const AI_UNAVAILABLE_MESSAGE =
-  "The AI service is temporarily unavailable. Please try again shortly.";
-const AI_RATE_LIMIT_MESSAGE =
-  "The AI service is busy (rate limit reached). Please try again shortly.";
-
-function aiUnavailableMessage(detail: string): string {
-  const lower = detail.toLowerCase();
-  const rateLimited = [
-    "rate limit",
-    "resource_exhausted",
-    "quota",
-    "429",
-    "too many requests",
-  ].some((marker) => lower.includes(marker));
-  return rateLimited ? AI_RATE_LIMIT_MESSAGE : AI_UNAVAILABLE_MESSAGE;
-}
-
-function aiUnavailableError(error: unknown): Error {
-  return new Error(aiUnavailableMessage(error instanceof Error ? error.message : String(error)));
+function errorDetail(error: unknown): string {
+  if (error instanceof Error) {
+    return `${error.name}: ${error.message}${error.stack ? `\n${error.stack}` : ""}`;
+  }
+  return String(error);
 }
 
 @Injectable()
@@ -183,7 +175,7 @@ export class AiChatService implements OnModuleInit {
         usage: result.usage,
       };
     } catch (error) {
-      this.logger.error(`Chat failed with ${provider.name}: ${error.message}`);
+      this.logger.error(`Chat failed with ${provider.name}: ${errorDetail(error)}`);
 
       const fallbackProvider = await this.fallbackProvider(provider.name);
       if (fallbackProvider) {
@@ -211,7 +203,7 @@ export class AiChatService implements OnModuleInit {
           };
         } catch (fallbackError) {
           this.logger.error(
-            `All AI providers failed. ${provider.name}: ${error.message}; ${fallbackProvider.name}: ${fallbackError.message}`,
+            `All AI providers failed. ${provider.name}: ${errorDetail(error)}; ${fallbackProvider.name}: ${errorDetail(fallbackError)}`,
           );
           throw aiUnavailableError(error);
         }
@@ -396,7 +388,8 @@ export class AiChatService implements OnModuleInit {
       }
     }
 
-    yield { type: "error", error: aiUnavailableMessage(errorMessage) };
+    const code = classifyAiError(new Error(errorMessage));
+    yield { type: "error", error: userMessageForAiErrorCode(code) };
   }
 
   private async selectProviderWithFallback(

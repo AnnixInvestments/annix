@@ -1,6 +1,5 @@
 import { ForbiddenException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiChatService } from "../ai-providers/ai-chat.service";
 import { NixCapabilityRegistry, WalkthroughEngine } from "../capabilities";
 import { NixChatMessage } from "../entities/nix-chat-message.entity";
@@ -96,7 +95,6 @@ describe("NixChatService", () => {
         { provide: NixChatMessageRepository, useValue: mockMessageRepo },
         { provide: NixItemParserService, useValue: mockItemParserService },
         { provide: AiChatService, useValue: mockAiChatService },
-        { provide: AiUsageService, useValue: { log: jest.fn() } },
         { provide: WalkthroughEngine, useValue: mockWalkthroughEngine },
         { provide: NixCapabilityRegistry, useValue: mockCapabilityRegistry },
       ],
@@ -221,7 +219,6 @@ describe("NixChatService", () => {
         messageRepository as any,
         {} as any,
         mockAiChatServiceUnavailable as any,
-        { log: jest.fn() } as any,
         {} as any,
         {} as any,
       );
@@ -326,7 +323,6 @@ describe("NixChatService", () => {
         messageRepository as any,
         {} as any,
         mockAiChatServiceUnavailable as any,
-        { log: jest.fn() } as any,
         {} as any,
         {} as any,
       );

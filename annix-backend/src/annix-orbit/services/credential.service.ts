@@ -6,10 +6,15 @@ import {
 } from "@annix/product-data/sa-market";
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
+import { AiApp } from "../../ai-usage/entities/ai-usage-log.entity";
 import { EmailService } from "../../email/email.service";
 import { DateTime } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import {
+  hardenedExtractionSystemInstruction,
+  wrapUntrustedDocument,
+} from "../../nix/ai-providers/untrusted-content";
 import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
 import { Candidate } from "../entities/candidate.entity";
 import { CvCredential } from "../entities/cv-credential.entity";
@@ -78,6 +83,8 @@ export class CredentialService {
         normaliseCredentialMediaType(mimeType),
         "Extract the credential fields from this document. Return ONLY JSON.",
         buildCredentialDocumentSystemPrompt(),
+        undefined,
+        { app: AiApp.ANNIX_ORBIT, actionType: "orbit-credential-doc" },
       );
       const match = content.match(/\{[\s\S]*\}/);
       if (!match) return empty;
@@ -327,6 +334,8 @@ export class CredentialService {
         [{ role: "user", content: buildCredentialExtractionPrompt(trimmed) }],
         buildCredentialExtractionSystemPrompt(),
         "gemini",
+        undefined,
+        { app: AiApp.ANNIX_ORBIT, actionType: "orbit-credential-cv" },
       );
       const match = content.match(/\{[\s\S]*\}/);
       if (!match) return [];
@@ -397,7 +406,7 @@ function normaliseCredentialMediaType(
 function buildCredentialDocumentSystemPrompt(): string {
   const typeUnion = credentialTypeUnion();
   const typeGuide = credentialTypeGuide();
-  return `You are reading a single South African workplace credential / ticket / certificate document (an image or PDF) and extracting its key fields.
+  return hardenedExtractionSystemInstruction(`You are reading a single South African workplace credential / ticket / certificate document (an image or PDF) and extracting its key fields.
 
 Credential types and what they mean:
 ${typeGuide}
@@ -417,13 +426,13 @@ Rules:
 - issuedAt / expiresAt are the issue and expiry dates printed on the document, or null if not shown.
 - issuingAuthority is the body/clinic/company/training provider that issued it (e.g. "Kathu Mine HSE", "Dr Bones").
 - notes is any short useful detail such as a licence/certificate number or class/category, or null.
-- Never invent values. Use null when a field is not clearly shown.`;
+- Never invent values. Use null when a field is not clearly shown.`);
 }
 
 function buildCredentialExtractionSystemPrompt(): string {
   const typeUnion = credentialTypeUnion();
   const typeGuide = credentialTypeGuide();
-  return `You are extracting workplace credentials and tickets from a South African industrial worker's CV. Look for medicals, mine inductions, blasting tickets, eye tests, forklift / plant / TMM / crane operator licences, rigging, driver's licences and PrDPs, working-at-heights, confined space, scaffolding, H2S awareness, gas testing, first aid, fire fighting, dangerous-goods / Hazchem, coded welding, and similar safety/competency documents.
+  return hardenedExtractionSystemInstruction(`You are extracting workplace credentials and tickets from a South African industrial worker's CV. Look for medicals, mine inductions, blasting tickets, eye tests, forklift / plant / TMM / crane operator licences, rigging, driver's licences and PrDPs, working-at-heights, confined space, scaffolding, H2S awareness, gas testing, first aid, fire fighting, dangerous-goods / Hazchem, coded welding, and similar safety/competency documents.
 
 Credential types and what they mean:
 ${typeGuide}
@@ -446,11 +455,11 @@ Rules:
 - Use null for issued/expires dates if the CV doesn't give a date.
 - Use "other" for credentials that don't fit the listed types — DO NOT skip them.
 - issuingAuthority is the body that issued the credential (e.g. "Kathu Mine HSE", "Dr Bones", "Anglo American Platinum").
-- Return {"credentials": []} if nothing applies. Never invent entries.`;
+- Return {"credentials": []} if nothing applies. Never invent entries.`);
 }
 
 function buildCredentialExtractionPrompt(cvText: string): string {
-  return `Extract any workplace credentials/tickets from this CV. Return ONLY JSON.\n\n${cvText}`;
+  return `Extract any workplace credentials/tickets from this CV. Return ONLY JSON.\n\n${wrapUntrustedDocument(cvText)}`;
 }
 
 const CREDENTIAL_KEYWORDS = [

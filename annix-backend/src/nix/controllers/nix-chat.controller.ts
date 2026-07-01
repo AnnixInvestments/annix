@@ -12,24 +12,28 @@ import {
   Res,
   UseGuards,
 } from "@nestjs/common";
-import { Response } from "express";
+import type { Response } from "express";
 import { AiQuotaService } from "../../ai-usage/ai-quota.service";
 import { AiApp } from "../../ai-usage/entities/ai-usage-log.entity";
 import { AnyUserAuthGuard, AuthenticatedUser } from "../../auth/guards/any-user-auth.guard";
+import {
+  AI_RATE_LIMIT_MESSAGE,
+  AI_UNAVAILABLE_MESSAGE,
+  AiUnavailableError,
+} from "../ai-providers/ai-errors";
 import {
   CreateItemsFromChatDto,
   CreateItemsResponseDto,
   ParseItemsRequestDto,
   ParseItemsResponseDto,
 } from "../dto/chat-item.dto";
+import { SendMessageBodyDto } from "../dto/send-message.dto";
 import { NixSessionOwner } from "../entities/nix-chat-session.entity";
 import { CreateSessionDto, NixChatService, SendMessageDto } from "../services/nix-chat.service";
 import { NixChatItemService } from "../services/nix-chat-item.service";
 import { NixValidationService } from "../services/nix-validation.service";
 
-const GENERIC_ASSISTANT_ERROR =
-  "The assistant is temporarily unavailable. Please try again shortly.";
-const RATE_LIMIT_ERROR = "Too many requests — please wait a moment and try again.";
+const GENERIC_ASSISTANT_ERROR = AI_UNAVAILABLE_MESSAGE;
 const TOO_MANY_STREAMS_ERROR =
   "Too many active chat sessions — please finish one before starting another.";
 const MAX_CONCURRENT_STREAMS_PER_USER = Number(process.env.NIX_MAX_CONCURRENT_STREAMS) || 3;
@@ -120,7 +124,7 @@ export class NixChatController {
   @Post("session/:sessionId/message")
   async sendMessage(
     @Param("sessionId", ParseIntPipe) sessionId: number,
-    @Body() body: { message: string; context?: any },
+    @Body() body: SendMessageBodyDto,
     @Request() req,
   ) {
     const dto: SendMessageDto = {
@@ -133,22 +137,43 @@ export class NixChatController {
     try {
       return await this.chatService.sendMessage(dto);
     } catch (error) {
-      this.logger.error(`Chat message failed for session ${sessionId}: ${error.message}`);
-
-      const isRateLimit = error.message?.includes("rate limit");
-      const status = isRateLimit ? HttpStatus.TOO_MANY_REQUESTS : HttpStatus.SERVICE_UNAVAILABLE;
-
-      throw new HttpException(
-        { error: isRateLimit ? RATE_LIMIT_ERROR : GENERIC_ASSISTANT_ERROR },
-        status,
-      );
+      throw this.toChatHttpException(sessionId, error);
     }
+  }
+
+  private toChatHttpException(sessionId: number, error: unknown): HttpException {
+    if (error instanceof HttpException) {
+      return error;
+    }
+
+    if (error instanceof AiUnavailableError) {
+      this.logger.error(
+        `Chat message failed for session ${sessionId} [ai:${error.code}]: ${
+          error.cause instanceof Error ? error.cause.message : error.message
+        }`,
+      );
+      const status =
+        error.code === "rate_limit" ? HttpStatus.TOO_MANY_REQUESTS : HttpStatus.SERVICE_UNAVAILABLE;
+      const message = error.code === "rate_limit" ? AI_RATE_LIMIT_MESSAGE : GENERIC_ASSISTANT_ERROR;
+      return new HttpException({ error: message, code: error.code }, status);
+    }
+
+    const err = error instanceof Error ? error : new Error(String(error));
+    this.logger.error(
+      `Chat message failed for session ${sessionId} [internal]: ${err.name}: ${err.message}${
+        err.stack ? `\n${err.stack}` : ""
+      }`,
+    );
+    return new HttpException(
+      { error: GENERIC_ASSISTANT_ERROR, code: "internal" },
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
   }
 
   @Post("session/:sessionId/stream")
   async streamMessage(
     @Param("sessionId", ParseIntPipe) sessionId: number,
-    @Body() body: { message: string; context?: any },
+    @Body() body: SendMessageBodyDto,
     @Res() res: Response,
     @Request() req,
   ) {
@@ -182,8 +207,17 @@ export class NixChatController {
       res.write("data: [DONE]\n\n");
       res.end();
     } catch (error) {
-      this.logger.error(`Stream failed for session ${sessionId}: ${error.message}`);
-      res.write(`data: ${JSON.stringify({ type: "error", error: GENERIC_ASSISTANT_ERROR })}\n\n`);
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.logger.error(
+        `Stream failed for session ${sessionId}: ${err.name}: ${err.message}${
+          err.stack ? `\n${err.stack}` : ""
+        }`,
+      );
+      const message =
+        error instanceof AiUnavailableError && error.code === "rate_limit"
+          ? AI_RATE_LIMIT_MESSAGE
+          : GENERIC_ASSISTANT_ERROR;
+      res.write(`data: ${JSON.stringify({ type: "error", error: message })}\n\n`);
       res.end();
     } finally {
       this.releaseStreamSlot(owner.userId);

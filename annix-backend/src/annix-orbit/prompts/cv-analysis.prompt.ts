@@ -1,4 +1,9 @@
-export const CV_EXTRACTION_SYSTEM_PROMPT = `You are an expert CV/resume parser specialising in the South African job market. Extract structured information from the CV text provided. The CV may be written in English, Afrikaans, isiZulu, or another South African language — extract all data regardless of the language used.
+import {
+  hardenedExtractionSystemInstruction,
+  wrapUntrustedDocument,
+} from "../../nix/ai-providers/untrusted-content";
+
+const CV_EXTRACTION_BASE_SYSTEM_PROMPT = `You are an expert CV/resume parser specialising in the South African job market. Extract structured information from the CV text provided. The CV may be written in English, Afrikaans, isiZulu, or another South African language — extract all data regardless of the language used.
 
 Return a valid JSON object with the following structure:
 {
@@ -42,10 +47,14 @@ Guidelines:
 - For the suggested salary band, estimate realistic South African GROSS ANNUAL figures in ZAR for this candidate's qualifications, experience, seniority and industry. As a rough anchor: entry ~R120,000-R220,000, junior ~R200,000-R350,000, mid ~R350,000-R600,000, senior ~R600,000-R950,000, lead ~R900,000-R1,400,000, executive ~R1,300,000+. Adjust up or down for scarce skills (e.g. engineering, IT, medical) and industry. If you genuinely cannot estimate, use null for both.
 - Return ONLY the JSON object, no additional text`;
 
+export const CV_EXTRACTION_SYSTEM_PROMPT = hardenedExtractionSystemInstruction(
+  CV_EXTRACTION_BASE_SYSTEM_PROMPT,
+);
+
 export function cvExtractionPrompt(cvText: string): string {
   return `Please extract the following information from this CV/resume. The CV may be in English, Afrikaans, isiZulu, or another South African language:
 
-${cvText}
+${wrapUntrustedDocument(cvText)}
 
 Return ONLY a valid JSON object with the extracted data.`;
 }

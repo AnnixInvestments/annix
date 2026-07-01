@@ -1,8 +1,9 @@
-import { HttpException, HttpStatus } from "@nestjs/common";
+import { ForbiddenException, HttpException, HttpStatus } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { Response } from "express";
+import type { Response } from "express";
 import { AiQuotaService } from "../../ai-usage/ai-quota.service";
 import { AnyUserAuthGuard } from "../../auth/guards/any-user-auth.guard";
+import { AiUnavailableError } from "../ai-providers/ai-errors";
 import { NixChatMessage } from "../entities/nix-chat-message.entity";
 import { NixChatSession } from "../entities/nix-chat-session.entity";
 import { NixChatService } from "../services/nix-chat.service";
@@ -226,12 +227,8 @@ describe("NixChatController", () => {
       });
     });
 
-    it("should throw TOO_MANY_REQUESTS on rate limit error", async () => {
-      chatService.sendMessage.mockRejectedValue(new Error("rate limit exceeded"));
-
-      await expect(controller.sendMessage(1, { message: "Hello" }, mockRequest)).rejects.toThrow(
-        HttpException,
-      );
+    it("should map an AiUnavailableError rate_limit to TOO_MANY_REQUESTS", async () => {
+      chatService.sendMessage.mockRejectedValue(new AiUnavailableError("rate_limit"));
 
       try {
         await controller.sendMessage(1, { message: "Hello" }, mockRequest);
@@ -241,18 +238,36 @@ describe("NixChatController", () => {
       }
     });
 
-    it("should throw SERVICE_UNAVAILABLE on other errors", async () => {
-      chatService.sendMessage.mockRejectedValue(new Error("API failed"));
-
-      await expect(controller.sendMessage(1, { message: "Hello" }, mockRequest)).rejects.toThrow(
-        HttpException,
-      );
+    it("should map an AiUnavailableError provider failure to SERVICE_UNAVAILABLE", async () => {
+      chatService.sendMessage.mockRejectedValue(new AiUnavailableError("provider_down"));
 
       try {
         await controller.sendMessage(1, { message: "Hello" }, mockRequest);
       } catch (error) {
         expect(error).toBeInstanceOf(HttpException);
         expect((error as HttpException).getStatus()).toBe(HttpStatus.SERVICE_UNAVAILABLE);
+      }
+    });
+
+    it("should preserve an upstream HttpException (403/404) instead of masking it as 503", async () => {
+      chatService.sendMessage.mockRejectedValue(new ForbiddenException("no access"));
+
+      try {
+        await controller.sendMessage(1, { message: "Hello" }, mockRequest);
+      } catch (error) {
+        expect(error).toBeInstanceOf(ForbiddenException);
+        expect((error as HttpException).getStatus()).toBe(HttpStatus.FORBIDDEN);
+      }
+    });
+
+    it("should map an unexpected non-AI error to 500, not a fake provider outage", async () => {
+      chatService.sendMessage.mockRejectedValue(new TypeError("boom"));
+
+      try {
+        await controller.sendMessage(1, { message: "Hello" }, mockRequest);
+      } catch (error) {
+        expect(error).toBeInstanceOf(HttpException);
+        expect((error as HttpException).getStatus()).toBe(HttpStatus.INTERNAL_SERVER_ERROR);
       }
     });
   });
@@ -315,7 +330,7 @@ describe("NixChatController", () => {
       await controller.streamMessage(1, { message: "Hi" }, mockResponse as Response, mockRequest);
 
       expect(mockResponse.write).toHaveBeenCalledWith(
-        'data: {"type":"error","error":"The assistant is temporarily unavailable. Please try again shortly."}\n\n',
+        'data: {"type":"error","error":"The AI service is temporarily unavailable. Please try again shortly."}\n\n',
       );
       expect(mockResponse.end).toHaveBeenCalled();
     });
@@ -325,7 +340,7 @@ describe("NixChatController", () => {
         yield { type: "message_stop" };
       })();
       chatService.streamMessage.mockReturnValue(generator);
-      const context = { selectedItem: { id: 5 } };
+      const context = { currentRfqItems: [{ id: 5 }] };
 
       await controller.streamMessage(
         1,
