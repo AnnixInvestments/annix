@@ -3,7 +3,7 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Cron } from "@nestjs/schedule";
 import * as Imap from "imap-simple";
-import { simpleParser } from "mailparser";
+import { type ParsedMail, simpleParser } from "mailparser";
 import { bufferToMulterFile, documentPath } from "../lib/app-storage-helper";
 import { now } from "../lib/datetime";
 import { extractTextFromPdf } from "../lib/document-extraction";
@@ -221,6 +221,33 @@ export class InboundEmailMonitorService {
     return `synthetic:${hash}`;
   }
 
+  // Resolve the sender robustly. mailparser normally gives a structured address,
+  // but some senders/forwarders produce a From header it can't parse into an
+  // address — in which case we fall back to the raw From text (extracting the
+  // first e-mail-shaped token). An empty result is tolerated by the schema so a
+  // quirky header never drops the whole email before routing.
+  private extractSender(parsed: ParsedMail): { email: string; name: string | null } {
+    const fromValue = parsed.from?.value;
+    const first = Array.isArray(fromValue) ? fromValue[0] : undefined;
+    const name = first?.name?.trim() || null;
+
+    let email = (first?.address || "").trim();
+    if (!email) {
+      const rawFrom = (parsed.from?.text || "").trim();
+      const match = rawFrom.match(/[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+/);
+      email = match ? match[0].trim() : rawFrom;
+      if (email) {
+        this.logger.warn(
+          `Sender address could not be structured; fell back to raw From "${email}"`,
+        );
+      } else {
+        this.logger.warn("Email has no parseable From address; recording with empty sender");
+      }
+    }
+
+    return { email, name };
+  }
+
   private async processMessage(
     config: InboundEmailConfig,
     message: Imap.Message,
@@ -239,9 +266,7 @@ export class InboundEmailMonitorService {
         return InboundEmailStatus.COMPLETED;
       }
 
-      const fromValue = parsed.from?.value;
-      const fromEmail = Array.isArray(fromValue) ? fromValue[0]?.address || "" : "";
-      const fromName = Array.isArray(fromValue) ? fromValue[0]?.name || null : null;
+      const { email: fromEmail, name: fromName } = this.extractSender(parsed);
       const subject = parsed.subject || "";
 
       const adapter = this.registry.adapterForApp(config.app);
@@ -276,8 +301,14 @@ export class InboundEmailMonitorService {
       }
 
       const classifier = this.registry.classifierForApp(config.app);
-      let allSucceeded = true;
-      let anySucceeded = false;
+      // Track outcomes across attachments so the email's final status reflects
+      // whether it actually produced anything, not just that routing didn't
+      // throw. "producedEntity" = a CoC/invoice/DN was created and linked;
+      // "noOp" = routed (or stored for triage) but produced no record; "error"
+      // = routing threw or the attachment failed to process.
+      let producedEntity = false;
+      let anyNoOp = false;
+      let anyError = false;
 
       for (const att of eligibleAttachments) {
         try {
@@ -335,15 +366,35 @@ export class InboundEmailMonitorService {
                 { autoIngest: true },
               );
 
+              // Routing can succeed without producing a linked record — e.g. the
+              // supplier couldn't be identified, an image CoC the pipeline can't
+              // read, or a graph PDF with no parent CoC. Treat that as a no-op
+              // needing review, not a success, so it isn't silently completed
+              // (and auto-deleted from the mailbox).
+              const produced = routingResult.linkedEntityId != null;
+
               await this.inboundEmailService.updateAttachment(attachment.id, {
                 linkedEntityType: routingResult.linkedEntityType,
                 linkedEntityId: routingResult.linkedEntityId,
                 extractionStatus: routingResult.extractionTriggered
                   ? attachment.extractionStatus
                   : ("skipped" as InboundEmailAttachment["extractionStatus"]),
+                ...(produced
+                  ? {}
+                  : {
+                      errorMessage:
+                        "Routed but produced no linked record — needs manual review (supplier not identified, unreadable/image document, or unmatched graph)",
+                    }),
               });
 
-              anySucceeded = true;
+              if (produced) {
+                producedEntity = true;
+              } else {
+                anyNoOp = true;
+                this.logger.warn(
+                  `[${config.app}] Attachment ${filename} routed but produced no record — flagged for review`,
+                );
+              }
             } catch (routeError) {
               const msg = routeError instanceof Error ? routeError.message : String(routeError);
               this.logger.error(`[${config.app}] Failed to route attachment ${filename}: ${msg}`);
@@ -351,23 +402,31 @@ export class InboundEmailMonitorService {
                 errorMessage: msg,
                 extractionStatus: "failed" as InboundEmailAttachment["extractionStatus"],
               });
-              allSucceeded = false;
+              anyError = true;
             }
           } else {
-            anySucceeded = true;
+            // Unknown document type — stored, but nothing produced. Needs triage.
+            anyNoOp = true;
           }
         } catch (attError) {
           const msg = attError instanceof Error ? attError.message : String(attError);
           this.logger.error(`[${config.app}] Failed to process attachment: ${msg}`);
-          allSucceeded = false;
+          anyError = true;
         }
       }
 
-      const finalStatus = allSucceeded
-        ? InboundEmailStatus.COMPLETED
-        : anySucceeded
-          ? InboundEmailStatus.PARTIAL
-          : InboundEmailStatus.FAILED;
+      // COMPLETED means "fully handled — at least one record produced and nothing
+      // left over"; only that state is safe to auto-delete from the mailbox.
+      // Anything that errored or produced nothing is retained and surfaced.
+      let finalStatus: InboundEmailStatus;
+      if (producedEntity) {
+        finalStatus =
+          anyError || anyNoOp ? InboundEmailStatus.PARTIAL : InboundEmailStatus.COMPLETED;
+      } else if (anyError) {
+        finalStatus = InboundEmailStatus.FAILED;
+      } else {
+        finalStatus = InboundEmailStatus.NEEDS_REVIEW;
+      }
 
       await this.inboundEmailService.updateEmailStatus(email.id, finalStatus);
       return finalStatus;

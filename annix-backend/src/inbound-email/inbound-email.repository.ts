@@ -18,6 +18,8 @@ export interface InboundEmailFilters {
 export interface InboundEmailStatusCounts {
   total: number;
   completed: number;
+  partial: number;
+  needsReview: number;
   failed: number;
   unclassified: number;
   pending: number;

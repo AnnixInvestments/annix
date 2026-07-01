@@ -6,6 +6,11 @@ export enum InboundEmailStatus {
   PROCESSING = "processing",
   COMPLETED = "completed",
   PARTIAL = "partial",
+  // Processed without error, but no linked record (CoC / invoice / DN) was
+  // produced — e.g. the supplier couldn't be identified, an image-only CoC the
+  // pipeline can't read, or a graph PDF with no parent CoC. Surfaced for manual
+  // triage instead of being silently marked COMPLETED (and auto-deleted).
+  NEEDS_REVIEW = "needs_review",
   FAILED = "failed",
   UNCLASSIFIED = "unclassified",
 }

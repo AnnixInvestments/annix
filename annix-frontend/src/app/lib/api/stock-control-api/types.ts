@@ -756,6 +756,8 @@ export interface InboundEmail {
 export interface InboundEmailStats {
   total: number;
   completed: number;
+  partial: number;
+  needsReview: number;
   failed: number;
   unclassified: number;
   pending: number;

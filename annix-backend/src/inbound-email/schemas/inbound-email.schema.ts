@@ -25,7 +25,10 @@ export class InboundEmail {
   @Prop({ type: String, required: true })
   messageId: string;
 
-  @Prop({ type: String, required: true })
+  // Not required: a message with an unparseable/absent From header must still be
+  // recorded (and deduped) rather than throwing a Mongoose validation error that
+  // silently drops the whole email before it reaches the routing pipeline.
+  @Prop({ type: String, required: false, default: "" })
   fromEmail: string;
 
   @Prop({ type: String, required: false })

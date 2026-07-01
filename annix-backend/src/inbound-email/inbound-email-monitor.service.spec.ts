@@ -55,6 +55,8 @@ describe("InboundEmailMonitorService", () => {
     emailExists: boolean;
     autoDeleteDomains?: string;
     emailUser?: string;
+    parsedOverride?: Record<string, unknown>;
+    router?: unknown;
   }) => {
     const connection = buildConnection(options.headers);
     mockConnect.mockResolvedValue(connection);
@@ -64,6 +66,7 @@ describe("InboundEmailMonitorService", () => {
       subject: "Parsed subject",
       date: null,
       attachments: [],
+      ...options.parsedOverride,
     });
 
     const config = {
@@ -85,6 +88,8 @@ describe("InboundEmailMonitorService", () => {
       emailExists: jest.fn().mockResolvedValue(options.emailExists),
       recordEmail: jest.fn().mockResolvedValue({ id: 55 }),
       updateEmailStatus: jest.fn().mockResolvedValue(undefined),
+      createAttachment: jest.fn().mockResolvedValue({ id: 88, extractionStatus: "pending" }),
+      updateAttachment: jest.fn().mockResolvedValue(undefined),
     };
 
     const registry = {
@@ -92,8 +97,12 @@ describe("InboundEmailMonitorService", () => {
       adapterForApp: jest.fn().mockReturnValue({
         resolveCompanyId: jest.fn().mockResolvedValue(3),
       }),
-      routerForApp: jest.fn().mockReturnValue(null),
+      routerForApp: jest.fn().mockReturnValue(options.router ?? null),
       classifierForApp: jest.fn().mockReturnValue(null),
+    };
+
+    const storageService = {
+      upload: jest.fn().mockResolvedValue({ path: "stored/path.pdf" }),
     };
 
     const configValues: Record<string, string | undefined> = {
@@ -108,11 +117,31 @@ describe("InboundEmailMonitorService", () => {
     const service = new InboundEmailMonitorService(
       inboundEmailService as never,
       registry as never,
-      {} as never,
+      storageService as never,
       configService as never,
     );
 
     return { service, connection, inboundEmailService };
+  };
+
+  const pdfAttachment = {
+    filename: "IMP-QMS-CERT-05 - Batch Certificate.pdf",
+    content: Buffer.from("%PDF-1.4 fake"),
+    contentType: "application/pdf",
+    size: 12,
+  };
+
+  // A router that classifies by subject and always returns a "no linked record"
+  // routing result — models the real-world case where the CoC pipeline runs but
+  // can't identify the supplier (or the document is an unreadable image).
+  const noOpRouter = {
+    supportedMimeTypes: () => ["application/pdf"],
+    classifyFromSubject: () => ({ documentType: "coc", confidence: 0.5, source: "subject" }),
+    route: jest.fn().mockResolvedValue({
+      linkedEntityType: null,
+      linkedEntityId: null,
+      extractionTriggered: false,
+    }),
   };
 
   beforeEach(() => {
@@ -188,5 +217,54 @@ describe("InboundEmailMonitorService", () => {
 
     const dedupId = inboundEmailService.emailExists.mock.calls[0][0] as string;
     expect(dedupId).toMatch(/^synthetic:[a-f0-9]{64}$/);
+  });
+
+  it("marks an email NEEDS_REVIEW and keeps it in the mailbox when routing produces no record", async () => {
+    const { service, connection, inboundEmailService } = build({
+      headers: [headerMessage({ uid: 505, messageId: "<real-5@example.com>" })],
+      emailExists: false,
+      autoDeleteDomains: "example.com",
+      emailUser: "au-rubber-app@example.com",
+      parsedOverride: { attachments: [pdfAttachment] },
+      router: noOpRouter,
+    });
+
+    await service.pollAllConfigs();
+
+    expect(noOpRouter.route).toHaveBeenCalled();
+    expect(inboundEmailService.updateEmailStatus).toHaveBeenCalledWith(
+      55,
+      InboundEmailStatus.NEEDS_REVIEW,
+    );
+    // A no-record email must NOT be auto-deleted — it has to stay visible for triage.
+    expect(connection.deleteMessage).not.toHaveBeenCalled();
+  });
+
+  it("records an email with an empty sender instead of dropping it when From is unparseable", async () => {
+    const { service, inboundEmailService } = build({
+      headers: [headerMessage({ uid: 606, messageId: "<real-6@example.com>" })],
+      emailExists: false,
+      parsedOverride: { from: undefined, attachments: [] },
+    });
+
+    await service.pollAllConfigs();
+
+    expect(inboundEmailService.recordEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ messageId: "<real-6@example.com>", fromEmail: "" }),
+    );
+  });
+
+  it("falls back to the raw From text when the sender address cannot be structured", async () => {
+    const { service, inboundEmailService } = build({
+      headers: [headerMessage({ uid: 707, messageId: "<real-7@example.com>" })],
+      emailExists: false,
+      parsedOverride: { from: { text: "Enock Impilo <enock@impilogroup.co.za>" }, attachments: [] },
+    });
+
+    await service.pollAllConfigs();
+
+    expect(inboundEmailService.recordEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ fromEmail: "enock@impilogroup.co.za" }),
+    );
   });
 });

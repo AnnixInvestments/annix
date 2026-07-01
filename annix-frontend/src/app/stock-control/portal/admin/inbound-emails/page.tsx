@@ -17,6 +17,7 @@ const STATUS_BADGES: Record<string, { label: string; className: string }> = {
   processing: { label: "Processing", className: "bg-blue-100 text-blue-800" },
   completed: { label: "Completed", className: "bg-green-100 text-green-800" },
   partial: { label: "Partial", className: "bg-orange-100 text-orange-800" },
+  needs_review: { label: "Needs review", className: "bg-amber-100 text-amber-800" },
   failed: { label: "Failed", className: "bg-red-100 text-red-800" },
   unclassified: { label: "Unclassified", className: "bg-gray-100 text-gray-800" },
 };
@@ -109,9 +110,10 @@ export default function InboundEmailsPage() {
       </div>
 
       {stats && (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-6 gap-4">
           <StatCard label="Total Received" value={stats.total} />
           <StatCard label="Completed" value={stats.completed} color="green" />
+          <StatCard label="Needs review" value={stats.needsReview} color="yellow" />
           <StatCard label="Pending" value={stats.pending} color="yellow" />
           <StatCard label="Failed" value={stats.failed} color="red" />
           <StatCard label="Unclassified" value={stats.unclassified} color="gray" />
@@ -133,6 +135,7 @@ export default function InboundEmailsPage() {
             <option value="pending">Pending</option>
             <option value="processing">Processing</option>
             <option value="partial">Partial</option>
+            <option value="needs_review">Needs review</option>
             <option value="failed">Failed</option>
             <option value="unclassified">Unclassified</option>
           </select>

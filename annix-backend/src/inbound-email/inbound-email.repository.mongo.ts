@@ -91,6 +91,8 @@ export class MongoInboundEmailRepository
     return {
       total,
       completed: counts[InboundEmailStatus.COMPLETED] ?? 0,
+      partial: counts[InboundEmailStatus.PARTIAL] ?? 0,
+      needsReview: counts[InboundEmailStatus.NEEDS_REVIEW] ?? 0,
       failed: counts[InboundEmailStatus.FAILED] ?? 0,
       unclassified: counts[InboundEmailStatus.UNCLASSIFIED] ?? 0,
       pending:
