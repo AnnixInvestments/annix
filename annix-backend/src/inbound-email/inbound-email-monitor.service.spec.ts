@@ -258,13 +258,13 @@ describe("InboundEmailMonitorService", () => {
     const { service, inboundEmailService } = build({
       headers: [headerMessage({ uid: 707, messageId: "<real-7@example.com>" })],
       emailExists: false,
-      parsedOverride: { from: { text: "Enock Impilo <enock@impilogroup.co.za>" }, attachments: [] },
+      parsedOverride: { from: { text: "Enock Impilo <enock@example.com>" }, attachments: [] },
     });
 
     await service.pollAllConfigs();
 
     expect(inboundEmailService.recordEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ fromEmail: "enock@impilogroup.co.za" }),
+      expect.objectContaining({ fromEmail: "enock@example.com" }),
     );
   });
 });
