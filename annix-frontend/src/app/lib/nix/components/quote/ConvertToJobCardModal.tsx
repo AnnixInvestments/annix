@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { DateInput } from "@/app/components/ui/DateInput";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import {
   type ConvertToJobCardResultDto,
   type QuotePdfSnapshotDto,
@@ -36,6 +37,7 @@ export function ConvertToJobCardModal(props: {
 }) {
   const { sessionId, snapshot, defaults, onClose } = props;
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const convert = useConvertQuoteToJobCard();
 
   const [jobNumber, setJobNumber] = useState(defaults.jobNumber);
@@ -75,7 +77,7 @@ export function ConvertToJobCardModal(props: {
       },
       {
         onSuccess: (result: ConvertToJobCardResultDto) => {
-          router.push(`/stock-control/portal/job-cards/${result.jobCardId}`);
+          router.push(coreHref(`/stock-control/portal/job-cards/${result.jobCardId}`));
         },
         onError: (err: unknown) => {
           const raw = err instanceof Error ? err.message : "Conversion failed";

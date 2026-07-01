@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { useSubmitNixQuote } from "@/app/lib/query/hooks";
 
 type SubmitChoice = "print" | "email" | "both" | "save";
@@ -30,6 +31,7 @@ export function SubmitQuoteModal(props: {
 }) {
   const { sessionId, quoteTotalIncVat, onClose } = props;
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const submit = useSubmitNixQuote();
   const [error, setError] = useState<string | null>(null);
   const [busyChoice, setBusyChoice] = useState<SubmitChoice | null>(null);
@@ -57,14 +59,14 @@ export function SubmitQuoteModal(props: {
       {
         onSuccess: () => {
           if (choice === "save") {
-            router.push("/stock-control/portal/quotations");
+            router.push(coreHref("/stock-control/portal/quotations"));
             return;
           }
           const params = new URLSearchParams();
           if (choice === "print" || choice === "both") params.set("print", "1");
           if (choice === "email" || choice === "both") params.set("email", "1");
           router.push(
-            `/stock-control/portal/quotations/quotes/${sessionId}/preview?${params.toString()}`,
+            `${coreHref(`/stock-control/portal/quotations/quotes/${sessionId}/preview`)}?${params.toString()}`,
           );
         },
         onError: (err) => {

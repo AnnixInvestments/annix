@@ -1,6 +1,7 @@
 "use client";
 
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import SharedHowToIndexClient, {
   type HowToIndexClientProps as SharedProps,
 } from "@/app/lib/how-to/components/HowToIndexClient";
@@ -19,6 +20,7 @@ interface StockControlHowToIndexClientProps {
 export default function HowToIndexClient(props: StockControlHowToIndexClientProps) {
   const { user } = useStockControlAuth();
   const { effectiveRole } = useViewAs();
+  const coreHref = useCoreAwareHref();
   const userRole = user?.role;
   const role = effectiveRole || userRole || null;
 
@@ -28,7 +30,7 @@ export default function HowToIndexClient(props: StockControlHowToIndexClientProp
       role={role}
       allRoles={STOCK_CONTROL_HOW_TO_ROLES}
       adminRole={STOCK_CONTROL_ADMIN_ROLE}
-      basePath="/stock-control/portal/how-to"
+      basePath={coreHref("/stock-control/portal/how-to")}
       recentKey="stock-control-how-to-recent"
       subheading="Step-by-step guides for using ASCA Stock Control. Tailored to your role."
     />

@@ -35,9 +35,16 @@
  */
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, sep } from "node:path";
 
 const APP_DIR = "annix-frontend/src/app";
+
+// Shared, cross-app code dirs. A hosted page's in-shell render set includes the
+// shared components it mounts (e.g. lib/nix quote/draft components), which can
+// themselves hardcode `/<app>/portal/...` navs — those eject the user out of the
+// shell just like an in-app link. The old scan was app-dir-scoped and missed
+// them; these roots pull reachable shared code into scope too.
+const SHARED_ROOTS = [join(APP_DIR, "lib"), join(APP_DIR, "components")];
 const FLAG_FILE = join(APP_DIR, "core/portal/config/corePortalFlag.ts");
 
 interface AppScan {
@@ -165,7 +172,14 @@ const resolveImport = (spec: string, fromFile: string, root: string): string | n
   const found = candidates.find(
     (candidate) => existsSync(candidate) && statSync(candidate).isFile(),
   );
-  if (!found?.startsWith(root)) {
+  if (found === undefined) {
+    return null;
+  }
+  const inApp = found.startsWith(root);
+  const inShared = SHARED_ROOTS.some(
+    (shared) => found === shared || found.startsWith(`${shared}${sep}`),
+  );
+  if (!inApp && !inShared) {
     return null;
   }
   return found;

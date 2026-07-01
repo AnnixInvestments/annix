@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import type { StockItem } from "@/app/lib/api/stockControlApi";
 import { useCreateStockItem } from "@/app/lib/query/hooks";
 import { ItemIdentifier } from "@/app/stock-control/components/ItemIdentifier";
@@ -26,12 +27,13 @@ interface MatchingStockItem {
 
 export default function IdentifyItemPage() {
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const { mutateAsync: createStockItem } = useCreateStockItem();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [prefillItem, setPrefillItem] = useState<Partial<StockItem> | null>(null);
 
   const handleSelectExisting = (item: MatchingStockItem) => {
-    router.push(`/stock-control/portal/inventory/${item.id}`);
+    router.push(coreHref(`/stock-control/portal/inventory/${item.id}`));
   };
 
   const handleCreateNew = (item: IdentifiedItem) => {
@@ -84,7 +86,7 @@ export default function IdentifyItemPage() {
         location: location || null,
       });
       setShowCreateModal(false);
-      router.push(`/stock-control/portal/inventory/${item.id}`);
+      router.push(coreHref(`/stock-control/portal/inventory/${item.id}`));
     } catch (error) {
       console.error("Failed to create item:", error);
     }
@@ -96,7 +98,7 @@ export default function IdentifyItemPage() {
         <div>
           <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
             <Link
-              href="/stock-control/portal/inventory"
+              href={coreHref("/stock-control/portal/inventory")}
               className="hover:text-[var(--sc-primary,#323288)] transition-colors"
             >
               Inventory

@@ -3,6 +3,7 @@
 import { isArray, isString } from "es-toolkit/compat";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { QuoteView } from "@/app/lib/nix/components/quote";
 import {
   quoteRefForSession,
@@ -27,6 +28,7 @@ export default function NixPromotedQuotePage() {
   const sessionQuery = useNixExtractionSession(validSessionId);
   const session = sessionQuery.data;
   const flag = useFeatureFlagEnabled(NIX_QUOTE_FROM_DOCS_FLAG);
+  const coreHref = useCoreAwareHref();
 
   if (flag.isLoading) return <div className="p-6 text-sm text-gray-500">Loading…</div>;
   if (!flag.enabled) {
@@ -37,7 +39,7 @@ export default function NixPromotedQuotePage() {
           The 'Quote from documents' AI feature isn't enabled on this deployment.
         </p>
         <Link
-          href="/stock-control/portal/quotations"
+          href={coreHref("/stock-control/portal/quotations")}
           className="inline-block mt-4 text-sm text-blue-600 hover:text-blue-800 underline"
         >
           ← Back to quotations
@@ -70,7 +72,10 @@ export default function NixPromotedQuotePage() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
-            <Link href="/stock-control/portal/quotations" className="hover:text-gray-700 underline">
+            <Link
+              href={coreHref("/stock-control/portal/quotations")}
+              className="hover:text-gray-700 underline"
+            >
               Quotations
             </Link>
             <span>›</span>
@@ -84,13 +89,13 @@ export default function NixPromotedQuotePage() {
         </div>
         <div className="flex items-center gap-2">
           <Link
-            href={`/stock-control/portal/quotations/quotes/${session.id}/preview`}
+            href={coreHref(`/stock-control/portal/quotations/quotes/${session.id}/preview`)}
             className="inline-flex items-center px-4 py-2 bg-[#323288] text-white rounded-md text-sm font-medium shadow-sm hover:bg-[#2a2a73]"
           >
             Preview customer quote
           </Link>
           <Link
-            href={`/stock-control/portal/quotations/drafts/${session.id}`}
+            href={coreHref(`/stock-control/portal/quotations/drafts/${session.id}`)}
             className="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded-md text-sm font-medium shadow-sm hover:bg-gray-300"
           >
             Back to draft view

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback } from "react";
 import { useToast } from "@/app/components/Toast";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { useAlert } from "@/app/lib/hooks/useAlert";
 import { NixDraftReview } from "@/app/lib/nix/components/draft";
 import {
@@ -23,6 +24,7 @@ export default function NixExtractionDraftPage() {
   const { showToast } = useToast();
   const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
+  const coreHref = useCoreAwareHref();
   const nixQuoteFlag = useFeatureFlagEnabled(NIX_QUOTE_FROM_DOCS_FLAG);
   const rawParam = params?.id;
   const sessionIdParam = rawParam;
@@ -63,28 +65,28 @@ export default function NixExtractionDraftPage() {
         status: "promoted",
         promotedRef: ref,
       });
-      router.push(`/stock-control/portal/quotations/quotes/${validSessionId}`);
+      router.push(coreHref(`/stock-control/portal/quotations/quotes/${validSessionId}`));
     } catch (err) {
       alert({
         message: err instanceof Error ? err.message : "Failed to promote session",
         variant: "error",
       });
     }
-  }, [validSessionId, session, confirm, setStatus, router, showToast, alert]);
+  }, [validSessionId, session, confirm, setStatus, router, showToast, alert, coreHref]);
 
   const handleArchive = useCallback(async () => {
     if (!validSessionId) return;
     try {
       await setStatus.mutateAsync({ sessionId: validSessionId, status: "archived" });
       showToast("Session archived.", "info");
-      router.push("/stock-control/portal/quotations");
+      router.push(coreHref("/stock-control/portal/quotations"));
     } catch (err) {
       alert({
         message: err instanceof Error ? err.message : "Failed to archive session",
         variant: "error",
       });
     }
-  }, [validSessionId, setStatus, showToast, router, alert]);
+  }, [validSessionId, setStatus, showToast, router, alert, coreHref]);
 
   // Save & exit — every cell edit / retry / re-extract already persists
   // the moment the user makes the change, so the draft is implicitly saved
@@ -93,7 +95,7 @@ export default function NixExtractionDraftPage() {
   // 'draft', so picking up later resumes from the same review state.
   const handleSaveAndExit = useCallback(async () => {
     if (!session) {
-      router.push("/stock-control/portal/quotations");
+      router.push(coreHref("/stock-control/portal/quotations"));
       return;
     }
     const ref = quoteRefForSession(session);
@@ -104,8 +106,8 @@ export default function NixExtractionDraftPage() {
       hideCancel: true,
       variant: "info",
     });
-    router.push("/stock-control/portal/quotations");
-  }, [session, confirm, router]);
+    router.push(coreHref("/stock-control/portal/quotations"));
+  }, [session, confirm, router, coreHref]);
 
   if (!validSessionId) {
     return (
@@ -127,7 +129,7 @@ export default function NixExtractionDraftPage() {
           Annix account manager if you'd like it activated.
         </p>
         <Link
-          href="/stock-control/portal/quotations"
+          href={coreHref("/stock-control/portal/quotations")}
           className="inline-block mt-4 text-sm text-blue-600 hover:text-blue-800 underline"
         >
           ← Back to quotations
@@ -160,7 +162,10 @@ export default function NixExtractionDraftPage() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
-            <Link href="/stock-control/portal/quotations" className="hover:text-gray-700 underline">
+            <Link
+              href={coreHref("/stock-control/portal/quotations")}
+              className="hover:text-gray-700 underline"
+            >
               Quotations
             </Link>
             <span>›</span>
@@ -179,7 +184,7 @@ export default function NixExtractionDraftPage() {
         </div>
         <div className="flex items-center gap-2">
           <Link
-            href={`/stock-control/portal/quotations/new-from-documents?session=${session.id}`}
+            href={`${coreHref("/stock-control/portal/quotations/new-from-documents")}?session=${session.id}`}
             className="inline-flex items-center gap-1.5 px-4 py-2 bg-white text-[#323288] border border-[#323288] rounded-md text-sm font-medium shadow-sm hover:bg-[#323288] hover:text-white"
             title="Upload additional drawings (revisions, fittings sheets, more pages) into this same session."
           >
@@ -221,7 +226,7 @@ export default function NixExtractionDraftPage() {
           )}
           {session.status === "promoted" && (
             <Link
-              href={`/stock-control/portal/quotations/quotes/${session.id}`}
+              href={coreHref(`/stock-control/portal/quotations/quotes/${session.id}`)}
               className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium shadow-sm hover:bg-green-700"
             >
               View quote
@@ -244,7 +249,7 @@ export default function NixExtractionDraftPage() {
         session={session}
         brand="stock-control"
         onSessionChanged={handleSessionChanged}
-        addMoreDocumentsHref={`/stock-control/portal/quotations/new-from-documents?session=${session.id}`}
+        addMoreDocumentsHref={`${coreHref("/stock-control/portal/quotations/new-from-documents")}?session=${session.id}`}
       />
 
       {ConfirmDialog}

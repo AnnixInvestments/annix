@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import type {
   BackgroundStepStatus,
   CoatingAnalysis,
@@ -73,6 +74,7 @@ interface WorkflowActionsBarProps {
 
 export function WorkflowActionsBar(props: WorkflowActionsBarProps) {
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
 
   const {
     jobId,
@@ -287,7 +289,7 @@ export function WorkflowActionsBar(props: WorkflowActionsBarProps) {
                   key={bg.stepKey}
                   onClick={() =>
                     router.push(
-                      `/stock-control/portal/requisitions/${requisition.id}?fromJobCard=${jobId}&completeStep=${bg.stepKey}`,
+                      `${coreHref(`/stock-control/portal/requisitions/${requisition.id}`)}?fromJobCard=${jobId}&completeStep=${bg.stepKey}`,
                     )
                   }
                   className="px-3 py-1.5 text-xs font-medium rounded-md bg-[var(--sc-primary,#323288)] text-white hover:bg-[var(--sc-primary-hover,#252560)] transition-colors"

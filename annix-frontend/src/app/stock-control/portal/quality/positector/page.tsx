@@ -2,6 +2,7 @@
 
 import { isArray } from "es-toolkit/compat";
 import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type {
   PositectorBatchDetail,
   PositectorBatchSummary,
@@ -646,7 +647,7 @@ function AddDeviceModal({ onClose, onAdded }: { onClose: () => void; onAdded: ()
     }
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[9999] overflow-y-auto bg-black/10 backdrop-blur-md">
       <div className="flex min-h-full items-center justify-center p-4">
         <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
@@ -849,7 +850,8 @@ function AddDeviceModal({ onClose, onAdded }: { onClose: () => void; onAdded: ()
           </form>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -925,8 +927,8 @@ function ImportWizardModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/10 backdrop-blur-md">
       <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
         <h2 className="mb-1 text-lg font-semibold text-gray-900">Import Batch to Job Card</h2>
         <p className="mb-4 text-sm text-gray-500">
@@ -1115,6 +1117,7 @@ function ImportWizardModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

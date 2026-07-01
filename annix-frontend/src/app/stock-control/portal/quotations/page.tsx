@@ -4,6 +4,7 @@ import { isNumber, isString } from "es-toolkit/compat";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { fromISO } from "@/app/lib/datetime";
 import {
   type NixExtractionSessionDto,
@@ -56,6 +57,7 @@ export default function QuotationsPage() {
   const promotedSessions = isNixEnabled && promotedData ? promotedData : [];
   const deleteMutation = useDeleteNixExtractionSession();
   const { confirm, ConfirmDialog } = useConfirm();
+  const coreHref = useCoreAwareHref();
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const allChecked = drafts.length > 0 && drafts.every((s) => selectedIds.has(s.id));
@@ -122,7 +124,7 @@ export default function QuotationsPage() {
         <div className="flex items-center gap-2">
           {isNixEnabled && (
             <Link
-              href="/stock-control/portal/quotations/new-from-documents"
+              href={coreHref("/stock-control/portal/quotations/new-from-documents")}
               className="inline-flex items-center px-4 py-2 bg-[#323288] text-white rounded-md text-sm font-medium shadow-sm hover:bg-[#28286e]"
             >
               New Quotation
@@ -168,7 +170,7 @@ export default function QuotationsPage() {
             <p className="text-sm text-gray-500">
               No drafts in progress. Start one with{" "}
               <Link
-                href="/stock-control/portal/quotations/new-from-documents"
+                href={coreHref("/stock-control/portal/quotations/new-from-documents")}
                 className="text-blue-600 hover:text-blue-800 underline"
               >
                 New Quotation
@@ -216,7 +218,7 @@ export default function QuotationsPage() {
                     const startedAt = fromISO(s.createdAt).toFormat("dd MMM yyyy");
                     const updatedAt = fromISO(s.updatedAt).toFormat("dd MMM yyyy HH:mm");
                     const titleText = s.title ? s.title : `Draft from documents — session #${s.id}`;
-                    const draftHref = `/stock-control/portal/quotations/drafts/${s.id}`;
+                    const draftHref = coreHref(`/stock-control/portal/quotations/drafts/${s.id}`);
                     const openDraft = () => router.push(draftHref);
                     const onRowKeyDown = (event: React.KeyboardEvent<HTMLTableRowElement>) => {
                       if (event.key === "Enter" || event.key === " ") {
@@ -375,6 +377,7 @@ function QuotesTable(props: {
   router: ReturnType<typeof useRouter>;
 }) {
   const { sessions, router } = props;
+  const coreHref = useCoreAwareHref();
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
       <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -427,11 +430,14 @@ function QuotesTable(props: {
             const status = quoteStatus(s);
             const totalValue = s.quoteTotalIncVat;
             const valueText = isNumber(totalValue) && totalValue > 0 ? formatZar(totalValue) : "—";
-            const quoteHref = `/stock-control/portal/quotations/quotes/${s.id}`;
+            const quoteHref = coreHref(`/stock-control/portal/quotations/quotes/${s.id}`);
             const openQuote = () => router.push(quoteHref);
             const openConvert = () =>
-              router.push(`/stock-control/portal/quotations/quotes/${s.id}/preview?convert=1`);
-            const openJobCard = () => router.push(`/stock-control/portal/job-cards/${s.jobCardId}`);
+              router.push(
+                `${coreHref(`/stock-control/portal/quotations/quotes/${s.id}/preview`)}?convert=1`,
+              );
+            const openJobCard = () =>
+              router.push(coreHref(`/stock-control/portal/job-cards/${s.jobCardId}`));
             const onRowKeyDown = (event: React.KeyboardEvent<HTMLTableRowElement>) => {
               if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();

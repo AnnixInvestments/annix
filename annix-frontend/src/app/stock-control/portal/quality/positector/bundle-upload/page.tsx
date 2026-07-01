@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import { useAnalyzeBundlePdf, useImportBundlePdf } from "@/app/lib/query/hooks";
 
@@ -50,6 +51,7 @@ const ENTITY_COLORS: Record<string, string> = {
 
 export default function BundleUploadPage() {
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const [viewMode, setViewMode] = useState<ViewMode>("drop");
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -186,7 +188,7 @@ export default function BundleUploadPage() {
   }, {});
 
   const handleClose = () => {
-    router.push("/stock-control/portal/quality");
+    router.push(coreHref("/stock-control/portal/quality"));
   };
 
   return createPortal(

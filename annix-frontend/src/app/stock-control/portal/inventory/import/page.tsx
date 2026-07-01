@@ -4,6 +4,7 @@ import { toPairs as entries, keys } from "es-toolkit/compat";
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { DateInput } from "@/app/components/ui/DateInput";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import type {
   ImportMatchRow,
   ImportUploadResponse,
@@ -18,6 +19,7 @@ import { ImportReviewStep } from "./ImportReviewStep";
 type ImportStep = "upload" | "preview" | "review" | "result";
 
 export default function ImportPage() {
+  const coreHref = useCoreAwareHref();
   const [step, setStep] = useState<ImportStep>("upload");
   const [file, setFile] = useState<File | null>(null);
   const [parsedRows, setParsedRows] = useState<Record<string, unknown>[]>([]);
@@ -293,7 +295,10 @@ export default function ImportPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center space-x-4">
-        <Link href="/stock-control/portal/inventory" className="text-gray-500 hover:text-gray-700">
+        <Link
+          href={coreHref("/stock-control/portal/inventory")}
+          className="text-gray-500 hover:text-gray-700"
+        >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
@@ -704,7 +709,7 @@ export default function ImportPage() {
                   Import Another File
                 </button>
                 <Link
-                  href="/stock-control/portal/inventory"
+                  href={coreHref("/stock-control/portal/inventory")}
                   className="px-4 py-2 text-sm font-medium text-white bg-[var(--sc-primary,#323288)] border border-transparent rounded-md hover:bg-[var(--sc-primary-hover,#252560)]"
                 >
                   View Inventory

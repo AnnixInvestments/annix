@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { formatDateZA } from "@/app/lib/datetime";
 import { exportToExcel, exportToPDF, exportToWord } from "@/app/lib/export/exportTable";
 import {
@@ -31,6 +32,7 @@ function statusBadgeColor(status: string): string {
 export default function RequisitionDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const searchParams = useSearchParams();
   const fromJobCard = searchParams.get("fromJobCard");
   const completeStep = searchParams.get("completeStep");
@@ -185,7 +187,7 @@ export default function RequisitionDetailPage() {
       } else {
         await completeRequisitionStepMutation.mutateAsync(Number(fromJobCard));
       }
-      router.push(`/stock-control/portal/job-cards/${fromJobCard}`);
+      router.push(coreHref(`/stock-control/portal/job-cards/${fromJobCard}`));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to complete requisition step");
       setIsAccepting(false);
@@ -289,7 +291,7 @@ export default function RequisitionDetailPage() {
         area="Requisitions"
         error={requisitionFetchError}
         reset={() => router.refresh()}
-        backHref="/stock-control/portal/requisitions"
+        backHref={coreHref("/stock-control/portal/requisitions")}
         backLabel="Back to Requisitions"
         brandButtonClass="bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)]"
       />
@@ -305,7 +307,7 @@ export default function RequisitionDetailPage() {
             We couldn't find that requisition. It may have been removed.
           </p>
           <Link
-            href="/stock-control/portal/requisitions"
+            href={coreHref("/stock-control/portal/requisitions")}
             className="mt-4 inline-block text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)]"
           >
             Back to Requisitions
@@ -343,7 +345,7 @@ export default function RequisitionDetailPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Link
-            href="/stock-control/portal/requisitions"
+            href={coreHref("/stock-control/portal/requisitions")}
             className="text-gray-500 hover:text-gray-700 print:hidden"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -374,7 +376,7 @@ export default function RequisitionDetailPage() {
               <p className="mt-1 text-sm text-gray-500">
                 Job Card:{" "}
                 <Link
-                  href={`/stock-control/portal/job-cards/${requisition.jobCardId}`}
+                  href={coreHref(`/stock-control/portal/job-cards/${requisition.jobCardId}`)}
                   className="text-[var(--sc-primary-hover,#252560)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                 >
                   {requisition.jobCard.jobNumber} - {requisition.jobCard.jobName}

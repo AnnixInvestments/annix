@@ -1,6 +1,7 @@
 import { isArray } from "es-toolkit/compat";
 import { useState } from "react";
 import { usePdfPreview } from "@/app/components/PdfPreviewModal";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import type { StaffMember, StockItem } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import {
@@ -39,6 +40,7 @@ interface UseJobCardActionsParams {
 export function useJobCardActions(params: UseJobCardActionsParams) {
   const { jobId, currentStep, fetchData, onTabChange, coating } = params;
 
+  const coreHref = useCoreAwareHref();
   const invalidateJobCardsList = useInvalidateJobCards();
   const { mutateAsync: allocateStockMutation } = useAllocateStock();
   const { mutateAsync: approveOverAllocation } = useApproveOverAllocation();
@@ -372,7 +374,7 @@ export function useJobCardActions(params: UseJobCardActionsParams) {
       fetchData();
       if (result.requisitionId) {
         router.push(
-          `/stock-control/portal/requisitions/${result.requisitionId}?fromJobCard=${jobId}`,
+          `${coreHref(`/stock-control/portal/requisitions/${result.requisitionId}`)}?fromJobCard=${jobId}`,
         );
       } else {
         onTabChange("requisition");

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { useDisclosure } from "@/app/lib/hooks/useDisclosure";
 import { useGlossary } from "../context/GlossaryContext";
 
@@ -14,6 +15,7 @@ export function HelpTooltip(props: HelpTooltipProps) {
   const inlineProp = props.inline;
   const inline = inlineProp ?? true;
   const { termsByAbbreviation, hideTooltips } = useGlossary();
+  const coreHref = useCoreAwareHref();
   const { isOpen, open, close, toggle } = useDisclosure();
   const [position, setPosition] = useState<"above" | "below">("below");
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -109,7 +111,7 @@ export function HelpTooltip(props: HelpTooltipProps) {
               {glossaryTerm.definition}
             </span>
             <a
-              href="/stock-control/portal/glossary"
+              href={coreHref("/stock-control/portal/glossary")}
               className="inline-block mt-2 text-xs text-[var(--sc-primary-400,#5b5b9c)] hover:text-[var(--sc-primary-300,#8484b5)] underline"
               onClick={(e) => e.stopPropagation()}
             >

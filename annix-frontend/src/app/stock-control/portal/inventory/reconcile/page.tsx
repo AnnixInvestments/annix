@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import type {
   DocVerificationGroup,
@@ -37,6 +38,7 @@ const FLAG_LABELS: Record<ReconciliationFlag, { label: string; className: string
 const DEFAULT_ESTIMATE_MS = 25000;
 
 export default function ReconcilePage() {
+  const coreHref = useCoreAwareHref();
   const monthEndOptions = useMemo(() => monthEndPeriodOptions(false), []);
   const [file, setFile] = useState<File | null>(null);
   const [period, setPeriod] = useState<string>(monthEndOptions[0].label);
@@ -226,7 +228,10 @@ export default function ReconcilePage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center space-x-4">
-        <Link href="/stock-control/portal/stock" className="text-gray-500 hover:text-gray-700">
+        <Link
+          href={coreHref("/stock-control/portal/stock")}
+          className="text-gray-500 hover:text-gray-700"
+        >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"

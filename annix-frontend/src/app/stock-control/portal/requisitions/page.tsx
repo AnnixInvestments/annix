@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { formatDateZA } from "@/app/lib/datetime";
 import { useRequisitions } from "@/app/lib/query/hooks";
 import { StatusBadge } from "../../components/StatusBadge";
 
 export default function RequisitionsPage() {
+  const coreHref = useCoreAwareHref();
   const { data: requisitionsData, isLoading, error } = useRequisitions();
   const requisitions = requisitionsData ? requisitionsData : [];
 
@@ -110,7 +112,7 @@ export default function RequisitionsPage() {
                   <tr key={req.id} className="hover:bg-gray-50 cursor-pointer">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Link
-                        href={`/stock-control/portal/requisitions/${req.id}`}
+                        href={coreHref(`/stock-control/portal/requisitions/${req.id}`)}
                         className="text-sm font-medium text-[var(--sc-primary-hover,#252560)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                       >
                         {req.requisitionNumber}
@@ -124,14 +126,14 @@ export default function RequisitionsPage() {
                           </span>
                         ) : req.source === "cpo" ? (
                           <Link
-                            href={`/stock-control/portal/purchase-orders/${req.cpoId}`}
+                            href={coreHref(`/stock-control/portal/purchase-orders/${req.cpoId}`)}
                             className="text-purple-700 hover:text-purple-900"
                           >
                             CPO Call-Off
                           </Link>
                         ) : req.jobCard ? (
                           <Link
-                            href={`/stock-control/portal/job-cards/${req.jobCardId}`}
+                            href={coreHref(`/stock-control/portal/job-cards/${req.jobCardId}`)}
                             className="text-[var(--sc-primary-hover,#252560)] hover:text-[var(--sc-primary-active,#1c1c48)]"
                           >
                             {req.jobCard.jobNumber}

@@ -2,6 +2,7 @@
 
 import { toPairs as entries, isObject, isString, keys } from "es-toolkit/compat";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { useSpecLookup } from "@/app/lib/nix/components/draft";
 import {
   type NixExtractionSessionDto,
@@ -336,6 +337,7 @@ export interface QuoteViewProps {
  */
 export function QuoteView(props: QuoteViewProps) {
   const { session, hideNoScopeItems } = props;
+  const coreHref = useCoreAwareHref();
   const sessionExtractions = session.extractions;
   const drawingExtractions = useMemo(() => {
     const list = sessionExtractions ? sessionExtractions : [];
@@ -712,14 +714,14 @@ export function QuoteView(props: QuoteViewProps) {
       <div className="flex justify-end items-center gap-3">
         {session.jobCardId ? (
           <a
-            href={`/stock-control/portal/job-cards/${session.jobCardId}`}
+            href={coreHref(`/stock-control/portal/job-cards/${session.jobCardId}`)}
             className="inline-flex items-center px-4 py-2 text-sm font-semibold text-[#323288] border border-[#323288] rounded-md hover:bg-[#323288] hover:text-white"
           >
             View Job Card #{session.jobCardId}
           </a>
         ) : (
           <a
-            href={`/stock-control/portal/quotations/quotes/${session.id}/preview?convert=1`}
+            href={`${coreHref(`/stock-control/portal/quotations/quotes/${session.id}/preview`)}?convert=1`}
             className="inline-flex items-center px-4 py-2 text-sm font-semibold text-[#323288] border border-[#323288] rounded-md hover:bg-[#323288] hover:text-white"
             title="Create a Job Card pre-populated with this quote's items and customer details"
           >

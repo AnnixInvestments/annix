@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import type { Requisition } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 
@@ -22,6 +23,7 @@ function requisitionStatusBadge(status: string): string {
 }
 
 export function RequisitionTab({ requisition }: RequisitionTabProps) {
+  const coreHref = useCoreAwareHref();
   if (!requisition) {
     return (
       <div className="bg-white shadow rounded-lg p-8 text-center">
@@ -59,7 +61,7 @@ export function RequisitionTab({ requisition }: RequisitionTabProps) {
           </span>
         </div>
         <Link
-          href={`/stock-control/portal/requisitions/${requisition.id}`}
+          href={coreHref(`/stock-control/portal/requisitions/${requisition.id}`)}
           className="text-sm text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] font-medium"
         >
           View full requisition
@@ -142,7 +144,7 @@ export function RequisitionTab({ requisition }: RequisitionTabProps) {
 
       <div className="border-t border-gray-200 px-4 py-4 sm:px-6">
         <Link
-          href={`/stock-control/portal/requisitions/${requisition.id}`}
+          href={coreHref(`/stock-control/portal/requisitions/${requisition.id}`)}
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[var(--sc-primary,#323288)] hover:bg-[var(--sc-primary-hover,#252560)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--sc-primary,#323288)]"
         >
           Open Requisition

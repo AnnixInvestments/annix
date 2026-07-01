@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import type { NavItemDef } from "../config/navItems";
 
 interface NavCardProps {
@@ -10,10 +11,11 @@ interface NavCardProps {
 
 function NavCard(props: NavCardProps) {
   const { item, description } = props;
+  const coreHref = useCoreAwareHref();
 
   return (
     <Link
-      href={item.href}
+      href={coreHref(item.href)}
       className="group bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 min-h-[120px] hover:shadow-lg hover:border-[var(--sc-primary-400,#5b5b9c)] dark:hover:border-[var(--sc-primary,#323288)] transition-all duration-200 flex flex-col items-center justify-center text-center"
     >
       <div className="w-12 h-12 rounded-full bg-[var(--sc-primary-50,#eeeef6)] dark:bg-[var(--sc-primary-active,#1c1c48)]/30 flex items-center justify-center text-[var(--sc-primary,#323288)] dark:text-[var(--sc-primary-400,#5b5b9c)] group-hover:bg-[var(--sc-primary-100,#d6d6e9)] dark:group-hover:bg-[var(--sc-primary-active,#1c1c48)]/50 transition-colors mb-4">

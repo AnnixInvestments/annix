@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { useAdaptiveExtractionProgress } from "@/app/lib/hooks/useAdaptiveExtractionProgress";
 import { useAlert } from "@/app/lib/hooks/useAlert";
 import { type NixDocumentRole, nixApi } from "@/app/lib/nix";
@@ -36,6 +37,7 @@ export default function QuoteFromDocumentsPage() {
   const { showToast } = useToast();
   const { alert, AlertDialog } = useAlert();
   const nixQuoteFlag = useFeatureFlagEnabled(NIX_QUOTE_FROM_DOCS_FLAG);
+  const coreHref = useCoreAwareHref();
   const userId = auth.user?.id;
 
   const searchParams = useSearchParams();
@@ -231,7 +233,7 @@ export default function QuoteFromDocumentsPage() {
           Annix account manager if you'd like it activated.
         </p>
         <Link
-          href="/stock-control/portal/quotations"
+          href={coreHref("/stock-control/portal/quotations")}
           className="inline-block mt-4 text-sm text-blue-600 hover:text-blue-800 underline"
         >
           ← Back to quotations
@@ -252,7 +254,7 @@ export default function QuoteFromDocumentsPage() {
           </p>
         </div>
         <Link
-          href="/stock-control/portal/quotations"
+          href={coreHref("/stock-control/portal/quotations")}
           className="text-sm text-gray-600 hover:text-gray-900 underline"
         >
           Back to quotes
@@ -276,7 +278,7 @@ export default function QuoteFromDocumentsPage() {
           onChange={setDocNumberQuery}
           onUseExisting={(row) => {
             if (row.mineId) {
-              router.push(`/stock-control/portal/library/mines/${row.mineId}`);
+              router.push(coreHref(`/stock-control/portal/library/mines/${row.mineId}`));
             } else {
               showToast(
                 `Existing extraction #${row.extractionId} found, but no mine attached. Tag it from the draft view.`,
@@ -313,7 +315,9 @@ export default function QuoteFromDocumentsPage() {
           </div>
           <button
             type="button"
-            onClick={() => router.push(`/stock-control/portal/quotations/drafts/${session.id}`)}
+            onClick={() =>
+              router.push(coreHref(`/stock-control/portal/quotations/drafts/${session.id}`))
+            }
             className="inline-flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg shadow-md hover:shadow-lg transition-all whitespace-nowrap"
           >
             Continue to draft review

@@ -3,6 +3,7 @@
 import { isArray } from "es-toolkit/compat";
 import Link from "next/link";
 import { useState } from "react";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { formatDateZA } from "@/app/lib/datetime";
 import { useAllBlastProfiles, useDeleteBlastProfile } from "@/app/lib/query/hooks";
 import { UnlinkedUploadsSection } from "@/app/stock-control/components/UnlinkedUploadsSection";
@@ -10,6 +11,7 @@ import { UnlinkedUploadsSection } from "@/app/stock-control/components/UnlinkedU
 export default function BlastProfilePage() {
   const { data: recordsData, isLoading, error: queryError } = useAllBlastProfiles();
   const { mutateAsync: deleteBlastProfile } = useDeleteBlastProfile();
+  const coreHref = useCoreAwareHref();
   const records = recordsData ? recordsData : [];
   const [error, setError] = useState<string | null>(null);
 
@@ -120,7 +122,7 @@ export default function BlastProfilePage() {
                   <tr key={rec.id} className="hover:bg-gray-50">
                     <td className="whitespace-nowrap px-4 py-3 text-sm">
                       <Link
-                        href={`/stock-control/portal/job-cards/${rec.jobCardId}#quality`}
+                        href={`${coreHref(`/stock-control/portal/job-cards/${rec.jobCardId}`)}#quality`}
                         className="text-[var(--sc-primary,#323288)] hover:text-[var(--sc-primary-active,#1c1c48)] font-medium"
                       >
                         {jcLabel || `JC #${rec.jobCardId}`}

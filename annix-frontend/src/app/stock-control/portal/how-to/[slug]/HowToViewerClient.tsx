@@ -1,6 +1,7 @@
 "use client";
 
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import type { HowToHeading, HowToLink } from "@/app/lib/how-to";
 import SharedHowToViewerClient, {
   type ViewerGuide,
@@ -18,6 +19,7 @@ interface StockControlHowToViewerClientProps {
 export default function HowToViewerClient(props: StockControlHowToViewerClientProps) {
   const { user } = useStockControlAuth();
   const { effectiveRole } = useViewAs();
+  const coreHref = useCoreAwareHref();
   const userRole = user?.role;
   const role = effectiveRole || userRole || null;
 
@@ -29,7 +31,7 @@ export default function HowToViewerClient(props: StockControlHowToViewerClientPr
       next={props.next}
       role={role}
       allRoles={STOCK_CONTROL_HOW_TO_ROLES}
-      basePath="/stock-control/portal/how-to"
+      basePath={coreHref("/stock-control/portal/how-to")}
       recentKey="stock-control-how-to-recent"
       helpfulKeyPrefix="stock-control-how-to-helpful:"
     />

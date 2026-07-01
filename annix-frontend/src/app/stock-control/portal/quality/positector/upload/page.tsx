@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import type {
   PositectorImportResult,
@@ -87,6 +88,7 @@ const POSITECTOR_ANALYZE_FALLBACK_MS = 90000;
 
 export default function PositectorUploadPage() {
   const router = useRouter();
+  const coreHref = useCoreAwareHref();
   const uploadFileMutation = useUploadPositectorFile();
   const analyzeBundleMutation = useAnalyzeBundlePdf();
   const importBundleMutation = useImportBundlePdf();
@@ -323,7 +325,7 @@ export default function PositectorUploadPage() {
   }, [uploadResponse, showImportForm, processFile, processTextData]);
 
   const handleClose = () => {
-    router.push("/stock-control/portal/quality");
+    router.push(coreHref("/stock-control/portal/quality"));
   };
 
   return createPortal(
@@ -921,8 +923,8 @@ function LinkUploadForm(props: {
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/10 backdrop-blur-md">
       <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
         <h2 className="mb-1 text-lg font-semibold text-gray-900">Link Upload to Job Card</h2>
         <p className="mb-4 text-sm text-gray-500">
@@ -1072,6 +1074,7 @@ function LinkUploadForm(props: {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

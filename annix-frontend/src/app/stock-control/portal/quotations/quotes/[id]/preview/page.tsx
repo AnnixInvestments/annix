@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useCoreAwareHref } from "@/app/core/portal/lib/coreAwareHref";
 import { DateTime } from "@/app/lib/datetime";
 import { QuoteCustomerView } from "@/app/lib/nix/components/quote";
 import { ConvertToJobCardModal } from "@/app/lib/nix/components/quote/ConvertToJobCardModal";
@@ -57,6 +58,7 @@ function CustomerQuotePreviewBody(props: {
   validSessionId: number;
 }) {
   const { session, validSessionId } = props;
+  const coreHref = useCoreAwareHref();
   const snapshotRef = useRef<QuotePdfSnapshotDto | null>(null);
   const downloadPdf = useDownloadQuotePdf();
   const [downloadError, setDownloadError] = useState<string | null>(null);
@@ -103,18 +105,18 @@ function CustomerQuotePreviewBody(props: {
   // a plain preview visit.
   useEffect(() => {
     if (!wantPrint || !autoPrintTriggered) return;
-    const handler = () => router.push("/stock-control/portal/quotations");
+    const handler = () => router.push(coreHref("/stock-control/portal/quotations"));
     window.addEventListener("afterprint", handler, { once: true });
     return () => window.removeEventListener("afterprint", handler);
-  }, [wantPrint, autoPrintTriggered, router]);
+  }, [wantPrint, autoPrintTriggered, router, coreHref]);
 
   useEffect(() => {
     // Email-only submit: once the auto-opened email modal is closed
     // (sent or dismissed) and no print is pending, head to the hub.
     if (wantEmail && !wantPrint && autoEmailOpened && !showEmailModal) {
-      router.push("/stock-control/portal/quotations");
+      router.push(coreHref("/stock-control/portal/quotations"));
     }
-  }, [wantEmail, wantPrint, autoEmailOpened, showEmailModal, router]);
+  }, [wantEmail, wantPrint, autoEmailOpened, showEmailModal, router, coreHref]);
 
   // ?convert=1 from QuoteView's "Convert to Job Card" button — wait for
   // QuoteCustomerView to compute the snapshot, then open the modal.
@@ -174,7 +176,7 @@ function CustomerQuotePreviewBody(props: {
       <div className="max-w-[900px] mx-auto px-4 print:max-w-none print:px-0">
         <div className="flex items-center justify-between mb-3 print:hidden">
           <Link
-            href={`/stock-control/portal/quotations/quotes/${validSessionId}`}
+            href={coreHref(`/stock-control/portal/quotations/quotes/${validSessionId}`)}
             className="text-sm text-[#323288] hover:underline"
           >
             ← Back to editor
